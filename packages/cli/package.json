@@ -1,0 +1,33 @@
+{
+  "name": "@parallax/cli",
+  "version": "0.1.0",
+  "description": "Command-line interface for Parallax platform",
+  "bin": {
+    "parallax": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "@parallax/runtime": "workspace:*",
+    "@parallax/control-plane": "workspace:*",
+    "@parallax/data-plane": "workspace:*",
+    "@parallax/proto": "workspace:*",
+    "commander": "^13.0.0",
+    "chalk": "^5.4.1",
+    "ora": "^8.1.1",
+    "inquirer": "^12.6.3",
+    "table": "^6.9.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "@types/inquirer": "^9.0.8",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

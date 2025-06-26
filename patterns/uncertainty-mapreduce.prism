@@ -1,0 +1,152 @@
+/**
+ * @name UncertaintyMapReduce
+ * @version 1.0.0
+ * @description Distributed processing with confidence tracking and fallback strategies
+ * @input {"type": "object", "properties": {"data": {"type": "array"}, "mapFunction": {"type": "string"}, "reduceFunction": {"type": "string"}, "chunkSize": {"type": "number"}}}
+ * @agents {"capabilities": ["processing", "analysis"]}
+ * @minAgents 2
+ */
+
+// Configuration
+chunkSize = input.chunkSize || 100
+confidenceThreshold = 0.7
+
+// Get available processing agents
+processors = parallax.agents.filter(a => 
+  a.capabilities.includes("processing") || a.capabilities.includes("analysis")
+)
+
+// Split data into chunks
+dataLength = input.data.length
+numChunks = Math.ceil(dataLength / chunkSize)
+chunks = []
+
+for i in range(0, numChunks) {
+  startIdx = i * chunkSize
+  endIdx = Math.min(startIdx + chunkSize, dataLength)
+  chunks.push(input.data.slice(startIdx, endIdx))
+}
+
+// Map phase with uncertainty handling
+mapResults = parallel(chunks.map((chunk, idx) => {
+  // Select agent for this chunk
+  agentIdx = idx % processors.length
+  agent = processors[agentIdx]
+  
+  // Process chunk
+  result = agent.process(chunk, {
+    operation: "map",
+    function: input.mapFunction
+  })
+  
+  confidence = ~result
+  
+  // Handle low confidence
+  if confidence < confidenceThreshold {
+    // Try with a different agent
+    fallbackAgent = processors[(agentIdx + 1) % processors.length]
+    fallbackResult = fallbackAgent.process(chunk, {
+      operation: "map",
+      function: input.mapFunction,
+      isRetry: true
+    })
+    
+    fallbackConfidence = ~fallbackResult
+    
+    // Use better result
+    if fallbackConfidence > confidence {
+      return {
+        value: fallbackResult,
+        confidence: fallbackConfidence,
+        agent: fallbackAgent.id,
+        wasFallback: true,
+        chunkIndex: idx
+      }
+    }
+  }
+  
+  return {
+    value: result,
+    confidence: confidence,
+    agent: agent.id,
+    wasFallback: false,
+    chunkIndex: idx
+  }
+}))
+
+// Check map phase quality
+mapConfidences = mapResults.map(r => r.confidence)
+avgMapConfidence = mapConfidences.reduce((sum, c) => sum + c, 0) / mapConfidences.length
+lowConfidenceChunks = mapResults.filter(r => r.confidence < confidenceThreshold).length
+
+// Reduce phase with confidence weighting
+if avgMapConfidence < 0.5 {
+  // Too low confidence to proceed
+  result = {
+    error: "Map phase confidence too low",
+    mapResults: mapResults,
+    avgConfidence: avgMapConfidence,
+    recommendation: "Reconsider data quality or processing approach"
+  }
+  result ~> avgMapConfidence
+}
+
+// Select best agent for reduce
+reduceAgent = processors.reduce((best, current) =>
+  (current.historicalConfidence || 0.5) > (best.historicalConfidence || 0.5) ? current : best
+)
+
+// Prepare weighted values for reduction
+weightedMapResults = mapResults.map(r => ({
+  value: r.value,
+  weight: r.confidence
+}))
+
+// Perform reduction
+reduceResult = reduceAgent.process(weightedMapResults, {
+  operation: "reduce",
+  function: input.reduceFunction,
+  confidenceWeighted: true
+})
+
+reduceConfidence = ~reduceResult
+
+// Calculate overall confidence
+# Map quality affects reduce confidence
+overallConfidence = reduceConfidence * (0.7 + 0.3 * avgMapConfidence)
+
+// Build comprehensive result
+finalResult = {
+  value: reduceResult,
+  confidence: overallConfidence,
+  processing: {
+    chunks: numChunks,
+    avgMapConfidence: avgMapConfidence,
+    reduceConfidence: reduceConfidence,
+    lowConfidenceChunks: lowConfidenceChunks,
+    fallbacksUsed: mapResults.filter(r => r.wasFallback).length
+  },
+  agents: {
+    mappers: [...new Set(mapResults.map(r => r.agent))],
+    reducer: reduceAgent.id
+  },
+  metadata: {
+    dataSize: dataLength,
+    chunkSize: chunkSize,
+    processingTime: "distributed",
+    confidenceThreshold: confidenceThreshold
+  }
+}
+
+# Add warnings if needed
+if lowConfidenceChunks > numChunks * 0.2 {
+  finalResult.warnings = ["More than 20% of chunks had low confidence"]
+}
+
+if mapResults.filter(r => r.wasFallback).length > numChunks * 0.3 {
+  finalResult.warnings = (finalResult.warnings || []).concat([
+    "High fallback rate indicates processing difficulties"
+  ])
+}
+
+finalResult ~> overallConfidence

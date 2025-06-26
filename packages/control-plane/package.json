@@ -1,0 +1,34 @@
+{
+  "name": "@parallax/control-plane",
+  "version": "0.1.0",
+  "description": "Control plane components for Parallax platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "test": "vitest",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "@parallax/runtime": "workspace:*",
+    "prism-uncertainty": "^1.0.10",
+    "etcd3": "^1.1.2",
+    "node-cache": "^5.1.2",
+    "pino": "^9.5.0",
+    "uuid": "^11.0.5",
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "pino-pretty": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.7"
+  }
+}

@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package parallax.registry;
+
+option go_package = "github.com/parallax/proto/registry";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+// Agent registration information
+message AgentRegistration {
+  string id = 1;
+  string name = 2;
+  string endpoint = 3;                       // gRPC endpoint (host:port)
+  repeated string capabilities = 4;
+  
+  message Metadata {
+    string version = 1;
+    string region = 2;
+    map<string, string> labels = 3;
+    double default_confidence = 4;
+  }
+  Metadata metadata = 5;
+  
+  google.protobuf.Timestamp registered_at = 6;
+  google.protobuf.Duration ttl = 7;         // Time to live for registration
+}
+
+// Registration request
+message RegisterRequest {
+  AgentRegistration agent = 1;
+  bool auto_renew = 2;                      // Auto-renew registration before TTL expires
+}
+
+// Registration response
+message RegisterResponse {
+  bool success = 1;
+  string message = 2;
+  string lease_id = 3;                      // Lease ID for renewal
+}
+
+// List agents request
+message ListAgentsRequest {
+  repeated string capabilities = 1;         // Filter by capabilities
+  map<string, string> labels = 2;          // Filter by labels
+  int32 limit = 3;
+  string continuation_token = 4;
+}
+
+// List agents response
+message ListAgentsResponse {
+  repeated AgentRegistration agents = 1;
+  string next_continuation_token = 2;
+  int32 total_count = 3;
+}
+
+// Watch request for agent changes
+message WatchRequest {
+  repeated string capabilities = 1;         // Watch agents with these capabilities
+  bool include_initial = 2;                 // Include current agents in initial response
+}
+
+// Watch event
+message WatchEvent {
+  enum EventType {
+    UNKNOWN = 0;
+    ADDED = 1;
+    MODIFIED = 2;
+    DELETED = 3;
+  }
+  
+  EventType type = 1;
+  AgentRegistration agent = 2;
+  google.protobuf.Timestamp timestamp = 3;
+}
+
+// Service registry service
+service Registry {
+  // Register an agent
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  
+  // Unregister an agent
+  rpc Unregister(AgentRegistration) returns (RegisterResponse);
+  
+  // Renew agent registration
+  rpc Renew(RenewRequest) returns (RegisterResponse);
+  
+  // List registered agents
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+  
+  // Get specific agent
+  rpc GetAgent(GetAgentRequest) returns (AgentRegistration);
+  
+  // Watch for agent changes
+  rpc Watch(WatchRequest) returns (stream WatchEvent);
+}
+
+// Renew request
+message RenewRequest {
+  string lease_id = 1;
+  google.protobuf.Duration ttl = 2;
+}
+
+// Get agent request
+message GetAgentRequest {
+  string agent_id = 1;
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@parallax/runtime",
+  "version": "0.1.0",
+  "description": "Core runtime for Parallax AI orchestration platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "prism-uncertainty": "^1.0.10"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.7"
+  }
+}

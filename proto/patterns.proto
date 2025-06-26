@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package parallax.patterns;
+
+option go_package = "github.com/parallax/proto/patterns";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "confidence.proto";
+
+// Pattern definition
+message Pattern {
+  string name = 1;
+  string version = 2;
+  string description = 3;
+  
+  message Requirements {
+    repeated string capabilities = 1;
+    int32 min_agents = 2;
+    int32 max_agents = 3;
+    double min_confidence = 4;
+  }
+  Requirements requirements = 4;
+  
+  string prism_script = 5;                   // The actual Prism code
+  google.protobuf.Struct metadata = 6;       // Additional metadata
+}
+
+// Pattern execution request
+message ExecutePatternRequest {
+  string pattern_name = 1;
+  string pattern_version = 2;                // Optional, uses latest if not specified
+  google.protobuf.Struct input = 3;          // Input data for the pattern
+  
+  message Options {
+    int32 timeout_ms = 1;
+    int32 max_parallel = 2;
+    bool cache_results = 3;
+    map<string, string> context = 4;
+  }
+  Options options = 4;
+}
+
+// Pattern execution response
+message ExecutePatternResponse {
+  string execution_id = 1;
+  string pattern_name = 2;
+  
+  enum Status {
+    UNKNOWN = 0;
+    SUCCESS = 1;
+    FAILURE = 2;
+    TIMEOUT = 3;
+    CANCELLED = 4;
+  }
+  Status status = 3;
+  
+  google.protobuf.Struct result = 4;         // Pattern execution result
+  double confidence = 5;                     // Overall confidence
+  
+  message ExecutionMetrics {
+    google.protobuf.Timestamp start_time = 1;
+    google.protobuf.Timestamp end_time = 2;
+    int32 agents_used = 3;
+    int32 parallel_paths = 4;
+    double average_confidence = 5;
+  }
+  ExecutionMetrics metrics = 6;
+  
+  repeated parallax.confidence.ConfidenceResult agent_results = 7;
+  string error_message = 8;
+}
+
+// List patterns request
+message ListPatternsRequest {
+  repeated string tags = 1;                  // Filter by tags
+  bool include_scripts = 2;                  // Include full Prism scripts
+}
+
+// List patterns response
+message ListPatternsResponse {
+  repeated Pattern patterns = 1;
+}
+
+// Pattern execution service
+service PatternService {
+  // Execute a pattern
+  rpc ExecutePattern(ExecutePatternRequest) returns (ExecutePatternResponse);
+  
+  // Stream pattern execution for long-running patterns
+  rpc StreamExecutePattern(ExecutePatternRequest) returns (stream ExecutePatternResponse);
+  
+  // List available patterns
+  rpc ListPatterns(ListPatternsRequest) returns (ListPatternsResponse);
+  
+  // Get specific pattern
+  rpc GetPattern(GetPatternRequest) returns (Pattern);
+  
+  // Upload new pattern
+  rpc UploadPattern(UploadPatternRequest) returns (UploadPatternResponse);
+}
+
+// Get pattern request
+message GetPatternRequest {
+  string name = 1;
+  string version = 2;  // Optional
+}
+
+// Upload pattern request
+message UploadPatternRequest {
+  Pattern pattern = 1;
+  bool overwrite = 2;
+}
+
+// Upload pattern response
+message UploadPatternResponse {
+  bool success = 1;
+  string message = 2;
+  string pattern_id = 3;
+}

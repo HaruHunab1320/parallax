@@ -1,0 +1,28 @@
+{
+  "name": "@parallax/data-plane",
+  "version": "0.1.0",
+  "description": "Data plane components for Parallax platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "@parallax/runtime": "workspace:*",
+    "@parallax/control-plane": "workspace:*",
+    "@grpc/grpc-js": "^1.12.4",
+    "@grpc/proto-loader": "^0.7.13",
+    "circuit-breaker-js": "^0.0.1",
+    "p-limit": "^6.1.0",
+    "pino": "^9.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.7"
+  }
+}

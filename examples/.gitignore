@@ -1,0 +1,28 @@
+# Node modules (for TypeScript examples)
+node_modules/
+dist/
+*.log
+
+# Python (for Python examples)
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Agent outputs
+agent-output/
+test-results/
+*.cache
+
+# Local configuration
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store

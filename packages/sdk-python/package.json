@@ -1,0 +1,12 @@
+{
+  "name": "@prism-coordination/python",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Python SDK for Prism coordination platform",
+  "scripts": {
+    "build": "poetry build",
+    "test": "poetry run pytest",
+    "lint": "poetry run ruff check",
+    "format": "poetry run ruff format"
+  }
+}

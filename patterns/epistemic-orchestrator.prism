@@ -1,0 +1,105 @@
+/**
+ * @name EpistemicOrchestrator
+ * @version 1.0.0
+ * @description Orchestrate multiple expert agents, identifying valuable disagreements
+ * @input {"type": "object", "properties": {"code": {"type": "string"}, "analysisType": {"type": "string"}}}
+ * @agents {"capabilities": ["code-analysis"]}
+ * @minAgents 4
+ */
+
+// Define expert agent types
+expertTypes = ["security", "architecture", "performance", "complexity"]
+
+// Get specialized agents
+experts = expertTypes.map(type => 
+  parallax.agents.find(agent => 
+    agent.capabilities.includes(type) && 
+    agent.capabilities.includes("code-analysis")
+  )
+).filter(agent => agent != null)
+
+// Parallel expert analysis
+expertAnalyses = parallel(experts.map(expert => {
+  analysis = expert.analyze(input.code, {
+    type: input.analysisType,
+    perspective: expert.capabilities[0]
+  })
+  
+  return {
+    expert: expert.capabilities[0],
+    analysis: analysis,
+    confidence: ~analysis,
+    reasoning: analysis.reasoning || ""
+  }
+}))
+
+// Check for high-confidence disagreements
+disagreements = []
+for i in range(0, expertAnalyses.length - 1) {
+  for j in range(i + 1, expertAnalyses.length) {
+    expert1 = expertAnalyses[i]
+    expert2 = expertAnalyses[j]
+    
+    // Both experts have high confidence but different conclusions
+    if expert1.confidence > 0.8 && expert2.confidence > 0.8 {
+      if expert1.analysis.recommendation != expert2.analysis.recommendation {
+        disagreements.push({
+          experts: [expert1.expert, expert2.expert],
+          confidence1: expert1.confidence,
+          confidence2: expert2.confidence,
+          recommendations: [
+            expert1.analysis.recommendation,
+            expert2.analysis.recommendation
+          ]
+        })
+      }
+    }
+  }
+}
+
+// Determine orchestration strategy
+if disagreements.length > 0 {
+  // High-confidence disagreements indicate trade-offs
+  result = {
+    type: "parallel_exploration",
+    confidence: 0.9,
+    message: "Multiple valid approaches detected",
+    disagreements: disagreements,
+    paths: expertAnalyses.filter(e => e.confidence > 0.8).map(e => {
+      return {
+        expert: e.expert,
+        recommendation: e.analysis.recommendation,
+        confidence: e.confidence,
+        pros: e.analysis.pros || [],
+        cons: e.analysis.cons || []
+      }
+    }),
+    recommendation: "Consider trade-offs between approaches"
+  }
+} else {
+  // Calculate consensus
+  avgConfidence = expertAnalyses.reduce((sum, e) => sum + e.confidence, 0) / expertAnalyses.length
+  
+  if avgConfidence > 0.7 {
+    // Strong agreement
+    result = {
+      type: "consensus",
+      confidence: avgConfidence,
+      message: "Experts agree on approach",
+      recommendation: expertAnalyses[0].analysis.recommendation,
+      supportingExperts: expertAnalyses.map(e => e.expert)
+    }
+  } else {
+    // Low confidence across the board
+    result = {
+      type: "uncertainty",
+      confidence: avgConfidence,
+      message: "Low confidence - more information needed",
+      analyses: expertAnalyses,
+      recommendation: "Gather more context or constraints"
+    }
+  }
+}
+
+// Return orchestrated result with appropriate confidence
+result ~> result.confidence

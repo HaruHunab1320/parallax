@@ -1,0 +1,146 @@
+/**
+ * @name MultiValidator
+ * @version 1.0.0
+ * @description Validate data across multiple validators with fast path optimization
+ * @input {"type": "object", "properties": {"data": {"type": "any"}, "validationType": {"type": "string"}, "fastPathThreshold": {"type": "number"}}}
+ * @agents {"capabilities": ["validation"]}
+ * @minAgents 2
+ */
+
+// Configuration
+fastPathThreshold = input.fastPathThreshold || 0.9
+validationType = input.validationType || "general"
+
+// Get validators
+validators = parallax.agents.filter(a => 
+  a.capabilities.includes("validation") &&
+  (a.specialties.includes(validationType) || a.specialties.includes("general"))
+)
+
+// Sort by historical confidence for fast path
+validators.sort((a, b) => 
+  (b.historicalConfidence || 0.5) - (a.historicalConfidence || 0.5)
+)
+
+// Fast path: Try primary validator first
+primaryValidator = validators[0]
+primaryResult = primaryValidator.validate(input.data, {
+  type: validationType,
+  mode: "fast"
+})
+primaryConfidence = ~primaryResult
+
+// Check if fast path succeeds
+if primaryConfidence >= fastPathThreshold && primaryResult.valid {
+  // Fast path success - high confidence validation
+  result = {
+    valid: true,
+    confidence: primaryConfidence,
+    validatedBy: primaryValidator.id,
+    mode: "fast_path",
+    issues: primaryResult.issues || [],
+    metadata: {
+      validationType: validationType,
+      processingTime: "fast",
+      validatorsUsed: 1
+    }
+  }
+  result ~> primaryConfidence
+}
+
+// Fast path failed or low confidence - use multiple validators
+secondaryValidators = validators.slice(1, Math.min(5, validators.length))
+
+validationResults = parallel([primaryResult].concat(
+  secondaryValidators.map(validator => 
+    validator.validate(input.data, {
+      type: validationType,
+      mode: "thorough"
+    })
+  )
+))
+
+// Aggregate validation results
+validCount = 0
+invalidCount = 0
+allIssues = []
+confidences = []
+
+for i in range(0, validationResults.length) {
+  valResult = validationResults[i]
+  conf = ~valResult
+  confidences.push(conf)
+  
+  if valResult.valid {
+    validCount = validCount + conf
+  } else {
+    invalidCount = invalidCount + conf
+  }
+  
+  if valResult.issues {
+    for issue in valResult.issues {
+      allIssues.push({
+        issue: issue,
+        reportedBy: i == 0 ? primaryValidator.id : secondaryValidators[i-1].id,
+        confidence: conf
+      })
+    }
+  }
+}
+
+// Calculate weighted consensus
+totalWeight = validCount + invalidCount
+isValid = validCount > invalidCount
+
+// Deduplicate issues by grouping similar ones
+uniqueIssues = []
+for issue in allIssues {
+  found = false
+  for uniqueIssue in uniqueIssues {
+    if uniqueIssue.issue == issue.issue {
+      uniqueIssue.reportedBy.push(issue.reportedBy)
+      uniqueIssue.confidence = Math.max(uniqueIssue.confidence, issue.confidence)
+      found = true
+      break
+    }
+  }
+  if !found {
+    uniqueIssues.push({
+      issue: issue.issue,
+      reportedBy: [issue.reportedBy],
+      confidence: issue.confidence
+    })
+  }
+}
+
+// Sort issues by confidence and frequency
+uniqueIssues.sort((a, b) => 
+  (b.confidence * b.reportedBy.length) - (a.confidence * a.reportedBy.length)
+)
+
+// Calculate overall confidence
+avgConfidence = confidences.reduce((sum, c) => sum + c, 0) / confidences.length
+consensusStrength = Math.abs(validCount - invalidCount) / totalWeight
+overallConfidence = avgConfidence * (0.7 + 0.3 * consensusStrength)
+
+// Build final result
+result = {
+  valid: isValid,
+  confidence: overallConfidence,
+  validatedBy: validators.slice(0, validationResults.length).map(v => v.id),
+  mode: "multi_validator",
+  consensus: {
+    validVotes: validCount,
+    invalidVotes: invalidCount,
+    strength: consensusStrength
+  },
+  issues: uniqueIssues.slice(0, 10), // Top 10 issues
+  metadata: {
+    validationType: validationType,
+    processingTime: "thorough",
+    validatorsUsed: validationResults.length,
+    fastPathAttempted: true
+  }
+}
+
+result ~> overallConfidence

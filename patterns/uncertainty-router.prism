@@ -1,0 +1,125 @@
+/**
+ * @name UncertaintyRouter  
+ * @version 1.0.0
+ * @description Route tasks based on uncertainty levels using Prism's uncertain conditionals
+ * @input {"type": "object", "properties": {"task": {"type": "string"}, "context": {"type": "object"}}}
+ * @agents {"capabilities": ["assessment", "analysis"]}
+ */
+
+// Quick assessment of task complexity and uncertainty
+assessmentAgent = parallax.agents.find(agent => 
+  agent.capabilities.includes("assessment")
+)
+
+quickAssessment = assessmentAgent.analyze(input.task, {
+  mode: "quick",
+  context: input.context
+})
+
+assessmentConfidence = ~quickAssessment
+
+// Get available agents grouped by expertise level
+allAgents = parallax.agents.filter(a => a.capabilities.includes("analysis"))
+
+specialists = allAgents.filter(a => a.expertise > 0.9)
+generalists = allAgents.filter(a => a.expertise > 0.6 && a.expertise <= 0.9)
+novices = allAgents.filter(a => a.expertise <= 0.6)
+
+// Route based on uncertainty - Prism's key feature!
+uncertain if (assessmentConfidence < 0.6) {
+  high {
+    // High uncertainty but confident about it - need specialists
+    selectedAgents = specialists.slice(0, 3)
+    
+    if selectedAgents.length < 2 {
+      result = {
+        status: "escalated",
+        reason: "Not enough specialists available",
+        confidence: 0.2,
+        recommendation: "Human expert required"
+      }
+    } else {
+      // Deep parallel analysis by specialists
+      analyses = parallel(selectedAgents.map(agent => 
+        agent.analyze(input.task, {
+          mode: "deep",
+          context: input.context,
+          timeLimit: 300000  // 5 minutes
+        })
+      ))
+      
+      result = {
+        status: "specialist_analysis",
+        analyses: analyses,
+        confidence: 0.85,
+        recommendation: "Multiple specialist perspectives provided"
+      }
+    }
+  }
+  
+  medium {
+    // Medium uncertainty - use best available generalist
+    bestGeneralist = generalists.reduce((best, agent) => 
+      agent.confidence > best.confidence ? agent : best,
+      generalists[0]
+    )
+    
+    if bestGeneralist {
+      analysis = bestGeneralist.analyze(input.task, {
+        mode: "standard",
+        context: input.context
+      })
+      
+      result = {
+        status: "single_agent",
+        agent: bestGeneralist.id,
+        analysis: analysis,
+        confidence: ~analysis,
+        recommendation: analysis.recommendation
+      }
+    } else {
+      // Fallback to any available agent
+      fallbackAgent = allAgents[0]
+      analysis = fallbackAgent.analyze(input.task, input.context)
+      
+      result = {
+        status: "fallback",
+        agent: fallbackAgent.id,
+        analysis: analysis,
+        confidence: ~analysis * 0.7,  // Reduce confidence for fallback
+        recommendation: analysis.recommendation
+      }
+    }
+  }
+  
+  low {
+    // Very uncertain about the uncertainty itself
+    // Escalate to human or gather more information
+    result = {
+      status: "high_uncertainty",
+      confidence: 0.1,
+      recommendation: "Cannot assess task confidently",
+      action: "escalate_to_human",
+      context: {
+        task: input.task,
+        assessmentConfidence: assessmentConfidence,
+        availableAgents: allAgents.length
+      }
+    }
+  }
+}
+
+// Add routing metadata
+result.metadata = {
+  routingStrategy: "uncertainty-based",
+  assessmentConfidence: assessmentConfidence,
+  agentCounts: {
+    specialists: specialists.length,
+    generalists: generalists.length,
+    total: allAgents.length
+  },
+  timestamp: Date.now()
+}
+
+// Return routed result with confidence
+result ~> result.confidence

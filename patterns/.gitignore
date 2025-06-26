@@ -1,0 +1,15 @@
+# Pattern compilation cache
+*.prism.cache
+*.prism.compiled
+
+# Test outputs from pattern validation
+test-outputs/
+validation-results/
+
+# Temporary pattern files
+*.prism.tmp
+*.prism.bak
+
+# Local pattern development
+.sandbox/
+.test-patterns/

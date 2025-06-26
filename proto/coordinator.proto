@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package parallax.coordinator;
+
+option go_package = "github.com/parallax/proto/coordinator";
+
+import "google/protobuf/struct.proto";
+import "confidence.proto";
+
+// Coordination request
+message CoordinateRequest {
+  string task_id = 1;
+  string description = 2;
+  
+  enum Strategy {
+    UNKNOWN = 0;
+    CONSENSUS = 1;                          // Build consensus from all agents
+    EPISTEMIC = 2;                          // Identify valuable disagreements
+    CASCADE = 3;                            // Cascade through agents by confidence
+    UNCERTAINTY_ROUTE = 4;                  // Route based on uncertainty
+    CUSTOM = 5;                             // Use custom pattern
+  }
+  Strategy strategy = 3;
+  
+  string custom_pattern = 4;                // Pattern name if strategy is CUSTOM
+  google.protobuf.Struct data = 5;         // Input data
+  
+  message Constraints {
+    double min_confidence = 1;
+    int32 max_agents = 2;
+    repeated string required_capabilities = 3;
+    int32 timeout_ms = 4;
+  }
+  Constraints constraints = 6;
+}
+
+// Coordination response
+message CoordinateResponse {
+  string task_id = 1;
+  
+  message ConsensusResult {
+    double consensus_level = 1;
+    string recommendation = 2;
+    repeated parallax.confidence.ConfidenceResult agent_results = 3;
+  }
+  
+  message EpistemicResult {
+    message Disagreement {
+      string agent1_id = 1;
+      string agent2_id = 2;
+      string issue = 3;
+      double confidence_delta = 4;
+    }
+    repeated Disagreement disagreements = 1;
+    repeated ParallelPath parallel_paths = 2;
+    string recommendation = 3;
+  }
+  
+  message ParallelPath {
+    string path_id = 1;
+    string description = 2;
+    double confidence = 3;
+    repeated string supporting_agents = 4;
+    google.protobuf.Struct details = 5;
+  }
+  
+  oneof result {
+    ConsensusResult consensus = 2;
+    EpistemicResult epistemic = 3;
+    google.protobuf.Struct custom = 4;
+  }
+  
+  double overall_confidence = 5;
+  string explanation = 6;
+}
+
+// Coordinator service
+service Coordinator {
+  // Coordinate agents for a task
+  rpc Coordinate(CoordinateRequest) returns (CoordinateResponse);
+  
+  // Stream coordination for real-time updates
+  rpc StreamCoordinate(CoordinateRequest) returns (stream CoordinateResponse);
+  
+  // Get coordination history
+  rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
+}
+
+// History request
+message GetHistoryRequest {
+  string task_id = 1;                       // Optional, get specific task
+  int32 limit = 2;
+  int64 since_timestamp = 3;
+}
+
+// History response
+message GetHistoryResponse {
+  message HistoryEntry {
+    CoordinateRequest request = 1;
+    CoordinateResponse response = 2;
+    int64 timestamp = 3;
+  }
+  repeated HistoryEntry entries = 1;
+}

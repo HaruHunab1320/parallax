@@ -1,0 +1,147 @@
+/**
+ * @name RobustAnalysis
+ * @version 1.0.0
+ * @description Composite pattern that uses load balancing, consensus building, and uncertainty routing
+ * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}, "requirements": {"type": "object"}}}
+ * @agents {"capabilities": ["analysis"]}
+ * @minAgents 4
+ */
+
+// This is a composite pattern that orchestrates other patterns
+
+// Step 1: Use LoadBalancer to find best agents
+loadBalancerResult = executePattern("load-balancer", {
+  task: "Select analysis agents",
+  data: {
+    requiredCapabilities: ["analysis"],
+    count: 5
+  },
+  strategy: "weighted"
+})
+
+selectedAgents = loadBalancerResult.value.agents || parallax.agents.filter(a => 
+  a.capabilities.includes("analysis")
+).slice(0, 5)
+
+// Step 2: Quick assessment to determine approach
+quickAssessment = selectedAgents[0].analyze(input.task, {
+  data: input.data,
+  mode: "quick"
+})
+assessmentConfidence = ~quickAssessment
+
+// Step 3: Route based on initial assessment
+uncertain if (assessmentConfidence < 0.6) {
+  high {
+    // High uncertainty about the task - use multiple patterns
+    
+    // Try parallel exploration first
+    explorationResult = executePattern("parallel-exploration", {
+      task: input.task,
+      data: input.data,
+      consensusThreshold: 0.7
+    })
+    
+    if explorationResult.type == "parallel_exploration" {
+      // Multiple valid approaches found
+      // Use cascading refinement on each path
+      refinedPaths = parallel(explorationResult.paths.map(path => 
+        executePattern("cascading-refinement", {
+          task: input.task,
+          data: {
+            ...input.data,
+            approach: path.approach
+          },
+          minConfidence: 0.85
+        })
+      ))
+      
+      result = {
+        type: "multi_path_analysis",
+        paths: refinedPaths,
+        confidence: Math.max(...refinedPaths.map(p => ~p)),
+        recommendation: "Multiple approaches refined - choose based on requirements",
+        tradeoffs: explorationResult.summary
+      }
+    } else {
+      // Single approach but uncertain
+      result = executePattern("cascading-refinement", {
+        task: input.task,
+        data: input.data,
+        minConfidence: 0.9,
+        maxTier: 3
+      })
+    }
+  }
+  
+  medium {
+    // Medium uncertainty - use consensus with selected agents
+    consensusResult = executePattern("consensus-builder", {
+      task: input.task,
+      data: input.data,
+      agents: selectedAgents
+    })
+    
+    if consensusResult.status == "strong_consensus" {
+      result = consensusResult
+    } else {
+      // Weak consensus - validate the result
+      validationResult = executePattern("multi-validator", {
+        data: consensusResult.results,
+        validationType: "analysis",
+        fastPathThreshold: 0.85
+      })
+      
+      result = {
+        analysis: consensusResult,
+        validation: validationResult,
+        confidence: consensusResult.confidence * validationResult.confidence,
+        status: validationResult.valid ? "validated_weak_consensus" : "invalid_consensus"
+      }
+    }
+  }
+  
+  low {
+    // Very uncertain about assessment itself
+    // Use uncertainty router as fallback
+    routerResult = executePattern("uncertainty-router", {
+      task: input.task,
+      context: {
+        ...input.data,
+        requirements: input.requirements
+      }
+    })
+    
+    result = routerResult
+  }
+}
+
+// Step 4: Add robustness metadata
+robustMetadata = {
+  patternsUsed: [],
+  totalAgentsInvolved: selectedAgents.length,
+  initialAssessmentConfidence: assessmentConfidence,
+  processingStrategy: assessmentConfidence > 0.8 ? "simple" : 
+                     assessmentConfidence > 0.5 ? "consensus" : "complex"
+}
+
+// Track which patterns were used
+if result.type == "multi_path_analysis" {
+  robustMetadata.patternsUsed = ["load-balancer", "parallel-exploration", "cascading-refinement"]
+} else if result.status && result.status.includes("consensus") {
+  robustMetadata.patternsUsed = ["load-balancer", "consensus-builder", "multi-validator"]
+} else if result.action == "escalate_to_human" {
+  robustMetadata.patternsUsed = ["load-balancer", "uncertainty-router"]
+} else {
+  robustMetadata.patternsUsed = ["load-balancer", "cascading-refinement"]
+}
+
+// Final robust result
+finalResult = {
+  ...result,
+  robustness: robustMetadata,
+  confidence: result.confidence || ~result,
+  message: "Robust analysis completed using multiple coordination patterns"
+}
+
+finalResult ~> finalResult.confidence

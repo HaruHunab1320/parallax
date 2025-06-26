@@ -1,0 +1,67 @@
+# Git
+.git/
+.gitignore
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+.mypy_cache/
+venv/
+.venv/
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+.turbo/
+
+# Development
+.vscode/
+.idea/
+.DS_Store
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Tests
+coverage/
+test/
+tests/
+*.test.*
+*.spec.*
+
+# Environment
+.env
+.env.*
+
+# Parallax specific
+.parallax.pids
+execution-logs/
+confidence-metrics/
+agent-data/
+agent-logs/
+
+# Examples (can be excluded from production images)
+examples/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Temporary files
+*.tmp
+*.temp
+*.log

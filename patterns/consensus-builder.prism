@@ -1,0 +1,71 @@
+/**
+ * @name ConsensusBuilder
+ * @version 1.0.0
+ * @description Build weighted consensus from multiple agent analyses
+ * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}}}
+ * @agents {"capabilities": ["analysis"], "minConfidence": 0.6}
+ * @minAgents 3
+ */
+
+// Get available agents with required capabilities
+agents = parallax.agents.filter(agent => 
+  agent.capabilities.includes("analysis")
+)
+
+// Parallel analysis from all agents
+results = parallel(agents.map(agent => {
+  response = agent.analyze(input.task, input.data)
+  return {
+    agentId: agent.id,
+    value: response,
+    confidence: ~response,
+    timestamp: Date.now()
+  }
+}))
+
+// Calculate weighted consensus
+totalWeight = 0
+weightedSum = 0
+highConfidenceCount = 0
+
+for result in results {
+  weight = result.confidence
+  totalWeight = totalWeight + weight
+  
+  if result.confidence > 0.8 {
+    highConfidenceCount = highConfidenceCount + 1
+  }
+}
+
+// Determine consensus quality
+consensusQuality = totalWeight / results.length
+
+// Build final result
+if consensusQuality > 0.7 {
+  // Strong consensus
+  consensus = {
+    status: "strong_consensus",
+    confidence: consensusQuality,
+    results: results,
+    recommendation: results[0].value
+  }
+} else if consensusQuality > 0.5 {
+  // Weak consensus
+  consensus = {
+    status: "weak_consensus", 
+    confidence: consensusQuality,
+    results: results,
+    recommendation: "Further analysis recommended"
+  }
+} else {
+  // No consensus
+  consensus = {
+    status: "no_consensus",
+    confidence: consensusQuality,
+    results: results,
+    recommendation: "Human review required"
+  }
+}
+
+// Return with confidence
+consensus ~> consensusQuality

@@ -1,0 +1,140 @@
+/**
+ * @name ParallelExploration
+ * @version 1.0.0
+ * @description Explore multiple approaches when consensus is low but individual confidence is high
+ * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}, "consensusThreshold": {"type": "number"}}}
+ * @agents {"capabilities": ["analysis"]}
+ * @minAgents 3
+ */
+
+// Configuration
+consensusThreshold = input.consensusThreshold || 0.6
+highConfidenceThreshold = 0.8
+
+// Get all capable agents
+agents = parallax.agents.filter(a => a.capabilities.includes("analysis"))
+
+// Initial parallel analysis
+initialResults = parallel(agents.map(agent => {
+  result = agent.analyze(input.task, input.data)
+  return {
+    agent: agent.id,
+    value: result,
+    confidence: ~result,
+    approach: result.approach || "standard"
+  }
+}))
+
+// Calculate consensus
+uniqueApproaches = []
+approachGroups = {}
+
+for result in initialResults {
+  approach = result.approach
+  if !approachGroups[approach] {
+    approachGroups[approach] = []
+    uniqueApproaches.push(approach)
+  }
+  approachGroups[approach].push(result)
+}
+
+// Check for high-confidence disagreements
+highConfResults = initialResults.filter(r => r.confidence >= highConfidenceThreshold)
+consensusLevel = 0
+
+if uniqueApproaches.length == 1 {
+  // All agents agree on approach
+  consensusLevel = 0.9
+} else if highConfResults.length > 0 {
+  // Calculate consensus among high-confidence results
+  largestGroup = 0
+  for approach in uniqueApproaches {
+    groupSize = approachGroups[approach].filter(r => 
+      r.confidence >= highConfidenceThreshold
+    ).length
+    if groupSize > largestGroup {
+      largestGroup = groupSize
+    }
+  }
+  consensusLevel = largestGroup / highConfResults.length
+}
+
+// Determine if we need parallel exploration
+needsExploration = consensusLevel < consensusThreshold && highConfResults.length >= 2
+
+if needsExploration {
+  // Parallel exploration of different approaches
+  explorationPaths = []
+  
+  for approach in uniqueApproaches {
+    groupResults = approachGroups[approach]
+    if groupResults.length > 0 {
+      // Get highest confidence result for this approach
+      bestInGroup = groupResults.reduce((best, current) =>
+        current.confidence > best.confidence ? current : best
+      )
+      
+      if bestInGroup.confidence >= highConfidenceThreshold {
+        // Deep dive into this approach
+        deepAnalysis = parallel(agents
+          .filter(a => a.capabilities.includes(approach) || a.flexible)
+          .slice(0, 3)
+          .map(agent => agent.analyze(input.task, {
+            data: input.data,
+            approach: approach,
+            depth: "deep"
+          }))
+        )
+        
+        explorationPaths.push({
+          approach: approach,
+          leadAgent: bestInGroup.agent,
+          confidence: bestInGroup.confidence,
+          deepAnalysis: deepAnalysis,
+          supporters: groupResults.length
+        })
+      }
+    }
+  }
+  
+  // Return parallel exploration results
+  result = {
+    type: "parallel_exploration",
+    consensusLevel: consensusLevel,
+    paths: explorationPaths,
+    recommendation: "Multiple valid approaches detected - consider trade-offs",
+    summary: explorationPaths.map(p => ({
+      approach: p.approach,
+      confidence: p.confidence,
+      pros: p.deepAnalysis[0].pros || [],
+      cons: p.deepAnalysis[0].cons || []
+    }))
+  }
+  
+  // Confidence is high because we're confident about the disagreement
+  result ~> 0.9
+} else {
+  // Consensus achieved or low overall confidence
+  if consensusLevel >= consensusThreshold {
+    // Good consensus
+    bestResult = highConfResults[0]
+    result = {
+      type: "consensus",
+      value: bestResult.value,
+      consensusLevel: consensusLevel,
+      supportingAgents: initialResults
+        .filter(r => r.approach == bestResult.approach)
+        .map(r => r.agent)
+    }
+    result ~> bestResult.confidence
+  } else {
+    // Low confidence overall
+    result = {
+      type: "low_confidence",
+      results: initialResults,
+      consensusLevel: consensusLevel,
+      recommendation: "Insufficient confidence - gather more information"
+    }
+    result ~> 0.4
+  }
+}
