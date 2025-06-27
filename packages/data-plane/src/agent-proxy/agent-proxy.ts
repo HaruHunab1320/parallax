@@ -14,7 +14,6 @@ export class AgentProxy extends EventEmitter {
   private connections: Map<string, AgentConnection> = new Map();
   private circuitBreakers: Map<string, CircuitBreaker> = new Map();
   private loadBalancer: LoadBalancer;
-  private requestCounts: Map<string, number> = new Map();
   private requestTimestamps: Map<string, number[]> = new Map();
 
   constructor(

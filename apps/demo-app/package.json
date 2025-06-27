@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@parallax/runtime": "workspace:*",
-    "@parallax/typescript": "workspace:*",
+    "@parallax/sdk-typescript": "workspace:*",
     "@parallax/control-plane": "workspace:*",
     "@parallax/data-plane": "workspace:*",
     "pino": "^9.5.0",

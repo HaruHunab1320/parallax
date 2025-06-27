@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 26, 26, 46;
+    --background-end-rgb: 22, 33, 62;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --foreground-rgb: 255, 255, 255;
+      --background-start-rgb: 0, 0, 0;
+      --background-end-rgb: 0, 0, 0;
+    }
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-lg shadow-xl;
+  }
+  
+  .metric-card {
+    @apply glass-panel p-6 hover:bg-white/10 transition-colors duration-200;
+  }
+  
+  .status-indicator {
+    @apply w-3 h-3 rounded-full animate-pulse;
+  }
+  
+  .status-healthy {
+    @apply bg-green-500 shadow-green-500/50;
+  }
+  
+  .status-warning {
+    @apply bg-yellow-500 shadow-yellow-500/50;
+  }
+  
+  .status-error {
+    @apply bg-red-500 shadow-red-500/50;
+  }
+}

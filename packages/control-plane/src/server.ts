@@ -6,10 +6,13 @@ import express from 'express';
 import cors from 'cors';
 import pino from 'pino';
 import { PatternEngine } from './pattern-engine';
+import { TracedPatternEngine } from './pattern-engine/pattern-engine-traced';
 import { RuntimeManager } from './runtime-manager';
+import { RuntimeConfig } from './runtime-manager/types';
 import { EtcdRegistry } from './registry';
 import { HealthCheckService, createHealthRouter } from './health/health-check';
 import { MetricsCollector } from './metrics/metrics-collector';
+import { initializeTracing, getTracingConfig } from '@parallax/telemetry';
 import path from 'path';
 
 const logger = pino({
@@ -22,7 +25,11 @@ const logger = pino({
   }
 });
 
-export async function createServer() {
+export async function createServer(): Promise<express.Application> {
+  // Initialize tracing
+  const tracingConfig = getTracingConfig('parallax-control-plane');
+  const tracer = await initializeTracing(tracingConfig, logger);
+  
   const app = express();
   
   // Middleware
@@ -31,18 +38,32 @@ export async function createServer() {
   
   // Initialize services
   const etcdEndpoints = (process.env.PARALLAX_ETCD_ENDPOINTS || 'localhost:2379').split(',');
-  const registry = new EtcdRegistry(etcdEndpoints, logger);
+  const registry = new EtcdRegistry(etcdEndpoints, 'parallax', logger);
   
-  const runtimeManager = new RuntimeManager(logger);
-  await runtimeManager.initialize();
+  const runtimeConfig: RuntimeConfig = {
+    maxInstances: parseInt(process.env.PARALLAX_RUNTIME_MAX_INSTANCES || '10'),
+    instanceTimeout: parseInt(process.env.PARALLAX_RUNTIME_TIMEOUT || '30000'),
+    warmupInstances: parseInt(process.env.PARALLAX_RUNTIME_WARMUP || '2'),
+    metricsEnabled: process.env.PARALLAX_METRICS_ENABLED === 'true'
+  };
+  const runtimeManager = new RuntimeManager(runtimeConfig, logger);
   
   const patternsDir = process.env.PARALLAX_PATTERNS_DIR || path.join(process.cwd(), 'patterns');
-  const patternEngine = new PatternEngine(
-    runtimeManager,
-    registry,
-    patternsDir,
-    logger
-  );
+  
+  // Use traced pattern engine if tracing is enabled
+  const patternEngine: PatternEngine | TracedPatternEngine = tracingConfig.exporterType !== 'none' 
+    ? new TracedPatternEngine(
+        runtimeManager,
+        registry,
+        patternsDir,
+        logger
+      )
+    : new PatternEngine(
+        runtimeManager,
+        registry,
+        patternsDir,
+        logger
+      );
   await patternEngine.initialize();
   
   // Initialize metrics
@@ -132,22 +153,32 @@ export async function createServer() {
   
   const port = parseInt(process.env.PORT || '3000');
   
-  return {
-    app,
-    start: () => {
-      app.listen(port, () => {
-        logger.info(`Control Plane listening on port ${port}`);
-        logger.info(`Health check: http://localhost:${port}/health`);
-        logger.info(`API: http://localhost:${port}/api`);
-      });
-    }
+  // Graceful shutdown handler
+  const shutdown = async () => {
+    logger.info('Shutting down control plane...');
+    await tracer.shutdown();
+    process.exit(0);
   };
+  
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+  
+  const start = () => {
+    app.listen(port, () => {
+      logger.info(`Control Plane listening on port ${port}`);
+      logger.info(`Health check: http://localhost:${port}/health`);
+      logger.info(`API: http://localhost:${port}/api`);
+      logger.info(`Tracing: ${tracingConfig.exporterType === 'none' ? 'Disabled' : 'Enabled'}`);
+    });
+  };
+  
+  return Object.assign(app, { start });
 }
 
 // Start server if run directly
 if (require.main === module) {
   createServer()
-    .then(server => server.start())
+    .then(server => (server as any).start())
     .catch(error => {
       logger.error({ error }, 'Failed to start server');
       process.exit(1);

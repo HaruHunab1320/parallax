@@ -1,0 +1,27 @@
+{
+  "name": "@parallax/tenant",
+  "version": "0.1.0",
+  "description": "Multi-tenancy support for Parallax platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@parallax/auth": "workspace:*",
+    "pino": "^9.5.0",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.14.1",
+    "@types/uuid": "^10.0.0",
+    "jest": "^29.7.0",
+    "typescript": "^5.7.2"
+  }
+}

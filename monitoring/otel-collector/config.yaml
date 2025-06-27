@@ -1,0 +1,129 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "http://*"
+            - "https://*"
+
+  # Receive Prometheus metrics
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-collector'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['localhost:8888']
+
+processors:
+  # Batch processing for better performance
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Add resource attributes
+  resource:
+    attributes:
+      - key: service.namespace
+        value: parallax
+        action: insert
+      - key: deployment.environment
+        from_attribute: OTEL_DEPLOYMENT_ENVIRONMENT
+        action: insert
+
+  # Span processing
+  span:
+    name:
+      # Extract pattern name from span
+      from_attributes: ["parallax.pattern.name"]
+      separator: "::"
+
+  # Filter out health checks
+  filter:
+    traces:
+      span:
+        - 'attributes["http.target"] == "/health"'
+        - 'attributes["http.target"] == "/health/ready"'
+        - 'attributes["http.target"] == "/health/live"'
+
+exporters:
+  # Export to Jaeger
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+  # Export to Prometheus
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: parallax
+    const_labels:
+      environment: "${OTEL_DEPLOYMENT_ENVIRONMENT}"
+
+  # Debug exporter (disable in production)
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+  # OTLP exporter for chaining collectors
+  otlp/trace:
+    endpoint: "${OTLP_ENDPOINT}"
+    tls:
+      insecure: true
+
+extensions:
+  # Health check
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  # Performance profiling
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  # z-pages for debugging
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+  
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, filter, batch, resource, span]
+      exporters: [jaeger, debug]
+    
+    # Metrics pipeline
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [memory_limiter, batch, resource]
+      exporters: [prometheus]
+    
+    # Logs pipeline (if needed)
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug]
+
+  telemetry:
+    logs:
+      level: info
+      development: false
+      encoding: json
+    
+    metrics:
+      level: detailed
+      address: 0.0.0.0:8888

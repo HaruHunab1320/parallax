@@ -1,7 +1,7 @@
 import { PrismRuntimePool } from './prism-runtime-pool';
 import { RuntimeConfig, RuntimeInstance } from './types';
 import { Logger } from 'pino';
-import { Prism, runPrism } from 'prism-uncertainty';
+import { runPrism } from 'prism-uncertainty';
 
 export class RuntimeManager {
   private pool: PrismRuntimePool;
@@ -50,7 +50,7 @@ export class RuntimeManager {
   ): Promise<any> {
     try {
       // Create a new Prism instance
-      const _prism = new Prism();
+      // const _prism = new Prism();
       
       // Set context variables if provided
       const prismContext = context || {};

@@ -2,9 +2,7 @@
  * Client utilities for connecting to Parallax services
  */
 
-import * as grpc from '@grpc/grpc-js';
 import { AgentRegistry, GrpcAgentProxy } from '@parallax/runtime';
-import { PatternEngine } from '@parallax/control-plane';
 
 export interface ParallaxConfig {
   controlPlaneEndpoint?: string;
@@ -113,7 +111,11 @@ export class ParallaxClient {
       status: 'completed',
       result: {
         value: 'Mock result',
-        confidence: 0.85
+        confidence: 0.85,
+        agents: [
+          { id: 'agent-1', name: 'Mock Agent 1', confidence: 0.9 },
+          { id: 'agent-2', name: 'Mock Agent 2', confidence: 0.8 }
+        ]
       },
       executionTime: 1234
     };

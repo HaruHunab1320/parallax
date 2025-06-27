@@ -45,6 +45,12 @@ export class LocalAgentManager {
     });
   }
   
+  getAgentsByCapabilities(requiredCapabilities: string[]): LocalAgentConfig[] {
+    return this.agents.filter(agent => 
+      requiredCapabilities.every(cap => agent.capabilities.includes(cap))
+    );
+  }
+  
   /**
    * Load agents from environment variable
    * Format: PARALLAX_LOCAL_AGENTS=id1:name1:endpoint1:cap1,cap2;id2:name2:endpoint2:cap3

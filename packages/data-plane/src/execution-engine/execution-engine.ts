@@ -87,7 +87,7 @@ export class ExecutionEngine extends EventEmitter {
       if (result.confidence !== undefined && task.type === 'agent') {
         await this.confidenceTracker.recordConfidence({
           agentId: task.target,
-          pattern: task.metadata?.pattern || 'unknown',
+          pattern: task.metadata && 'pattern' in task.metadata ? String(task.metadata.pattern) : 'unknown',
           task: task.type,
           confidence: result.confidence,
           timestamp: new Date(),
@@ -170,7 +170,7 @@ export class ExecutionEngine extends EventEmitter {
           taskId: task.id,
           status: 'success',
           result: response.data,
-          confidence: response.data?.confidence,
+          confidence: response.data && typeof response.data === 'object' && 'confidence' in response.data ? (response.data as any).confidence : undefined,
           executionTime: Date.now() - startTime,
           retries: 0,
           metadata: response.metadata,

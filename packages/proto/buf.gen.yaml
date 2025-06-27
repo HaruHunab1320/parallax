@@ -1,15 +1,15 @@
 version: v1
 plugins:
   - name: js
-    out: packages/proto/generated
+    out: generated
     opt: import_style=commonjs,binary
   - name: ts
-    out: packages/proto/generated
+    out: generated
   - name: grpc
-    out: packages/proto/generated
+    out: generated
     opt: grpc_js
     path: grpc_tools_node_protoc_plugin
   - name: ts
-    out: packages/proto/generated
+    out: generated
     opt: service=grpc-node,mode=grpc-js
     path: protoc-gen-ts

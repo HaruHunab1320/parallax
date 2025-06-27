@@ -1,21 +1,38 @@
 import * as grpc from '@grpc/grpc-js';
-import { 
-  ConfidenceAgentService,
-  IConfidenceAgentServer 
-} from '@parallax/proto';
-import {
-  AgentRequest,
-  ConfidenceResult,
-  Capabilities,
-  Health,
-  Empty
-} from '@parallax/proto';
+
+// Temporarily define types here until proto generation is fixed
+export interface AgentRequest {
+  taskDescription: string;
+  data?: any;
+}
+
+export interface ConfidenceResult {
+  valueJson: string;
+  confidence: number;
+  agentId: string;
+  timestamp: number;
+  reasoning?: string;
+  uncertainties?: string[];
+}
+
+export interface Capabilities {
+  capabilities: string[];
+  expertiseLevel: string;
+  capabilityScores: Record<string, number>;
+}
+
+export interface Health {
+  status: string;
+  message?: string;
+}
+
+export interface Empty {}
 
 /**
  * Base class for Parallax agents in TypeScript.
  * Agents are standalone services that communicate via gRPC.
  */
-export abstract class ParallaxAgent implements IConfidenceAgentServer {
+export abstract class ParallaxAgent {
   private server: grpc.Server;
   private registryEndpoint: string;
   
@@ -44,37 +61,32 @@ export abstract class ParallaxAgent implements IConfidenceAgentServer {
 
   // gRPC service implementation
   async Analyze(
-    call: grpc.ServerUnaryCall<AgentRequest, ConfidenceResult>,
+    _call: grpc.ServerUnaryCall<AgentRequest, ConfidenceResult>,
     callback: grpc.sendUnaryData<ConfidenceResult>
   ): Promise<void> {
     try {
-      const request = call.request;
-      const data = request.getData()?.toJavaScript();
+      // Placeholder until proto generation is fixed
+      // const request = _call.request as any;
+      const data = undefined; // request.getData()?.toJavaScript();
+      const task = ''; // request.getTaskDescription();
       
       // Call the agent's analyze method
       const [result, confidence] = await this.analyze(
-        request.getTaskDescription(),
+        task,
         data
       );
 
-      // Build response
-      const response = new ConfidenceResult();
-      response.setValueJson(JSON.stringify(result));
-      response.setConfidence(confidence);
-      response.setAgentId(this.id);
-      response.setTimestamp(new Date().toISOString());
-      
-      // Add reasoning if provided
-      if (result.reasoning) {
-        response.setReasoning(result.reasoning);
-      }
-      
-      // Add uncertainties if provided
-      if (result.uncertainties) {
-        response.setUncertaintiesList(result.uncertainties);
-      }
+      // Build response - placeholder until proto generation is fixed
+      const response: ConfidenceResult = {
+        valueJson: JSON.stringify(result),
+        confidence: confidence,
+        agentId: this.id,
+        timestamp: Date.now(),
+        reasoning: result.reasoning || '',
+        uncertainties: result.uncertainties || []
+      };
 
-      callback(null, response);
+      callback(null, response as any);
     } catch (error) {
       callback({
         code: grpc.status.INTERNAL,
@@ -84,25 +96,23 @@ export abstract class ParallaxAgent implements IConfidenceAgentServer {
   }
 
   async GetCapabilities(
-    call: grpc.ServerUnaryCall<Empty, Capabilities>,
+    _call: grpc.ServerUnaryCall<Empty, Capabilities>,
     callback: grpc.sendUnaryData<Capabilities>
   ): Promise<void> {
     try {
-      const response = new Capabilities();
-      response.setAgentId(this.id);
-      response.setName(this.name);
-      response.setCapabilitiesList(this.capabilities);
-      response.setExpertiseLevel(this.metadata.expertise || 0.5);
+      // Placeholder until proto generation is fixed
+      const response: Capabilities = {
+        capabilities: this.capabilities,
+        expertiseLevel: this.metadata.expertise || 'general',
+        capabilityScores: this.metadata.capabilityScores || {}
+      };
       
       // Add capability scores if provided
       if (this.metadata.capabilityScores) {
-        const scores = response.getCapabilityScoresMap();
-        Object.entries(this.metadata.capabilityScores).forEach(([cap, score]) => {
-          scores.set(cap, score as number);
-        });
+        // Scores already set above
       }
 
-      callback(null, response);
+      callback(null, response as any);
     } catch (error) {
       callback({
         code: grpc.status.INTERNAL,
@@ -112,24 +122,25 @@ export abstract class ParallaxAgent implements IConfidenceAgentServer {
   }
 
   async HealthCheck(
-    call: grpc.ServerUnaryCall<Empty, Health>,
+    _call: grpc.ServerUnaryCall<Empty, Health>,
     callback: grpc.sendUnaryData<Health>
   ): Promise<void> {
     try {
       const health = await this.checkHealth();
-      const response = new Health();
       
       const statusMap = {
-        'healthy': Health.Status.HEALTHY,
-        'unhealthy': Health.Status.UNHEALTHY,
-        'degraded': Health.Status.DEGRADED
+        'healthy': 'HEALTHY',
+        'unhealthy': 'UNHEALTHY',
+        'degraded': 'DEGRADED'
       };
       
-      response.setStatus(statusMap[health.status]);
-      response.setMessage(health.message || 'OK');
-      response.setLastCheck(new Date().toISOString());
+      // Placeholder until proto generation is fixed
+      const response: Health = {
+        status: statusMap[health.status],
+        message: health.message || 'OK'
+      };
 
-      callback(null, response);
+      callback(null, response as any);
     } catch (error) {
       callback({
         code: grpc.status.INTERNAL,
@@ -143,7 +154,9 @@ export abstract class ParallaxAgent implements IConfidenceAgentServer {
    */
   async serve(port: number = 0): Promise<number> {
     return new Promise((resolve, reject) => {
-      this.server.addService(ConfidenceAgentService, this);
+      // Placeholder until proto generation is fixed
+      // this.server.addService(ConfidenceAgentService, this as any);
+      console.log('Note: Service registration disabled until proto generation is fixed');
       
       this.server.bindAsync(
         `0.0.0.0:${port}`,

@@ -61,11 +61,34 @@ services:
       - "14268:14268"
       - "14250:14250"
       - "9411:9411"
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
     environment:
       - COLLECTOR_ZIPKIN_HOST_PORT=:9411
       - COLLECTOR_OTLP_ENABLED=true
     networks:
       - parallax-network
+    volumes:
+      - jaeger-data:/tmp
+
+  # OpenTelemetry Collector (optional, for production)
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: parallax-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./monitoring/otel-collector/config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4319:4317"    # OTLP gRPC
+      - "4320:4318"    # OTLP HTTP
+      - "8888:8888"    # Prometheus metrics
+      - "8889:8889"    # Prometheus exporter
+      - "13133:13133"  # Health check
+    networks:
+      - parallax-network
+    depends_on:
+      - jaeger
+      - prometheus
 
   # Prometheus for metrics collection
   prometheus:
@@ -90,6 +113,7 @@ volumes:
   influxdb-config:
   grafana-data:
   prometheus-data:
+  jaeger-data:
 
 networks:
   parallax-network:

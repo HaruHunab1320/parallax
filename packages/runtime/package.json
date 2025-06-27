@@ -12,7 +12,11 @@
     "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
-    "prism-uncertainty": "^1.0.10"
+    "prism-uncertainty": "^1.0.10",
+    "@grpc/grpc-js": "^1.12.4",
+    "@parallax/proto": "workspace:*",
+    "@parallax/security": "workspace:*",
+    "pino": "^9.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

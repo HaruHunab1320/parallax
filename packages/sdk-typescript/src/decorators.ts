@@ -1,4 +1,12 @@
-import { AgentResult } from '@parallax/runtime';
+// Temporarily define AgentResult here until runtime package is fixed
+export interface AgentResult<T> {
+  value: T;
+  confidence: number;
+  agent: string;
+  reasoning?: string;
+  uncertainties?: string[];
+  timestamp: number;
+}
 
 export interface WithConfidenceOptions {
   defaultConfidence?: number;
@@ -7,8 +15,8 @@ export interface WithConfidenceOptions {
 
 export function withConfidence(options: WithConfidenceOptions = {}) {
   return function (
-    target: any,
-    propertyKey: string,
+    _target: any,
+    _propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
     const originalMethod = descriptor.value;

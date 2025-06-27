@@ -1,10 +1,55 @@
-import { 
-  Agent, 
-  AgentResult, 
-  CoordinationPattern,
-  ConfidenceProtocol,
-  DEFAULT_THRESHOLDS
-} from '@parallax/runtime';
+// Temporarily define types here until runtime package is fixed
+export interface Agent {
+  id: string;
+  name: string;
+  capabilities: string[];
+  analyze<T>(task: string, data?: any): Promise<AgentResult<T>>;
+  isAvailable(): Promise<boolean>;
+}
+
+export interface AgentResult<T> {
+  value: T;
+  confidence: number;
+  agent: string;
+  reasoning?: string;
+  uncertainties?: string[];
+  timestamp: number;
+}
+
+export interface CoordinationPattern {
+  name: string;
+  description: string;
+  execute<T>(agents: Agent[], task: string, data?: any): Promise<T>;
+}
+
+export const DEFAULT_THRESHOLDS = {
+  high: 0.8,
+  medium: 0.6,
+  low: 0.4
+};
+
+export class ConfidenceProtocol {
+  shouldExploreParallel(results: AgentResult<any>[]): boolean {
+    const highConfidenceResults = results.filter(r => r.confidence >= DEFAULT_THRESHOLDS.high);
+    if (highConfidenceResults.length < 2) return false;
+    
+    // Check for disagreements
+    const values = highConfidenceResults.map(r => JSON.stringify(r.value));
+    const uniqueValues = new Set(values);
+    return uniqueValues.size > 1;
+  }
+  
+  calculateWeightedConsensus(results: AgentResult<any>[]): { consensus: number; disagreements: string[] } {
+    const totalConfidence = results.reduce((sum, r) => sum + r.confidence, 0);
+    const consensus = totalConfidence / results.length;
+    
+    const values = results.map(r => JSON.stringify(r.value));
+    const uniqueValues = new Set(values);
+    const disagreements = uniqueValues.size > 1 ? Array.from(uniqueValues) : [];
+    
+    return { consensus, disagreements };
+  }
+}
 
 export class EpistemicOrchestrator implements CoordinationPattern {
   name = 'epistemic-orchestrator';
@@ -27,7 +72,7 @@ export class EpistemicOrchestrator implements CoordinationPattern {
     }
 
     // Return highest confidence result
-    const highestConfidence = results.reduce((prev, current) =>
+    const highestConfidence = results.reduce((prev: AgentResult<T>, current: AgentResult<T>) =>
       prev.confidence > current.confidence ? prev : current
     );
 
@@ -41,8 +86,8 @@ export class EpistemicOrchestrator implements CoordinationPattern {
       type: 'parallel-exploration',
       consensus,
       paths: results
-        .filter((r) => r.confidence >= DEFAULT_THRESHOLDS.high)
-        .map((r) => ({
+        .filter((r: AgentResult<T>) => r.confidence >= DEFAULT_THRESHOLDS.high)
+        .map((r: AgentResult<T>) => ({
           agent: r.agent,
           value: r.value,
           confidence: r.confidence,
@@ -73,7 +118,7 @@ export class ConsensusBuilder implements CoordinationPattern {
 
     // Return weighted average (simplified for demo)
     const highConfidenceResults = results.filter(
-      (r) => r.confidence >= DEFAULT_THRESHOLDS.medium
+      (r: AgentResult<T>) => r.confidence >= DEFAULT_THRESHOLDS.medium
     );
 
     if (highConfidenceResults.length === 0) {

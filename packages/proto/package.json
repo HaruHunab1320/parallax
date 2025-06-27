@@ -5,8 +5,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "npm run generate && tsc",
-    "generate": "buf generate",
+    "build": "tsc",
+    "generate": "./generate.sh",
     "clean": "rm -rf dist generated",
     "lint": "buf lint"
   },

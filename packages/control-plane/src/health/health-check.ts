@@ -23,10 +23,10 @@ export interface HealthStatus {
 
 export class HealthCheckService {
   constructor(
-    private patternEngine: PatternEngine,
+    private patternEngine: PatternEngine | any,
     private runtimeManager: RuntimeManager,
     private registry: EtcdRegistry,
-    private logger: Logger
+    _logger: Logger
   ) {}
   
   async checkHealth(): Promise<HealthStatus> {

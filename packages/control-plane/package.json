@@ -22,7 +22,8 @@
     "express": "^4.21.2",
     "cors": "^2.8.5",
     "pino-pretty": "^13.0.0",
-    "prom-client": "^15.1.0"
+    "prom-client": "^15.1.0",
+    "@parallax/telemetry": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

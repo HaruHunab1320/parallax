@@ -9,20 +9,20 @@ export class MetricsCollector {
   private registry: Registry;
   
   // Pattern metrics
-  public patternExecutions: Counter;
-  public patternDuration: Histogram;
-  public patternErrors: Counter;
-  public patternConfidence: Histogram;
+  public patternExecutions!: Counter;
+  public patternDuration!: Histogram;
+  public patternErrors!: Counter;
+  public patternConfidence!: Histogram;
   
   // Agent metrics
-  public activeAgents: Gauge;
-  public agentRequests: Counter;
-  public agentResponseTime: Histogram;
-  public agentErrors: Counter;
+  public activeAgents!: Gauge;
+  public agentRequests!: Counter;
+  public agentResponseTime!: Histogram;
+  public agentErrors!: Counter;
   
   // System metrics
-  public queueSize: Gauge;
-  public concurrentExecutions: Gauge;
+  public queueSize!: Gauge;
+  public concurrentExecutions!: Gauge;
   
   constructor() {
     this.registry = new Registry();

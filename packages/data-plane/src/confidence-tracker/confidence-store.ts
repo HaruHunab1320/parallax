@@ -99,7 +99,7 @@ export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceS
     if (!intervalData) return [];
     
     // Convert to structured format
-    const results: Array<{ timestamp: Date; average: number; count: number }> = [];
+    const results: Array<{ time: Date; avgConfidence: number; count: number }> = [];
     
     // This is a simplified implementation
     // In production, would use proper time-series aggregation

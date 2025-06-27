@@ -289,7 +289,7 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
     return anomalies;
   }
   
-  async cleanup(retentionPeriod: number): Promise<void> {
+  async cleanup(_retentionPeriod: number): Promise<void> {
     // InfluxDB handles retention automatically based on bucket retention policy
     // This method is here for interface compatibility
     // You can configure retention when creating the bucket

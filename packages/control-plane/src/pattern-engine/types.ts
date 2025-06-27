@@ -31,11 +31,18 @@ export interface PatternExecution {
   result?: any;
   error?: string;
   metrics?: ExecutionMetrics;
+  confidence?: number;
 }
 
 export interface ExecutionMetrics {
-  agentsUsed: number;
-  averageConfidence: number;
-  executionTime: number;
+  totalExecutions?: number;
+  agentsUsed?: number;
+  averageConfidence?: number;
+  executionTime?: number;
   parallelPaths?: number;
+  completedExecutions?: number;
+  failedExecutions?: number;
+  activeExecutions?: number;
+  successfulExecutions?: number;
+  averageDuration?: number;
 }

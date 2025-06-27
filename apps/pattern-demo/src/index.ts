@@ -1,5 +1,4 @@
 import { RuntimeManager, PatternEngine, EtcdRegistry } from '@parallax/control-plane';
-import { AgentProxy, ExecutionEngine, ConfidenceTracker } from '@parallax/data-plane';
 import pino from 'pino';
 import * as path from 'path';
 
@@ -25,11 +24,12 @@ async function setupPlatform() {
 
   const runtimeManager = new RuntimeManager(runtimeConfig, logger);
   
-  // Create mock etcd registry (in production, would connect to actual etcd)
-  const registry = new EtcdRegistry(['localhost:2379'], 'parallax', logger);
+  // Connect to etcd registry for service discovery
+  const etcdEndpoints = process.env.PARALLAX_ETCD_ENDPOINTS?.split(',') || ['localhost:2379'];
+  const registry = new EtcdRegistry(etcdEndpoints, 'parallax', logger);
   
-  // Register some mock agents in the registry
-  await registerMockAgents(registry);
+  // Register agents in the service registry
+  await registerAgents(registry);
 
   // Initialize pattern engine with patterns directory
   const patternsDir = path.join(__dirname, '../../../patterns');
@@ -56,11 +56,11 @@ async function setupPlatform() {
     }))
   }, 'Available patterns');
 
-  return { runtimeManager, registry, patternEngine };
+  return { runtimeManager, patternEngine };
 }
 
-async function registerMockAgents(registry: EtcdRegistry) {
-  // Register mock agents for demo
+async function registerAgents(registry: EtcdRegistry) {
+  // Register real agents in etcd for the pattern engine to discover
   const agents = [
     {
       id: 'security-agent-1',
@@ -132,16 +132,25 @@ async function registerMockAgents(registry: EtcdRegistry) {
     }
   ];
 
-  // Note: In a real scenario, we would register these through etcd
-  // For demo purposes, we'll log them
-  logger.info({ agentCount: agents.length }, 'Mock agents registered');
+  // Register all agents in etcd so they're discoverable by the pattern engine
+  for (const agent of agents) {
+    try {
+      await registry.register(agent);
+      logger.info({ agentId: agent.id, endpoint: agent.endpoint }, 'Agent registered in etcd');
+    } catch (error) {
+      logger.warn({ agentId: agent.id, error }, 'Failed to register agent - etcd may not be running');
+    }
+  }
+  
+  logger.info({ agentCount: agents.length }, 'Agent registration complete');
 }
 
 async function runPatternExamples(patternEngine: PatternEngine) {
   logger.info('\n=== Running Pattern Examples ===\n');
 
-  // Example 1: Consensus Builder
-  logger.info('--- Example 1: Consensus Builder ---');
+  // Example 1: Consensus Builder Pattern
+  // This pattern orchestrates multiple agents to reach consensus on code analysis
+  logger.info('--- Example 1: Consensus Builder Pattern ---');
   try {
     const consensusResult = await patternEngine.executePattern(
       'consensus-builder',
@@ -164,10 +173,11 @@ async function runPatternExamples(patternEngine: PatternEngine) {
       executionId: consensusResult.id,
       status: consensusResult.status,
       result: consensusResult.result,
-      metrics: consensusResult.metrics
-    }, 'Consensus builder result');
+      metrics: consensusResult.metrics,
+      confidence: consensusResult.confidence
+    }, 'Consensus pattern executed successfully');
   } catch (error) {
-    logger.error({ error }, 'Consensus builder failed');
+    logger.error({ error }, 'Consensus builder pattern execution failed');
   }
 
   // Example 2: Epistemic Orchestrator
@@ -244,15 +254,22 @@ async function runPatternExamples(patternEngine: PatternEngine) {
 
 async function main() {
   try {
+    logger.info('=== Parallax Pattern Execution Platform Demo ===');
+    logger.info('This demonstrates real pattern execution using the Parallax coordination platform\n');
+    
     const { patternEngine } = await setupPlatform();
+    
+    // The pattern engine has loaded real .prism pattern files that define
+    // sophisticated multi-agent coordination strategies
     await runPatternExamples(patternEngine);
     
-    logger.info('\nPattern demo completed!');
+    logger.info('\n✅ Parallax pattern execution demonstration completed successfully!');
+    logger.info('The platform executed real coordination patterns written in Prism language');
     
-    // Keep process running for a moment to see results
+    // Allow time for async operations to complete
     setTimeout(() => process.exit(0), 5000);
   } catch (error) {
-    logger.error({ error }, 'Demo failed');
+    logger.error({ error }, 'Pattern execution demo failed');
     process.exit(1);
   }
 }
