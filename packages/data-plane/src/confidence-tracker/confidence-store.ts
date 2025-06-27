@@ -1,4 +1,4 @@
-import { ConfidenceDataPoint, ConfidenceQuery } from './types';
+import { ConfidenceDataPoint, ConfidenceQuery, ConfidenceStore, AggregationInterval } from './types';
 import { EventEmitter } from 'events';
 
 export interface ConfidenceStoreConfig {
@@ -11,7 +11,7 @@ export interface ConfidenceStoreConfig {
   };
 }
 
-export class InMemoryConfidenceStore extends EventEmitter {
+export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceStore {
   private dataPoints: ConfidenceDataPoint[] = [];
   private aggregatedData: Map<string, Map<string, number[]>> = new Map();
 
@@ -20,7 +20,7 @@ export class InMemoryConfidenceStore extends EventEmitter {
     this.startAggregation();
   }
 
-  async store(dataPoint: ConfidenceDataPoint): Promise<void> {
+  async addDataPoint(dataPoint: ConfidenceDataPoint): Promise<void> {
     this.dataPoints.push(dataPoint);
     
     // Clean up old data
@@ -74,12 +74,24 @@ export class InMemoryConfidenceStore extends EventEmitter {
     return results;
   }
 
+  async getDataPoints(
+    agentId: string,
+    startTime: Date,
+    endTime: Date
+  ): Promise<ConfidenceDataPoint[]> {
+    return this.dataPoints.filter(
+      dp => dp.agentId === agentId &&
+            dp.timestamp >= startTime &&
+            dp.timestamp <= endTime
+    );
+  }
+  
   async getAggregatedData(
     agentId: string,
-    interval: 'minute' | 'hour' | 'day',
-    startTime?: Date,
-    endTime?: Date
-  ): Promise<Array<{ timestamp: Date; average: number; count: number }>> {
+    interval: AggregationInterval,
+    startTime: Date,
+    endTime: Date
+  ): Promise<Array<{ time: Date; avgConfidence: number; count: number }>> {
     const agentData = this.aggregatedData.get(agentId);
     if (!agentData) return [];
     
@@ -109,13 +121,94 @@ export class InMemoryConfidenceStore extends EventEmitter {
     for (const [bucket, confidences] of dataByBucket) {
       const average = confidences.reduce((a, b) => a + b, 0) / confidences.length;
       results.push({
-        timestamp: new Date(bucket),
-        average,
+        time: new Date(bucket),
+        avgConfidence: average,
         count: confidences.length,
       });
     }
     
-    return results.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    return results.sort((a, b) => a.time.getTime() - b.time.getTime());
+  }
+  
+  async getPatternStats(
+    pattern: string,
+    startTime: Date,
+    endTime: Date
+  ): Promise<{
+    avgConfidence: number;
+    totalExecutions: number;
+    successRate: number;
+    agentBreakdown: Map<string, number>;
+  }> {
+    const patternData = this.dataPoints.filter(
+      dp => dp.pattern === pattern &&
+            dp.timestamp >= startTime &&
+            dp.timestamp <= endTime
+    );
+    
+    if (patternData.length === 0) {
+      return {
+        avgConfidence: 0,
+        totalExecutions: 0,
+        successRate: 0,
+        agentBreakdown: new Map(),
+      };
+    }
+    
+    const avgConfidence = patternData.reduce((sum, dp) => sum + dp.confidence, 0) / patternData.length;
+    const successCount = patternData.filter(dp => dp.confidence > 0.7).length;
+    const agentBreakdown = new Map<string, number>();
+    
+    patternData.forEach(dp => {
+      agentBreakdown.set(dp.agentId, (agentBreakdown.get(dp.agentId) || 0) + 1);
+    });
+    
+    return {
+      avgConfidence,
+      totalExecutions: patternData.length,
+      successRate: successCount / patternData.length,
+      agentBreakdown,
+    };
+  }
+  
+  async detectAnomalies(
+    agentId: string,
+    threshold: number = 2
+  ): Promise<Array<{ time: Date; confidence: number; zscore: number }>> {
+    const agentData = this.dataPoints.filter(dp => dp.agentId === agentId);
+    
+    if (agentData.length < 10) {
+      return [];
+    }
+    
+    // Calculate mean and standard deviation
+    const confidences = agentData.map(dp => dp.confidence);
+    const mean = confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
+    const variance = confidences.reduce((sum, c) => sum + Math.pow(c - mean, 2), 0) / confidences.length;
+    const stdDev = Math.sqrt(variance);
+    
+    // Find anomalies
+    const anomalies: Array<{ time: Date; confidence: number; zscore: number }> = [];
+    
+    agentData.forEach(dp => {
+      const zscore = Math.abs((dp.confidence - mean) / stdDev);
+      if (zscore > threshold) {
+        anomalies.push({
+          time: dp.timestamp,
+          confidence: dp.confidence,
+          zscore,
+        });
+      }
+    });
+    
+    return anomalies;
+  }
+  
+  async cleanup(retentionPeriod: number): Promise<void> {
+    const cutoffTime = new Date();
+    cutoffTime.setDate(cutoffTime.getDate() - retentionPeriod);
+    
+    this.dataPoints = this.dataPoints.filter(dp => dp.timestamp > cutoffTime);
   }
 
   private pruneOldData(): void {
@@ -158,7 +251,7 @@ export class InMemoryConfidenceStore extends EventEmitter {
     }, 60 * 60 * 1000); // Every hour
   }
 
-  private getIntervalMs(interval: 'minute' | 'hour' | 'day'): number {
+  private getIntervalMs(interval: AggregationInterval): number {
     switch (interval) {
       case 'minute': return 60 * 1000;
       case 'hour': return 60 * 60 * 1000;

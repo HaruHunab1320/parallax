@@ -1,0 +1,53 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'parallax'
+    replica: '1'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Control Plane metrics
+  - job_name: 'control-plane'
+    static_configs:
+      - targets: ['control-plane:3000']
+    metrics_path: '/metrics'
+
+  # Agent metrics - will be dynamically discovered
+  - job_name: 'agents'
+    static_configs:
+      - targets: []  # Will be populated by service discovery
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [agent_id]
+        target_label: agent_id
+      - source_labels: [agent_type]
+        target_label: agent_type
+
+  # etcd metrics
+  - job_name: 'etcd'
+    static_configs:
+      - targets: ['etcd:2379']
+    metrics_path: '/metrics'
+
+  # Node exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']

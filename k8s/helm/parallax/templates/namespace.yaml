@@ -1,0 +1,9 @@
+{{- if .Values.operator.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: parallax-system
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    control-plane: parallax-operator
+{{- end }}

@@ -1,0 +1,23 @@
+apiVersion: v2
+name: parallax
+description: Helm chart for Parallax AI Orchestration Platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai
+  - orchestration
+  - confidence
+  - agents
+  - patterns
+home: https://github.com/parallax/parallax
+sources:
+  - https://github.com/parallax/parallax
+maintainers:
+  - name: Parallax Team
+    email: team@parallax.io
+dependencies:
+  - name: etcd
+    version: "9.5.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: etcd.enabled

@@ -1,0 +1,178 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: parallaxagents.agent.parallax.io
+spec:
+  group: agent.parallax.io
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            required:
+            - agentId
+            - image
+            - capabilities
+            properties:
+              agentId:
+                type: string
+                description: Unique identifier for the agent
+              image:
+                type: string
+                description: Container image for the agent
+              replicas:
+                type: integer
+                description: Number of agent replicas
+                default: 1
+                minimum: 1
+              capabilities:
+                type: array
+                description: List of capabilities this agent provides
+                items:
+                  type: string
+              resources:
+                type: object
+                description: Resource requirements
+                properties:
+                  requests:
+                    type: object
+                    properties:
+                      cpu:
+                        type: string
+                      memory:
+                        type: string
+                  limits:
+                    type: object
+                    properties:
+                      cpu:
+                        type: string
+                      memory:
+                        type: string
+              env:
+                type: array
+                description: Environment variables
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                    valueFrom:
+                      type: object
+              port:
+                type: integer
+                description: gRPC port for the agent
+                default: 50051
+              healthCheck:
+                type: object
+                description: Health check configuration
+                properties:
+                  enabled:
+                    type: boolean
+                    default: true
+                  path:
+                    type: string
+                    default: /health
+                  interval:
+                    type: string
+                    default: 30s
+              autoscaling:
+                type: object
+                description: Autoscaling configuration
+                properties:
+                  enabled:
+                    type: boolean
+                    default: false
+                  minReplicas:
+                    type: integer
+                    default: 1
+                  maxReplicas:
+                    type: integer
+                    default: 10
+                  targetCPUUtilizationPercentage:
+                    type: integer
+                    default: 80
+                  targetConfidenceThreshold:
+                    type: number
+                    description: Scale based on confidence metrics
+                    minimum: 0
+                    maximum: 1
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+                enum:
+                - Pending
+                - Running
+                - Failed
+                - Terminating
+              replicas:
+                type: integer
+              availableReplicas:
+                type: integer
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    status:
+                      type: string
+                    lastTransitionTime:
+                      type: string
+                    reason:
+                      type: string
+                    message:
+                      type: string
+              endpoint:
+                type: string
+                description: Service endpoint for the agent
+              lastSeen:
+                type: string
+                description: Last time the agent reported to the registry
+              metrics:
+                type: object
+                properties:
+                  averageConfidence:
+                    type: number
+                  totalRequests:
+                    type: integer
+                  errorRate:
+                    type: number
+    additionalPrinterColumns:
+    - name: Status
+      type: string
+      jsonPath: .status.phase
+    - name: Replicas
+      type: integer
+      jsonPath: .status.replicas
+    - name: Available
+      type: integer
+      jsonPath: .status.availableReplicas
+    - name: Confidence
+      type: number
+      jsonPath: .status.metrics.averageConfidence
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: parallaxagents
+    singular: parallaxagent
+    kind: ParallaxAgent
+    shortNames:
+    - pxa

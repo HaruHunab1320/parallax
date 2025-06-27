@@ -9,6 +9,7 @@ import { PatternEngine } from './pattern-engine';
 import { RuntimeManager } from './runtime-manager';
 import { EtcdRegistry } from './registry';
 import { HealthCheckService, createHealthRouter } from './health/health-check';
+import { MetricsCollector } from './metrics/metrics-collector';
 import path from 'path';
 
 const logger = pino({
@@ -44,6 +45,9 @@ export async function createServer() {
   );
   await patternEngine.initialize();
   
+  // Initialize metrics
+  const metrics = new MetricsCollector();
+  
   // Health checks
   const healthService = new HealthCheckService(
     patternEngine,
@@ -53,6 +57,9 @@ export async function createServer() {
   );
   
   app.use(createHealthRouter(healthService, logger));
+  
+  // Metrics endpoint
+  app.get('/metrics', metrics.metricsHandler());
   
   // API Routes
   app.get('/api/patterns', (_req, res) => {
@@ -68,13 +75,24 @@ export async function createServer() {
   });
   
   app.post('/api/patterns/:name/execute', async (req, res) => {
+    const { name } = req.params;
+    const endTimer = metrics.recordPatternStart(name);
+    
     try {
-      const { name } = req.params;
       const input = req.body;
       
       const result = await patternEngine.executePattern(name, input);
+      
+      // Record metrics
+      endTimer();
+      metrics.recordPatternResult(name, true, result.confidence);
+      
       res.json(result);
     } catch (error) {
+      endTimer();
+      metrics.recordPatternResult(name, false);
+      metrics.recordPatternError(name, error instanceof Error ? error.constructor.name : 'UnknownError');
+      
       logger.error({ error }, 'Pattern execution failed');
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Pattern execution failed'
@@ -85,6 +103,10 @@ export async function createServer() {
   app.get('/api/agents', async (_req, res) => {
     try {
       const agents = await registry.listServices('agent');
+      
+      // Update metrics
+      metrics.updateActiveAgents('all', agents.length);
+      
       res.json({ agents });
     } catch (error) {
       logger.error({ error }, 'Failed to list agents');
@@ -101,6 +123,7 @@ export async function createServer() {
       version: process.env.npm_package_version || '0.1.0',
       endpoints: {
         health: '/health',
+        metrics: '/metrics',
         patterns: '/api/patterns',
         agents: '/api/agents'
       }

@@ -1,0 +1,25 @@
+apiVersion: pattern.parallax.io/v1alpha1
+kind: Pattern
+metadata:
+  name: consensus-builder
+  namespace: default
+spec:
+  name: consensus-builder
+  description: Builds consensus from multiple agents using weighted confidence
+  source:
+    type: configMap
+    configMapRef:
+      name: parallax-patterns
+      key: consensus-builder.prism
+  requiredCapabilities:
+    - analysis
+  minAgents: 3
+  confidenceThreshold: 0.7
+  timeout: 30s
+  retryPolicy:
+    maxRetries: 3
+    backoffMultiplier: 2
+    initialDelay: 1s
+  parameters:
+    weight_by_confidence: "true"
+    min_agreement: "0.7"

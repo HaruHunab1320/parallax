@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parallax-operator
+  namespace: parallax-system
+  labels:
+    control-plane: parallax-operator
+spec:
+  selector:
+    matchLabels:
+      control-plane: parallax-operator
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        control-plane: parallax-operator
+    spec:
+      serviceAccountName: parallax-operator
+      containers:
+      - name: manager
+        image: parallax/parallax-operator:latest
+        command:
+        - /manager
+        args:
+        - --leader-elect
+        - --metrics-bind-address=:8080
+        - --health-probe-bind-address=:8081
+        env:
+        - name: WATCH_NAMESPACE
+          value: "" # Watch all namespaces
+        ports:
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65532
+      terminationGracePeriodSeconds: 10

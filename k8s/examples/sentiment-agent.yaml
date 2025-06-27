@@ -1,0 +1,36 @@
+apiVersion: agent.parallax.io/v1alpha1
+kind: ParallaxAgent
+metadata:
+  name: sentiment-analyzer
+  namespace: default
+spec:
+  agentId: sentiment-1
+  image: parallax/sentiment-agent:latest
+  replicas: 2
+  capabilities:
+    - sentiment
+    - emotion
+    - text-analysis
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    - name: LOG_LEVEL
+      value: info
+    - name: MODEL_PATH
+      value: /models/sentiment
+  port: 50051
+  healthCheck:
+    enabled: true
+    path: /health
+    interval: 30s
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetConfidenceThreshold: 0.85

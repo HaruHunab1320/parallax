@@ -1,0 +1,301 @@
+# Default values for parallax.
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Control Plane configuration
+controlPlane:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: parallax/control-plane
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 3000
+    metricsPort: 3001
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  
+  env:
+    LOG_LEVEL: info
+    PARALLAX_PATTERNS_DIR: /patterns
+  
+  patterns:
+    # Mount patterns from ConfigMap
+    configMap: parallax-patterns
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Operator configuration
+operator:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: parallax/parallax-operator
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  
+  # Watch all namespaces by default
+  watchNamespace: ""
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# etcd configuration
+etcd:
+  enabled: true
+  auth:
+    rbac:
+      create: false
+  persistence:
+    enabled: true
+    size: 8Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# InfluxDB configuration
+influxdb:
+  enabled: true
+  image:
+    repository: influxdb
+    tag: 2.7-alpine
+  
+  auth:
+    admin:
+      username: admin
+      password: parallax123
+      token: parallax-super-secret-auth-token
+    
+    org: parallax
+    bucket: metrics
+    retention: 30d
+  
+  persistence:
+    enabled: true
+    size: 10Gi
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+# Grafana configuration
+grafana:
+  enabled: true
+  adminUser: admin
+  adminPassword: parallax123
+  
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: InfluxDB
+          type: influxdb
+          access: proxy
+          url: http://{{ .Release.Name }}-influxdb:8086
+          isDefault: true
+          jsonData:
+            version: Flux
+            organization: parallax
+            defaultBucket: metrics
+          secureJsonData:
+            token: parallax-super-secret-auth-token
+        
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          url: http://{{ .Release.Name }}-prometheus:9090
+  
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: 'Parallax'
+          type: file
+          disableDeletion: false
+          updateIntervalSeconds: 30
+          allowUiUpdates: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+  
+  persistence:
+    enabled: true
+    size: 1Gi
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+  alertmanager:
+    enabled: false
+  
+  serverFiles:
+    prometheus.yml:
+      scrape_configs:
+        - job_name: 'control-plane'
+          static_configs:
+            - targets:
+              - {{ .Release.Name }}-control-plane:3001
+        
+        - job_name: 'operator'
+          static_configs:
+            - targets:
+              - {{ .Release.Name }}-operator:8080
+  
+  persistence:
+    enabled: true
+    size: 8Gi
+
+# Jaeger configuration for distributed tracing
+jaeger:
+  enabled: true
+  provisionDataStore:
+    cassandra: false
+  allInOne:
+    enabled: true
+    image:
+      tag: latest
+  storage:
+    type: memory
+  agent:
+    enabled: false
+  collector:
+    enabled: false
+  query:
+    enabled: false
+
+# Service Mesh configuration (optional)
+serviceMesh:
+  enabled: false
+  provider: istio  # or linkerd
+
+# Security settings
+security:
+  tls:
+    enabled: false
+    certManager:
+      enabled: false
+      issuer: letsencrypt-prod
+  
+  # Pod Security Standards
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+
+# RBAC
+rbac:
+  create: true
+
+# ServiceAccount
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# NetworkPolicy
+networkPolicy:
+  enabled: false
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: parallax-system
+  egress:
+    - to:
+      - namespaceSelector: {}
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: parallax.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: control-plane
+  tls: []
+  #  - secretName: parallax-tls
+  #    hosts:
+  #      - parallax.example.com
+
+# Monitoring and Alerting
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+  
+  alerts:
+    enabled: true
+    rules:
+      - alert: HighErrorRate
+        expr: rate(parallax_pattern_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High error rate detected
+          description: "Error rate is {{ $value }} errors per second"
+      
+      - alert: LowAverageConfidence
+        expr: avg(parallax_pattern_confidence) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Low average confidence
+          description: "Average confidence is {{ $value }}"
+
+# Autoscaling
+autoscaling:
+  controlPlane:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80

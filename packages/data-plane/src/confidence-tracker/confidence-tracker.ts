@@ -5,6 +5,8 @@ import {
   ConfidenceAnomalyAlert 
 } from './types';
 import { InMemoryConfidenceStore, ConfidenceStoreConfig } from './confidence-store';
+import { InfluxDBConfidenceStore, InfluxDBStoreConfig } from './influxdb-store';
+import { ConfidenceStore } from './types';
 import { EventEmitter } from 'events';
 import { Logger } from 'pino';
 
@@ -16,10 +18,12 @@ export interface ConfidenceTrackerConfig extends ConfidenceStoreConfig {
     highVarianceThreshold: number; // e.g., 0.2
     checkIntervalMs: number;
   };
+  store?: 'memory' | 'influxdb';
+  influxdb?: InfluxDBStoreConfig;
 }
 
 export class ConfidenceTracker extends EventEmitter {
-  private store: InMemoryConfidenceStore;
+  private store: ConfidenceStore;
   private anomalyAlerts: Map<string, ConfidenceAnomalyAlert> = new Map();
   private agentBaselines: Map<string, { average: number; stdDev: number }> = new Map();
 
@@ -28,7 +32,13 @@ export class ConfidenceTracker extends EventEmitter {
     private logger: Logger
   ) {
     super();
-    this.store = new InMemoryConfidenceStore(config);
+    
+    // Initialize store based on configuration
+    if (config.store === 'influxdb' && config.influxdb) {
+      this.store = new InfluxDBConfidenceStore(config.influxdb);
+    } else {
+      this.store = new InMemoryConfidenceStore(config);
+    }
     
     if (config.anomalyDetection.enabled) {
       this.startAnomalyDetection();
@@ -38,19 +48,22 @@ export class ConfidenceTracker extends EventEmitter {
   }
 
   private setupEventHandlers(): void {
-    this.store.on('confidence:recorded', (dataPoint: ConfidenceDataPoint) => {
-      this.logger.debug(
-        { agentId: dataPoint.agentId, confidence: dataPoint.confidence },
-        'Confidence recorded'
-      );
-      
-      // Update baseline for anomaly detection
-      this.updateAgentBaseline(dataPoint.agentId);
-    });
+    // Only InMemoryConfidenceStore extends EventEmitter
+    if (this.store instanceof InMemoryConfidenceStore) {
+      this.store.on('confidence:recorded', (dataPoint: ConfidenceDataPoint) => {
+        this.logger.debug(
+          { agentId: dataPoint.agentId, confidence: dataPoint.confidence },
+          'Confidence recorded'
+        );
+        
+        // Update baseline for anomaly detection
+        this.updateAgentBaseline(dataPoint.agentId);
+      });
+    }
   }
 
   async recordConfidence(dataPoint: ConfidenceDataPoint): Promise<void> {
-    await this.store.store(dataPoint);
+    await this.store.addDataPoint(dataPoint);
     
     // Check for immediate anomalies
     if (this.config.anomalyDetection.enabled) {
@@ -68,7 +81,15 @@ export class ConfidenceTracker extends EventEmitter {
       endTime: timeRange?.end,
     };
     
-    const dataPoints = await this.store.query(query);
+    // For metrics, we need to use the in-memory store's query method
+    // or adapt to use getDataPoints
+    let dataPoints: ConfidenceDataPoint[] = [];
+    
+    if (query.agentIds?.length === 1) {
+      const end = query.endTime || new Date();
+      const start = query.startTime || new Date(end.getTime() - 24 * 60 * 60 * 1000);
+      dataPoints = await this.store.getDataPoints(query.agentIds[0], start, end);
+    }
     
     if (dataPoints.length === 0) {
       return {
@@ -130,10 +151,9 @@ export class ConfidenceTracker extends EventEmitter {
   }
 
   private async updateAgentBaseline(agentId: string): Promise<void> {
-    const recentData = await this.store.query({
-      agentIds: [agentId],
-      limit: 100,
-    });
+    const endTime = new Date();
+    const startTime = new Date(endTime.getTime() - 24 * 60 * 60 * 1000); // Last 24 hours
+    const recentData = await this.store.getDataPoints(agentId, startTime, endTime);
     
     if (recentData.length < 10) return;
     
@@ -154,10 +174,9 @@ export class ConfidenceTracker extends EventEmitter {
     const baseline = this.agentBaselines.get(agentId);
     if (!baseline) return;
     
-    const recentData = await this.store.query({
-      agentIds: [agentId],
-      limit: 5,
-    });
+    const endTime = new Date();
+    const startTime = new Date(endTime.getTime() - 5 * 60 * 1000); // Last 5 minutes
+    const recentData = await this.store.getDataPoints(agentId, startTime, endTime);
     
     if (recentData.length === 0) return;
     
@@ -256,11 +275,17 @@ export class ConfidenceTracker extends EventEmitter {
     startTime?: Date,
     endTime?: Date
   ) {
-    return this.store.getAggregatedData(agentId, interval, startTime, endTime);
+    const end = endTime || new Date();
+    const start = startTime || new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000); // Default 7 days
+    return this.store.getAggregatedData(agentId, interval, start, end);
   }
 
   async shutdown(): Promise<void> {
-    await this.store.clear();
+    if (this.store instanceof InMemoryConfidenceStore) {
+      await this.store.clear();
+    } else if (this.store instanceof InfluxDBConfidenceStore) {
+      await (this.store as InfluxDBConfidenceStore).close();
+    }
     this.removeAllListeners();
   }
 }

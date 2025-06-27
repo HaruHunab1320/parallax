@@ -1,11 +1,14 @@
 export interface ConfidenceDataPoint {
   agentId: string;
-  patternName?: string;
-  taskType?: string;
+  pattern: string;
+  task: string;
   confidence: number;
   timestamp: Date;
   executionId?: string;
   metadata?: Record<string, any>;
+  // Legacy fields for compatibility
+  patternName?: string;
+  taskType?: string;
 }
 
 export interface ConfidenceMetrics {
@@ -42,4 +45,36 @@ export interface ConfidenceAnomalyAlert {
     historicalAverage: number;
     deviation: number;
   };
+}
+
+export type AggregationInterval = 'minute' | 'hour' | 'day';
+
+export interface ConfidenceStore {
+  addDataPoint(point: ConfidenceDataPoint): Promise<void>;
+  getDataPoints(
+    agentId: string,
+    startTime: Date,
+    endTime: Date
+  ): Promise<ConfidenceDataPoint[]>;
+  getAggregatedData(
+    agentId: string,
+    interval: AggregationInterval,
+    startTime: Date,
+    endTime: Date
+  ): Promise<{ time: Date; avgConfidence: number; count: number }[]>;
+  getPatternStats(
+    pattern: string,
+    startTime: Date,
+    endTime: Date
+  ): Promise<{
+    avgConfidence: number;
+    totalExecutions: number;
+    successRate: number;
+    agentBreakdown: Map<string, number>;
+  }>;
+  detectAnomalies(
+    agentId: string,
+    threshold?: number
+  ): Promise<Array<{ time: Date; confidence: number; zscore: number }>>;
+  cleanup(retentionPeriod: number): Promise<void>;
 }
