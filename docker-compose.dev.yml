@@ -1,0 +1,62 @@
+version: '3.8'
+
+# Development docker-compose with hot reloading and local mounts
+services:
+  # etcd for service discovery
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: parallax-etcd-dev
+    environment:
+      - ETCD_NAME=etcd0
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd:2380
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_INITIAL_CLUSTER=etcd0=http://etcd:2380
+      - ETCD_INITIAL_CLUSTER_STATE=new
+      - ETCD_INITIAL_CLUSTER_TOKEN=etcd-cluster
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    networks:
+      - parallax-dev
+
+  # Control Plane (development mode with hot reload)
+  control-plane:
+    image: node:20-alpine
+    container_name: parallax-control-plane-dev
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - PARALLAX_ETCD_ENDPOINTS=etcd:2379
+      - PARALLAX_PATTERNS_DIR=/app/patterns
+      - LOG_LEVEL=debug
+    ports:
+      - "3000:3000"
+    depends_on:
+      - etcd
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - /app/packages/control-plane/node_modules
+    networks:
+      - parallax-dev
+    command: sh -c "cd packages/control-plane && npm run dev"
+
+  # Local agent registry (simulates multiple agents)
+  mock-agents:
+    image: node:20-alpine
+    container_name: parallax-mock-agents
+    working_dir: /app
+    environment:
+      - PARALLAX_LOCAL_AGENTS=sentiment-1:Sentiment Analyzer:mock-agents:50051:sentiment,text,analysis;weather-1:Weather Analyzer:mock-agents:50052:weather,forecast,analysis;math-1:Math Agent:mock-agents:50053:computation,mathematics,analysis
+    volumes:
+      - ./:/app
+    networks:
+      - parallax-dev
+    command: sh -c "cd examples/standalone-agent && npm run dev"
+
+networks:
+  parallax-dev:
+    driver: bridge
