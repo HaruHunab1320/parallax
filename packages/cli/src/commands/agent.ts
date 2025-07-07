@@ -5,6 +5,14 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import { ParallaxClient } from '../utils/client';
 
+interface AgentInfo {
+  id: string;
+  name: string;
+  capabilities: string[];
+  endpoint?: string;
+  available: boolean;
+}
+
 export const agentCommand = new Command('agent')
   .description('Manage Parallax agents');
 
@@ -25,7 +33,7 @@ agentCommand
       // Filter by capabilities if requested
       let filteredAgents = agents;
       if (options.capabilities) {
-        filteredAgents = agents.filter(agent => 
+        filteredAgents = agents.filter((agent: AgentInfo) => 
           options.capabilities.some((cap: string) => 
             agent.capabilities.includes(cap)
           )
@@ -39,7 +47,7 @@ agentCommand
       
       const tableData = [
         ['ID', 'Name', 'Capabilities', 'Status', 'Endpoint'],
-        ...filteredAgents.map(agent => [
+        ...filteredAgents.map((agent: AgentInfo) => [
           chalk.cyan(agent.id),
           agent.name,
           agent.capabilities.join(', '),
@@ -161,14 +169,14 @@ agentCommand
     
     try {
       const client = new ParallaxClient();
-      const agents = await client.listAgents();
+      const agents = await client.listAgents() as AgentInfo[];
       
       spinner.stop();
       
       // Extract unique capabilities
       const capabilityMap = new Map<string, number>();
-      agents.forEach(agent => {
-        agent.capabilities.forEach(cap => {
+      agents.forEach((agent: AgentInfo) => {
+        agent.capabilities.forEach((cap: string) => {
           capabilityMap.set(cap, (capabilityMap.get(cap) || 0) + 1);
         });
       });

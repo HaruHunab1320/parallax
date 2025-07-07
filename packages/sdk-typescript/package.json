@@ -9,7 +9,8 @@
     "dev": "tsc --watch",
     "test": "vitest",
     "clean": "rm -rf dist",
-    "lint": "eslint src/**/*.ts"
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.4",

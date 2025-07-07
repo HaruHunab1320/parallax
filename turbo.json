@@ -19,6 +19,9 @@
       "outputs": ["coverage/**"],
       "env": ["NODE_ENV"]
     },
+    "type-check": {
+      "cache": false
+    },
     "clean": {
       "cache": false
     }

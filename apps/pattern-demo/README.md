@@ -1,65 +1,69 @@
-# Pattern Demo - Parallax
+# Pattern Demo
 
-This demo shows how patterns are loaded and executed in the Parallax platform.
+This demo showcases the high-level pattern orchestration capabilities of Parallax using the Prism pattern language.
 
-## How Patterns Work
+## What It Demonstrates
 
-1. **Pattern Files**: Patterns are written in `.prism` files located in the `/patterns` directory
-2. **Pattern Loading**: The `PatternEngine` scans the patterns directory and loads all `.prism` files
-3. **Pattern Execution**: When a pattern is executed, the Prism code runs with access to registered agents
+- Loading and parsing `.prism` pattern files
+- Pattern orchestration with the PatternEngine
+- Multi-agent coordination strategies
+- Service discovery with etcd
+- Real-world coordination patterns like:
+  - **Consensus Builder**: Multiple agents reach consensus on analysis
+  - **Epistemic Orchestrator**: Identifies valuable disagreements between experts
+  - **Uncertainty Router**: Routes tasks based on uncertainty levels
+  - **Confidence Cascade**: Cascades through agents based on confidence thresholds
 
-## Pattern Structure
+## Prerequisites
 
-Each pattern file has:
-- Metadata in comments (`@name`, `@version`, `@description`, etc.)
-- Prism code that orchestrates agents
-- Access to `parallax.agents` and other platform features
+This demo requires etcd for service discovery and agent registration.
+
+### Option 1: Run etcd with Docker
+```bash
+docker run -d -p 2379:2379 --name etcd quay.io/coreos/etcd:latest
+```
+
+### Option 2: Install etcd locally
+```bash
+# macOS
+brew install etcd
+etcd
+
+# Linux
+# Download from https://github.com/etcd-io/etcd/releases
+```
 
 ## Running the Demo
 
-```bash
-# From the monorepo root
-pnpm --filter @parallax/pattern-demo dev
+1. Start etcd (see prerequisites above)
 
-# Or from this directory
-pnpm dev
+2. Run the pattern demo:
+```bash
+npm run demo:patterns
 ```
 
 ## What Happens
 
-1. The demo initializes a `PatternEngine` pointing to `/patterns`
-2. It loads all 4 patterns we created:
-   - `consensus-builder.prism`
-   - `epistemic-orchestrator.prism`
-   - `uncertainty-router.prism`
-   - `confidence-cascade.prism`
-3. It executes each pattern with sample data
-4. Results show how patterns coordinate agents based on confidence
+1. **Without etcd**: The demo will load and display all available patterns but won't be able to execute them
+2. **With etcd**: The demo will:
+   - Register mock agents in etcd
+   - Load pattern files from the `/patterns` directory
+   - Execute example patterns showing multi-agent coordination
+   - Display execution results with confidence metrics
 
-## Pattern Directory
+## Understanding the Output
 
-The patterns are located at `/patterns` in the root of the monorepo:
+- Pattern loading shows all available `.prism` patterns
+- Each pattern execution shows:
+  - Execution ID
+  - Status (completed/failed)
+  - Results from agent coordination
+  - Confidence metrics
+  - Execution time and performance metrics
 
-```
-parallax/
-├── patterns/
-│   ├── consensus-builder.prism
-│   ├── epistemic-orchestrator.prism
-│   ├── uncertainty-router.prism
-│   └── confidence-cascade.prism
-```
+## Next Steps
 
-## Adding New Patterns
-
-1. Create a new `.prism` file in `/patterns`
-2. Add metadata comments
-3. Write Prism code
-4. Restart the demo to load the new pattern
-
-## Pattern Context
-
-When patterns execute, they have access to:
-- `input` - The input data passed to the pattern
-- `parallax.agents` - All registered agents
-- Prism language features (confidence operators, uncertain if, etc.)
-- Helper functions injected by the runtime
+- Explore the pattern files in `/patterns/*.prism`
+- Create your own patterns using the Prism language
+- Run actual agents that register with etcd
+- See the `demo-app` for low-level agent implementation

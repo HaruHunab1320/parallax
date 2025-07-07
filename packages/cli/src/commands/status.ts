@@ -4,6 +4,14 @@ import ora from 'ora';
 import { table } from 'table';
 import { ParallaxClient } from '../utils/client';
 
+interface AgentInfo {
+  id: string;
+  name: string;
+  capabilities: string[];
+  endpoint?: string;
+  available: boolean;
+}
+
 export const statusCommand = new Command('status')
   .description('Check Parallax platform status')
   .option('--json', 'Output as JSON')
@@ -15,8 +23,8 @@ export const statusCommand = new Command('status')
       
       // Get real status
       spinner.text = 'Checking agents...';
-      const agents = await client.listAgents();
-      const availableAgents = agents.filter(a => a.available);
+      const agents = await client.listAgents() as AgentInfo[];
+      const availableAgents = agents.filter((a: AgentInfo) => a.available);
       
       spinner.text = 'Checking patterns...';
       const patterns = await client.listPatterns();
@@ -47,7 +55,7 @@ export const statusCommand = new Command('status')
           registeredAgents: agents.length,
           activeAgents: availableAgents.length,
           patternsLoaded: patterns.length,
-          capabilities: [...new Set(agents.flatMap(a => a.capabilities))].length
+          capabilities: [...new Set(agents.flatMap((a: AgentInfo) => a.capabilities))].length
         }
       };
       

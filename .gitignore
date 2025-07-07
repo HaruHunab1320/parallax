@@ -35,8 +35,13 @@ lerna-debug.log*
 *.js.map
 
 # Generated files (never in source)
-**/*.js
-**/*.d.ts
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+apps/*/src/**/*.js
+apps/*/src/**/*.d.ts
+examples/*/src/**/*.js
+examples/*/src/**/*.d.ts
+# Allow config files
 !next.config.js
 !jest.config.js
 !tailwind.config.js

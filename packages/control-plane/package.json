@@ -10,7 +10,8 @@
     "start": "node dist/server.js",
     "test": "vitest",
     "clean": "rm -rf dist",
-    "lint": "eslint src/**/*.ts"
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@parallax/runtime": "workspace:*",

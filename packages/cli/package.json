@@ -9,7 +9,8 @@
     "build": "tsc && chmod +x dist/index.js",
     "dev": "tsx watch src/index.ts",
     "clean": "rm -rf dist",
-    "lint": "eslint src/**/*.ts"
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@parallax/runtime": "workspace:*",

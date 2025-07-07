@@ -47,7 +47,7 @@ export class ParallaxClient {
   
   async listAgents() {
     const agents = await this.agentRegistry.getAvailableAgents();
-    return agents.map(agent => ({
+    return agents.map((agent: any) => ({
       id: agent.id,
       name: agent.name,
       capabilities: agent.capabilities,

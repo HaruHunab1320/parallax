@@ -1,18 +1,15 @@
 {
-  "name": "@parallax/pattern-demo",
+  "name": "@parallax/simple-demo",
   "version": "0.1.0",
   "private": true,
-  "description": "Demo showing pattern execution in Parallax",
+  "description": "Simple demo of Parallax - no infrastructure required",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "type-check": "tsc --noEmit"
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "@parallax/runtime": "workspace:*",
-    "@parallax/control-plane": "workspace:*",
-    "@parallax/data-plane": "workspace:*",
     "pino": "^9.5.0",
     "pino-pretty": "^13.0.0"
   },

@@ -10,7 +10,8 @@
     "test": "vitest",
     "clean": "rm -rf dist",
     "lint": "eslint src/**/*.ts",
-    "generate-certs": "tsx src/scripts/generate-certs.ts"
+    "generate-certs": "tsx src/scripts/generate-certs.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.4",

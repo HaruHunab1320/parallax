@@ -8,7 +8,8 @@
     "build": "tsc",
     "generate": "./generate.sh",
     "clean": "rm -rf dist generated",
-    "lint": "buf lint"
+    "lint": "buf lint",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.4",

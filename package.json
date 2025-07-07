@@ -5,7 +5,6 @@
   "private": true,
   "scripts": {
     "build": "turbo build",
-    "dev": "turbo dev",
     "lint": "turbo lint",
     "test": "turbo test",
     "test:coverage": "turbo test -- --coverage",
@@ -16,8 +15,13 @@
     "test:setup": "./test-setup.sh",
     "clean": "turbo clean",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "type-check": "turbo run type-check",
+    "start": "./start-local.sh",
+    "dev:control-plane": "pnpm --filter @parallax/control-plane dev",
+    "dev:web": "pnpm --filter @parallax/web-dashboard dev",
     "demo": "pnpm --filter @parallax/demo-app dev",
-    "demo:patterns": "pnpm --filter @parallax/pattern-demo dev"
+    "demo:patterns": "pnpm --filter @parallax/pattern-demo dev",
+    "demo:simple": "pnpm --filter @parallax/simple-demo dev"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
