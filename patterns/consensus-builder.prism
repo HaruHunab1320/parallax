@@ -1,71 +1,90 @@
 /**
  * @name ConsensusBuilder
  * @version 1.0.0
- * @description Build weighted consensus from multiple agent analyses
+ * @description Build weighted consensus from pre-processed agent analyses
  * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}}}
- * @agents {"capabilities": ["analysis"], "minConfidence": 0.6}
+ * @agents {"capabilities": ["code-analysis"], "minConfidence": 0.6}
  * @minAgents 3
  */
 
-// Get available agents with required capabilities
-agents = parallax.agents.filter(agent => 
-  agent.capabilities.includes("analysis")
-)
-
-// Parallel analysis from all agents
-results = parallel(agents.map(agent => {
-  response = agent.analyze(input.task, input.data)
-  return {
-    agentId: agent.id,
-    value: response,
-    confidence: ~response,
-    timestamp: Date.now()
-  }
-}))
+// Use pre-processed results from context
+results = agentResults
+successCount = successfulResults.length
 
 // Calculate weighted consensus
 totalWeight = 0
-weightedSum = 0
+totalWeightedConfidence = 0
 highConfidenceCount = 0
 
-for result in results {
-  weight = result.confidence
-  totalWeight = totalWeight + weight
-  
-  if result.confidence > 0.8 {
+// Manual aggregation since we can't loop
+if (successCount >= 1) {
+  r1 = results[0]
+  totalWeight = totalWeight + r1.expertise
+  totalWeightedConfidence = totalWeightedConfidence + (r1.confidence * r1.expertise)
+  if (r1.confidence > 0.8) {
     highConfidenceCount = highConfidenceCount + 1
   }
 }
 
-// Determine consensus quality
-consensusQuality = totalWeight / results.length
-
-// Build final result
-if consensusQuality > 0.7 {
-  // Strong consensus
-  consensus = {
-    status: "strong_consensus",
-    confidence: consensusQuality,
-    results: results,
-    recommendation: results[0].value
-  }
-} else if consensusQuality > 0.5 {
-  // Weak consensus
-  consensus = {
-    status: "weak_consensus", 
-    confidence: consensusQuality,
-    results: results,
-    recommendation: "Further analysis recommended"
-  }
-} else {
-  // No consensus
-  consensus = {
-    status: "no_consensus",
-    confidence: consensusQuality,
-    results: results,
-    recommendation: "Human review required"
+if (successCount >= 2) {
+  r2 = results[1]
+  totalWeight = totalWeight + r2.expertise
+  totalWeightedConfidence = totalWeightedConfidence + (r2.confidence * r2.expertise)
+  if (r2.confidence > 0.8) {
+    highConfidenceCount = highConfidenceCount + 1
   }
 }
 
-// Return with confidence
-consensus ~> consensusQuality
+if (successCount >= 3) {
+  r3 = results[2]
+  totalWeight = totalWeight + r3.expertise
+  totalWeightedConfidence = totalWeightedConfidence + (r3.confidence * r3.expertise)
+  if (r3.confidence > 0.8) {
+    highConfidenceCount = highConfidenceCount + 1
+  }
+}
+
+if (successCount >= 4) {
+  r4 = results[3]
+  totalWeight = totalWeight + r4.expertise
+  totalWeightedConfidence = totalWeightedConfidence + (r4.confidence * r4.expertise)
+  if (r4.confidence > 0.8) {
+    highConfidenceCount = highConfidenceCount + 1
+  }
+}
+
+// Calculate consensus confidence
+consensusConfidence = totalWeight > 0 ? totalWeightedConfidence / totalWeight : 0
+
+// Determine consensus quality - declare variables first
+consensusType = ""
+message = ""
+if (highConfidenceCount >= 3 && consensusConfidence > 0.8) {
+  consensusType = "strong_consensus"
+  message = "Strong agreement among experts"
+} else if (highConfidenceCount >= 2 && consensusConfidence > 0.6) {
+  consensusType = "moderate_consensus"
+  message = "Moderate agreement with some uncertainty"
+} else {
+  consensusType = "weak_consensus"
+  message = "Limited agreement - consider more analysis"
+}
+
+// Get top recommendation (from highest confidence result)
+topResult = successCount > 0 ? results[0] : {result: {recommendation: "No recommendation available"}}
+recommendation = topResult.result.recommendation
+
+// Build final result
+finalResult = {
+  type: consensusType,
+  confidence: consensusConfidence,
+  message: message,
+  recommendation: recommendation,
+  agentCount: agentCount,
+  successfulAgents: successCount,
+  highConfidenceAgents: highConfidenceCount,
+  results: results
+}
+
+// Return with consensus confidence
+finalResult ~> consensusConfidence

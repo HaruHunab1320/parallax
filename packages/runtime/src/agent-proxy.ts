@@ -8,6 +8,9 @@ export class GrpcAgentProxy implements Agent {
   // private _client: any; // Will be replaced with proper gRPC client when proto generation is fixed
   private _capabilities: string[] = [];
   // private _metadata: Record<string, any> = {};
+  public expertise: number = 0.7; // Default expertise level
+  public historicalConfidence: number = 0.75; // Default historical confidence
+  public confidence: number = 0.8; // Current confidence level
   
   constructor(
     public readonly id: string,
@@ -47,7 +50,22 @@ export class GrpcAgentProxy implements Agent {
       // };
       
       // Temporary mock implementation
-      this._capabilities = ['analyze', 'process', 'transform'];
+      // Set capabilities based on agent name/id for demo purposes
+      if (this.name.includes('security')) {
+        this._capabilities = ['security', 'code-analysis', 'analyze', 'assessment'];
+        this.expertise = 0.9;
+      } else if (this.name.includes('architect')) {
+        this._capabilities = ['architecture', 'code-analysis', 'analyze', 'assessment'];
+        this.expertise = 0.85;
+      } else if (this.name.includes('performance')) {
+        this._capabilities = ['performance', 'code-analysis', 'analyze', 'assessment'];
+        this.expertise = 0.8;
+      } else if (this.name.includes('complexity')) {
+        this._capabilities = ['complexity', 'code-analysis', 'analyze', 'assessment'];
+        this.expertise = 0.75;
+      } else {
+        this._capabilities = ['analyze', 'process', 'transform', 'assessment', 'query-processing'];
+      }
       // this._metadata = {
       //   expertise: 'general',
       //   capabilityScores: { analyze: 0.9, process: 0.85, transform: 0.8 }
@@ -104,11 +122,16 @@ export class GrpcAgentProxy implements Agent {
       // const value = JSON.parse(response.getValueJson()) as T;
       
       // Temporary mock implementation
-      const mockValue = {} as T;
+      const mockValue = {
+        recommendation: `${this.name} recommends approach based on analysis`,
+        pros: [`Strength identified by ${this.name}`],
+        cons: [`Weakness identified by ${this.name}`],
+        analysis: _data
+      } as any as T;
       
       return {
         value: mockValue,
-        confidence: 0.85,
+        confidence: this.confidence,
         agent: this.name,
         reasoning: `Analyzed task: ${_task}`,
         uncertainties: undefined,
@@ -116,6 +139,31 @@ export class GrpcAgentProxy implements Agent {
       };
     } catch (error) {
       throw new Error(`Agent ${this.name} failed to analyze: ${error}`);
+    }
+  }
+  
+  async process<T>(_input: any, _options?: any): Promise<AgentResult<T>> {
+    try {
+      // Placeholder until proto generation is fixed
+      // This method will be similar to analyze but for processing tasks
+      
+      // Temporary mock implementation
+      const mockValue = {
+        result: `Processed by ${this.name}`,
+        recommendation: `${this.name} suggests this approach`,
+        data: _input
+      } as any as T;
+      
+      return {
+        value: mockValue,
+        confidence: this.confidence * 0.95, // Slightly lower confidence for process
+        agent: this.name,
+        reasoning: `Processed input with options: ${JSON.stringify(_options || {})}`,
+        uncertainties: undefined,
+        timestamp: Date.now()
+      };
+    } catch (error) {
+      throw new Error(`Agent ${this.name} failed to process: ${error}`);
     }
   }
   

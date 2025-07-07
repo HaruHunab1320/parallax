@@ -11,7 +11,7 @@
 strategy = input.strategy || "weighted"
 
 // Get all available agents
-availableAgents = parallax.agents.filter(agent => 
+availableAgents = parallax.agentList.filter(agent => 
   agent.status == "online" && agent.capabilities.length > 0
 )
 

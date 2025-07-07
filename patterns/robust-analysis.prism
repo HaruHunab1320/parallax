@@ -3,7 +3,7 @@
  * @version 1.0.0
  * @description Composite pattern that uses load balancing, consensus building, and uncertainty routing
  * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}, "requirements": {"type": "object"}}}
- * @agents {"capabilities": ["analysis"]}
+ * @agents {"capabilities": ["code-analysis"]}
  * @minAgents 4
  */
 
@@ -13,14 +13,14 @@
 loadBalancerResult = executePattern("load-balancer", {
   task: "Select analysis agents",
   data: {
-    requiredCapabilities: ["analysis"],
+    requiredCapabilities: ["code-analysis"],
     count: 5
   },
   strategy: "weighted"
 })
 
-selectedAgents = loadBalancerResult.value.agents || parallax.agents.filter(a => 
-  a.capabilities.includes("analysis")
+selectedAgents = loadBalancerResult.value.agents || parallax.agentList.filter(a => 
+  a.capabilities.includes("code-analysis")
 ).slice(0, 5)
 
 // Step 2: Quick assessment to determine approach
@@ -88,7 +88,7 @@ uncertain if (assessmentConfidence < 0.6) {
       // Weak consensus - validate the result
       validationResult = executePattern("multi-validator", {
         data: consensusResult.results,
-        validationType: "analysis",
+        validationType: "code-analysis",
         fastPathThreshold: 0.85
       })
       

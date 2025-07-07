@@ -12,7 +12,7 @@ fastPathThreshold = input.fastPathThreshold || 0.9
 validationType = input.validationType || "general"
 
 // Get validators
-validators = parallax.agents.filter(a => 
+validators = parallax.agentList.filter(a => 
   a.capabilities.includes("validation") &&
   (a.specialties.includes(validationType) || a.specialties.includes("general"))
 )

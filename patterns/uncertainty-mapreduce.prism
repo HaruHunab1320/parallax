@@ -3,7 +3,7 @@
  * @version 1.0.0
  * @description Distributed processing with confidence tracking and fallback strategies
  * @input {"type": "object", "properties": {"data": {"type": "array"}, "mapFunction": {"type": "string"}, "reduceFunction": {"type": "string"}, "chunkSize": {"type": "number"}}}
- * @agents {"capabilities": ["processing", "analysis"]}
+ * @agents {"capabilities": ["processing", "code-analysis"]}
  * @minAgents 2
  */
 
@@ -12,8 +12,8 @@ chunkSize = input.chunkSize || 100
 confidenceThreshold = 0.7
 
 // Get available processing agents
-processors = parallax.agents.filter(a => 
-  a.capabilities.includes("processing") || a.capabilities.includes("analysis")
+processors = parallax.agentList.filter(a => 
+  a.capabilities.includes("processing") || a.capabilities.includes("code-analysis")
 )
 
 // Split data into chunks

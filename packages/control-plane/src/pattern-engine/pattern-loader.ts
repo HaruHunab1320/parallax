@@ -47,7 +47,12 @@ export class PatternLoader {
     const metadataMatch = content.match(/\/\*\*([\s\S]*?)\*\//);
     const metadata = metadataMatch ? this.parseMetadata(metadataMatch[1]) : {};
 
-    const name = path.basename(filePath, '.prism');
+    // Extract the actual script by removing the metadata comment block
+    const script = metadataMatch 
+      ? content.replace(metadataMatch[0], '').trim()
+      : content.trim();
+
+    const name = metadata.name || path.basename(filePath, '.prism');
     
     return {
       name,
@@ -57,7 +62,7 @@ export class PatternLoader {
       agents: metadata.agents,
       minAgents: metadata.minAgents,
       maxAgents: metadata.maxAgents,
-      script: content,
+      script,
       metadata,
     };
   }

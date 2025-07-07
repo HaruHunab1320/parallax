@@ -12,11 +12,11 @@ expertTypes = ["security", "architecture", "performance", "complexity"]
 
 // Get specialized agents
 experts = expertTypes.map(type => 
-  parallax.agents.find(agent => 
+  parallax.agentList.find(agent => 
     agent.capabilities.includes(type) && 
     agent.capabilities.includes("code-analysis")
   )
-).filter(agent => agent != null)
+).filter(agent => agent != "")
 
 // Parallel expert analysis
 expertAnalyses = parallel(experts.map(expert => {

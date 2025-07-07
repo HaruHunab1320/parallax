@@ -2,8 +2,8 @@
   "name": "@parallax/control-plane",
   "version": "0.1.0",
   "description": "Control plane components for Parallax platform",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/server.ts",
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@parallax/runtime": "workspace:*",
-    "prism-uncertainty": "^1.0.10",
+    "prism-uncertainty": "^1.0.11",
     "etcd3": "^1.1.2",
     "node-cache": "^5.1.2",
     "pino": "^9.5.0",

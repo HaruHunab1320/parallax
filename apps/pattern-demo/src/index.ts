@@ -5,6 +5,7 @@ import {
 } from '@parallax/control-plane';
 import pino from 'pino';
 import * as path from 'path';
+import { createDemoAgents } from './demo-agents';
 
 const logger = pino({
   transport: {
@@ -54,7 +55,11 @@ async function setupPlatform() {
   // Load all patterns from the patterns directory
   await patternEngine.initialize();
 
-  logger.info('Pattern engine initialized');
+  // Register our real demo agents
+  const demoAgents = createDemoAgents();
+  patternEngine.registerLocalAgents(demoAgents);
+  
+  logger.info('Pattern engine initialized with real agents');
 
   // List available patterns
   const patterns = patternEngine.getPatterns();
@@ -74,7 +79,11 @@ async function setupPlatform() {
 }
 
 async function registerAgents(registry: EtcdRegistry) {
-  // Register real agents in etcd for the pattern engine to discover
+  // Note: With real local agents, we don't need to register in etcd
+  // This is kept for reference on how to register remote agents
+  return;
+  
+  // Example of how to register remote agents in etcd:
   const agents = [
     {
       id: 'security-agent-1',
@@ -168,24 +177,42 @@ async function registerAgents(registry: EtcdRegistry) {
 async function runPatternExamples(patternEngine: PatternEngine) {
   logger.info('\n=== Running Pattern Examples ===\n');
 
-  // Check if etcd is available
+  // With local agents, we don't need etcd
+  logger.info('Using local in-memory agents for pattern execution');
+
+  // Test with our new simplified pattern first
+  logger.info('--- Testing Simple Consensus V2 ---');
   try {
-    const registry = new EtcdRegistry(['localhost:2379'], 'parallax', logger);
-    const agents = await registry.listServices('agent');
-    logger.info(`Found ${agents.length} agents registered in etcd`);
+    const simpleResult = await patternEngine.executePattern(
+      'SimpleConsensusV2',
+      {
+        task: 'Analyze code quality'
+      }
+    );
+
+    logger.info(
+      {
+        executionId: simpleResult.id,
+        status: simpleResult.status,
+        result: simpleResult.result,
+        metrics: simpleResult.metrics,
+      },
+      'Simple consensus V2 executed successfully'
+    );
   } catch (error) {
-    logger.warn('\n⚠️  etcd is not available - pattern execution will fail');
-    logger.warn('The patterns require actual agents to be registered in etcd');
-    logger.warn('Without etcd and registered agents, we can only show the loaded patterns\n');
-    return;
+    logger.error({ 
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack
+      } : error 
+    }, 'Simple consensus V2 failed');
   }
 
-  // Example 1: Consensus Builder Pattern
-  // This pattern orchestrates multiple agents to reach consensus on code analysis
-  logger.info('--- Example 1: Consensus Builder Pattern ---');
+  // Example 1: Consensus Builder V2 Pattern
+  logger.info('\n--- Example 1: Consensus Builder V2 ---');
   try {
     const consensusResult = await patternEngine.executePattern(
-      'consensus-builder',
+      'ConsensusBuilderV2',
       {
         task: 'Analyze this code for best practices',
         data: {
@@ -207,19 +234,18 @@ async function runPatternExamples(patternEngine: PatternEngine) {
         status: consensusResult.status,
         result: consensusResult.result,
         metrics: consensusResult.metrics,
-        confidence: consensusResult.confidence,
       },
-      'Consensus pattern executed successfully'
+      'Consensus V2 pattern executed successfully'
     );
   } catch (error) {
-    logger.error({ error }, 'Consensus builder pattern execution failed');
+    logger.error({ error }, 'Consensus builder V2 pattern execution failed');
   }
 
   // Example 2: Epistemic Orchestrator
   logger.info('\n--- Example 2: Epistemic Orchestrator ---');
   try {
     const epistemicResult = await patternEngine.executePattern(
-      'epistemic-orchestrator',
+      'EpistemicOrchestrator',
       {
         code: `
           async function authenticate(username, password) {
@@ -248,7 +274,7 @@ async function runPatternExamples(patternEngine: PatternEngine) {
   logger.info('\n--- Example 3: Uncertainty Router ---');
   try {
     const routerResult = await patternEngine.executePattern(
-      'uncertainty-router',
+      'UncertaintyRouter',
       {
         task: 'Optimize this complex algorithm',
         context: {
@@ -275,7 +301,7 @@ async function runPatternExamples(patternEngine: PatternEngine) {
   logger.info('\n--- Example 4: Confidence Cascade ---');
   try {
     const cascadeResult = await patternEngine.executePattern(
-      'confidence-cascade',
+      'ConfidenceCascade',
       {
         query: 'What are the security implications of this code?',
         minConfidence: 0.8,
@@ -326,6 +352,33 @@ async function showPatternDetails(patternEngine: PatternEngine) {
   logger.info('coordination strategies for multi-agent AI systems.\n');
 }
 
+async function runSinglePattern(patternEngine: PatternEngine, patternName: string, input: any) {
+  logger.info(`\n--- Running ${patternName} ---`);
+  try {
+    const result = await patternEngine.executePattern(patternName, input);
+    
+    logger.info(
+      {
+        executionId: result.id,
+        status: result.status,
+        result: result.result,
+        metrics: result.metrics,
+      },
+      `${patternName} executed successfully`
+    );
+    
+    return result;
+  } catch (error) {
+    logger.error({ 
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack
+      } : error 
+    }, `${patternName} failed`);
+    throw error;
+  }
+}
+
 async function main() {
   try {
     logger.info('=== Parallax Pattern Execution Platform Demo ===');
@@ -335,22 +388,75 @@ async function main() {
 
     const { patternEngine } = await setupPlatform();
 
-    // Show pattern details
-    await showPatternDetails(patternEngine);
+    // Check if a specific pattern was requested
+    const args = process.argv.slice(2);
+    const requestedPattern = args[0];
+    
+    if (requestedPattern) {
+      // Run single pattern
+      const patterns = patternEngine.getPatterns();
+      const pattern = patterns.find(p => p.name.toLowerCase() === requestedPattern.toLowerCase());
+      
+      if (!pattern) {
+        logger.error(`Pattern "${requestedPattern}" not found. Available patterns:`);
+        patterns.forEach(p => logger.info(`  - ${p.name}`));
+        process.exit(1);
+      }
+      
+      // Define test inputs for each pattern
+      const testInputs: Record<string, any> = {
+        'TestMinimal': { task: 'Test' },
+        'SimpleConsensusV2': { task: 'Analyze code quality' },
+        'ConsensusBuilderV2': {
+          task: 'Analyze this code for best practices',
+          data: {
+            code: `
+              function processData(items) {
+                for (let i = 0; i < items.length; i++) {
+                  items[i] = items[i] * 2;
+                }
+                return items;
+              }
+            `,
+          },
+        },
+        'EpistemicOrchestrator': {
+          code: `
+            async function authenticate(username, password) {
+              const query = \`SELECT * FROM users WHERE username = '\${username}' AND password = '\${password}'\`;
+              return await db.query(query);
+            }
+          `,
+          analysisType: 'comprehensive',
+        },
+        'UncertaintyRouter': {
+          task: 'Optimize this complex algorithm',
+          context: {
+            complexity: 'unknown',
+            timeConstraint: 'flexible',
+          },
+        },
+        'ConfidenceCascade': {
+          query: 'What are the security implications of this code?',
+          minConfidence: 0.8,
+        },
+      };
+      
+      const input = testInputs[pattern.name] || { task: 'Default analysis task' };
+      await runSinglePattern(patternEngine, pattern.name, input);
+      
+    } else {
+      // Show pattern details
+      await showPatternDetails(patternEngine);
 
-    // The pattern engine has loaded real .prism pattern files that define
-    // sophisticated multi-agent coordination strategies
-    await runPatternExamples(patternEngine);
+      // Run all examples
+      await runPatternExamples(patternEngine);
+    }
 
-    logger.info(
-      '\n✅ Parallax pattern execution demonstration completed!'
-    );
-    logger.info(
-      'The platform loaded and analyzed real coordination patterns written in Prism language'
-    );
+    logger.info('\n✅ Pattern execution completed!');
 
     // Allow time for async operations to complete
-    setTimeout(() => process.exit(0), 5000);
+    setTimeout(() => process.exit(0), 2000);
   } catch (error) {
     logger.error({ error }, 'Pattern execution demo failed');
     process.exit(1);

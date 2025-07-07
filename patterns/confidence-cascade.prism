@@ -10,12 +10,12 @@
 targetConfidence = input.minConfidence || 0.8
 
 // Get agents sorted by historical performance
-agents = parallax.agents
+agents = parallax.agentList
   .filter(a => a.capabilities.includes("query-processing"))
   .sort((a, b) => b.historicalConfidence - a.historicalConfidence)
 
 // Cascade through agents until we reach target confidence
-result = null
+result = ""
 attempts = []
 
 for agent in agents {
@@ -36,7 +36,7 @@ for agent in agents {
   })
   
   // Update result if this is better
-  if !result || agentConfidence > ~result {
+  if result == "" || agentConfidence > ~result {
     result = agentResult
   }
   

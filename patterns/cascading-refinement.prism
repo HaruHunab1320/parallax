@@ -3,7 +3,7 @@
  * @version 1.0.0
  * @description Progressively refine results with increasing cost/quality agents
  * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}, "minConfidence": {"type": "number"}, "maxTier": {"type": "number"}}}
- * @agents {"capabilities": ["analysis"]}
+ * @agents {"capabilities": ["code-analysis"]}
  * @minAgents 3
  */
 
@@ -12,7 +12,7 @@ targetConfidence = input.minConfidence || 0.8
 maxTier = input.maxTier || 3
 
 // Categorize agents by tier based on their characteristics
-allAgents = parallax.agents.filter(a => a.capabilities.includes("analysis"))
+allAgents = parallax.agentList.filter(a => a.capabilities.includes("code-analysis"))
 
 // Sort agents into tiers based on speed/quality trade-off
 tier1Agents = allAgents.filter(a => 
@@ -26,7 +26,7 @@ tier3Agents = allAgents.filter(a =>
 )
 
 // Start with tier 1 (fast but lower quality)
-result = null
+result = ""
 currentConfidence = 0
 refinementPath = []
 

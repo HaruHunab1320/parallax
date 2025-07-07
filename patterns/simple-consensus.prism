@@ -1,0 +1,45 @@
+/**
+ * @name SimpleConsensus
+ * @version 1.0.0
+ * @description Simple consensus pattern using pre-processed results
+ * @input {"type": "object", "properties": {"task": {"type": "string"}}}
+ * @minAgents 2
+ */
+
+// Access pre-processed results  
+results = agentResults
+count = agentCount
+// Note: 'agents' is renamed to 'agentList' to avoid Prism reserved word
+
+// Calculate average confidence
+conf1 = results[0].confidence
+conf2 = results[1].confidence
+avgConfidence = (conf1 + conf2) / 2
+
+// Determine consensus - declare status outside if block
+status = ""
+if (avgConfidence > 0.7) {
+  status = "consensus_reached"
+} else {
+  status = "low_consensus"
+}
+
+// Build result
+result = {
+  status: status,
+  confidence: avgConfidence,
+  agentCount: count,
+  agent1: {
+    name: results[0].agentName,
+    confidence: conf1,
+    result: results[0].result
+  },
+  agent2: {
+    name: results[1].agentName, 
+    confidence: conf2,
+    result: results[1].result
+  }
+}
+
+// Return with confidence
+result ~> avgConfidence

@@ -11,6 +11,7 @@ export class PatternEngine {
   private loader: PatternLoader;
   private executions: Map<string, PatternExecution> = new Map();
   private localAgentManager: LocalAgentManager;
+  private localAgents: any[] = []; // Direct agent instances for demo
   
   constructor(
     private runtimeManager: RuntimeManager,
@@ -49,22 +50,148 @@ export class PatternEngine {
       // Select agents based on pattern requirements
       const agents = await this.selectAgents(pattern);
       
-      // Prepare context with agents and pattern info
+      // Pre-execute async agent operations based on pattern requirements
+      const preProcessedData: any = {};
+      
+      // Check if pattern needs agent analysis results
+      const patternNameLower = pattern.name.toLowerCase();
+      if (patternNameLower.includes('consensus') || patternNameLower.includes('cascade') || 
+          patternNameLower.includes('orchestrator') || patternNameLower.includes('router')) {
+        
+        // Execute all agent analyses in parallel
+        const agentResults = await Promise.all(
+          agents.map(async (agent) => {
+            try {
+              const result = await agent.analyze(input.task || 'analyze', input.data || input);
+              return {
+                agentId: agent.id,
+                agentName: agent.name,
+                capabilities: agent.capabilities,
+                expertise: agent.expertise || 0.7,
+                result: result.value,
+                confidence: result.confidence,
+                reasoning: result.reasoning,
+                timestamp: result.timestamp
+              };
+            } catch (error) {
+              this.logger.warn({ agentId: agent.id, error }, 'Agent analysis failed');
+              return {
+                agentId: agent.id,
+                agentName: agent.name,
+                capabilities: agent.capabilities,
+                expertise: agent.expertise || 0.7,
+                result: null,
+                confidence: 0,
+                reasoning: 'Agent failed to respond',
+                error: error instanceof Error ? error.message : 'Unknown error',
+                timestamp: Date.now()
+              };
+            }
+          })
+        );
+        
+        preProcessedData.agentResults = agentResults;
+        preProcessedData.successfulResults = agentResults.filter(r => r.confidence > 0);
+      }
+      
+      // Prepare context with pre-processed results
       const context = {
         input,
-        agents,
+        agentList: agents.map(a => ({
+          id: a.id,
+          name: a.name,
+          capabilities: a.capabilities,
+          expertise: a.expertise || 0.7,
+          historicalConfidence: a.historicalConfidence || 0.75
+        })),
+        agentCount: agents.length,
+        ...preProcessedData,
         pattern: {
           name: pattern.name,
           version: pattern.version,
         },
-        __parallaxAgents: agents,
-        __parallaxPatterns: { [pattern.name]: pattern },
+        // Helper functions for Prism
+        parallax: {
+          agentList: agents.map(a => ({
+            id: a.id,
+            name: a.name,
+            capabilities: a.capabilities,
+            expertise: a.expertise || 0.7
+          })),
+          patterns: { 
+            [pattern.name]: {
+              name: pattern.name,
+              version: pattern.version,
+              description: pattern.description,
+              input: pattern.input,
+              // Omit 'agents' property to avoid reserved word issue
+              minAgents: pattern.minAgents || 0,
+              maxAgents: pattern.maxAgents || 999,
+              script: pattern.script,
+              metadata: pattern.metadata ? (() => {
+                const cleanMetadata: any = {};
+                for (const [key, value] of Object.entries(pattern.metadata)) {
+                  if (key !== 'agents') {
+                    cleanMetadata[key] = value;
+                  } else if (value !== null && value !== undefined) {
+                    cleanMetadata.agentRequirements = value;
+                  }
+                }
+                return cleanMetadata;
+              })() : undefined
+            }
+          },
+          confidence: {
+            // Remove functions as they can't be serialized to Prism
+            // track: (value: any, confidence: number) => ({ value, confidence }),
+            // propagate: (results: any[]) => results.map(r => r.confidence)
+          }
+        },
+        // Remove helper functions as they can't be serialized to Prism
+        // highConfidenceAgreement: (results: any[]) => {
+        //   const highConf = results.filter(r => r.confidence > 0.8);
+        //   return highConf.length > results.length * 0.6;
+        // },
+        // parallel: async (tasks: any[]) => {
+        //   return Promise.all(tasks);
+        // },
+        // range: (start: number, end: number) => {
+        //   const result = [];
+        //   for (let i = start; i < end; i++) {
+        //     result.push(i);
+        //   }
+        //   return result;
+        // }
       };
 
+      // Preprocess the script to handle Prism syntax issues
+      const preprocessedScript = pattern.script;
+      
+      // For debugging, check if this is a test pattern
+      const isTestPattern = pattern.name.startsWith('Test');
+      
       // Inject Parallax context and execute
       const enhancedScript = await this.runtimeManager.injectParallaxContext(
-        pattern.script
+        preprocessedScript
       );
+      
+      this.logger.debug({ 
+        patternName, 
+        agentCount: agents.length,
+        scriptLength: enhancedScript.length,
+        isTestPattern
+      }, 'Executing pattern script');
+      
+      
+      // For test patterns, try running without context to isolate issues
+      if (isTestPattern && pattern.name === 'TestEmpty') {
+        this.logger.info('Running TestEmpty without context injection');
+        const result = await this.runtimeManager.executePrismScript(
+          pattern.script,  // Just the raw script
+          {}  // Empty context
+        );
+        return execution;
+      }
       
       const result = await this.runtimeManager.executePrismScript(
         enhancedScript,
@@ -98,32 +225,38 @@ export class PatternEngine {
   }
 
   private async selectAgents(pattern: Pattern): Promise<any[]> {
-    let agents: GrpcAgentProxy[] = [];
+    let agents: any[] = [];
     
-    // First, check for local agents (development mode)
-    const localAgents = this.localAgentManager.createProxies();
-    if (localAgents.length > 0) {
-      this.logger.info(`Using ${localAgents.length} local agents`);
-      agents = localAgents;
+    // First, check for directly registered local agents (for demos)
+    if (this.localAgents.length > 0) {
+      this.logger.info(`Using ${this.localAgents.length} directly registered agents`);
+      agents = this.localAgents;
     } else {
-      // Get all agent services from registry
-      const agentServices = await this.agentRegistry.listServices('agent');
-      
-      // Create gRPC proxies for each agent
-      agents = agentServices.map(service => {
-        const proxy = new GrpcAgentProxy(
-          service.id,
-          service.name,
-          service.endpoint
-        );
+      // Check for local agents from environment (development mode)
+      const localAgentProxies = this.localAgentManager.createProxies();
+      if (localAgentProxies.length > 0) {
+        this.logger.info(`Using ${localAgentProxies.length} local agent proxies`);
+        agents = localAgentProxies;
+      } else {
+        // Get all agent services from registry
+        const agentServices = await this.agentRegistry.listServices('agent');
         
-        // Add capabilities from registry metadata
-        if (service.metadata.capabilities) {
-          (proxy as any)._capabilities = service.metadata.capabilities;
-        }
-        
-        return proxy;
-      });
+        // Create gRPC proxies for each agent
+        agents = agentServices.map(service => {
+          const proxy = new GrpcAgentProxy(
+            service.id,
+            service.name,
+            service.endpoint
+          );
+          
+          // Add capabilities from registry metadata
+          if (service.metadata.capabilities) {
+            (proxy as any)._capabilities = service.metadata.capabilities;
+          }
+          
+          return proxy;
+        });
+      }
     }
 
     // Filter by capabilities if specified
@@ -175,5 +308,13 @@ export class PatternEngine {
 
   async reloadPatterns(): Promise<void> {
     await this.loader.loadPatterns();
+  }
+  
+  /**
+   * Register local agent instances directly (for demos/testing)
+   */
+  registerLocalAgents(agents: any[]): void {
+    this.localAgents = agents;
+    this.logger.info(`Registered ${agents.length} local agents`);
   }
 }

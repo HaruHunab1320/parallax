@@ -3,11 +3,11 @@
  * @version 1.0.0
  * @description Route tasks based on uncertainty levels using Prism's uncertain conditionals
  * @input {"type": "object", "properties": {"task": {"type": "string"}, "context": {"type": "object"}}}
- * @agents {"capabilities": ["assessment", "analysis"]}
+ * @agents {"capabilities": ["assessment", "code-analysis"]}
  */
 
 // Quick assessment of task complexity and uncertainty
-assessmentAgent = parallax.agents.find(agent => 
+assessmentAgent = parallax.agentList.find(agent => 
   agent.capabilities.includes("assessment")
 )
 
@@ -19,7 +19,7 @@ quickAssessment = assessmentAgent.analyze(input.task, {
 assessmentConfidence = ~quickAssessment
 
 // Get available agents grouped by expertise level
-allAgents = parallax.agents.filter(a => a.capabilities.includes("analysis"))
+allAgents = parallax.agentList.filter(a => a.capabilities.includes("code-analysis"))
 
 specialists = allAgents.filter(a => a.expertise > 0.9)
 generalists = allAgents.filter(a => a.expertise > 0.6 && a.expertise <= 0.9)

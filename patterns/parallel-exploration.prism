@@ -3,7 +3,7 @@
  * @version 1.0.0
  * @description Explore multiple approaches when consensus is low but individual confidence is high
  * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}, "consensusThreshold": {"type": "number"}}}
- * @agents {"capabilities": ["analysis"]}
+ * @agents {"capabilities": ["code-analysis"]}
  * @minAgents 3
  */
 
@@ -12,7 +12,7 @@ consensusThreshold = input.consensusThreshold || 0.6
 highConfidenceThreshold = 0.8
 
 // Get all capable agents
-agents = parallax.agents.filter(a => a.capabilities.includes("analysis"))
+agents = parallax.agentList.filter(a => a.capabilities.includes("code-analysis"))
 
 // Initial parallel analysis
 initialResults = parallel(agents.map(agent => {
