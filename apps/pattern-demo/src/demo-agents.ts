@@ -6,7 +6,7 @@ import { Agent, AgentResult } from '@parallax/runtime';
 export class SecurityAgent implements Agent {
   id = 'security-agent-1';
   name = 'Security Scanner';
-  capabilities = ['security', 'code-analysis', 'assessment', 'analyze'];
+  capabilities = ['security', 'code-analysis', 'assessment', 'analyze', 'validation', 'routing', 'any'];
   expertise = 0.9;
   historicalConfidence = 0.85;
   
@@ -51,7 +51,7 @@ export class SecurityAgent implements Agent {
 export class ArchitectureAgent implements Agent {
   id = 'architect-agent-1';
   name = 'Architecture Analyzer';
-  capabilities = ['architecture', 'code-analysis', 'assessment', 'analyze'];
+  capabilities = ['architecture', 'code-analysis', 'assessment', 'analyze', 'any'];
   expertise = 0.85;
   historicalConfidence = 0.8;
   
@@ -95,7 +95,7 @@ export class ArchitectureAgent implements Agent {
 export class PerformanceAgent implements Agent {
   id = 'performance-agent-1';
   name = 'Performance Optimizer';
-  capabilities = ['performance', 'code-analysis', 'assessment', 'analyze'];
+  capabilities = ['performance', 'code-analysis', 'assessment', 'analyze', 'data-processing', 'validation', 'processing', 'any'];
   expertise = 0.8;
   historicalConfidence = 0.75;
   
@@ -139,7 +139,7 @@ export class PerformanceAgent implements Agent {
 export class ComplexityAgent implements Agent {
   id = 'complexity-agent-1';
   name = 'Complexity Analyzer';
-  capabilities = ['complexity', 'code-analysis', 'assessment', 'analyze', 'query-processing'];
+  capabilities = ['complexity', 'code-analysis', 'assessment', 'analyze', 'query-processing', 'data-processing', 'processing', 'any'];
   expertise = 0.75;
   historicalConfidence = 0.7;
   

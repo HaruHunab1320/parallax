@@ -8,111 +8,72 @@
  */
 
 // Configuration
-chunkSize = input.chunkSize || 100
-confidenceThreshold = 0.7
+chunkSize = input.chunkSize || 3
+minMapConfidence = 0.7
 
-// Get available processing agents
-processors = parallax.agentList.filter(a => 
-  a.capabilities.includes("processing") || a.capabilities.includes("code-analysis")
-)
+// Use pre-processed map-reduce results
+// Agents already processed data chunks in parallel
+mapReduceResults = agentResults
 
-// Split data into chunks
-dataLength = input.data.length
-numChunks = Math.ceil(dataLength / chunkSize)
-chunks = []
+// Track map phase results
+mapResults = []
+totalMapConfidence = 0
+successfulMaps = 0
 
-for i in range(0, numChunks) {
-  startIdx = i * chunkSize
-  endIdx = Math.min(startIdx + chunkSize, dataLength)
-  chunks.push(input.data.slice(startIdx, endIdx))
+// Process results from each mapping agent
+if (agentCount >= 1) {
+  map1 = mapReduceResults[0]
+  mapResults = [map1.result]
+  totalMapConfidence = totalMapConfidence + map1.confidence
+  if (map1.confidence >= minMapConfidence) {
+    successfulMaps = successfulMaps + 1
+  }
 }
 
-// Map phase with uncertainty handling
-mapResults = parallel(chunks.map((chunk, idx) => {
-  // Select agent for this chunk
-  agentIdx = idx % processors.length
-  agent = processors[agentIdx]
-  
-  // Process chunk
-  result = agent.process(chunk, {
-    operation: "map",
-    function: input.mapFunction
-  })
-  
-  confidence = ~result
-  
-  // Handle low confidence
-  if confidence < confidenceThreshold {
-    // Try with a different agent
-    fallbackAgent = processors[(agentIdx + 1) % processors.length]
-    fallbackResult = fallbackAgent.process(chunk, {
-      operation: "map",
-      function: input.mapFunction,
-      isRetry: true
-    })
-    
-    fallbackConfidence = ~fallbackResult
-    
-    // Use better result
-    if fallbackConfidence > confidence {
-      return {
-        value: fallbackResult,
-        confidence: fallbackConfidence,
-        agent: fallbackAgent.id,
-        wasFallback: true,
-        chunkIndex: idx
-      }
-    }
+if (agentCount >= 2) {
+  map2 = mapReduceResults[1]
+  mapResults = [mapResults[0], map2.result]
+  totalMapConfidence = totalMapConfidence + map2.confidence
+  if (map2.confidence >= minMapConfidence) {
+    successfulMaps = successfulMaps + 1
   }
-  
-  return {
-    value: result,
-    confidence: confidence,
-    agent: agent.id,
-    wasFallback: false,
-    chunkIndex: idx
-  }
-}))
-
-// Check map phase quality
-mapConfidences = mapResults.map(r => r.confidence)
-avgMapConfidence = mapConfidences.reduce((sum, c) => sum + c, 0) / mapConfidences.length
-lowConfidenceChunks = mapResults.filter(r => r.confidence < confidenceThreshold).length
-
-// Reduce phase with confidence weighting
-if avgMapConfidence < 0.5 {
-  // Too low confidence to proceed
-  result = {
-    error: "Map phase confidence too low",
-    mapResults: mapResults,
-    avgConfidence: avgMapConfidence,
-    recommendation: "Reconsider data quality or processing approach"
-  }
-  result ~> avgMapConfidence
 }
 
-// Select best agent for reduce
-reduceAgent = processors.reduce((best, current) =>
-  (current.historicalConfidence || 0.5) > (best.historicalConfidence || 0.5) ? current : best
-)
+if (agentCount >= 3) {
+  map3 = mapReduceResults[2]
+  mapResults = [mapResults[0], mapResults[1], map3.result]
+  totalMapConfidence = totalMapConfidence + map3.confidence
+  if (map3.confidence >= minMapConfidence) {
+    successfulMaps = successfulMaps + 1
+  }
+}
 
-// Prepare weighted values for reduction
-weightedMapResults = mapResults.map(r => ({
-  value: r.value,
-  weight: r.confidence
-}))
+if (agentCount >= 4) {
+  map4 = mapReduceResults[3]
+  mapResults = [mapResults[0], mapResults[1], mapResults[2], map4.result]
+  totalMapConfidence = totalMapConfidence + map4.confidence
+  if (map4.confidence >= minMapConfidence) {
+    successfulMaps = successfulMaps + 1
+  }
+}
 
-// Perform reduction
-reduceResult = reduceAgent.process(weightedMapResults, {
-  operation: "reduce",
-  function: input.reduceFunction,
-  confidenceWeighted: true
-})
+// Calculate average map confidence
+avgMapConfidence = agentCount > 0 ? totalMapConfidence / agentCount : 0
 
-reduceConfidence = ~reduceResult
+// Determine if we have enough successful maps
+mapQuality = successfulMaps >= 2 ? "good" : (successfulMaps >= 1 ? "partial" : "poor")
+
+// Simulated reduce phase result
+// In real execution, this would combine the map results
+reduceResult = {
+  combined: mapResults,
+  mapQuality: mapQuality,
+  processedChunks: agentCount
+}
 
 // Calculate overall confidence
-# Map quality affects reduce confidence
+// Map quality affects reduce confidence
+reduceConfidence = mapQuality == "good" ? 0.9 : (mapQuality == "partial" ? 0.6 : 0.3)
 overallConfidence = reduceConfidence * (0.7 + 0.3 * avgMapConfidence)
 
 // Build comprehensive result
@@ -120,33 +81,13 @@ finalResult = {
   value: reduceResult,
   confidence: overallConfidence,
   processing: {
-    chunks: numChunks,
+    chunks: agentCount,
     avgMapConfidence: avgMapConfidence,
-    reduceConfidence: reduceConfidence,
-    lowConfidenceChunks: lowConfidenceChunks,
-    fallbacksUsed: mapResults.filter(r => r.wasFallback).length
+    successfulMaps: successfulMaps,
+    mapQuality: mapQuality
   },
-  agents: {
-    mappers: [...new Set(mapResults.map(r => r.agent))],
-    reducer: reduceAgent.id
-  },
-  metadata: {
-    dataSize: dataLength,
-    chunkSize: chunkSize,
-    processingTime: "distributed",
-    confidenceThreshold: confidenceThreshold
-  }
+  strategy: overallConfidence < 0.5 ? "Consider re-processing with different parameters" : "Processing successful"
 }
 
-# Add warnings if needed
-if lowConfidenceChunks > numChunks * 0.2 {
-  finalResult.warnings = ["More than 20% of chunks had low confidence"]
-}
-
-if mapResults.filter(r => r.wasFallback).length > numChunks * 0.3 {
-  finalResult.warnings = (finalResult.warnings || []).concat([
-    "High fallback rate indicates processing difficulties"
-  ])
-}
-
+// Return with overall confidence
 finalResult ~> overallConfidence

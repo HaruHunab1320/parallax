@@ -180,40 +180,17 @@ async function runPatternExamples(patternEngine: PatternEngine) {
   // With local agents, we don't need etcd
   logger.info('Using local in-memory agents for pattern execution');
 
-  // Test with our new simplified pattern first
-  logger.info('--- Testing Simple Consensus V2 ---');
-  try {
-    const simpleResult = await patternEngine.executePattern(
-      'SimpleConsensusV2',
-      {
+  // Define all patterns to test with their inputs
+  const patternTests = [
+    {
+      name: 'SimpleConsensus',
+      input: {
         task: 'Analyze code quality'
       }
-    );
-
-    logger.info(
-      {
-        executionId: simpleResult.id,
-        status: simpleResult.status,
-        result: simpleResult.result,
-        metrics: simpleResult.metrics,
-      },
-      'Simple consensus V2 executed successfully'
-    );
-  } catch (error) {
-    logger.error({ 
-      error: error instanceof Error ? {
-        message: error.message,
-        stack: error.stack
-      } : error 
-    }, 'Simple consensus V2 failed');
-  }
-
-  // Example 1: Consensus Builder V2 Pattern
-  logger.info('\n--- Example 1: Consensus Builder V2 ---');
-  try {
-    const consensusResult = await patternEngine.executePattern(
-      'ConsensusBuilderV2',
-      {
+    },
+    {
+      name: 'ConsensusBuilder',
+      input: {
         task: 'Analyze this code for best practices',
         data: {
           code: `
@@ -226,100 +203,135 @@ async function runPatternExamples(patternEngine: PatternEngine) {
           `,
         },
       }
-    );
-
-    logger.info(
-      {
-        executionId: consensusResult.id,
-        status: consensusResult.status,
-        result: consensusResult.result,
-        metrics: consensusResult.metrics,
-      },
-      'Consensus V2 pattern executed successfully'
-    );
-  } catch (error) {
-    logger.error({ error }, 'Consensus builder V2 pattern execution failed');
-  }
-
-  // Example 2: Epistemic Orchestrator
-  logger.info('\n--- Example 2: Epistemic Orchestrator ---');
-  try {
-    const epistemicResult = await patternEngine.executePattern(
-      'EpistemicOrchestrator',
-      {
-        code: `
-          async function authenticate(username, password) {
-            const query = \`SELECT * FROM users WHERE username = '\${username}' AND password = '\${password}'\`;
-            return await db.query(query);
-          }
-        `,
+    },
+    {
+      name: 'EpistemicOrchestrator',
+      input: {
+        code: 'async function authenticate(user, pass) { return await db.query("SELECT * FROM users WHERE username = ? AND password = ?", [user, pass]); }',
         analysisType: 'comprehensive',
       }
-    );
-
-    logger.info(
-      {
-        executionId: epistemicResult.id,
-        status: epistemicResult.status,
-        result: epistemicResult.result,
-        metrics: epistemicResult.metrics,
-      },
-      'Epistemic orchestrator result'
-    );
-  } catch (error) {
-    logger.error({ error }, 'Epistemic orchestrator failed');
-  }
-
-  // Example 3: Uncertainty Router
-  logger.info('\n--- Example 3: Uncertainty Router ---');
-  try {
-    const routerResult = await patternEngine.executePattern(
-      'UncertaintyRouter',
-      {
+    },
+    {
+      name: 'UncertaintyRouter',
+      input: {
         task: 'Optimize this complex algorithm',
-        context: {
+        taskContext: {
           complexity: 'unknown',
           timeConstraint: 'flexible',
         },
       }
-    );
-
-    logger.info(
-      {
-        executionId: routerResult.id,
-        status: routerResult.status,
-        result: routerResult.result,
-        metrics: routerResult.metrics,
-      },
-      'Uncertainty router result'
-    );
-  } catch (error) {
-    logger.error({ error }, 'Uncertainty router failed');
-  }
-
-  // Example 4: Confidence Cascade
-  logger.info('\n--- Example 4: Confidence Cascade ---');
-  try {
-    const cascadeResult = await patternEngine.executePattern(
-      'ConfidenceCascade',
-      {
+    },
+    {
+      name: 'ConfidenceCascade',
+      input: {
         query: 'What are the security implications of this code?',
         minConfidence: 0.8,
       }
-    );
+    },
+    {
+      name: 'LoadBalancer',
+      input: {
+        task: 'Analyze system performance',
+        priority: 'high',
+        strategy: 'confidence'
+      }
+    },
+    {
+      name: 'MultiValidator',
+      input: {
+        data: { value: 42, type: 'number' },
+        validationType: 'strict',
+        fastPathThreshold: 0.9
+      }
+    },
+    {
+      name: 'ParallelExploration',
+      input: {
+        task: 'Find optimal solution',
+        approaches: ['genetic', 'gradient', 'random'],
+        consensusThreshold: 0.6
+      }
+    },
+    {
+      name: 'RobustAnalysis',
+      input: {
+        task: 'Comprehensive code review',
+        depth: 'detailed'
+      }
+    },
+    {
+      name: 'UncertaintyMapReduce',
+      input: {
+        data: [1, 2, 3, 4, 5],
+        operation: 'transform',
+        mapFunction: 'double',
+        reduceFunction: 'sum',
+        chunkSize: 2
+      }
+    },
+    {
+      name: 'CascadingRefinement',
+      input: {
+        task: 'Refine analysis progressively',
+        initialQuality: 'fast',
+        minConfidence: 0.8,
+        maxTier: 3
+      }
+    }
+  ];
 
-    logger.info(
-      {
-        executionId: cascadeResult.id,
-        status: cascadeResult.status,
-        result: cascadeResult.result,
-        metrics: cascadeResult.metrics,
-      },
-      'Confidence cascade result'
-    );
-  } catch (error) {
-    logger.error({ error }, 'Confidence cascade failed');
+  // Track results
+  const results = {
+    successful: [] as string[],
+    failed: [] as { pattern: string, error: string }[],
+    total: patternTests.length
+  };
+
+  // Run each pattern sequentially
+  for (const test of patternTests) {
+    logger.info(`\n--- Testing ${test.name} ---`);
+    try {
+      const result = await patternEngine.executePattern(test.name, test.input);
+
+      logger.info(
+        {
+          executionId: result.id,
+          status: result.status,
+          confidence: result.result?.confidence,
+          metrics: result.metrics,
+        },
+        `${test.name} executed successfully`
+      );
+      
+      results.successful.push(test.name);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error({ 
+        pattern: test.name,
+        error: errorMessage
+      }, `${test.name} failed`);
+      
+      results.failed.push({
+        pattern: test.name,
+        error: errorMessage
+      });
+    }
   }
+
+  // Summary report
+  logger.info('\n=== Pattern Execution Summary ===');
+  logger.info(`Total patterns: ${results.total}`);
+  logger.info(`Successful: ${results.successful.length} (${results.successful.join(', ')})`);
+  logger.info(`Failed: ${results.failed.length}`);
+  
+  if (results.failed.length > 0) {
+    logger.info('\nFailed patterns:');
+    results.failed.forEach(failure => {
+      logger.error(`  - ${failure.pattern}: ${failure.error}`);
+    });
+  }
+
+  return results;
 }
 
 async function showPatternDetails(patternEngine: PatternEngine) {
@@ -405,9 +417,8 @@ async function main() {
       
       // Define test inputs for each pattern
       const testInputs: Record<string, any> = {
-        'TestMinimal': { task: 'Test' },
-        'SimpleConsensusV2': { task: 'Analyze code quality' },
-        'ConsensusBuilderV2': {
+        'SimpleConsensus': { task: 'Analyze code quality' },
+        'ConsensusBuilder': {
           task: 'Analyze this code for best practices',
           data: {
             code: `

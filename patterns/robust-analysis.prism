@@ -7,141 +7,107 @@
  * @minAgents 4
  */
 
-// This is a composite pattern that orchestrates other patterns
+// Use pre-processed agent results for robust analysis
+analysisResults = agentResults
 
-// Step 1: Use LoadBalancer to find best agents
-loadBalancerResult = executePattern("load-balancer", {
-  task: "Select analysis agents",
-  data: {
-    requiredCapabilities: ["code-analysis"],
-    count: 5
-  },
-  strategy: "weighted"
-})
+// Calculate various robustness metrics
+totalConfidence = 0
+highConfidenceCount = 0
+lowConfidenceCount = 0
 
-selectedAgents = loadBalancerResult.value.agents || parallax.agentList.filter(a => 
-  a.capabilities.includes("code-analysis")
-).slice(0, 5)
-
-// Step 2: Quick assessment to determine approach
-quickAssessment = selectedAgents[0].analyze(input.task, {
-  data: input.data,
-  mode: "quick"
-})
-assessmentConfidence = ~quickAssessment
-
-// Step 3: Route based on initial assessment
-uncertain if (assessmentConfidence < 0.6) {
-  high {
-    // High uncertainty about the task - use multiple patterns
-    
-    // Try parallel exploration first
-    explorationResult = executePattern("parallel-exploration", {
-      task: input.task,
-      data: input.data,
-      consensusThreshold: 0.7
-    })
-    
-    if explorationResult.type == "parallel_exploration" {
-      // Multiple valid approaches found
-      // Use cascading refinement on each path
-      refinedPaths = parallel(explorationResult.paths.map(path => 
-        executePattern("cascading-refinement", {
-          task: input.task,
-          data: {
-            ...input.data,
-            approach: path.approach
-          },
-          minConfidence: 0.85
-        })
-      ))
-      
-      result = {
-        type: "multi_path_analysis",
-        paths: refinedPaths,
-        confidence: Math.max(...refinedPaths.map(p => ~p)),
-        recommendation: "Multiple approaches refined - choose based on requirements",
-        tradeoffs: explorationResult.summary
-      }
-    } else {
-      // Single approach but uncertain
-      result = executePattern("cascading-refinement", {
-        task: input.task,
-        data: input.data,
-        minConfidence: 0.9,
-        maxTier: 3
-      })
-    }
-  }
-  
-  medium {
-    // Medium uncertainty - use consensus with selected agents
-    consensusResult = executePattern("consensus-builder", {
-      task: input.task,
-      data: input.data,
-      agents: selectedAgents
-    })
-    
-    if consensusResult.status == "strong_consensus" {
-      result = consensusResult
-    } else {
-      // Weak consensus - validate the result
-      validationResult = executePattern("multi-validator", {
-        data: consensusResult.results,
-        validationType: "code-analysis",
-        fastPathThreshold: 0.85
-      })
-      
-      result = {
-        analysis: consensusResult,
-        validation: validationResult,
-        confidence: consensusResult.confidence * validationResult.confidence,
-        status: validationResult.valid ? "validated_weak_consensus" : "invalid_consensus"
-      }
-    }
-  }
-  
-  low {
-    // Very uncertain about assessment itself
-    // Use uncertainty router as fallback
-    routerResult = executePattern("uncertainty-router", {
-      task: input.task,
-      context: {
-        ...input.data,
-        requirements: input.requirements
-      }
-    })
-    
-    result = routerResult
+// Check confidence levels
+if (agentCount >= 1) {
+  conf1 = analysisResults[0].confidence
+  totalConfidence = totalConfidence + conf1
+  if (conf1 > 0.8) {
+    highConfidenceCount = highConfidenceCount + 1
+  } else if (conf1 < 0.5) {
+    lowConfidenceCount = lowConfidenceCount + 1
   }
 }
 
-// Step 4: Add robustness metadata
-robustMetadata = {
-  patternsUsed: [],
-  totalAgentsInvolved: selectedAgents.length,
-  initialAssessmentConfidence: assessmentConfidence,
-  processingStrategy: assessmentConfidence > 0.8 ? "simple" : 
-                     assessmentConfidence > 0.5 ? "consensus" : "complex"
+if (agentCount >= 2) {
+  conf2 = analysisResults[1].confidence
+  totalConfidence = totalConfidence + conf2
+  if (conf2 > 0.8) {
+    highConfidenceCount = highConfidenceCount + 1
+  } else if (conf2 < 0.5) {
+    lowConfidenceCount = lowConfidenceCount + 1
+  }
 }
 
-// Track which patterns were used
-if result.type == "multi_path_analysis" {
-  robustMetadata.patternsUsed = ["load-balancer", "parallel-exploration", "cascading-refinement"]
-} else if result.status && result.status.includes("consensus") {
-  robustMetadata.patternsUsed = ["load-balancer", "consensus-builder", "multi-validator"]
-} else if result.action == "escalate_to_human" {
-  robustMetadata.patternsUsed = ["load-balancer", "uncertainty-router"]
+if (agentCount >= 3) {
+  conf3 = analysisResults[2].confidence
+  totalConfidence = totalConfidence + conf3
+  if (conf3 > 0.8) {
+    highConfidenceCount = highConfidenceCount + 1
+  } else if (conf3 < 0.5) {
+    lowConfidenceCount = lowConfidenceCount + 1
+  }
+}
+
+if (agentCount >= 4) {
+  conf4 = analysisResults[3].confidence
+  totalConfidence = totalConfidence + conf4
+  if (conf4 > 0.8) {
+    highConfidenceCount = highConfidenceCount + 1
+  } else if (conf4 < 0.5) {
+    lowConfidenceCount = lowConfidenceCount + 1
+  }
+}
+
+avgConfidence = agentCount > 0 ? totalConfidence / agentCount : 0
+
+// Determine robustness level
+robustnessLevel = ""
+strategy = ""
+
+if (highConfidenceCount >= 3 && avgConfidence > 0.75) {
+  robustnessLevel = "highly_robust"
+  strategy = "consensus_based"
+} else if (highConfidenceCount >= 2 && lowConfidenceCount == 0) {
+  robustnessLevel = "moderately_robust"
+  strategy = "majority_based"
+} else if (lowConfidenceCount >= 2) {
+  robustnessLevel = "low_robustness"
+  strategy = "uncertainty_aware"
 } else {
-  robustMetadata.patternsUsed = ["load-balancer", "cascading-refinement"]
+  robustnessLevel = "mixed_robustness"
+  strategy = "balanced_approach"
 }
 
-// Final robust result
-finalResult = {
-  ...result,
-  robustness: robustMetadata,
-  confidence: result.confidence || ~result,
-  message: "Robust analysis completed using multiple coordination patterns"
+// Select best result based on strategy
+bestResult = null
+if (strategy == "consensus_based" || strategy == "majority_based") {
+  // Use highest confidence result
+  bestResult = analysisResults[0]  // Assuming sorted by confidence
+} else {
+  // For uncertainty cases, prefer middle-ground results
+  if (agentCount >= 2) {
+    bestResult = analysisResults[1]
+  } else {
+    bestResult = analysisResults[0]
+  }
 }
 
-finalResult ~> finalResult.confidence
+// Build robust analysis result
+result = {
+  robustnessLevel: robustnessLevel,
+  strategy: strategy,
+  averageConfidence: avgConfidence,
+  highConfidenceCount: highConfidenceCount,
+  lowConfidenceCount: lowConfidenceCount,
+  totalAgents: agentCount,
+  selectedResult: bestResult ? bestResult.result : null,
+  recommendation: bestResult ? bestResult.result.recommendation : "Insufficient data for robust analysis",
+  analysisInsights: {
+    consensusStrength: highConfidenceCount >= 3 ? "strong" : (highConfidenceCount >= 2 ? "moderate" : "weak"),
+    uncertaintyLevel: lowConfidenceCount >= 2 ? "high" : (lowConfidenceCount >= 1 ? "moderate" : "low"),
+    reliabilityScore: avgConfidence
+  },
+  allResults: analysisResults
+}
+
+// Return with robustness-adjusted confidence
+robustConfidence = strategy == "consensus_based" ? avgConfidence * 1.1 : avgConfidence
+result ~> robustConfidence

@@ -11,120 +11,107 @@
 targetConfidence = input.minConfidence || 0.8
 maxTier = input.maxTier || 3
 
-// Categorize agents by tier based on their characteristics
-allAgents = parallax.agentList.filter(a => a.capabilities.includes("code-analysis"))
-
-// Sort agents into tiers based on speed/quality trade-off
-tier1Agents = allAgents.filter(a => 
-  a.tier == 1 || (a.speed == "fast" && a.cost == "low")
-)
-tier2Agents = allAgents.filter(a => 
-  a.tier == 2 || (a.speed == "medium" && a.cost == "medium")
-)
-tier3Agents = allAgents.filter(a => 
-  a.tier == 3 || (a.speed == "slow" && a.cost == "high")
-)
+// Use pre-processed results where agents are already categorized by tier
+// Assuming agents are ordered by tier/quality in agentResults
+refinementResults = agentResults
 
 // Start with tier 1 (fast but lower quality)
-result = ""
+result = null
 currentConfidence = 0
 refinementPath = []
+finalResult = null
 
-// Tier 1: Fast analysis
-if tier1Agents.length > 0 && maxTier >= 1 {
-  tier1Agent = tier1Agents[0]
-  tier1Result = tier1Agent.analyze(input.task, input.data)
-  currentConfidence = ~tier1Result
+// Tier 1: Fast analysis (first agent)
+if ((agentCount >= 1) && (maxTier >= 1)) {
+  tier1Result = refinementResults[0]
+  currentConfidence = tier1Result.confidence
   
-  refinementPath.push({
+  refinementPath = [{
     tier: 1,
-    agent: tier1Agent.id,
+    agentName: tier1Result.agentName,
     confidence: currentConfidence,
-    duration: tier1Result.duration || "fast"
-  })
+    duration: "fast"
+  }]
   
-  result = tier1Result
+  result = tier1Result.result
   
   // Check if we've reached target confidence
-  if currentConfidence >= targetConfidence {
+  if (currentConfidence >= targetConfidence) {
     finalResult = {
       value: result,
       confidence: currentConfidence,
       refinementPath: refinementPath,
       message: "Target confidence achieved with tier 1"
     }
-    finalResult ~> currentConfidence
   }
 }
 
 // Tier 2: Balanced analysis if needed
-if currentConfidence < targetConfidence && tier2Agents.length > 0 && maxTier >= 2 {
-  tier2Agent = tier2Agents[0]
-  tier2Result = tier2Agent.analyze(input.task, {
-    data: input.data,
-    previousResult: result
-  })
+if ((currentConfidence < targetConfidence) && (agentCount >= 2) && (maxTier >= 2)) {
+  tier2Result = refinementResults[1]
+  tier2Confidence = tier2Result.confidence
   
-  tier2Confidence = ~tier2Result
-  
-  refinementPath.push({
-    tier: 2,
-    agent: tier2Agent.id,
-    confidence: tier2Confidence,
-    duration: tier2Result.duration || "medium"
-  })
+  refinementPath = [
+    refinementPath[0],
+    {
+      tier: 2,
+      agentName: tier2Result.agentName,
+      confidence: tier2Confidence,
+      duration: "medium"
+    }
+  ]
   
   // Take tier 2 result if it's more confident
-  if tier2Confidence > currentConfidence {
-    result = tier2Result
+  if (tier2Confidence > currentConfidence) {
+    result = tier2Result.result
     currentConfidence = tier2Confidence
   }
   
   // Check if we've reached target confidence
-  if currentConfidence >= targetConfidence {
+  if (currentConfidence >= targetConfidence) {
     finalResult = {
       value: result,
       confidence: currentConfidence,
       refinementPath: refinementPath,
       message: "Target confidence achieved with tier 2"
     }
-    finalResult ~> currentConfidence
   }
 }
 
 // Tier 3: Thorough analysis if still needed
-if currentConfidence < targetConfidence && tier3Agents.length > 0 && maxTier >= 3 {
-  tier3Agent = tier3Agents[0]
-  tier3Result = tier3Agent.analyze(input.task, {
-    data: input.data,
-    previousResults: refinementPath
-  })
+if ((currentConfidence < targetConfidence) && (agentCount >= 3) && (maxTier >= 3)) {
+  tier3Result = refinementResults[2]
+  tier3Confidence = tier3Result.confidence
   
-  tier3Confidence = ~tier3Result
-  
-  refinementPath.push({
-    tier: 3,
-    agent: tier3Agent.id,
-    confidence: tier3Confidence,
-    duration: tier3Result.duration || "thorough"
-  })
+  refinementPath = [
+    refinementPath[0],
+    refinementPath[1],
+    {
+      tier: 3,
+      agentName: tier3Result.agentName,
+      confidence: tier3Confidence,
+      duration: "thorough"
+    }
+  ]
   
   // Take tier 3 result if it's more confident
-  if tier3Confidence > currentConfidence {
-    result = tier3Result
+  if (tier3Confidence > currentConfidence) {
+    result = tier3Result.result
     currentConfidence = tier3Confidence
   }
 }
 
 // Return final result with refinement history
-finalResult = {
-  value: result,
-  confidence: currentConfidence,
-  refinementPath: refinementPath,
-  targetConfidence: targetConfidence,
-  message: currentConfidence >= targetConfidence ? 
-    "Target confidence achieved" : 
-    "Best effort - target confidence not reached"
+if (finalResult == null) {
+  finalResult = {
+    value: result,
+    confidence: currentConfidence,
+    refinementPath: refinementPath,
+    targetConfidence: targetConfidence,
+    message: currentConfidence >= targetConfidence ? 
+      "Target confidence achieved" : 
+      "Best effort - target confidence not reached"
+  }
 }
 
 finalResult ~> currentConfidence

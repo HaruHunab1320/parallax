@@ -9,81 +9,108 @@
 // Default minimum confidence if not provided
 targetConfidence = input.minConfidence || 0.8
 
-// Get agents sorted by historical performance
-agents = parallax.agentList
-  .filter(a => a.capabilities.includes("query-processing"))
-  .sort((a, b) => b.historicalConfidence - a.historicalConfidence)
+// Use pre-processed agent results (already sorted by confidence)
+cascadeResults = agentResults
 
-// Cascade through agents until we reach target confidence
-result = ""
-attempts = []
+// Track cascade progress
+bestResult = null
+bestConfidence = 0
+attempts = 0
+targetAchieved = false
 
-for agent in agents {
-  // Skip if we already have high confidence result
-  if result && ~result >= targetConfidence {
-    break
+// Check first agent
+if (agentCount >= 1) {
+  agent1Result = cascadeResults[0]
+  attempts = attempts + 1
+  
+  if (agent1Result.confidence >= targetConfidence) {
+    bestResult = agent1Result
+    bestConfidence = agent1Result.confidence
+    targetAchieved = true
+  } else {
+    bestResult = agent1Result
+    bestConfidence = agent1Result.confidence
   }
+}
+
+// Check second agent if needed
+if (targetAchieved == false && agentCount >= 2) {
+  agent2Result = cascadeResults[1]
+  attempts = attempts + 1
   
-  // Try this agent
-  agentResult = agent.process(input.query)
-  agentConfidence = ~agentResult
-  
-  attempts.push({
-    agentId: agent.id,
-    result: agentResult,
-    confidence: agentConfidence,
-    timestamp: Date.now()
-  })
-  
-  // Update result if this is better
-  if result == "" || agentConfidence > ~result {
-    result = agentResult
+  if (agent2Result.confidence >= targetConfidence) {
+    bestResult = agent2Result
+    bestConfidence = agent2Result.confidence
+    targetAchieved = true
+  } else if (agent2Result.confidence > bestConfidence) {
+    bestResult = agent2Result
+    bestConfidence = agent2Result.confidence
   }
+}
+
+// Check third agent if still needed
+if (targetAchieved == false && agentCount >= 3) {
+  agent3Result = cascadeResults[2]
+  attempts = attempts + 1
   
-  // Early termination on very high confidence
-  if agentConfidence > 0.95 {
-    break
+  if (agent3Result.confidence >= targetConfidence) {
+    bestResult = agent3Result
+    bestConfidence = agent3Result.confidence
+    targetAchieved = true
+  } else if (agent3Result.confidence > bestConfidence) {
+    bestResult = agent3Result
+    bestConfidence = agent3Result.confidence
   }
 }
 
 // Determine cascade outcome
-finalConfidence = ~result
-
-if finalConfidence >= targetConfidence {
-  cascadeResult = {
-    status: "target_achieved",
-    result: result,
-    confidence: finalConfidence,
-    attempts: attempts.length,
-    selectedAgent: attempts[attempts.length - 1].agentId
-  }
-} else if finalConfidence > 0.6 {
-  // Best effort result
-  cascadeResult = {
-    status: "best_effort",
-    result: result,
-    confidence: finalConfidence,
-    attempts: attempts.length,
-    recommendation: "Consider lowering confidence threshold or adding more agents"
-  }
+cascadeStatus = ""
+if (targetAchieved) {
+  cascadeStatus = "target_achieved"
+} else if (bestConfidence > 0.6) {
+  cascadeStatus = "best_effort"
 } else {
-  // Failed to achieve reasonable confidence
-  cascadeResult = {
-    status: "low_confidence",
-    result: result,
-    confidence: finalConfidence,
-    attempts: attempts,
-    recommendation: "Manual review recommended"
-  }
+  cascadeStatus = "low_confidence"
 }
 
-// Add cascade metadata
-cascadeResult.metadata = {
+// Determine recommendation
+cascadeRecommendation = ""
+if (targetAchieved) {
+  cascadeRecommendation = "Target confidence achieved"
+} else if (bestConfidence > 0.6) {
+  cascadeRecommendation = "Consider lowering confidence threshold or adding more agents"
+} else {
+  cascadeRecommendation = "Manual review recommended"
+}
+
+// Build confidence progression array
+confidenceProgression = []
+if (agentCount >= 1) {
+  confidenceProgression = [cascadeResults[0].confidence]
+}
+if (agentCount >= 2) {
+  confidenceProgression = [cascadeResults[0].confidence, cascadeResults[1].confidence]
+}
+if (agentCount >= 3) {
+  confidenceProgression = [cascadeResults[0].confidence, cascadeResults[1].confidence, cascadeResults[2].confidence]
+}
+
+// Build cascade result with metadata
+cascadeResult = {
+  status: cascadeStatus,
+  result: bestResult ? bestResult.result : null,
+  confidence: bestConfidence,
+  attempts: attempts,
   targetConfidence: targetConfidence,
-  agentsAvailable: agents.length,
-  attemptsMade: attempts.length,
-  confidenceProgression: attempts.map(a => a.confidence)
+  selectedAgent: bestResult ? bestResult.agentName : "none",
+  recommendation: cascadeRecommendation,
+  metadata: {
+    targetConfidence: targetConfidence,
+    agentsAvailable: agentCount,
+    attemptsMade: attempts,
+    confidenceProgression: confidenceProgression
+  }
 }
 
 // Return with achieved confidence
-cascadeResult ~> finalConfidence
+cascadeResult ~> bestConfidence

@@ -56,7 +56,10 @@ export class PatternEngine {
       // Check if pattern needs agent analysis results
       const patternNameLower = pattern.name.toLowerCase();
       if (patternNameLower.includes('consensus') || patternNameLower.includes('cascade') || 
-          patternNameLower.includes('orchestrator') || patternNameLower.includes('router')) {
+          patternNameLower.includes('orchestrator') || patternNameLower.includes('router') ||
+          patternNameLower.includes('robust') || patternNameLower.includes('validator') ||
+          patternNameLower.includes('balancer') || patternNameLower.includes('mapreduce') ||
+          patternNameLower.includes('exploration') || patternNameLower.includes('refinement')) {
         
         // Execute all agent analyses in parallel
         const agentResults = await Promise.all(

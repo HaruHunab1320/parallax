@@ -11,136 +11,126 @@
 fastPathThreshold = input.fastPathThreshold || 0.9
 validationType = input.validationType || "general"
 
-// Get validators
-validators = parallax.agentList.filter(a => 
-  a.capabilities.includes("validation") &&
-  (a.specialties.includes(validationType) || a.specialties.includes("general"))
-)
+// Use pre-processed validation results
+validationResults = agentResults
 
-// Sort by historical confidence for fast path
-validators.sort((a, b) => 
-  (b.historicalConfidence || 0.5) - (a.historicalConfidence || 0.5)
-)
+// Track validation metrics
+validCount = 0
+invalidCount = 0
+totalConfidence = 0
+highConfidenceValid = false
 
-// Fast path: Try primary validator first
-primaryValidator = validators[0]
-primaryResult = primaryValidator.validate(input.data, {
-  type: validationType,
-  mode: "fast"
-})
-primaryConfidence = ~primaryResult
+// Check first validator result (fast path attempt)
+if (agentCount >= 1) {
+  result1 = validationResults[0]
+  conf1 = result1.confidence
+  totalConfidence = totalConfidence + conf1
+  
+  // Check if this is a high-confidence valid result for fast path
+  if (conf1 >= fastPathThreshold && result1.result.valid) {
+    highConfidenceValid = true
+    validCount = validCount + 1
+  } else if (result1.result.valid) {
+    validCount = validCount + 1
+  } else {
+    invalidCount = invalidCount + 1
+  }
+}
 
-// Check if fast path succeeds
-if primaryConfidence >= fastPathThreshold && primaryResult.valid {
-  // Fast path success - high confidence validation
-  result = {
+// If fast path succeeded, we can return early
+fastPathSuccess = highConfidenceValid && agentCount >= 1
+
+// Process additional validators if needed
+if (fastPathSuccess == false && agentCount >= 2) {
+  result2 = validationResults[1]
+  conf2 = result2.confidence
+  totalConfidence = totalConfidence + conf2
+  
+  if (result2.result.valid) {
+    validCount = validCount + 1
+  } else {
+    invalidCount = invalidCount + 1
+  }
+}
+
+if (fastPathSuccess == false && agentCount >= 3) {
+  result3 = validationResults[2]
+  conf3 = result3.confidence
+  totalConfidence = totalConfidence + conf3
+  
+  if (result3.result.valid) {
+    validCount = validCount + 1
+  } else {
+    invalidCount = invalidCount + 1
+  }
+}
+
+if (fastPathSuccess == false && agentCount >= 4) {
+  result4 = validationResults[3]
+  conf4 = result4.confidence
+  totalConfidence = totalConfidence + conf4
+  
+  if (result4.result.valid) {
+    validCount = validCount + 1
+  } else {
+    invalidCount = invalidCount + 1
+  }
+}
+
+// Calculate consensus
+totalVotes = validCount + invalidCount
+isValid = validCount > invalidCount
+avgConfidence = totalVotes > 0 ? totalConfidence / totalVotes : 0
+
+// Determine validation mode and build result
+validationMode = ""
+validationMessage = ""
+
+if (fastPathSuccess) {
+  validationMode = "fast_path"
+  validationMessage = "High confidence validation achieved quickly"
+  finalResult = {
     valid: true,
-    confidence: primaryConfidence,
-    validatedBy: primaryValidator.id,
-    mode: "fast_path",
-    issues: primaryResult.issues || [],
+    confidence: result1.confidence,
+    validatedBy: result1.agentName,
+    mode: validationMode,
+    issues: result1.result.issues || [],
     metadata: {
       validationType: validationType,
       processingTime: "fast",
-      validatorsUsed: 1
+      validatorsUsed: 1,
+      message: validationMessage
     }
   }
-  result ~> primaryConfidence
-}
-
-// Fast path failed or low confidence - use multiple validators
-secondaryValidators = validators.slice(1, Math.min(5, validators.length))
-
-validationResults = parallel([primaryResult].concat(
-  secondaryValidators.map(validator => 
-    validator.validate(input.data, {
-      type: validationType,
-      mode: "thorough"
-    })
-  )
-))
-
-// Aggregate validation results
-validCount = 0
-invalidCount = 0
-allIssues = []
-confidences = []
-
-for i in range(0, validationResults.length) {
-  valResult = validationResults[i]
-  conf = ~valResult
-  confidences.push(conf)
+} else {
+  validationMode = "multi_validator"
+  validationMessage = isValid ? "Consensus: data is valid" : "Consensus: data is invalid"
   
-  if valResult.valid {
-    validCount = validCount + conf
-  } else {
-    invalidCount = invalidCount + conf
+  // Collect all issues
+  allIssues = []
+  if (agentCount >= 1 && validationResults[0].result.issues) {
+    allIssues = validationResults[0].result.issues
   }
   
-  if valResult.issues {
-    for issue in valResult.issues {
-      allIssues.push({
-        issue: issue,
-        reportedBy: i == 0 ? primaryValidator.id : secondaryValidators[i-1].id,
-        confidence: conf
-      })
+  finalResult = {
+    valid: isValid,
+    confidence: avgConfidence,
+    validatedBy: "multiple validators",
+    mode: validationMode,
+    consensus: {
+      validVotes: validCount,
+      invalidVotes: invalidCount,
+      strength: totalVotes > 0 ? Math.abs(validCount - invalidCount) / totalVotes : 0
+    },
+    issues: allIssues,
+    metadata: {
+      validationType: validationType,
+      processingTime: "thorough",
+      validatorsUsed: totalVotes,
+      message: validationMessage
     }
   }
 }
 
-// Calculate weighted consensus
-totalWeight = validCount + invalidCount
-isValid = validCount > invalidCount
-
-// Deduplicate issues by grouping similar ones
-uniqueIssues = []
-for issue in allIssues {
-  found = false
-  for uniqueIssue in uniqueIssues {
-    if uniqueIssue.issue == issue.issue {
-      uniqueIssue.reportedBy.push(issue.reportedBy)
-      uniqueIssue.confidence = Math.max(uniqueIssue.confidence, issue.confidence)
-      found = true
-      break
-    }
-  }
-  if !found {
-    uniqueIssues.push({
-      issue: issue.issue,
-      reportedBy: [issue.reportedBy],
-      confidence: issue.confidence
-    })
-  }
-}
-
-// Sort issues by confidence and frequency
-uniqueIssues.sort((a, b) => 
-  (b.confidence * b.reportedBy.length) - (a.confidence * a.reportedBy.length)
-)
-
-// Calculate overall confidence
-avgConfidence = confidences.reduce((sum, c) => sum + c, 0) / confidences.length
-consensusStrength = Math.abs(validCount - invalidCount) / totalWeight
-overallConfidence = avgConfidence * (0.7 + 0.3 * consensusStrength)
-
-// Build final result
-result = {
-  valid: isValid,
-  confidence: overallConfidence,
-  validatedBy: validators.slice(0, validationResults.length).map(v => v.id),
-  mode: "multi_validator",
-  consensus: {
-    validVotes: validCount,
-    invalidVotes: invalidCount,
-    strength: consensusStrength
-  },
-  issues: uniqueIssues.slice(0, 10), // Top 10 issues
-  metadata: {
-    validationType: validationType,
-    processingTime: "thorough",
-    validatorsUsed: validationResults.length,
-    fastPathAttempted: true
-  }
-}
-
-result ~> overallConfidence
+// Return with confidence
+finalResult ~> avgConfidence

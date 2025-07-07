@@ -7,99 +7,94 @@
  * @minAgents 4
  */
 
-// Define expert agent types
-expertTypes = ["security", "architecture", "performance", "complexity"]
+// Use pre-processed agent results
+expertAnalyses = agentResults
 
-// Get specialized agents
-experts = expertTypes.map(type => 
-  parallax.agentList.find(agent => 
-    agent.capabilities.includes(type) && 
-    agent.capabilities.includes("code-analysis")
-  )
-).filter(agent => agent != "")
+// Initialize analysis variables
+hasDisagreement = false
+disagreementDetails = ""
+consensusLevel = ""
 
-// Parallel expert analysis
-expertAnalyses = parallel(experts.map(expert => {
-  analysis = expert.analyze(input.code, {
-    type: input.analysisType,
-    perspective: expert.capabilities[0]
-  })
+// Initialize expert variables
+expert1 = null
+expert2 = null
+expert3 = null
+
+// Check for disagreements between first two experts
+if (agentCount >= 2) {
+  expert1 = expertAnalyses[0]
+  expert2 = expertAnalyses[1]
   
-  return {
-    expert: expert.capabilities[0],
-    analysis: analysis,
-    confidence: ~analysis,
-    reasoning: analysis.reasoning || ""
-  }
-}))
-
-// Check for high-confidence disagreements
-disagreements = []
-for i in range(0, expertAnalyses.length - 1) {
-  for j in range(i + 1, expertAnalyses.length) {
-    expert1 = expertAnalyses[i]
-    expert2 = expertAnalyses[j]
+  // Check if both have high confidence but different recommendations
+  if (expert1.confidence > 0.8 && expert2.confidence > 0.8) {
+    rec1 = expert1.result.recommendation
+    rec2 = expert2.result.recommendation
     
-    // Both experts have high confidence but different conclusions
-    if expert1.confidence > 0.8 && expert2.confidence > 0.8 {
-      if expert1.analysis.recommendation != expert2.analysis.recommendation {
-        disagreements.push({
-          experts: [expert1.expert, expert2.expert],
-          confidence1: expert1.confidence,
-          confidence2: expert2.confidence,
-          recommendations: [
-            expert1.analysis.recommendation,
-            expert2.analysis.recommendation
-          ]
-        })
-      }
+    if (rec1 != rec2) {
+      hasDisagreement = true
+      disagreementDetails = "High-confidence disagreement between " + expert1.agentName + " and " + expert2.agentName
     }
   }
 }
 
-// Determine orchestration strategy
-if disagreements.length > 0 {
-  // High-confidence disagreements indicate trade-offs
-  result = {
-    type: "parallel_exploration",
-    confidence: 0.9,
-    message: "Multiple valid approaches detected",
-    disagreements: disagreements,
-    paths: expertAnalyses.filter(e => e.confidence > 0.8).map(e => {
-      return {
-        expert: e.expert,
-        recommendation: e.analysis.recommendation,
-        confidence: e.confidence,
-        pros: e.analysis.pros || [],
-        cons: e.analysis.cons || []
-      }
-    }),
-    recommendation: "Consider trade-offs between approaches"
-  }
-} else {
-  // Calculate consensus
-  avgConfidence = expertAnalyses.reduce((sum, e) => sum + e.confidence, 0) / expertAnalyses.length
+// Check additional experts if available
+if (agentCount >= 3) {
+  expert3 = expertAnalyses[2]
   
-  if avgConfidence > 0.7 {
-    // Strong agreement
-    result = {
-      type: "consensus",
-      confidence: avgConfidence,
-      message: "Experts agree on approach",
-      recommendation: expertAnalyses[0].analysis.recommendation,
-      supportingExperts: expertAnalyses.map(e => e.expert)
-    }
-  } else {
-    // Low confidence across the board
-    result = {
-      type: "uncertainty",
-      confidence: avgConfidence,
-      message: "Low confidence - more information needed",
-      analyses: expertAnalyses,
-      recommendation: "Gather more context or constraints"
+  // Check expert3 against expert1
+  if (expert3.confidence > 0.8 && expert1.confidence > 0.8) {
+    rec3 = expert3.result.recommendation
+    rec1 = expert1.result.recommendation
+    
+    if (rec3 != rec1 && hasDisagreement == false) {
+      hasDisagreement = true
+      disagreementDetails = "High-confidence disagreement between " + expert1.agentName + " and " + expert3.agentName
     }
   }
 }
 
-// Return orchestrated result with appropriate confidence
-result ~> result.confidence
+// Calculate consensus metrics
+totalConfidence = 0
+if (agentCount >= 1) {
+  totalConfidence = totalConfidence + expertAnalyses[0].confidence
+}
+if (agentCount >= 2) {
+  totalConfidence = totalConfidence + expertAnalyses[1].confidence
+}
+if (agentCount >= 3) {
+  totalConfidence = totalConfidence + expertAnalyses[2].confidence
+}
+if (agentCount >= 4) {
+  totalConfidence = totalConfidence + expertAnalyses[3].confidence
+}
+
+avgConfidence = agentCount > 0 ? totalConfidence / agentCount : 0
+
+// Determine consensus level
+if (avgConfidence > 0.8 && hasDisagreement == false) {
+  consensusLevel = "strong_consensus"
+} else if (avgConfidence > 0.6 && hasDisagreement == false) {
+  consensusLevel = "moderate_consensus"
+} else if (hasDisagreement) {
+  consensusLevel = "valuable_disagreement"
+} else {
+  consensusLevel = "weak_consensus"
+}
+
+// Build orchestration result
+result = {
+  consensusLevel: consensusLevel,
+  averageConfidence: avgConfidence,
+  hasDisagreement: hasDisagreement,
+  disagreementDetails: disagreementDetails,
+  expertCount: agentCount,
+  analyses: expertAnalyses,
+  recommendation: hasDisagreement ? 
+    "Multiple valid perspectives identified - review all expert analyses" :
+    expertAnalyses[0].result.recommendation
+}
+
+// Return with epistemic confidence
+// Lower confidence when there's valuable disagreement
+epistemicConfidence = hasDisagreement ? avgConfidence * 0.8 : avgConfidence
+result ~> epistemicConfidence
