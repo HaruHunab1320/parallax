@@ -8,8 +8,8 @@
  */
 
 // Define confidence threshold
-targetConfidence = input.minConfidence || 0.8
-maxTier = input.maxTier || 3
+targetConfidence = input.minConfidence ?? 0.8
+maxTier = input.maxTier ?? 3
 
 // Use pre-processed results where agents are already categorized by tier
 // Assuming agents are ordered by tier/quality in agentResults
@@ -102,7 +102,7 @@ if ((currentConfidence < targetConfidence) && (agentCount >= 3) && (maxTier >= 3
 }
 
 // Return final result with refinement history
-if (finalResult == null) {
+if (!finalResult) {
   finalResult = {
     value: result,
     confidence: currentConfidence,

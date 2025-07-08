@@ -7,7 +7,7 @@
  */
 
 // Default minimum confidence if not provided
-targetConfidence = input.minConfidence || 0.8
+targetConfidence = input.minConfidence ?? 0.8
 
 // Use pre-processed agent results (already sorted by confidence)
 cascadeResults = agentResults
@@ -34,7 +34,7 @@ if (agentCount >= 1) {
 }
 
 // Check second agent if needed
-if (targetAchieved == false && agentCount >= 2) {
+if (!targetAchieved && agentCount >= 2) {
   agent2Result = cascadeResults[1]
   attempts = attempts + 1
   
@@ -49,7 +49,7 @@ if (targetAchieved == false && agentCount >= 2) {
 }
 
 // Check third agent if still needed
-if (targetAchieved == false && agentCount >= 3) {
+if (!targetAchieved && agentCount >= 3) {
   agent3Result = cascadeResults[2]
   attempts = attempts + 1
   
@@ -83,16 +83,16 @@ if (targetAchieved) {
   cascadeRecommendation = "Manual review recommended"
 }
 
-// Build confidence progression array
+// Build confidence progression array using spread operator
 confidenceProgression = []
 if (agentCount >= 1) {
-  confidenceProgression = [cascadeResults[0].confidence]
+  confidenceProgression = [...confidenceProgression, cascadeResults[0].confidence]
 }
 if (agentCount >= 2) {
-  confidenceProgression = [cascadeResults[0].confidence, cascadeResults[1].confidence]
+  confidenceProgression = [...confidenceProgression, cascadeResults[1].confidence]
 }
 if (agentCount >= 3) {
-  confidenceProgression = [cascadeResults[0].confidence, cascadeResults[1].confidence, cascadeResults[2].confidence]
+  confidenceProgression = [...confidenceProgression, cascadeResults[2].confidence]
 }
 
 // Build cascade result with metadata

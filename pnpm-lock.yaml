@@ -430,8 +430,8 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       prism-uncertainty:
-        specifier: ^1.0.11
-        version: 1.0.11
+        specifier: ^1.0.16
+        version: 1.0.16
       prom-client:
         specifier: ^15.1.0
         version: 15.1.3
@@ -538,8 +538,8 @@ importers:
         specifier: ^9.5.0
         version: 9.7.0
       prism-uncertainty:
-        specifier: ^1.0.10
-        version: 1.0.11
+        specifier: ^1.0.16
+        version: 1.0.16
     devDependencies:
       '@types/node':
         specifier: ^22.14.1
@@ -5348,8 +5348,8 @@ packages:
     resolution: {integrity: sha512-Pdlw/oPxN+aXdmM9R00JVC9WVFoCLTKJvDVLgmJ+qAffBMxsV85l/Lu7sNx4zSzPyoL2euImuEwHhOXdEgNFZQ==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
 
-  prism-uncertainty@1.0.11:
-    resolution: {integrity: sha512-M4sPEOcAIhVGQC+BVUgxL0F7c3KFhztgCA8N0urWLcGj/1YlzZHCqvHnj9lIg5LUXiL9K+Rlxtek3zFXWke1kw==}
+  prism-uncertainty@1.0.16:
+    resolution: {integrity: sha512-p7MJy7gcfj8QOB0KC2bxdpG6ZwfK9V6Bciy38Osl5SwMXDl8ajuLUrqIGzPvOHLfPNdqvBkwJAuUTosJWuXI6A==}
     hasBin: true
 
   process-warning@5.0.0:
@@ -11689,7 +11689,7 @@ snapshots:
       ansi-styles: 5.2.0
       react-is: 18.3.1
 
-  prism-uncertainty@1.0.11:
+  prism-uncertainty@1.0.16:
     dependencies:
       '@types/node-fetch': 2.6.12
       dotenv: 16.5.0

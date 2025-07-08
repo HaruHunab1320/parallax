@@ -8,7 +8,7 @@
  */
 
 // Get routing strategy
-strategy = input.strategy || "weighted"
+strategy = input.strategy ?? "weighted"
 
 // Use pre-processed agent results for load balancing
 balancedResults = agentResults

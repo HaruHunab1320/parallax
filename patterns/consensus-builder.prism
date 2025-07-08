@@ -11,47 +11,13 @@
 results = agentResults
 successCount = successfulResults.length
 
-// Calculate weighted consensus
-totalWeight = 0
-totalWeightedConfidence = 0
-highConfidenceCount = 0
+// Calculate weighted consensus using array methods
+totalWeight = results.reduce((sum, r) => sum + (r?.expertise ?? 0), 0)
+totalWeightedConfidence = results.reduce((sum, r) => sum + ((r?.confidence ?? 0) * (r?.expertise ?? 0)), 0)
 
-// Manual aggregation since we can't loop
-if (successCount >= 1) {
-  r1 = results[0]
-  totalWeight = totalWeight + r1.expertise
-  totalWeightedConfidence = totalWeightedConfidence + (r1.confidence * r1.expertise)
-  if (r1.confidence > 0.8) {
-    highConfidenceCount = highConfidenceCount + 1
-  }
-}
-
-if (successCount >= 2) {
-  r2 = results[1]
-  totalWeight = totalWeight + r2.expertise
-  totalWeightedConfidence = totalWeightedConfidence + (r2.confidence * r2.expertise)
-  if (r2.confidence > 0.8) {
-    highConfidenceCount = highConfidenceCount + 1
-  }
-}
-
-if (successCount >= 3) {
-  r3 = results[2]
-  totalWeight = totalWeight + r3.expertise
-  totalWeightedConfidence = totalWeightedConfidence + (r3.confidence * r3.expertise)
-  if (r3.confidence > 0.8) {
-    highConfidenceCount = highConfidenceCount + 1
-  }
-}
-
-if (successCount >= 4) {
-  r4 = results[3]
-  totalWeight = totalWeight + r4.expertise
-  totalWeightedConfidence = totalWeightedConfidence + (r4.confidence * r4.expertise)
-  if (r4.confidence > 0.8) {
-    highConfidenceCount = highConfidenceCount + 1
-  }
-}
+// Count high confidence results
+highConfidenceResults = results.filter(r => (r?.confidence ?? 0) > 0.8)
+highConfidenceCount = highConfidenceResults.length
 
 // Calculate consensus confidence
 consensusConfidence = totalWeight > 0 ? totalWeightedConfidence / totalWeight : 0
@@ -71,8 +37,11 @@ if (highConfidenceCount >= 3 && consensusConfidence > 0.8) {
 }
 
 // Get top recommendation (from highest confidence result)
-topResult = successCount > 0 ? results[0] : {result: {recommendation: "No recommendation available"}}
-recommendation = topResult.result.recommendation
+topResult = results.reduce((best, current) => 
+  !current ? best : (!best || (best?.confidence ?? 0) < current.confidence ? current : best),
+  {result: {recommendation: "No recommendation available"}, confidence: 0}
+)
+recommendation = topResult?.result?.recommendation ?? "No recommendation available"
 
 // Build final result
 finalResult = {

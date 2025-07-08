@@ -10,51 +10,13 @@
 // Use pre-processed agent results for robust analysis
 analysisResults = agentResults
 
-// Calculate various robustness metrics
-totalConfidence = 0
-highConfidenceCount = 0
-lowConfidenceCount = 0
+// Calculate various robustness metrics using array methods
+totalConfidence = analysisResults.reduce((sum, r) => sum + r.confidence, 0)
+highConfidenceResults = analysisResults.filter(r => r.confidence > 0.8)
+lowConfidenceResults = analysisResults.filter(r => r.confidence < 0.5)
 
-// Check confidence levels
-if (agentCount >= 1) {
-  conf1 = analysisResults[0].confidence
-  totalConfidence = totalConfidence + conf1
-  if (conf1 > 0.8) {
-    highConfidenceCount = highConfidenceCount + 1
-  } else if (conf1 < 0.5) {
-    lowConfidenceCount = lowConfidenceCount + 1
-  }
-}
-
-if (agentCount >= 2) {
-  conf2 = analysisResults[1].confidence
-  totalConfidence = totalConfidence + conf2
-  if (conf2 > 0.8) {
-    highConfidenceCount = highConfidenceCount + 1
-  } else if (conf2 < 0.5) {
-    lowConfidenceCount = lowConfidenceCount + 1
-  }
-}
-
-if (agentCount >= 3) {
-  conf3 = analysisResults[2].confidence
-  totalConfidence = totalConfidence + conf3
-  if (conf3 > 0.8) {
-    highConfidenceCount = highConfidenceCount + 1
-  } else if (conf3 < 0.5) {
-    lowConfidenceCount = lowConfidenceCount + 1
-  }
-}
-
-if (agentCount >= 4) {
-  conf4 = analysisResults[3].confidence
-  totalConfidence = totalConfidence + conf4
-  if (conf4 > 0.8) {
-    highConfidenceCount = highConfidenceCount + 1
-  } else if (conf4 < 0.5) {
-    lowConfidenceCount = lowConfidenceCount + 1
-  }
-}
+highConfidenceCount = highConfidenceResults.length
+lowConfidenceCount = lowConfidenceResults.length
 
 avgConfidence = agentCount > 0 ? totalConfidence / agentCount : 0
 
@@ -77,18 +39,11 @@ if (highConfidenceCount >= 3 && avgConfidence > 0.75) {
 }
 
 // Select best result based on strategy
-bestResult = null
-if (strategy == "consensus_based" || strategy == "majority_based") {
-  // Use highest confidence result
-  bestResult = analysisResults[0]  // Assuming sorted by confidence
-} else {
-  // For uncertainty cases, prefer middle-ground results
-  if (agentCount >= 2) {
-    bestResult = analysisResults[1]
-  } else {
-    bestResult = analysisResults[0]
-  }
-}
+// Get the highest confidence result using reduce
+bestResult = agentCount > 0 ? analysisResults.reduce((best, current) => 
+  !current ? best : (!best || current.confidence > (best?.confidence ?? 0) ? current : best), 
+  null
+) : null
 
 // Build robust analysis result
 result = {
@@ -98,8 +53,8 @@ result = {
   highConfidenceCount: highConfidenceCount,
   lowConfidenceCount: lowConfidenceCount,
   totalAgents: agentCount,
-  selectedResult: bestResult ? bestResult.result : null,
-  recommendation: bestResult ? bestResult.result.recommendation : "Insufficient data for robust analysis",
+  selectedResult: bestResult?.result ?? null,
+  recommendation: bestResult?.result?.recommendation ?? "Insufficient data for robust analysis",
   analysisInsights: {
     consensusStrength: highConfidenceCount >= 3 ? "strong" : (highConfidenceCount >= 2 ? "moderate" : "weak"),
     uncertaintyLevel: lowConfidenceCount >= 2 ? "high" : (lowConfidenceCount >= 1 ? "moderate" : "low"),

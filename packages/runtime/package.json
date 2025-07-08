@@ -13,7 +13,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "prism-uncertainty": "^1.0.10",
+    "prism-uncertainty": "^1.0.16",
     "@grpc/grpc-js": "^1.12.4",
     "@parallax/proto": "workspace:*",
     "@parallax/security": "workspace:*",

@@ -8,7 +8,7 @@
  */
 
 // Configuration
-consensusThreshold = input.consensusThreshold || 0.6
+consensusThreshold = input.consensusThreshold ?? 0.6
 highConfidenceThreshold = 0.8
 
 // Use pre-processed parallel results
@@ -65,7 +65,7 @@ if (agentCount >= 2) {
 }
 
 // Determine exploration strategy
-explorationNeeded = highConfidenceCount >= 2 && hasConsensus == false
+explorationNeeded = highConfidenceCount >= 2 && !hasConsensus
 explorationStrategy = ""
 
 if (explorationNeeded) {
@@ -91,7 +91,7 @@ result = {
       parallelResults[0].result.recommendation :
       "Low consensus - additional analysis recommended"),
   insights: {
-    divergentThinking: highConfidenceCount >= 2 && hasConsensus == false,
+    divergentThinking: highConfidenceCount >= 2 && !hasConsensus,
     strongAgreement: hasConsensus && avgConfidence > 0.8,
     uncertaintyPresent: avgConfidence < consensusThreshold
   }

@@ -11,10 +11,10 @@ results = agentResults
 count = agentCount
 // Note: 'agents' is renamed to 'agentList' to avoid Prism reserved word
 
-// Calculate average confidence
-conf1 = results[0].confidence
-conf2 = results[1].confidence
-avgConfidence = (conf1 + conf2) / 2
+// Calculate average confidence using reduce
+totalConfidence = results.reduce((sum, r) => sum + r.confidence, 0)
+resultsLength = results.length
+avgConfidence = resultsLength > 0 ? totalConfidence / resultsLength : 0
 
 // Determine consensus - declare status outside if block
 status = ""
@@ -29,16 +29,16 @@ result = {
   status: status,
   confidence: avgConfidence,
   agentCount: count,
-  agent1: {
+  agent1: count >= 1 ? {
     name: results[0].agentName,
-    confidence: conf1,
+    confidence: results[0].confidence,
     result: results[0].result
-  },
-  agent2: {
+  } : null,
+  agent2: count >= 2 ? {
     name: results[1].agentName, 
-    confidence: conf2,
+    confidence: results[1].confidence,
     result: results[1].result
-  }
+  } : null
 }
 
 // Return with confidence

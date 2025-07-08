@@ -8,7 +8,7 @@
  */
 
 // Configuration
-chunkSize = input.chunkSize || 3
+chunkSize = input.chunkSize ?? 3
 minMapConfidence = 0.7
 
 // Use pre-processed map-reduce results

@@ -16,38 +16,42 @@ routingStrategy = ""
 selectedAgent = null
 reason = ""
 
-// Route based on uncertainty levels - use simple if/else instead of uncertain if
-if (assessmentConfidence < 0.3) {
-  // High uncertainty: Use most experienced agent
-  routingStrategy = "specialist_required"
-  reason = "High uncertainty detected - routing to specialist"
-  
-  // Select the agent with highest expertise
-  if (agentCount >= 1) {
-    selectedAgent = agentList[0]  // Assuming agents are sorted by expertise
+// Use proper uncertain if syntax with confidence expression
+uncertain if (true ~> assessmentConfidence) {
+  high {
+    // High confidence (>= 80%): Can use generalist
+    routingStrategy = "generalist_sufficient"
+    reason = "High confidence - generalist can handle"
+    
+    // Select any available agent
+    if (agentCount >= 3) {
+      selectedAgent = agentList[2]
+    }
   }
-} else if (assessmentConfidence < 0.6) {
-  // Medium uncertainty: Use balanced approach
-  routingStrategy = "balanced_approach"
-  reason = "Moderate uncertainty - using balanced agent"
-  
-  // Select middle-tier agent
-  if (agentCount >= 2) {
-    selectedAgent = agentList[1]
+  medium {
+    // Medium confidence (50-80%): Use balanced approach
+    routingStrategy = "balanced_approach"
+    reason = "Moderate confidence - using balanced agent"
+    
+    // Select middle-tier agent
+    if (agentCount >= 2) {
+      selectedAgent = agentList[1]
+    }
   }
-} else {
-  // Low uncertainty: Can use generalist
-  routingStrategy = "generalist_sufficient"
-  reason = "Low uncertainty - generalist can handle"
-  
-  // Select any available agent
-  if (agentCount >= 3) {
-    selectedAgent = agentList[2]
+  low {
+    // Low confidence (< 50%): Use most experienced agent
+    routingStrategy = "specialist_required"
+    reason = "Low confidence detected - routing to specialist"
+    
+    // Select the agent with highest expertise
+    if (agentCount >= 1) {
+      selectedAgent = agentList[0]  // Assuming agents are sorted by expertise
+    }
   }
 }
 
 // Fallback if no agent selected
-if (selectedAgent == null && agentCount > 0) {
+if (!selectedAgent && agentCount > 0) {
   selectedAgent = agentList[0]
   reason = reason + " (fallback to first available)"
 }
@@ -74,7 +78,7 @@ result = {
   reason: reason,
   assessmentConfidence: assessmentConfidence,
   taskResult: taskResult,
-  uncertaintyHandling: assessmentConfidence < 0.6 ? 
+  uncertaintyHandling: assessmentConfidence < 0.5 ? 
     "Applied uncertainty-aware routing" : 
     "Standard routing applied"
 }

@@ -46,7 +46,7 @@ if (agentCount >= 3) {
     rec3 = expert3.result.recommendation
     rec1 = expert1.result.recommendation
     
-    if (rec3 != rec1 && hasDisagreement == false) {
+    if (rec3 != rec1 && !hasDisagreement) {
       hasDisagreement = true
       disagreementDetails = "High-confidence disagreement between " + expert1.agentName + " and " + expert3.agentName
     }
@@ -71,9 +71,9 @@ if (agentCount >= 4) {
 avgConfidence = agentCount > 0 ? totalConfidence / agentCount : 0
 
 // Determine consensus level
-if (avgConfidence > 0.8 && hasDisagreement == false) {
+if (avgConfidence > 0.8 && !hasDisagreement) {
   consensusLevel = "strong_consensus"
-} else if (avgConfidence > 0.6 && hasDisagreement == false) {
+} else if (avgConfidence > 0.6 && !hasDisagreement) {
   consensusLevel = "moderate_consensus"
 } else if (hasDisagreement) {
   consensusLevel = "valuable_disagreement"
