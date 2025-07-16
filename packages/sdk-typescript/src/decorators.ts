@@ -38,10 +38,11 @@ export function withConfidence(options: WithConfidenceOptions = {}) {
         confidence = options.extractConfidence(result);
       } else if (Array.isArray(result) && result.length === 2) {
         // Convention: [value, confidence]
-        return this.createResult(result[0], result[1]);
+        const [value, conf] = result;
+        return this.createResult(value, conf, value.reasoning, value.uncertainties);
       }
 
-      return this.createResult(result, confidence);
+      return this.createResult(result, confidence, result?.reasoning, result?.uncertainties);
     };
 
     return descriptor;

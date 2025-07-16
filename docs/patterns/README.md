@@ -4,6 +4,8 @@
 
 Coordination patterns in Parallax define how multiple AI agents work together to solve complex tasks. Unlike traditional orchestration, Parallax patterns embrace uncertainty and use confidence levels to make intelligent routing decisions.
 
+Following the [Orchestra Philosophy](../concepts/orchestra-philosophy.md), patterns act as "sheet music" that tells Parallax (the conductor) how to coordinate agents (the musicians) without requiring agents to communicate with each other directly.
+
 ## Core Patterns
 
 ### 1. Consensus Builder

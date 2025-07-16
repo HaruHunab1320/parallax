@@ -59,6 +59,20 @@ export abstract class ParallaxAgent {
     return { status: 'healthy' };
   }
 
+  /**
+   * Helper method to create standardized agent results
+   */
+  protected createResult<T>(value: T, confidence: number, reasoning?: string, uncertainties?: string[]): any {
+    return {
+      value,
+      confidence,
+      agent: this.id,
+      reasoning,
+      uncertainties,
+      timestamp: Date.now(),
+    };
+  }
+
   // gRPC service implementation
   async Analyze(
     _call: grpc.ServerUnaryCall<AgentRequest, ConfidenceResult>,
