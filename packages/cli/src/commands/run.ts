@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ParallaxClient } from '../utils/client';
+import { ParallaxHttpClient } from '../utils/http-client';
 
 export const runCommand = new Command('run')
   .description('Run a coordination pattern')
@@ -29,7 +29,7 @@ export const runCommand = new Command('run')
       }
       
       spinner.text = 'Connecting to Parallax...';
-      const client = new ParallaxClient();
+      const client = new ParallaxHttpClient();
       
       // Determine pattern name
       let patternName: string;
@@ -45,7 +45,9 @@ export const runCommand = new Command('run')
       
       // Execute pattern
       const startTime = Date.now();
-      const result = await client.executePattern(patternName, inputData);
+      const result = await client.executePattern(patternName, inputData, {
+        timeout: parseInt(options.timeout)
+      });
       const executionTime = Date.now() - startTime;
       
       spinner.succeed(chalk.green('Pattern executed successfully!'));
@@ -57,13 +59,13 @@ export const runCommand = new Command('run')
       console.log(chalk.white('Status: ') + chalk.green(result.status.toUpperCase()));
       console.log(chalk.white('Execution Time: ') + `${executionTime}ms`);
       
-      if (result.result && result.result.confidence !== undefined) {
-        console.log(chalk.white('Confidence: ') + chalk.yellow(result.result.confidence.toFixed(2)));
+      if (result.confidence !== undefined) {
+        console.log(chalk.white('Confidence: ') + chalk.yellow(result.confidence.toFixed(2)));
         
         // Check minimum confidence
         const minConfidence = parseFloat(options.minConfidence);
-        if (result.result.confidence < minConfidence) {
-          console.log(chalk.yellow(`\n⚠ Warning: Confidence ${result.result.confidence.toFixed(2)} is below threshold ${minConfidence}`));
+        if (result.confidence < minConfidence) {
+          console.log(chalk.yellow(`\n⚠ Warning: Confidence ${result.confidence.toFixed(2)} is below threshold ${minConfidence}`));
         }
       }
       

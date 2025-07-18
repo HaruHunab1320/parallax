@@ -1,0 +1,484 @@
+openapi: 3.0.3
+info:
+  title: Parallax Control Plane API
+  description: |
+    API for managing patterns, agents, and executions in the Parallax AI orchestration platform.
+    
+    ## Authentication
+    Currently no authentication required for development. Enterprise deployments will use API keys.
+    
+    ## WebSocket Support
+    Execution updates can be streamed via WebSocket at `ws://host:port/api/executions/stream?executionId={id}`
+  version: 0.1.0
+  contact:
+    name: Parallax Team
+    url: https://parallax.ai
+    email: api@parallax.ai
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://api.parallax.ai
+    description: Production server
+
+tags:
+  - name: patterns
+    description: Pattern management and execution
+  - name: agents
+    description: Agent discovery and management
+  - name: executions
+    description: Execution tracking and management
+  - name: health
+    description: Health and metrics endpoints
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Health check
+      description: Returns health status of the control plane
+      responses:
+        200:
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        503:
+          description: Service is unhealthy
+
+  /metrics:
+    get:
+      tags: [health]
+      summary: Prometheus metrics
+      description: Returns metrics in Prometheus format
+      responses:
+        200:
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/patterns:
+    get:
+      tags: [patterns]
+      summary: List all patterns
+      description: Returns all available coordination patterns
+      responses:
+        200:
+          description: List of patterns
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  patterns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PatternSummary'
+
+  /api/patterns/{name}:
+    get:
+      tags: [patterns]
+      summary: Get pattern details
+      description: Returns detailed information about a specific pattern
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Pattern name
+      responses:
+        200:
+          description: Pattern details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pattern'
+        404:
+          description: Pattern not found
+
+  /api/patterns/{name}/validate:
+    post:
+      tags: [patterns]
+      summary: Validate pattern input
+      description: Validates input against pattern requirements
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        200:
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  errors:
+                    type: array
+                    items:
+                      type: string
+
+  /api/patterns/{name}/execute:
+    post:
+      tags: [patterns]
+      summary: Execute pattern
+      description: Executes a pattern with the provided input
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+          description: Execution timeout in milliseconds
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        200:
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResult'
+        404:
+          description: Pattern not found
+        500:
+          description: Execution failed
+
+  /api/agents:
+    get:
+      tags: [agents]
+      summary: List all agents
+      description: Returns all registered agents
+      responses:
+        200:
+          description: List of agents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Agent'
+                  count:
+                    type: integer
+                  byCapability:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Agent'
+
+  /api/agents/{id}:
+    get:
+      tags: [agents]
+      summary: Get agent details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Agent details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentDetails'
+        404:
+          description: Agent not found
+
+  /api/agents/{id}/health:
+    get:
+      tags: [agents]
+      summary: Check agent health
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Agent is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentHealth'
+        503:
+          description: Agent is unhealthy
+
+  /api/agents/{id}/test:
+    post:
+      tags: [agents]
+      summary: Test agent
+      description: Tests an agent with sample input
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                task:
+                  type: string
+                  default: test
+                data:
+                  type: object
+      responses:
+        200:
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTestResult'
+
+  /api/executions:
+    get:
+      tags: [executions]
+      summary: List executions
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed, cancelled]
+      responses:
+        200:
+          description: List of executions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionList'
+
+    post:
+      tags: [executions]
+      summary: Create execution
+      description: Starts a new pattern execution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionRequest'
+      responses:
+        202:
+          description: Execution started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  executionId:
+                    type: string
+                  status:
+                    type: string
+                  links:
+                    type: object
+
+  /api/executions/{id}:
+    get:
+      tags: [executions]
+      summary: Get execution details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Execution details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Execution'
+        404:
+          description: Execution not found
+
+components:
+  schemas:
+    PatternSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        minAgents:
+          type: integer
+        maxAgents:
+          type: integer
+
+    Pattern:
+      allOf:
+        - $ref: '#/components/schemas/PatternSummary'
+        - type: object
+          properties:
+            input:
+              type: object
+            agents:
+              type: object
+            metadata:
+              type: object
+            script:
+              type: string
+
+    Agent:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        endpoint:
+          type: string
+        status:
+          type: string
+        lastSeen:
+          type: string
+          format: date-time
+
+    AgentDetails:
+      allOf:
+        - $ref: '#/components/schemas/Agent'
+        - type: object
+          properties:
+            capabilities:
+              type: array
+              items:
+                type: string
+            expertise:
+              type: object
+            metadata:
+              type: object
+
+    AgentHealth:
+      type: object
+      properties:
+        agentId:
+          type: string
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        uptime:
+          type: integer
+        lastCheck:
+          type: string
+          format: date-time
+
+    ExecutionRequest:
+      type: object
+      required:
+        - patternName
+        - input
+      properties:
+        patternName:
+          type: string
+        input:
+          type: object
+        options:
+          type: object
+          properties:
+            timeout:
+              type: integer
+            stream:
+              type: boolean
+
+    Execution:
+      type: object
+      properties:
+        id:
+          type: string
+        patternName:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        result:
+          type: object
+        error:
+          type: string
+        confidence:
+          type: number
+        metrics:
+          type: object
+        warnings:
+          type: array
+          items:
+            type: object
+
+    ExecutionList:
+      type: object
+      properties:
+        executions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Execution'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        checks:
+          type: object
+        timestamp:
+          type: string
+          format: date-time

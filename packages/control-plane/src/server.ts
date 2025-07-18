@@ -13,7 +13,9 @@ import { EtcdRegistry } from './registry';
 import { HealthCheckService, createHealthRouter } from './health/health-check';
 import { MetricsCollector } from './metrics/metrics-collector';
 import { initializeTracing, getTracingConfig } from '@parallax/telemetry';
+import { createPatternsRouter, createAgentsRouter, createExecutionsRouter, createExecutionWebSocketHandler } from './api';
 import path from 'path';
+import { createServer as createHttpServer } from 'http';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -83,59 +85,13 @@ export async function createServer(): Promise<express.Application> {
   app.get('/metrics', metrics.metricsHandler());
   
   // API Routes
-  app.get('/api/patterns', (_req, res) => {
-    const patterns = patternEngine.getPatterns();
-    res.json({
-      patterns: patterns.map(p => ({
-        name: p.name,
-        version: p.version,
-        description: p.description,
-        minAgents: p.minAgents
-      }))
-    });
-  });
+  const patternsRouter = createPatternsRouter(patternEngine, metrics, logger);
+  const agentsRouter = createAgentsRouter(registry, metrics, logger);
+  const executionsRouter = createExecutionsRouter(patternEngine, logger);
   
-  app.post('/api/patterns/:name/execute', async (req, res) => {
-    const { name } = req.params;
-    const endTimer = metrics.recordPatternStart(name);
-    
-    try {
-      const input = req.body;
-      
-      const result = await patternEngine.executePattern(name, input);
-      
-      // Record metrics
-      endTimer();
-      metrics.recordPatternResult(name, true, result.confidence);
-      
-      res.json(result);
-    } catch (error) {
-      endTimer();
-      metrics.recordPatternResult(name, false);
-      metrics.recordPatternError(name, error instanceof Error ? error.constructor.name : 'UnknownError');
-      
-      logger.error({ error }, 'Pattern execution failed');
-      res.status(500).json({
-        error: error instanceof Error ? error.message : 'Pattern execution failed'
-      });
-    }
-  });
-  
-  app.get('/api/agents', async (_req, res) => {
-    try {
-      const agents = await registry.listServices('agent');
-      
-      // Update metrics
-      metrics.updateActiveAgents('all', agents.length);
-      
-      res.json({ agents });
-    } catch (error) {
-      logger.error({ error }, 'Failed to list agents');
-      res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to list agents'
-      });
-    }
-  });
+  app.use('/api/patterns', patternsRouter);
+  app.use('/api/agents', agentsRouter);
+  app.use('/api/executions', executionsRouter);
   
   // Default route
   app.get('/', (_req, res) => {
@@ -146,7 +102,8 @@ export async function createServer(): Promise<express.Application> {
         health: '/health',
         metrics: '/metrics',
         patterns: '/api/patterns',
-        agents: '/api/agents'
+        agents: '/api/agents',
+        executions: '/api/executions'
       }
     });
   });
@@ -164,12 +121,20 @@ export async function createServer(): Promise<express.Application> {
   process.on('SIGINT', shutdown);
   
   const start = () => {
-    app.listen(port, () => {
+    const server = createHttpServer(app);
+    
+    // Set up WebSocket handler for execution streaming
+    createExecutionWebSocketHandler(server, executionsRouter, logger);
+    
+    server.listen(port, () => {
       logger.info(`Control Plane listening on port ${port}`);
       logger.info(`Health check: http://localhost:${port}/health`);
       logger.info(`API: http://localhost:${port}/api`);
+      logger.info(`WebSocket: ws://localhost:${port}/api/executions/stream`);
       logger.info(`Tracing: ${tracingConfig.exporterType === 'none' ? 'Disabled' : 'Enabled'}`);
     });
+    
+    return server;
   };
   
   return Object.assign(app, { start });

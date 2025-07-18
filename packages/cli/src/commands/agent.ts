@@ -3,14 +3,14 @@ import chalk from 'chalk';
 import { table } from 'table';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { ParallaxClient } from '../utils/client';
+import { ParallaxHttpClient } from '../utils/http-client';
 
 interface AgentInfo {
   id: string;
   name: string;
-  capabilities: string[];
+  capabilities?: string[];
   endpoint?: string;
-  available: boolean;
+  status: string;
 }
 
 export const agentCommand = new Command('agent')
@@ -25,7 +25,7 @@ agentCommand
     const spinner = ora('Fetching agents...').start();
     
     try {
-      const client = new ParallaxClient();
+      const client = new ParallaxHttpClient();
       const agents = await client.listAgents();
       
       spinner.stop();
@@ -35,7 +35,7 @@ agentCommand
       if (options.capabilities) {
         filteredAgents = agents.filter((agent: AgentInfo) => 
           options.capabilities.some((cap: string) => 
-            agent.capabilities.includes(cap)
+            agent.capabilities?.includes(cap)
           )
         );
       }
@@ -50,8 +50,8 @@ agentCommand
         ...filteredAgents.map((agent: AgentInfo) => [
           chalk.cyan(agent.id),
           agent.name,
-          agent.capabilities.join(', '),
-          agent.available ? chalk.green('●') : chalk.red('●'),
+          agent.capabilities?.join(', ') || '',
+          agent.status === 'healthy' ? chalk.green('●') : chalk.red('●'),
           chalk.gray(agent.endpoint || 'local')
         ])
       ];
@@ -72,14 +72,8 @@ agentCommand
     const spinner = ora('Fetching agent status...').start();
     
     try {
-      const client = new ParallaxClient();
+      const client = new ParallaxHttpClient();
       const agent = await client.getAgent(agentId);
-      
-      if (!agent) {
-        spinner.fail(chalk.red(`Agent ${agentId} not found`));
-        return;
-      }
-      
       const health = await client.getAgentHealth(agentId);
       
       spinner.stop();
@@ -87,8 +81,8 @@ agentCommand
       console.log(chalk.cyan(`\nAgent: ${agent.name}`));
       console.log(chalk.gray('─'.repeat(50)));
       console.log(chalk.white('ID: ') + agent.id);
-      console.log(chalk.white('Status: ') + (health.available ? chalk.green('Online') : chalk.red('Offline')));
-      console.log(chalk.white('Capabilities: ') + agent.capabilities.join(', '));
+      console.log(chalk.white('Status: ') + (health.status === 'healthy' ? chalk.green('Online') : chalk.red('Offline')));
+      console.log(chalk.white('Capabilities: ') + (agent.capabilities?.join(', ') || 'None'));
       if (agent.endpoint) {
         console.log(chalk.white('Endpoint: ') + agent.endpoint);
       }
@@ -124,7 +118,7 @@ agentCommand
     const spinner = ora('Sending request to agent...').start();
     
     try {
-      const client = new ParallaxClient();
+      const client = new ParallaxHttpClient();
       
       // Parse JSON data
       let data;
@@ -135,7 +129,8 @@ agentCommand
         return;
       }
       
-      const result = await client.testAgent(agentId, answers.task, data);
+      const testResult = await client.testAgent(agentId, answers.task, data);
+      const result = testResult.result;
       
       spinner.succeed('Agent responded');
       
