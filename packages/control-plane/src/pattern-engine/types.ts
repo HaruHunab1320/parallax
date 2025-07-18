@@ -32,6 +32,11 @@ export interface PatternExecution {
   error?: string;
   metrics?: ExecutionMetrics;
   confidence?: number;
+  warnings?: Array<{
+    type: string;
+    message: string;
+    upgrade_url?: string;
+  }>;
 }
 
 export interface ExecutionMetrics {

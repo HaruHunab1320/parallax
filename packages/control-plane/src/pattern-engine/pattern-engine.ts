@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { GrpcAgentProxy } from '@parallax/runtime';
 import { LocalAgentManager } from './local-agents';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
+import { LicenseEnforcer } from '../licensing/license-enforcer';
 
 export class PatternEngine {
   private loader: PatternLoader;
@@ -14,6 +15,8 @@ export class PatternEngine {
   private localAgentManager: LocalAgentManager;
   private localAgents: any[] = []; // Direct agent instances for demo
   private _calibrationService: ConfidenceCalibrationService;
+  private licenseEnforcer: LicenseEnforcer;
+  private currentExecutionId?: string;
   
   constructor(
     private runtimeManager: RuntimeManager,
@@ -24,6 +27,7 @@ export class PatternEngine {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
     this._calibrationService = new ConfidenceCalibrationService(logger);
+    this.licenseEnforcer = new LicenseEnforcer(logger);
   }
 
   async initialize(): Promise<void> {
@@ -48,6 +52,7 @@ export class PatternEngine {
     };
 
     this.executions.set(execution.id, execution);
+    this.currentExecutionId = execution.id;
 
     try {
       // Select agents based on pattern requirements
@@ -284,6 +289,8 @@ export class PatternEngine {
     if (pattern.maxAgents && agents.length > pattern.maxAgents) {
       agents = agents.slice(0, pattern.maxAgents);
     }
+
+    // No agent limits - all agents are available in open source
 
     return agents;
   }

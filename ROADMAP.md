@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document tracks remaining implementation tasks for the Parallax platform. Core functionality is complete - we have a working coordination engine, all 10 patterns, and TypeScript SDK. This roadmap focuses on completing the ecosystem.
+This document tracks remaining implementation tasks for the Parallax platform. Core functionality is complete - we have a working coordination engine, all 11+ patterns (including LLM integration), confidence propagation, and TypeScript SDK. This roadmap focuses on completing the ecosystem for production readiness.
 
 ## ✅ Recently Completed
 
@@ -29,7 +29,39 @@ This document tracks remaining implementation tasks for the Parallax platform. C
 - ✅ Added `/health/live` and `/health/ready` for k8s
 - ✅ Health check service implementation
 
+### Confidence & LLM Integration
+**Status**: COMPLETE ✅
+- ✅ Confidence propagation in runtime
+- ✅ Confidence calibration service
+- ✅ LLM integration patterns (cascade, refinement)
+- ✅ Automatic confidence in agent responses
+
+### License Enforcement
+**Status**: COMPLETE ✅  
+- ✅ License detection (open source vs enterprise)
+- ✅ Feature-based differentiation (no agent limits)
+- ✅ Enterprise feature checks
+
 ## 🚀 High Priority Tasks
+
+### 0. HTTP API Implementation
+**Status**: Not started  
+**Goal**: RESTful API for control plane
+
+- [ ] Pattern Management API
+  - [ ] GET /api/patterns - List patterns
+  - [ ] GET /api/patterns/:name - Get pattern details
+  - [ ] POST /api/patterns/:name/execute - Execute pattern
+  
+- [ ] Agent Management API  
+  - [ ] GET /api/agents - List agents
+  - [ ] GET /api/agents/:id - Get agent details
+  - [ ] GET /api/agents/:id/health - Agent health
+  
+- [ ] Execution API
+  - [ ] GET /api/executions - List executions
+  - [ ] GET /api/executions/:id - Get execution details
+  - [ ] WebSocket /api/executions/:id/stream - Stream updates
 
 ### 1. Testing Framework
 **Status**: Not started  
@@ -179,33 +211,50 @@ This document tracks remaining implementation tasks for the Parallax platform. C
   - [ ] Spring Boot integration
   - [ ] Reactive streams support
 
-### 9. Enterprise Features
-**Goal**: Enterprise adoption
+### 9. Enterprise Features (Infrastructure & Operations)
+**Goal**: Production-grade deployment and operations
+**Note**: Open source has unlimited agents - enterprise adds production infrastructure
 
-- [ ] Multi-Tenancy
-  - [ ] Tenant isolation
-  - [ ] Resource limits per tenant
-  - [ ] Billing integration
+- [ ] Kubernetes Native Deployment
+  - [ ] Operator for Parallax
+  - [ ] CRDs for patterns and agents
+  - [ ] Auto-scaling policies
+  - [ ] Multi-region support
   
-- [ ] Audit Logging
-  - [ ] Execution audit trail
-  - [ ] Compliance reporting
-  - [ ] Data retention policies
+- [ ] Persistence & State Management
+  - [ ] PostgreSQL/TimescaleDB integration
+  - [ ] Execution history storage
+  - [ ] Pattern versioning in DB
+  - [ ] State backup/restore
   
 - [ ] High Availability
   - [ ] Control plane clustering
-  - [ ] State replication
+  - [ ] Leader election
   - [ ] Automatic failover
+  - [ ] Zero-downtime upgrades
+  
+- [ ] Advanced Security
+  - [ ] mTLS everywhere
+  - [ ] RBAC with fine-grained permissions
+  - [ ] SSO/SAML integration
+  - [ ] Audit logging for compliance
+  
+- [ ] Multi-Tenancy
+  - [ ] Namespace isolation
+  - [ ] Resource quotas per team
+  - [ ] Usage tracking & billing
 
 ## 📋 Quick Wins
 
 These can be implemented quickly for immediate value:
 
 1. **GitHub Actions** - CI/CD pipeline
-2. **Docker Compose** - One-command local setup
+2. **Docker Compose** - One-command local setup  
 3. **VSCode Extension** - Prism syntax highlighting
 4. **Example Library** - More agent examples
 5. **Video Tutorials** - Getting started videos
+6. **Pattern Templates** - Starter templates for common use cases
+7. **Performance Benchmarks** - Show scalability metrics
 
 ## 📊 Success Metrics
 
@@ -251,9 +300,11 @@ Track progress with these key milestones:
 
 We've made tremendous progress:
 - ✅ Core platform working
-- ✅ All 10 patterns implemented
+- ✅ All 11+ patterns implemented (including LLM patterns)
+- ✅ Confidence propagation & calibration
 - ✅ TypeScript & Python SDKs
 - ✅ Full CLI implementation
 - ✅ Health monitoring
+- ✅ License enforcement (no agent limits)
 
-The foundation is solid - now we're building the ecosystem!
+The foundation is solid - now we're building the ecosystem for production!

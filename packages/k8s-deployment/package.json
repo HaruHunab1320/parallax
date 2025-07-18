@@ -1,0 +1,33 @@
+{
+  "name": "@parallax/k8s-deployment",
+  "version": "0.1.0",
+  "description": "Kubernetes deployment resources for Parallax platform",
+  "private": true,
+  "scripts": {
+    "lint:helm": "helm lint helm/parallax",
+    "package:helm": "helm package helm/parallax",
+    "template:helm": "helm template parallax helm/parallax",
+    "validate:crds": "kubectl --dry-run=client apply -f crds/",
+    "validate:examples": "kubectl --dry-run=client apply -f examples/",
+    "generate:docs": "helm-docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/parallax/parallax.git",
+    "directory": "packages/k8s-deployment"
+  },
+  "files": [
+    "helm/",
+    "crds/",
+    "examples/",
+    "operators/",
+    "README.md"
+  ],
+  "keywords": [
+    "parallax",
+    "kubernetes",
+    "helm",
+    "deployment",
+    "orchestration"
+  ]
+}

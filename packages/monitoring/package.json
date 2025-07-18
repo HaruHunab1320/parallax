@@ -1,0 +1,25 @@
+{
+  "name": "@parallax/monitoring",
+  "version": "0.1.0",
+  "description": "Monitoring and observability configurations for Parallax",
+  "private": true,
+  "scripts": {
+    "validate:dashboards": "node scripts/validate-dashboards.js",
+    "format:dashboards": "prettier --write 'grafana/dashboards/*.json'",
+    "start:local": "docker-compose -f docker-compose.monitoring.yml up",
+    "stop:local": "docker-compose -f docker-compose.monitoring.yml down",
+    "export:dashboards": "node scripts/export-dashboards.js"
+  },
+  "devDependencies": {
+    "prettier": "^3.0.0",
+    "ajv": "^8.0.0",
+    "js-yaml": "^4.1.0"
+  },
+  "files": [
+    "grafana/",
+    "prometheus/",
+    "jaeger/",
+    "docker-compose.monitoring.yml",
+    "README.md"
+  ]
+}
