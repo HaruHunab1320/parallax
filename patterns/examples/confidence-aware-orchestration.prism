@@ -1,0 +1,291 @@
+// Example patterns showcasing @prism-lang/confidence and @prism-lang/llm features
+
+// Pattern 1: Automatic Confidence Extraction
+pattern AutoConfidenceAnalysis {
+  input = {
+    task: "Analyze this code for security vulnerabilities",
+    code: "function auth(user) { return user.role === 'admin'; }"
+  }
+  
+  // Agent responses now include automatic confidence
+  agentResults = parallel([
+    securityAgent.analyze(input.code),
+    codeQualityAgent.analyze(input.code),
+    bestPracticesAgent.analyze(input.code)
+  ])
+  
+  // Extract confidence values automatically
+  confidences = agentResults.map(r => <~ r)
+  
+  // Use consistency-based confidence
+  consensusConfidence = confidence.from_consistency(agentResults)
+  
+  return {
+    results: agentResults,
+    individualConfidences: confidences,
+    consensusConfidence: consensusConfidence,
+    decision: consensusConfidence > 0.75 ? "proceed" : "review"
+  }
+}
+
+// Pattern 2: LLM-Augmented Decision Making
+pattern LLMMetaReasoner {
+  input = {
+    task: "Should we deploy this feature to production?",
+    agentOpinions: [
+      { agent: "security", opinion: "Has XSS vulnerability", confidence: 0.9 },
+      { agent: "performance", opinion: "Meets SLA requirements", confidence: 0.85 },
+      { agent: "testing", opinion: "Coverage only 65%", confidence: 0.95 }
+    ]
+  }
+  
+  // Check if agents disagree
+  opinions = input.agentOpinions.map(a => a.opinion)
+  consensus = confidence.from_consistency(opinions)
+  
+  if (consensus < 0.6) {
+    // Low consensus - use LLM to analyze disagreement
+    llmAnalysis = llm(
+      "Given these expert assessments about a production deployment:\n" +
+      input.agentOpinions.map(a => `${a.agent}: ${a.opinion} (confidence: ${a.confidence})`).join("\n") +
+      "\nProvide a balanced analysis and recommendation.",
+      {
+        model: "claude",
+        temperature: 0.3,
+        structured_output: true
+      }
+    )
+    
+    // LLM response includes confidence automatically
+    llmConfidence = <~ llmAnalysis
+    
+    return {
+      recommendation: llmAnalysis.value,
+      confidence: llmConfidence,
+      reasoning: "LLM meta-analysis due to agent disagreement",
+      consensus: consensus
+    }
+  }
+  
+  // High consensus - use agent opinions directly
+  return {
+    recommendation: opinions[0],
+    confidence: consensus,
+    reasoning: "High agent consensus",
+    consensus: consensus
+  }
+}
+
+// Pattern 3: Confidence Budget Pattern
+pattern BudgetedAnalysis {
+  input = {
+    task: "Comprehensive security audit",
+    minConfidence: 3.5,  // Total confidence needed
+    timeLimit: 5000      // milliseconds
+  }
+  
+  // Create confidence budget
+  budget = confidence.create_budget(min_total: input.minConfidence)
+  startTime = now()
+  
+  // Phase 1: Quick automated scans
+  quickScans = parallel([
+    staticAnalyzer.scan(input.task),
+    linter.analyze(input.task)
+  ])
+  budget.add(quickScans)
+  
+  // Check if we have enough confidence
+  if (!budget.met() && (now() - startTime) < input.timeLimit) {
+    // Phase 2: Deeper analysis
+    deepScans = parallel([
+      dynamicAnalyzer.test(input.task),
+      penetrationTester.probe(input.task)
+    ])
+    budget.add(deepScans)
+  }
+  
+  // Still need more confidence?
+  if (!budget.met() && (now() - startTime) < input.timeLimit) {
+    // Phase 3: LLM analysis
+    llmReview = llm(
+      "Perform a security audit of: " + input.task,
+      { model: "claude", temperature: 0.1 }
+    )
+    budget.add(llmReview)
+  }
+  
+  return {
+    results: budget.results(),
+    totalConfidence: budget.total(),
+    met: budget.met(),
+    timeElapsed: now() - startTime
+  }
+}
+
+// Pattern 4: Domain-Calibrated Confidence
+pattern CalibratedSecurityAssessment {
+  input = {
+    code: "SQL query construction code",
+    domain: "security",
+    severity_weights: {
+      critical: 1.2,
+      high: 1.0,
+      medium: 0.8,
+      low: 0.6
+    }
+  }
+  
+  // Get raw assessments
+  rawAssessments = parallel([
+    sqlInjectionDetector.analyze(input.code),
+    generalSecurityScanner.analyze(input.code),
+    codeReviewer.analyze(input.code)
+  ])
+  
+  // Apply domain-specific calibration
+  calibratedAssessments = rawAssessments.map(assessment => {
+    // Extract base confidence
+    baseConfidence = <~ assessment
+    
+    // Apply calibration based on domain expertise
+    calibratedConf = confidence.calibrate(baseConfidence, {
+      domain: input.domain,
+      agent: assessment.agent,
+      factor: assessment.severity ? input.severity_weights[assessment.severity] : 1.0
+    })
+    
+    // Return assessment with calibrated confidence
+    return assessment ~> calibratedConf
+  })
+  
+  return {
+    raw: rawAssessments,
+    calibrated: calibratedAssessments,
+    decision: makeSecurityDecision(calibratedAssessments)
+  }
+}
+
+// Pattern 5: Ensemble Confidence Combination
+pattern EnsembleDecisionMaker {
+  input = {
+    task: "Evaluate architectural change",
+    methods: ["consistency", "linguistic", "structured", "historical"]
+  }
+  
+  // Get base result
+  agentResults = parallel(architectureAgents.map(a => a.evaluate(input.task)))
+  
+  // Extract confidence using multiple methods
+  confidenceSignals = {
+    // Consistency across agents
+    consistency: confidence.from_consistency(agentResults),
+    
+    // Linguistic analysis of responses
+    linguistic: confidence.analyze_response(
+      agentResults.map(r => r.reasoning).join("\n"),
+      { check_hedging: true, check_certainty: true }
+    ),
+    
+    // Structured confidence from agents that provide it
+    structured: average(agentResults.filter(r => r.confidence).map(r => r.confidence)),
+    
+    // Historical accuracy of these agents on similar tasks
+    historical: confidence.get_calibration({
+      agents: agentResults.map(r => r.agent),
+      task_type: "architecture"
+    })
+  }
+  
+  // Combine all signals using ensemble
+  finalConfidence = confidence.ensemble(
+    confidenceSignals,
+    weights: [0.3, 0.2, 0.3, 0.2]  // Weights for each method
+  )
+  
+  return {
+    decision: synthesizeDecision(agentResults),
+    confidence: finalConfidence,
+    signals: confidenceSignals,
+    explanation: explainConfidence(confidenceSignals, finalConfidence)
+  }
+}
+
+// Pattern 6: Temporal Confidence with Cache
+pattern TemporalCachePattern {
+  input = {
+    query: "market analysis for product launch",
+    cache_duration: 3600,  // 1 hour
+    min_confidence: 0.6
+  }
+  
+  // Check cache with temporal decay
+  cached = cache.get(input.query)
+  
+  if (cached) {
+    age = now() - cached.timestamp
+    
+    // Apply temporal decay to confidence
+    currentConfidence = confidence.temporal_decay(
+      cached.confidence,
+      age,
+      half_life: input.cache_duration / 2
+    )
+    
+    if (currentConfidence >= input.min_confidence) {
+      return {
+        ...cached.result,
+        confidence: currentConfidence,
+        source: "cache",
+        age: age
+      }
+    }
+  }
+  
+  // Cache miss or confidence too low - get fresh data
+  freshResult = parallel([
+    marketAnalyst.analyze(input.query),
+    trendPredictor.forecast(input.query),
+    competitorAnalyzer.assess(input.query)
+  ])
+  
+  // Calculate fresh confidence
+  freshConfidence = confidence.from_consistency(freshResult)
+  
+  // Cache with confidence
+  cache.set(input.query, {
+    result: freshResult,
+    confidence: freshConfidence,
+    timestamp: now()
+  })
+  
+  return {
+    result: freshResult,
+    confidence: freshConfidence,
+    source: "fresh",
+    age: 0
+  }
+}
+
+// Helper functions (would be defined elsewhere)
+function average(numbers) {
+  return numbers.reduce((sum, n) => sum + n, 0) / numbers.length
+}
+
+function now() {
+  return Date.now()
+}
+
+function makeSecurityDecision(assessments) {
+  criticalIssues = assessments.filter(a => a.severity === "critical")
+  return criticalIssues.length > 0 ? "block" : "proceed"
+}
+
+function synthesizeDecision(results) {
+  // Aggregate results into a decision
+  return results[0].decision  // Simplified
+}
+
+function explainConfidence(signals, final) {
+  return `Final confidence ${final} based on: ${Object.entries(signals).map(([k,v]) => `${k}=${v}`).join(", ")}`
+}

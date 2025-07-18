@@ -1,0 +1,276 @@
+/**
+ * @name WebsiteBuilder
+ * @version 1.0.0
+ * @description Orchestrates multiple agents to build a complete website
+ * @input {"type": "object", "properties": {"companyType": {"type": "string"}, "style": {"type": "string"}, "features": {"type": "array"}}}
+ * @minAgents 10
+ */
+
+// Phase 1: Brand Foundation (Sequential - needs company identity first)
+brandingAgent = agents.find(a => a.capabilities.includes("branding"))
+brandIdentity = brandingAgent.analyze("Create brand identity", {
+  type: input.companyType ?? "Tech Startup",
+  style: input.style ?? "Modern and Professional",
+  targetAudience: input.targetAudience ?? "B2B Enterprise"
+})
+
+// Extract company details with confidence check
+uncertain if (brandIdentity) {
+  high {
+    companyName = brandIdentity.value.name
+    companyMission = brandIdentity.value.mission
+    brandGuidelines = brandIdentity.value.guidelines
+  }
+  medium {
+    // Regenerate with more specific prompt
+    brandIdentity = brandingAgent.analyze("Create brand identity", {
+      ...input,
+      examples: ["Stripe", "Notion", "Linear"]
+    })
+  }
+  low {
+    // Fallback to defaults
+    companyName = "TechCorp Solutions"
+    companyMission = "Innovation for tomorrow"
+    brandGuidelines = getDefaultGuidelines()
+  }
+}
+
+// Phase 2: Visual Assets (Parallel - can all work from brand identity)
+visualAgents = agents.filter(a => 
+  a.capabilities.includes("design") || 
+  a.capabilities.includes("visual") ||
+  a.capabilities.includes("ui")
+)
+
+visualAssets = parallel([
+  // Logo and brand assets
+  visualAgents[0].analyze("Create logo", {
+    company: companyName,
+    guidelines: brandGuidelines,
+    format: ["SVG", "PNG"],
+    variations: ["light", "dark", "icon-only"]
+  }),
+  
+  // Color palette and typography
+  visualAgents[1]?.analyze("Design system", {
+    brand: brandGuidelines,
+    components: ["colors", "typography", "spacing", "shadows"]
+  }) ?? getDefaultDesignSystem(),
+  
+  // Hero images and graphics
+  visualAgents[2]?.analyze("Create hero graphics", {
+    brand: brandIdentity.value,
+    pages: ["home", "about", "products"],
+    style: "Abstract tech illustrations"
+  }) ?? generatePlaceholderImages()
+])
+
+// Phase 3: Content Creation (Massive Parallel)
+contentAgents = agents.filter(a => 
+  a.capabilities.includes("writing") || 
+  a.capabilities.includes("content") ||
+  a.capabilities.includes("copy")
+)
+
+// All content can be written in parallel
+websiteContent = parallel([
+  // Homepage content
+  contentAgents[0].analyze("Write homepage", {
+    company: brandIdentity.value,
+    sections: ["hero", "features", "testimonials", "cta"],
+    tone: brandGuidelines.voice ?? "Professional yet approachable"
+  }),
+  
+  // About page
+  contentAgents[0].analyze("Write about page", {
+    company: brandIdentity.value,
+    sections: ["story", "mission", "team", "values"],
+    includeTimeline: true
+  }),
+  
+  // Product/Service pages
+  contentAgents[1]?.analyze("Write product pages", {
+    company: brandIdentity.value,
+    products: input.products ?? generateDefaultProducts(companyType),
+    featuresPerProduct: 5
+  }),
+  
+  // Blog posts for launch
+  contentAgents[2]?.analyze("Write blog posts", {
+    company: brandIdentity.value,
+    topics: [
+      "Welcome to " + companyName,
+      "Our mission to " + companyMission,
+      "Industry insights and trends"
+    ],
+    wordsPerPost: 800
+  }),
+  
+  // Legal pages
+  agents.find(a => a.capabilities.includes("legal"))?.analyze("Write legal pages", {
+    company: brandIdentity.value,
+    pages: ["privacy-policy", "terms-of-service", "cookie-policy"],
+    jurisdiction: input.jurisdiction ?? "Delaware, USA"
+  }) ?? getBoilerplateLegal()
+])
+
+// Phase 4: Technical Implementation (Sequential then Parallel)
+// First, plan the architecture
+techLead = agents.find(a => a.capabilities.includes("architecture"))
+architecture = techLead.analyze("Design website architecture", {
+  content: websiteContent,
+  features: input.features ?? ["contact-form", "blog", "newsletter"],
+  scale: input.expectedTraffic ?? "medium"
+})
+
+// Then implement in parallel
+technicalAgents = agents.filter(a => 
+  a.capabilities.includes("frontend") ||
+  a.capabilities.includes("backend") ||
+  a.capabilities.includes("database") ||
+  a.capabilities.includes("devops")
+)
+
+implementation = parallel([
+  // Frontend development
+  technicalAgents.find(a => a.capabilities.includes("frontend")).analyze("Build frontend", {
+    framework: architecture.value.frontend ?? "Next.js",
+    design: visualAssets[1], // design system
+    content: websiteContent,
+    pages: architecture.value.pages,
+    responsive: true,
+    accessibility: "WCAG 2.1 AA"
+  }),
+  
+  // Backend API
+  technicalAgents.find(a => a.capabilities.includes("backend"))?.analyze("Build API", {
+    framework: architecture.value.backend ?? "Node.js + Express",
+    endpoints: extractRequiredEndpoints(input.features),
+    database: architecture.value.database ?? "PostgreSQL",
+    authentication: input.features?.includes("user-accounts")
+  }),
+  
+  // Database schema
+  technicalAgents.find(a => a.capabilities.includes("database"))?.analyze("Design database", {
+    features: input.features,
+    dataModels: extractDataModels(websiteContent, architecture)
+  }),
+  
+  // SEO optimization
+  agents.find(a => a.capabilities.includes("seo"))?.analyze("Optimize for SEO", {
+    content: websiteContent,
+    structure: architecture.value,
+    targetKeywords: extractKeywords(brandIdentity.value, input.companyType)
+  })
+])
+
+// Phase 5: Integration and Testing (Sequential)
+devopsAgent = agents.find(a => a.capabilities.includes("devops"))
+deployment = devopsAgent.analyze("Deploy website", {
+  frontend: implementation[0],
+  backend: implementation[1],
+  database: implementation[2],
+  platform: input.deploymentPlatform ?? "Vercel",
+  domain: generateDomain(companyName),
+  ssl: true,
+  cdn: true
+})
+
+// Phase 6: Quality Assurance (Parallel)
+qaResults = parallel([
+  // Accessibility testing
+  agents.find(a => a.capabilities.includes("accessibility"))?.analyze("Test accessibility", {
+    url: deployment.value.url,
+    standards: "WCAG 2.1"
+  }),
+  
+  // Performance testing
+  agents.find(a => a.capabilities.includes("performance"))?.analyze("Test performance", {
+    url: deployment.value.url,
+    metrics: ["LCP", "FID", "CLS"]
+  }),
+  
+  // Cross-browser testing
+  agents.find(a => a.capabilities.includes("testing"))?.analyze("Test compatibility", {
+    url: deployment.value.url,
+    browsers: ["Chrome", "Firefox", "Safari", "Edge"]
+  })
+])
+
+// Compile final result
+websiteQuality = aggregateQualityScores(qaResults)
+overallConfidence = calculateConfidence([
+  brandIdentity.confidence,
+  averageConfidence(visualAssets),
+  averageConfidence(websiteContent),
+  averageConfidence(implementation),
+  deployment.confidence,
+  websiteQuality
+])
+
+result = {
+  success: true,
+  website: {
+    url: deployment.value.url,
+    adminPanel: deployment.value.adminUrl,
+    staging: deployment.value.stagingUrl
+  },
+  company: {
+    name: companyName,
+    brand: brandIdentity.value,
+    assets: {
+      logo: visualAssets[0].value.files,
+      designSystem: visualAssets[1].value
+    }
+  },
+  content: {
+    pages: websiteContent.length,
+    blogPosts: websiteContent[3]?.value.posts ?? [],
+    totalWords: countWords(websiteContent)
+  },
+  technical: {
+    frontend: implementation[0].value.technology,
+    backend: implementation[1]?.value.technology ?? "Static",
+    hosting: deployment.value.platform,
+    performance: qaResults[1]?.value.scores
+  },
+  timeline: {
+    total: calculateTotalTime(),
+    phases: {
+      branding: "5 minutes",
+      design: "10 minutes",
+      content: "15 minutes",
+      development: "20 minutes",
+      deployment: "5 minutes",
+      testing: "5 minutes"
+    }
+  },
+  confidence: overallConfidence,
+  recommendations: generateRecommendations(qaResults, websiteQuality)
+}
+
+// Return with overall confidence
+result ~> overallConfidence
+
+// Helper functions (these would be built into Parallax)
+function extractRequiredEndpoints(features) {
+  endpoints = []
+  if (features.includes("contact-form")) endpoints.push("/api/contact")
+  if (features.includes("newsletter")) endpoints.push("/api/subscribe")
+  if (features.includes("blog")) endpoints.push("/api/posts")
+  return endpoints
+}
+
+function generateDefaultProducts(companyType) {
+  if (companyType == "SaaS") {
+    return ["Starter Plan", "Professional Plan", "Enterprise Plan"]
+  } else if (companyType == "Consulting") {
+    return ["Strategy Consulting", "Implementation", "Training"]
+  }
+  return ["Product One", "Product Two", "Product Three"]
+}
+
+function calculateConfidence(confidences) {
+  return confidences.reduce((sum, c) => sum + c, 0) / confidences.length
+}

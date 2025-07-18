@@ -15,7 +15,9 @@
   },
   "dependencies": {
     "@parallax/runtime": "workspace:*",
-    "prism-uncertainty": "^1.0.16",
+    "@prism-lang/core": "^1.0.25",
+    "@prism-lang/confidence": "^0.1.3",
+    "@prism-lang/llm": "^1.0.3",
     "etcd3": "^1.1.2",
     "node-cache": "^5.1.2",
     "pino": "^9.5.0",
