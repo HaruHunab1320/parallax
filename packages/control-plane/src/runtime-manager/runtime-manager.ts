@@ -152,6 +152,11 @@ export class RuntimeManager {
   ): Promise<any> {
     try {
       const { runPrism } = require('@prism-lang/core');
+      
+      // Check if we need enhanced runtime with utilities
+      if (this.needsEnhancedRuntime(script)) {
+        return await this.runWithEnhancedRuntime(script, instance);
+      }
 
       // Debug: write to file to examine
       try {
@@ -161,7 +166,7 @@ export class RuntimeManager {
         // ignore
       }
 
-      // Use the simplified runPrism API
+      // Use the simplified runPrism API for simple cases
       const result = await runPrism(script);
 
       // Extract confidence if available
@@ -216,5 +221,96 @@ export class RuntimeManager {
 
   async shutdown(): Promise<void> {
     await this.pool.shutdown();
+  }
+
+  private needsEnhancedRuntime(script: string): boolean {
+    // Check if script uses advanced features that need enhanced runtime
+    return script.includes('confidence.') || 
+           script.includes('llm(') ||
+           script.includes('average(') ||
+           script.includes('now()') ||
+           script.includes('synthesize');
+  }
+
+  private async runWithEnhancedRuntime(
+    script: string,
+    _instance: RuntimeInstance
+  ): Promise<any> {
+    const { createRuntime, parse } = require('@prism-lang/core');
+    
+    // Create runtime with utility globals
+    const runtime = createRuntime({
+      globals: {
+        // Confidence utilities (as data/config, not functions)
+        confidence: {
+          // These would return configuration objects that Prism interprets
+          from_consistency: (samples: any[]) => ({
+            type: 'consistency_check',
+            samples: samples,
+            method: 'statistical'
+          }),
+          create_budget: (config: any) => ({
+            type: 'confidence_budget',
+            min_total: config.min_total || 3.0,
+            items: [],
+            add: (_items: any[]) => { /* Prism handles this */ },
+            met: () => { /* Prism evaluates this */ }
+          })
+        },
+        
+        // Helper functions for patterns
+        average: (arr: any[]) => {
+          if (!Array.isArray(arr) || arr.length === 0) return 0;
+          const sum = arr.reduce((a, b) => {
+            const aVal = typeof a === 'object' && a._value !== undefined ? a._value : a;
+            const bVal = typeof b === 'object' && b._value !== undefined ? b._value : b;
+            return aVal + bVal;
+          }, 0);
+          return sum / arr.length;
+        },
+        
+        // Utility functions
+        now: () => Date.now(),
+        
+        // Synthesis helpers
+        synthesize: (results: any[]) => {
+          // Simple synthesis - could be made more sophisticated
+          if (!results || results.length === 0) return null;
+          
+          // Find highest confidence result
+          return results.reduce((best, current) => {
+            const bestConf = best.confidence || 0;
+            const currConf = current.confidence || 0;
+            return currConf > bestConf ? current : best;
+          });
+        },
+        
+        majorityVote: (results: any[]) => {
+          if (!results || results.length === 0) return null;
+          
+          // Group by value and count
+          const votes = new Map();
+          results.forEach(r => {
+            const key = JSON.stringify(r.value || r);
+            votes.set(key, (votes.get(key) || 0) + 1);
+          });
+          
+          // Find most common
+          let maxVotes = 0;
+          let winner = null;
+          votes.forEach((count, key) => {
+            if (count > maxVotes) {
+              maxVotes = count;
+              winner = JSON.parse(key);
+            }
+          });
+          
+          return winner;
+        }
+      }
+    });
+    
+    const ast = parse(script);
+    return await runtime.execute(ast);
   }
 }

@@ -1,0 +1,187 @@
+// LLM-Augmented Decision Pattern
+// This pattern demonstrates how LLM integration would work once configured
+// Note: Requires LLM provider configuration in runtime
+
+pattern LLMAugmentedDecision {
+  // Input parameters
+  task = input.task
+  agentResults = input.results
+  llmEnabled = input.useLLM ?? false
+  llmThreshold = input.llmThreshold ?? 0.6
+  
+  // Extract confidence and check consensus
+  confidences = agentResults.map(r => <~ r)
+  consensus = calculateConsensus(agentResults)
+  
+  // Determine if we need LLM augmentation
+  needsLLM = llmEnabled && consensus < llmThreshold
+  
+  // Decision logic
+  uncertain if (consensus) {
+    high {
+      // High consensus - trust agent results
+      decision = synthesize(agentResults)
+      reasoning = "High consensus among agents"
+      augmented = false
+    }
+    medium {
+      if (needsLLM) {
+        // Medium consensus with LLM available - get meta-analysis
+        // Note: This would call llm() function when available
+        llmAnalysis = mockLLMAnalysis(agentResults, task)
+        decision = llmAnalysis.recommendation
+        reasoning = "Medium consensus augmented with LLM analysis"
+        augmented = true
+      } else {
+        // Medium consensus without LLM
+        decision = weightedVote(agentResults, confidences)
+        reasoning = "Medium consensus using weighted voting"
+        augmented = false
+      }
+    }
+    low {
+      if (needsLLM) {
+        // Low consensus - strongly benefit from LLM
+        llmAnalysis = mockLLMAnalysis(agentResults, task)
+        decision = llmAnalysis.recommendation
+        reasoning = "Low consensus resolved through LLM meta-analysis"
+        augmented = true
+      } else {
+        // Low consensus without LLM - do our best
+        decision = conservativeDecision(agentResults)
+        reasoning = "Low consensus - taking conservative approach"
+        augmented = false
+      }
+    }
+  }
+  
+  // Return comprehensive result
+  {
+    decision: decision,
+    confidence: augmented ? 0.8 : consensus,
+    reasoning: reasoning,
+    consensus: consensus,
+    augmented: augmented,
+    agentCount: agentResults.length,
+    metadata: {
+      pattern: "LLMAugmentedDecision",
+      llmEnabled: llmEnabled,
+      threshold: llmThreshold
+    }
+  }
+}
+
+// Mock LLM analysis until real LLM integration is configured
+function mockLLMAnalysis(results, task) {
+  // This simulates what an LLM would return
+  // In real implementation, this would be:
+  // llm("Analyze these agent results and provide recommendation: " + formatResults(results))
+  
+  {
+    recommendation: "Based on analysis, proceed with caution",
+    confidence: 0.8,
+    keyInsights: [
+      "Agents show divergent opinions",
+      "Security concerns noted by multiple agents",
+      "Performance implications need consideration"
+    ],
+    synthesis: synthesize(results)
+  }
+}
+
+// Calculate consensus score
+function calculateConsensus(results) {
+  if (!results || results.length == 0) {
+    return 0.0
+  }
+  
+  if (results.length == 1) {
+    return <~ results[0]
+  }
+  
+  // Simple consensus based on confidence variance
+  confidences = results.map(r => <~ r)
+  avg = average(confidences)
+  
+  // Calculate variance
+  variance = 0
+  i = 0
+  while (i < confidences.length) {
+    diff = confidences[i] - avg
+    variance = variance + (diff * diff)
+    i = i + 1
+  }
+  variance = variance / confidences.length
+  
+  // Convert variance to consensus (lower variance = higher consensus)
+  consensus = 1.0 - (variance * 2)  // Scale factor of 2
+  return consensus > 0 ? consensus : 0.1
+}
+
+// Weighted voting based on confidence
+function weightedVote(results, weights) {
+  // Group by similar decisions
+  votes = {}
+  
+  i = 0
+  while (i < results.length) {
+    key = getDecisionKey(results[i])
+    currentWeight = votes[key] ?? 0
+    votes[key] = currentWeight + weights[i]
+    i = i + 1
+  }
+  
+  // Find highest weighted vote
+  return findBestVote(votes, results)
+}
+
+// Get a key for grouping similar decisions
+function getDecisionKey(result) {
+  if (result.decision) {
+    return result.decision
+  }
+  if (result.recommendation) {
+    return result.recommendation
+  }
+  return "default"
+}
+
+// Find the decision with highest weight
+function findBestVote(votes, results) {
+  // Simple implementation - return first result
+  // In practice would find the actual highest weighted decision
+  return results[0].value ?? results[0]
+}
+
+// Conservative decision for low consensus
+function conservativeDecision(results) {
+  // When consensus is low, be conservative
+  // Look for any blocking concerns
+  
+  i = 0
+  while (i < results.length) {
+    if (hasBlockingConcern(results[i])) {
+      return {
+        action: "block",
+        reason: "Critical concerns identified",
+        concern: results[i]
+      }
+    }
+    i = i + 1
+  }
+  
+  // No blockers - return most conservative positive result
+  return {
+    action: "proceed-with-caution",
+    reason: "No critical blockers but low consensus",
+    recommendation: synthesize(results)
+  }
+}
+
+// Check if result has blocking concerns
+function hasBlockingConcern(result) {
+  // Check for critical issues
+  return (result.severity && result.severity == "critical") ||
+         (result.risk && result.risk == "high") ||
+         (result.recommendation && result.recommendation == "block")
+}

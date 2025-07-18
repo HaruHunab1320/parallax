@@ -1,0 +1,197 @@
+// Confidence Budget Pattern
+// Demonstrates progressive analysis with confidence budget tracking
+
+pattern ConfidenceBudget {
+  // Input configuration
+  task = input.task
+  minConfidenceTotal = input.minConfidence ?? 3.0
+  maxAgents = input.maxAgents ?? 5
+  timeLimit = input.timeLimit ?? 5000
+  
+  // Initialize tracking
+  startTime = now()
+  agentsUsed = []
+  results = []
+  totalConfidence = 0
+  
+  // Phase 1: Fast, high-confidence agents
+  fastAgents = agentList.filter(a => 
+    a.capabilities && 
+    a.capabilities.includes("fast") && 
+    a.historicalConfidence > 0.8
+  )
+  
+  if (fastAgents.length > 0) {
+    fastResults = fastAgents.map(a => a.analyze(task))
+    results = [...results, ...fastResults]
+    agentsUsed = [...agentsUsed, ...fastAgents]
+    totalConfidence = sumConfidence(results)
+  }
+  
+  // Check if budget met
+  budgetMet = totalConfidence >= minConfidenceTotal
+  timeLimitReached = (now() - startTime) > timeLimit
+  
+  // Phase 2: Standard agents if needed
+  if (!budgetMet && !timeLimitReached && agentsUsed.length < maxAgents) {
+    standardAgents = agentList.filter(a => 
+      !agentsUsed.includes(a) &&
+      a.capabilities &&
+      a.historicalConfidence > 0.6
+    )
+    
+    // Take only what we need
+    agentsNeeded = maxAgents - agentsUsed.length
+    selectedAgents = standardAgents.slice(0, agentsNeeded)
+    
+    if (selectedAgents.length > 0) {
+      standardResults = selectedAgents.map(a => a.analyze(task))
+      results = [...results, ...standardResults]
+      agentsUsed = [...agentsUsed, ...selectedAgents]
+      totalConfidence = sumConfidence(results)
+    }
+  }
+  
+  // Re-check budget
+  budgetMet = totalConfidence >= minConfidenceTotal
+  timeLimitReached = (now() - startTime) > timeLimit
+  
+  // Phase 3: Expert agents as last resort
+  if (!budgetMet && !timeLimitReached && agentsUsed.length < maxAgents) {
+    expertAgents = agentList.filter(a => 
+      !agentsUsed.includes(a) &&
+      a.expertise > 0.85
+    )
+    
+    if (expertAgents.length > 0) {
+      // Expert agents are expensive, use sparingly
+      expertResult = expertAgents[0].analyze(task)
+      results = [...results, expertResult]
+      agentsUsed = [...agentsUsed, expertAgents[0]]
+      totalConfidence = sumConfidence(results)
+    }
+  }
+  
+  // Final budget check
+  budgetMet = totalConfidence >= minConfidenceTotal
+  
+  // Synthesize results based on budget status
+  uncertain if (budgetMet) {
+    high {
+      // Budget met with high confidence
+      finalResult = synthesize(results)
+      status = "budget-met"
+    }
+    medium {
+      // Budget barely met
+      finalResult = conservativeSynthesis(results)
+      status = "budget-marginal"
+    }
+    low {
+      // Budget not met but have some results
+      finalResult = bestEffortSynthesis(results)
+      status = "budget-insufficient"
+    }
+  }
+  
+  // Return comprehensive result
+  {
+    result: finalResult,
+    confidence: totalConfidence / results.length,  // Average confidence
+    budgetMet: budgetMet,
+    budgetStatus: status,
+    metrics: {
+      totalConfidence: totalConfidence,
+      targetConfidence: minConfidenceTotal,
+      agentsUsed: agentsUsed.length,
+      maxAgents: maxAgents,
+      timeElapsed: now() - startTime,
+      timeLimit: timeLimit,
+      phases: getPhases(agentsUsed)
+    },
+    analysis: results,
+    reasoning: explainBudgetDecision(budgetMet, totalConfidence, minConfidenceTotal)
+  }
+}
+
+// Sum confidence values from results
+function sumConfidence(results) {
+  if (!results || results.length == 0) {
+    return 0
+  }
+  
+  sum = 0
+  i = 0
+  while (i < results.length) {
+    conf = <~ results[i]
+    sum = sum + conf
+    i = i + 1
+  }
+  
+  return sum
+}
+
+// Conservative synthesis when budget barely met
+function conservativeSynthesis(results) {
+  // Use only high-confidence results
+  highConf = results.filter(r => (<~ r) > 0.8)
+  
+  if (highConf.length > 0) {
+    return synthesize(highConf)
+  }
+  
+  return synthesize(results)
+}
+
+// Best effort synthesis when budget not met
+function bestEffortSynthesis(results) {
+  if (!results || results.length == 0) {
+    return {
+      status: "insufficient-data",
+      recommendation: "Unable to provide confident recommendation"
+    }
+  }
+  
+  // Return result with caveats
+  best = synthesize(results)
+  return {
+    ...best,
+    caveat: "Low confidence due to insufficient analysis budget",
+    confidence: sumConfidence(results) / results.length
+  }
+}
+
+// Determine which phases were used
+function getPhases(agents) {
+  phases = []
+  
+  hasFast = agents.some(a => a.capabilities && a.capabilities.includes("fast"))
+  hasStandard = agents.some(a => a.historicalConfidence > 0.6 && a.historicalConfidence <= 0.8)
+  hasExpert = agents.some(a => a.expertise > 0.85)
+  
+  if (hasFast) {
+    phases = [...phases, "fast"]
+  }
+  if (hasStandard) {
+    phases = [...phases, "standard"]
+  }
+  if (hasExpert) {
+    phases = [...phases, "expert"]
+  }
+  
+  return phases
+}
+
+// Explain budget decision
+function explainBudgetDecision(met, total, target) {
+  if (met && total > target * 1.2) {
+    return "Confidence budget exceeded - high quality analysis achieved"
+  }
+  
+  if (met) {
+    return "Confidence budget met - sufficient analysis completed"
+  }
+  
+  percentAchieved = (total / target) * 100
+  return "Confidence budget not met - achieved " + percentAchieved + "% of target"
+}

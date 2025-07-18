@@ -6,12 +6,14 @@ import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import { GrpcAgentProxy } from '@parallax/runtime';
 import { LocalAgentManager } from './local-agents';
+import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 
 export class PatternEngine {
   private loader: PatternLoader;
   private executions: Map<string, PatternExecution> = new Map();
   private localAgentManager: LocalAgentManager;
   private localAgents: any[] = []; // Direct agent instances for demo
+  private _calibrationService: ConfidenceCalibrationService;
   
   constructor(
     private runtimeManager: RuntimeManager,
@@ -21,6 +23,7 @@ export class PatternEngine {
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
+    this._calibrationService = new ConfidenceCalibrationService(logger);
   }
 
   async initialize(): Promise<void> {
@@ -189,7 +192,7 @@ export class PatternEngine {
       // For test patterns, try running without context to isolate issues
       if (isTestPattern && pattern.name === 'TestEmpty') {
         this.logger.info('Running TestEmpty without context injection');
-        const result = await this.runtimeManager.executePrismScript(
+        await this.runtimeManager.executePrismScript(
           pattern.script,  // Just the raw script
           {}  // Empty context
         );
@@ -319,5 +322,12 @@ export class PatternEngine {
   registerLocalAgents(agents: any[]): void {
     this.localAgents = agents;
     this.logger.info(`Registered ${agents.length} local agents`);
+  }
+  
+  /**
+   * Get the calibration service for external use
+   */
+  getCalibrationService(): ConfidenceCalibrationService {
+    return this._calibrationService;
   }
 }

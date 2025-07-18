@@ -1,0 +1,139 @@
+// Enhanced consensus pattern using new confidence features
+// This pattern demonstrates confidence extraction, calibration, and synthesis
+
+pattern EnhancedConsensus {
+  // Input includes pre-computed agent results
+  agentResults = input.results
+  patternDomain = input.domain ?? "general"
+  minConsensus = input.minConsensus ?? 0.7
+  
+  // Extract confidence values using the new extraction operator
+  confidences = agentResults.map(r => <~ r)
+  
+  // Calculate various confidence metrics
+  avgConfidence = average(confidences)
+  minConfidence = confidences.reduce((min, c) => c < min ? c : min, 1.0)
+  maxConfidence = confidences.reduce((max, c) => c > max ? c : max, 0.0)
+  
+  // Measure consensus using consistency check
+  // Note: This would use the confidence.from_consistency in enhanced runtime
+  consensusScore = calculateConsensus(agentResults)
+  
+  // Decision logic based on multiple confidence signals
+  uncertain if (consensusScore) {
+    high {
+      // High consensus - use weighted average
+      result = weightedCombine(agentResults, confidences)
+      method = "weighted-consensus"
+    }
+    medium {
+      // Medium consensus - use majority vote with confidence threshold
+      highConfResults = agentResults.filter((r, i) => confidences[i] > 0.7)
+      result = highConfResults.length > 0 ? 
+               majorityVote(highConfResults) : 
+               synthesize(agentResults)
+      method = "filtered-majority"
+    }
+    low {
+      // Low consensus - need more sophisticated synthesis
+      result = synthesize(agentResults)
+      method = "synthesis"
+    }
+  }
+  
+  // Return enriched result with confidence metadata
+  {
+    decision: result,
+    confidence: consensusScore,
+    method: method,
+    metrics: {
+      avgConfidence: avgConfidence,
+      minConfidence: minConfidence,
+      maxConfidence: maxConfidence,
+      consensus: consensusScore,
+      agentCount: agentResults.length
+    },
+    reasoning: explainDecision(method, consensusScore, agentResults)
+  }
+}
+
+// Helper function to calculate consensus
+function calculateConsensus(results) {
+  // If results are similar, consensus is high
+  // This is a simplified version - in practice would use confidence.from_consistency
+  
+  if (!results || results.length == 0) {
+    return 0.0
+  }
+  
+  if (results.length == 1) {
+    return <~ results[0]
+  }
+  
+  // Compare results pairwise
+  agreements = 0
+  comparisons = 0
+  
+  i = 0
+  while (i < results.length - 1) {
+    j = i + 1
+    while (j < results.length) {
+      if (resultsAgree(results[i], results[j])) {
+        agreements = agreements + 1
+      }
+      comparisons = comparisons + 1
+      j = j + 1
+    }
+    i = i + 1
+  }
+  
+  consensusRatio = agreements / comparisons
+  return consensusRatio ~> 0.9  // High confidence in our consensus calculation
+}
+
+// Check if two results agree
+function resultsAgree(r1, r2) {
+  // Simplified agreement check
+  // In practice would be more sophisticated
+  return r1.recommendation == r2.recommendation || 
+         r1.decision == r2.decision ||
+         similarValues(r1.value, r2.value)
+}
+
+// Check if values are similar
+function similarValues(v1, v2) {
+  // Basic similarity check
+  return v1 == v2
+}
+
+// Weighted combination of results
+function weightedCombine(results, weights) {
+  // For now, return highest confidence result
+  // In enhanced version would do proper weighted combination
+  bestIndex = 0
+  bestConf = weights[0]
+  
+  i = 1
+  while (i < weights.length) {
+    if (weights[i] > bestConf) {
+      bestConf = weights[i]
+      bestIndex = i
+    }
+    i = i + 1
+  }
+  
+  return results[bestIndex].value ?? results[bestIndex]
+}
+
+// Explain the decision made
+function explainDecision(method, consensus, results) {
+  if (method == "weighted-consensus") {
+    return "High consensus among agents enabled weighted combination of results"
+  }
+  
+  if (method == "filtered-majority") {
+    return "Medium consensus - used majority vote among high-confidence results"
+  }
+  
+  return "Low consensus required synthesis across " + results.length + " different agent opinions"
+}

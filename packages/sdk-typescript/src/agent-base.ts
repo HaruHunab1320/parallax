@@ -1,4 +1,5 @@
 import * as grpc from '@grpc/grpc-js';
+import { AgentResponse, ensureConfidence } from './types/agent-response';
 
 // Temporarily define types here until proto generation is fixed
 export interface AgentRequest {
@@ -48,9 +49,9 @@ export abstract class ParallaxAgent {
 
   /**
    * Main analysis method that must be implemented by subclasses.
-   * Returns a tuple of [result, confidence].
+   * Returns a standardized AgentResponse with automatic confidence.
    */
-  abstract analyze(task: string, data?: any): Promise<[any, number]>;
+  abstract analyze(task: string, data?: any): Promise<AgentResponse>;
 
   /**
    * Optional: Override to provide custom health checking
@@ -62,15 +63,17 @@ export abstract class ParallaxAgent {
   /**
    * Helper method to create standardized agent results
    */
-  protected createResult<T>(value: T, confidence: number, reasoning?: string, uncertainties?: string[]): any {
-    return {
+  protected createResult<T>(value: T, confidence: number, reasoning?: string, uncertainties?: string[]): AgentResponse<T> {
+    return ensureConfidence({
       value,
       confidence,
       agent: this.id,
       reasoning,
       uncertainties,
-      timestamp: Date.now(),
-    };
+      metadata: {
+        timestamp: Date.now()
+      }
+    });
   }
 
   // gRPC service implementation
@@ -85,19 +88,19 @@ export abstract class ParallaxAgent {
       const task = ''; // request.getTaskDescription();
       
       // Call the agent's analyze method
-      const [result, confidence] = await this.analyze(
+      const agentResponse = await this.analyze(
         task,
         data
       );
 
       // Build response - placeholder until proto generation is fixed
       const response: ConfidenceResult = {
-        valueJson: JSON.stringify(result),
-        confidence: confidence,
+        valueJson: JSON.stringify(agentResponse.value),
+        confidence: agentResponse.confidence,
         agentId: this.id,
-        timestamp: Date.now(),
-        reasoning: result.reasoning || '',
-        uncertainties: result.uncertainties || []
+        timestamp: agentResponse.metadata?.timestamp || Date.now(),
+        reasoning: agentResponse.reasoning || '',
+        uncertainties: agentResponse.uncertainties || []
       };
 
       callback(null, response as any);

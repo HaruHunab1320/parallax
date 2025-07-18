@@ -1,5 +1,6 @@
 export * from './agent';
 export * from './agent-base';
+export * from './types';
 export { withConfidence, WithConfidenceOptions } from './decorators';
 export { 
   CoordinationPattern,
