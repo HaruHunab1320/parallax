@@ -1,0 +1,38 @@
+# Development Dockerfile with hot reload support
+FROM node:20-alpine
+
+# Install dependencies for native modules
+RUN apk add --no-cache libc6-compat python3 make g++ postgresql-client
+
+WORKDIR /app
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy workspace configuration
+COPY pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml ./
+
+# Copy package files
+COPY packages/control-plane/package.json packages/control-plane/
+COPY packages/runtime/package.json packages/runtime/
+COPY packages/telemetry/package.json packages/telemetry/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code (will be overridden by volume mount in dev)
+COPY packages ./packages
+
+# Generate Prisma client
+WORKDIR /app/packages/control-plane
+RUN npx prisma generate
+
+# Expose ports
+EXPOSE 8080 8081 9090
+
+# Set development environment
+ENV NODE_ENV=development
+
+# Use tsx for hot reload
+CMD ["pnpm", "dev"]

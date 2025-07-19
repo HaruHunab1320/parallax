@@ -1,0 +1,32 @@
+pattern test-pattern {
+  name = "test-pattern"
+  version = "1.0.0"
+  description = "Test pattern for unit tests"
+
+  input {
+    task: string
+    data?: any
+  }
+
+  agents {
+    capabilities = ["test", "analyze"]
+    min = 1
+  }
+
+  steps {
+    // Simple test execution
+    agents.forEach(agent => {
+      let result = agent.analyze(input.task, input.data)
+      return {
+        agent: agent.name,
+        result: result.value,
+        confidence: result.confidence
+      }
+    })
+  }
+
+  output {
+    results: steps.results
+    confidence: steps.results.map(r => r.confidence).reduce((a, b) => (a + b) / 2)
+  }
+}

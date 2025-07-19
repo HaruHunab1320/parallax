@@ -1,0 +1,142 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with TimescaleDB
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: parallax-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-parallax}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-parallax}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./prisma/migrations/0001_init_timescaledb.sql:/docker-entrypoint-initdb.d/0001_init_timescaledb.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-parallax}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - parallax-network
+
+  # etcd for service registry
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.11
+    container_name: parallax-etcd
+    restart: unless-stopped
+    environment:
+      ETCD_NAME: etcd0
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd:2380
+      ETCD_INITIAL_CLUSTER: etcd0=http://etcd:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: parallax-cluster
+    ports:
+      - "${ETCD_PORT:-2379}:2379"
+      - "2380:2380"
+    volumes:
+      - etcd_data:/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - parallax-network
+
+  # Control Plane
+  control-plane:
+    build:
+      context: ../../
+      dockerfile: packages/control-plane/Dockerfile
+    image: parallax/control-plane:${VERSION:-latest}
+    container_name: parallax-control-plane
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      etcd:
+        condition: service_healthy
+    environment:
+      # Server configuration
+      NODE_ENV: production
+      PORT: 8080
+      GRPC_PORT: 8081
+      METRICS_PORT: 9090
+      
+      # Database configuration
+      DATABASE_URL: postgresql://${POSTGRES_USER:-parallax}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-parallax}?schema=public
+      
+      # etcd configuration
+      ETCD_ENDPOINTS: http://etcd:2379
+      ETCD_PREFIX: ${ETCD_PREFIX:-/parallax}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      
+      # Authentication (optional)
+      AUTH_ENABLED: ${AUTH_ENABLED:-false}
+      JWT_SECRET: ${JWT_SECRET}
+      
+      # Pattern configuration
+      PATTERNS_DIR: /app/patterns
+      MAX_EXECUTION_TIME: ${MAX_EXECUTION_TIME:-300000}
+      
+      # Agent configuration
+      AGENT_HEARTBEAT_INTERVAL: ${AGENT_HEARTBEAT_INTERVAL:-30000}
+      AGENT_HEARTBEAT_TIMEOUT: ${AGENT_HEARTBEAT_TIMEOUT:-90000}
+    ports:
+      - "${API_PORT:-8080}:8080"
+      - "${GRPC_PORT:-8081}:8081"
+      - "${METRICS_PORT:-9090}:9090"
+    volumes:
+      - ./patterns:/app/patterns:ro
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - parallax-network
+    labels:
+      - "prometheus.io/scrape=true"
+      - "prometheus.io/port=9090"
+      - "prometheus.io/path=/metrics"
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: parallax-nginx
+    restart: unless-stopped
+    depends_on:
+      - control-plane
+    ports:
+      - "${NGINX_PORT:-80}:80"
+      - "${NGINX_SSL_PORT:-443}:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - parallax-network
+    profiles:
+      - with-proxy
+
+volumes:
+  postgres_data:
+    driver: local
+  etcd_data:
+    driver: local
+
+networks:
+  parallax-network:
+    driver: bridge
+    name: parallax-network
