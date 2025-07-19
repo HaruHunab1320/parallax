@@ -1,0 +1,155 @@
+{{- if .Values.rbac.create }}
+---
+# ServiceAccount for Control Plane
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "parallax.fullname" . }}-control-plane
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+{{- with .Values.controlPlane.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+
+---
+# Role for Control Plane
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "parallax.fullname" . }}-control-plane
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+rules:
+  # Allow reading ConfigMaps for pattern definitions
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  # Allow reading Secrets for credentials
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  # Allow updating ConfigMaps for state storage
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["{{ include "parallax.fullname" . }}-state"]
+    verbs: ["update", "patch"]
+  # Allow reading pods for agent discovery
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Allow reading services and endpoints
+  - apiGroups: [""]
+    resources: ["services", "endpoints"]
+    verbs: ["get", "list", "watch"]
+
+---
+# RoleBinding for Control Plane
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "parallax.fullname" . }}-control-plane
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "parallax.fullname" . }}-control-plane
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "parallax.fullname" . }}-control-plane
+    namespace: {{ include "parallax.namespace" . }}
+
+{{- if .Values.operator.enabled }}
+---
+# ServiceAccount for Operator
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "parallax.fullname" . }}-operator
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: operator
+
+---
+# ClusterRole for Operator
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "parallax.fullname" . }}-operator
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: operator
+rules:
+  # Manage Parallax CRDs
+  - apiGroups: ["pattern.parallax.io", "agent.parallax.io", "execution.parallax.io"]
+    resources: ["patterns", "parallaxagents", "patternexecutions"]
+    verbs: ["*"]
+  # Read namespaces
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+  # Manage deployments for agents
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["*"]
+  # Manage services for agents
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["*"]
+  # Manage pods
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  # Events
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  # ConfigMaps and Secrets for agent configuration
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+# ClusterRoleBinding for Operator
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "parallax.fullname" . }}-operator
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "parallax.fullname" . }}-operator
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "parallax.fullname" . }}-operator
+    namespace: {{ include "parallax.namespace" . }}
+{{- end }}
+
+{{- if .Values.monitoring.prometheus.enabled }}
+---
+# Role for Prometheus scraping
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "parallax.fullname" . }}-prometheus
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods"]
+    verbs: ["get", "list", "watch"]
+{{- end }}
+{{- end }}

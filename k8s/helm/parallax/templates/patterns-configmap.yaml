@@ -1,0 +1,15 @@
+{{- if .Values.controlPlane.patterns.defaultPatterns }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.controlPlane.patterns.configMap | default (printf "%s-patterns" (include "parallax.fullname" .)) }}
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: patterns
+data:
+  {{- range $name, $content := .Values.controlPlane.patterns.defaultPatterns }}
+  {{ $name }}: |
+{{ $content | indent 4 }}
+  {{- end }}
+{{- end }}

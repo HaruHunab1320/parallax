@@ -1,0 +1,160 @@
+# Production deployment values
+# High availability, persistence, security enabled
+
+global:
+  storageClass: fast-ssd
+
+rbac:
+  create: true
+
+controlPlane:
+  replicaCount: 3
+  
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: fast-ssd
+  
+  auth:
+    enabled: true
+    jwt:
+      secret: "${JWT_SECRET}"  # Set via --set or secrets
+      expiry: "12h"
+    rbac:
+      enabled: true
+  
+  tracing:
+    enabled: true
+    endpoint: "http://jaeger-collector:4317"
+
+operator:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+
+etcd:
+  replicaCount: 3
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: fast-ssd
+  auth:
+    rbac:
+      create: true
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+postgresql:
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: fast-ssd
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  metrics:
+    enabled: true
+
+webDashboard:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  auth:
+    enabled: true
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+  hosts:
+    - host: api.parallax.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: control-plane
+    - host: parallax.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: web-dashboard
+          port: 80
+  tls:
+    - secretName: parallax-api-tls
+      hosts:
+        - api.parallax.example.com
+    - secretName: parallax-web-tls
+      hosts:
+        - parallax.example.com
+  grpc:
+    enabled: true
+    hosts:
+      - host: grpc.parallax.example.com
+    tls:
+      - secretName: parallax-grpc-tls
+        hosts:
+          - grpc.parallax.example.com
+
+networkPolicy:
+  enabled: true
+
+monitoring:
+  prometheus:
+    serviceMonitor:
+      enabled: true
+      namespace: monitoring
+
+security:
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    fsGroupChangePolicy: "OnRootMismatch"
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+      drop:
+        - ALL

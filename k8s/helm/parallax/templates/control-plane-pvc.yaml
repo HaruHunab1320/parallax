@@ -1,0 +1,33 @@
+{{- if and .Values.controlPlane.enabled .Values.controlPlane.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "parallax.fullname" . }}-control-plane-patterns
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+  {{- with .Values.controlPlane.persistence.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- range .Values.controlPlane.persistence.accessModes }}
+    - {{ . }}
+    {{- end }}
+  {{- if .Values.controlPlane.persistence.storageClass }}
+  {{- if (eq "-" .Values.controlPlane.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.controlPlane.persistence.storageClass }}
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.controlPlane.persistence.size }}
+  {{- if .Values.controlPlane.persistence.selector }}
+  selector:
+    {{- toYaml .Values.controlPlane.persistence.selector | nindent 4 }}
+  {{- end }}
+{{- end }}

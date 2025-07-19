@@ -1,0 +1,142 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "parallax.fullname" . }}-control-plane
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "parallax.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: control-plane
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from any pod for API access
+    - from:
+        {{- if .Values.networkPolicy.ingress.namespaceSelector }}
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.ingress.namespaceSelector | nindent 12 }}
+        {{- end }}
+        {{- if .Values.networkPolicy.ingress.podSelector }}
+        - podSelector:
+            {{- toYaml .Values.networkPolicy.ingress.podSelector | nindent 12 }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.controlPlane.service.port }}
+        - protocol: TCP
+          port: {{ .Values.controlPlane.service.grpcPort | default 8081 }}
+    # Allow Prometheus scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: {{ .Values.monitoring.prometheus.namespace | default "monitoring" }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.controlPlane.service.metricsPort }}
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow etcd access
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "parallax.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: etcd
+      ports:
+        - protocol: TCP
+          port: 2379
+    # Allow PostgreSQL access
+    {{- if .Values.postgresql.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    # Allow external HTTPS for webhooks
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32  # AWS metadata
+              - 169.254.169.254/32  # GCP metadata
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- with .Values.networkPolicy.egress.additional }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+---
+{{- if .Values.operator.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "parallax.fullname" . }}-operator
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: operator
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "parallax.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: operator
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow Prometheus scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: {{ .Values.monitoring.prometheus.namespace | default "monitoring" }}
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow Kubernetes API access
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+    # Allow control plane access
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "parallax.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: control-plane
+      ports:
+        - protocol: TCP
+          port: {{ .Values.controlPlane.service.port }}
+        - protocol: TCP
+          port: {{ .Values.controlPlane.service.grpcPort | default 8081 }}
+{{- end }}
+{{- end }}

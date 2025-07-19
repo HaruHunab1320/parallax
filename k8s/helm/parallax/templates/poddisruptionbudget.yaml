@@ -1,0 +1,21 @@
+{{- if and .Values.controlPlane.enabled .Values.controlPlane.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "parallax.fullname" . }}-control-plane
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+spec:
+  {{- if .Values.controlPlane.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.controlPlane.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.controlPlane.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.controlPlane.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "parallax.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: control-plane
+{{- end }}

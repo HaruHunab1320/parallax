@@ -1,0 +1,63 @@
+# Development deployment values
+# Minimal resources, no persistence, single replicas
+
+controlPlane:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+operator:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+etcd:
+  persistence:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+postgresql:
+  persistence:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+webDashboard:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+ingress:
+  enabled: true
+  hosts:
+    - host: parallax.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: control-plane
+        - path: /
+          pathType: Prefix
+          service: web-dashboard
+          port: 80
+
+monitoring:
+  prometheus:
+    serviceMonitor:
+      enabled: false

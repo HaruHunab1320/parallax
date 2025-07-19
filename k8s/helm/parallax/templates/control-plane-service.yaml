@@ -16,6 +16,10 @@ spec:
       targetPort: metrics
       protocol: TCP
       name: metrics
+    - port: {{ .Values.controlPlane.service.grpcPort | default 8081 }}
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     {{- include "parallax.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: control-plane

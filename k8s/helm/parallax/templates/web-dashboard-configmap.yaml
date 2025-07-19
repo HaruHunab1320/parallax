@@ -1,0 +1,24 @@
+{{- if .Values.webDashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "parallax.fullname" . }}-web-dashboard
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web-dashboard
+data:
+  runtime-config.js: |
+    window.__RUNTIME_CONFIG__ = {
+      API_URL: '{{ .Values.webDashboard.config.apiUrl | default (printf "http://%s-control-plane:%d" (include "parallax.fullname" .) (int .Values.controlPlane.service.port)) }}',
+      WS_URL: '{{ .Values.webDashboard.config.wsUrl | default (printf "ws://%s-control-plane:%d" (include "parallax.fullname" .) (int .Values.controlPlane.service.port)) }}',
+      AUTH_ENABLED: {{ .Values.webDashboard.auth.enabled | default false }},
+      REFRESH_INTERVAL: {{ .Values.webDashboard.config.refreshInterval | default 5000 }},
+      FEATURES: {
+        AGENT_MANAGEMENT: {{ .Values.webDashboard.features.agentManagement | default true }},
+        PATTERN_EXECUTION: {{ .Values.webDashboard.features.patternExecution | default true }},
+        CONFIDENCE_TRACKING: {{ .Values.webDashboard.features.confidenceTracking | default true }},
+        ANALYTICS: {{ .Values.webDashboard.features.analytics | default true }}
+      }
+    };
+{{- end }}

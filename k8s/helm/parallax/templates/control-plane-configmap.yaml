@@ -1,0 +1,73 @@
+{{- if .Values.controlPlane.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "parallax.fullname" . }}-control-plane
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+data:
+  config.yaml: |
+    server:
+      port: {{ .Values.controlPlane.service.port }}
+      metricsPort: {{ .Values.controlPlane.service.metricsPort }}
+      grpcPort: {{ .Values.controlPlane.service.grpcPort | default 8081 }}
+    
+    logging:
+      level: {{ .Values.controlPlane.env.LOG_LEVEL }}
+      format: json
+    
+    etcd:
+      endpoints:
+        {{- if .Values.etcd.enabled }}
+        - {{ include "parallax.fullname" . }}-etcd:2379
+        {{- else }}
+        {{- range .Values.controlPlane.etcd.endpoints }}
+        - {{ . }}
+        {{- end }}
+        {{- end }}
+      prefix: {{ .Values.controlPlane.etcd.prefix | default "/parallax" }}
+    
+    database:
+      {{- if .Values.postgresql.enabled }}
+      url: postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ include "parallax.fullname" . }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?schema=public
+      {{- else }}
+      url: {{ .Values.controlPlane.database.url }}
+      {{- end }}
+      maxConnections: {{ .Values.controlPlane.database.maxConnections | default 20 }}
+      migrations:
+        autoRun: {{ .Values.controlPlane.database.migrations.autoRun | default true }}
+    
+    patterns:
+      directory: {{ .Values.controlPlane.env.PARALLAX_PATTERNS_DIR }}
+      cache:
+        enabled: {{ .Values.controlPlane.patterns.cache.enabled | default true }}
+        ttl: {{ .Values.controlPlane.patterns.cache.ttl | default 3600 }}
+    
+    agents:
+      heartbeatInterval: {{ .Values.controlPlane.agents.heartbeatInterval | default 30000 }}
+      heartbeatTimeout: {{ .Values.controlPlane.agents.heartbeatTimeout | default 90000 }}
+      maxPerPattern: {{ .Values.controlPlane.agents.maxPerPattern | default 100 }}
+    
+    metrics:
+      enabled: {{ .Values.controlPlane.metrics.enabled | default true }}
+      interval: {{ .Values.controlPlane.metrics.interval | default 60000 }}
+    
+    tracing:
+      enabled: {{ .Values.controlPlane.tracing.enabled | default false }}
+      {{- if .Values.controlPlane.tracing.enabled }}
+      endpoint: {{ .Values.controlPlane.tracing.endpoint | default "http://localhost:4317" }}
+      serviceName: {{ .Values.controlPlane.tracing.serviceName | default "parallax-control-plane" }}
+      {{- end }}
+    
+    {{- if .Values.controlPlane.auth.enabled }}
+    auth:
+      enabled: true
+      jwt:
+        secret: {{ .Values.controlPlane.auth.jwt.secret }}
+        expiry: {{ .Values.controlPlane.auth.jwt.expiry | default "24h" }}
+      rbac:
+        enabled: {{ .Values.controlPlane.auth.rbac.enabled | default false }}
+    {{- end }}
+{{- end }}

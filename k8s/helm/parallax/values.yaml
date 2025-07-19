@@ -299,3 +299,185 @@ autoscaling:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
+# RBAC Configuration
+rbac:
+  create: true
+
+# Service Account Configuration
+controlPlane:
+  serviceAccount:
+    annotations: {}
+  
+  # Database configuration
+  database:
+    url: ""  # Override if not using built-in PostgreSQL
+    maxConnections: 20
+    migrations:
+      autoRun: true
+  
+  # Pattern configuration
+  patterns:
+    defaultPatterns: {}  # Add default patterns here
+    cache:
+      enabled: true
+      ttl: 3600
+  
+  # Agent configuration
+  agents:
+    heartbeatInterval: 30000
+    heartbeatTimeout: 90000
+    maxPerPattern: 100
+  
+  # Metrics configuration
+  metrics:
+    enabled: true
+    interval: 60000
+  
+  # Tracing configuration
+  tracing:
+    enabled: false
+    endpoint: "http://jaeger-collector:4317"
+    serviceName: "parallax-control-plane"
+  
+  # Authentication
+  auth:
+    enabled: false
+    jwt:
+      secret: ""  # Required if auth enabled
+      expiry: "24h"
+    rbac:
+      enabled: false
+  
+  # Autoscaling
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    behavior: {}
+  
+  # Pod Disruption Budget
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+    # maxUnavailable: 1
+  
+  # Persistence
+  persistence:
+    enabled: false
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+    # storageClass: ""
+    annotations: {}
+
+# PostgreSQL Configuration
+postgresql:
+  enabled: true
+  auth:
+    username: parallax
+    password: parallax123
+    database: parallax
+  persistence:
+    enabled: true
+    size: 10Gi
+
+# Operator environment variables
+operator:
+  env: {}
+
+# Security Context
+security:
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+      drop:
+        - ALL
+
+# Network Policy
+networkPolicy:
+  enabled: false
+  ingress:
+    namespaceSelector: {}
+    podSelector: {}
+  egress:
+    additional: []
+
+# Monitoring
+monitoring:
+  prometheus:
+    enabled: true
+    namespace: monitoring
+    serviceMonitor:
+      enabled: true
+      namespace: ""  # Use release namespace if empty
+      interval: 30s
+      scrapeTimeout: 10s
+      path: /metrics
+      labels: {}
+      metricRelabelings: []
+      relabelings: []
+
+# Ingress for gRPC
+ingress:
+  grpc:
+    enabled: false
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+      nginx.ingress.kubernetes.io/grpc-backend: "true"
+    hosts:
+      - host: grpc.parallax.example.com
+    tls: []
+EOF < /dev/null
+# Web Dashboard Configuration
+webDashboard:
+  enabled: false
+  replicaCount: 1
+  
+  image:
+    repository: parallax/web-dashboard
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 80
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  env:
+    NODE_ENV: production
+  
+  config:
+    refreshInterval: 5000
+    # apiUrl: ""  # Defaults to control plane service
+    # wsUrl: ""   # Defaults to control plane service
+  
+  features:
+    agentManagement: true
+    patternExecution: true
+    confidenceTracking: true
+    analytics: true
+  
+  auth:
+    enabled: false
+    nextAuthUrl: "http://localhost:3000"
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+EOF < /dev/null

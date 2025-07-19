@@ -1,0 +1,20 @@
+{{- if .Values.webDashboard.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "parallax.fullname" . }}-web-dashboard
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web-dashboard
+spec:
+  type: {{ .Values.webDashboard.service.type }}
+  ports:
+    - port: {{ .Values.webDashboard.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "parallax.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web-dashboard
+{{- end }}

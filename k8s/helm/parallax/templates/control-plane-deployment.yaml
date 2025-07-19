@@ -23,7 +23,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "parallax.serviceAccountName" . }}
+      serviceAccountName: {{ include "parallax.fullname" . }}-control-plane
       securityContext:
         {{- toYaml .Values.security.podSecurityContext | nindent 8 }}
       containers:
@@ -39,13 +39,24 @@ spec:
             - name: metrics
               containerPort: {{ .Values.controlPlane.service.metricsPort }}
               protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.controlPlane.service.grpcPort | default 8081 }}
+              protocol: TCP
           env:
             - name: PORT
               value: "{{ .Values.controlPlane.service.port }}"
             - name: METRICS_PORT
               value: "{{ .Values.controlPlane.service.metricsPort }}"
+            - name: GRPC_PORT
+              value: "{{ .Values.controlPlane.service.grpcPort | default 8081 }}"
+            - name: NODE_ENV
+              value: "{{ .Values.controlPlane.env.NODE_ENV | default "production" }}"
             - name: PARALLAX_ETCD_ENDPOINTS
               value: "{{ include "parallax.fullname" . }}-etcd:2379"
+            {{- if .Values.postgresql.enabled }}
+            - name: DATABASE_URL
+              value: "postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ include "parallax.fullname" . }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?schema=public"
+            {{- end }}
             {{- if .Values.influxdb.enabled }}
             - name: PARALLAX_CONFIDENCE_STORE
               value: "influxdb"
@@ -80,10 +91,16 @@ spec:
             - name: patterns
               mountPath: /patterns
               readOnly: true
+            - name: config
+              mountPath: /app/config
+              readOnly: true
       volumes:
         - name: patterns
           configMap:
             name: {{ .Values.controlPlane.patterns.configMap }}
+        - name: config
+          configMap:
+            name: {{ include "parallax.fullname" . }}-control-plane
       {{- with .Values.controlPlane.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
