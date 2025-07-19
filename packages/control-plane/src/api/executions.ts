@@ -4,6 +4,12 @@ import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import WebSocket from 'ws';
 import { Server } from 'http';
+import { DatabaseService } from '../db/database.service';
+import { 
+  createExecutionInDb, 
+  updateExecutionInDb, 
+  convertExecutionFromDb 
+} from '../pattern-engine/pattern-engine-db';
 
 interface ExecutionRequest {
   patternName: string;
@@ -16,11 +22,12 @@ interface ExecutionRequest {
 
 export function createExecutionsRouter(
   patternEngine: PatternEngine,
-  logger: Logger
+  logger: Logger,
+  database?: DatabaseService
 ): Router {
   const router = Router();
   
-  // In-memory storage for executions (replace with persistence layer)
+  // In-memory storage for executions (fallback when no database)
   const executions = new Map<string, any>();
   const activeStreams = new Map<string, WebSocket[]>();
 

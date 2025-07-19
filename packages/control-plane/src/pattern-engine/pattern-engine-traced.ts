@@ -9,6 +9,7 @@ import { LocalAgentManager } from './local-agents';
 import { 
   PatternTracer
 } from '@parallax/telemetry';
+import { DatabaseService } from '../db/database.service';
 
 export class TracedPatternEngine {
   private loader: PatternLoader;
@@ -20,7 +21,8 @@ export class TracedPatternEngine {
     private runtimeManager: RuntimeManager,
     private agentRegistry: EtcdRegistry,
     patternsDir: string,
-    private logger: Logger
+    private logger: Logger,
+    private database?: DatabaseService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();

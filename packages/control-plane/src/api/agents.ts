@@ -3,11 +3,13 @@ import { EtcdRegistry } from '../registry';
 import { MetricsCollector } from '../metrics/metrics-collector';
 import { Logger } from 'pino';
 import { GrpcAgentProxy } from '@parallax/runtime';
+import { DatabaseService } from '../db/database.service';
 
 export function createAgentsRouter(
   registry: EtcdRegistry,
   metrics: MetricsCollector,
-  logger: Logger
+  logger: Logger,
+  database?: DatabaseService
 ): Router {
   const router = Router();
 

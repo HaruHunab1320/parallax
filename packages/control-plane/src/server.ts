@@ -14,6 +14,7 @@ import { HealthCheckService, createHealthRouter } from './health/health-check';
 import { MetricsCollector } from './metrics/metrics-collector';
 import { initializeTracing, getTracingConfig } from '@parallax/telemetry';
 import { createPatternsRouter, createAgentsRouter, createExecutionsRouter, createExecutionWebSocketHandler } from './api';
+import { DatabaseService } from './db/database.service';
 import path from 'path';
 import { createServer as createHttpServer } from 'http';
 
@@ -38,6 +39,10 @@ export async function createServer(): Promise<express.Application> {
   app.use(cors());
   app.use(express.json());
   
+  // Initialize database
+  const database = new DatabaseService(logger);
+  await database.initialize();
+  
   // Initialize services
   const etcdEndpoints = (process.env.PARALLAX_ETCD_ENDPOINTS || 'localhost:2379').split(',');
   const registry = new EtcdRegistry(etcdEndpoints, 'parallax', logger);
@@ -58,13 +63,15 @@ export async function createServer(): Promise<express.Application> {
         runtimeManager,
         registry,
         patternsDir,
-        logger
+        logger,
+        database
       )
     : new PatternEngine(
         runtimeManager,
         registry,
         patternsDir,
-        logger
+        logger,
+        database
       );
   await patternEngine.initialize();
   
@@ -86,8 +93,8 @@ export async function createServer(): Promise<express.Application> {
   
   // API Routes
   const patternsRouter = createPatternsRouter(patternEngine, metrics, logger);
-  const agentsRouter = createAgentsRouter(registry, metrics, logger);
-  const executionsRouter = createExecutionsRouter(patternEngine, logger);
+  const agentsRouter = createAgentsRouter(registry, metrics, logger, database);
+  const executionsRouter = createExecutionsRouter(patternEngine, logger, database);
   
   app.use('/api/patterns', patternsRouter);
   app.use('/api/agents', agentsRouter);
@@ -113,6 +120,7 @@ export async function createServer(): Promise<express.Application> {
   // Graceful shutdown handler
   const shutdown = async () => {
     logger.info('Shutting down control plane...');
+    await database.disconnect();
     await tracer.shutdown();
     process.exit(0);
   };

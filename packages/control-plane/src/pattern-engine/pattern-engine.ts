@@ -8,6 +8,7 @@ import { GrpcAgentProxy } from '@parallax/runtime';
 import { LocalAgentManager } from './local-agents';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
+import { DatabaseService } from '../db/database.service';
 
 export class PatternEngine {
   private loader: PatternLoader;
@@ -22,7 +23,8 @@ export class PatternEngine {
     private runtimeManager: RuntimeManager,
     private agentRegistry: EtcdRegistry,
     patternsDir: string,
-    private logger: Logger
+    private logger: Logger,
+    private database?: DatabaseService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();

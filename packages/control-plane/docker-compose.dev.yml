@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with TimescaleDB
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: parallax-timescaledb
+    environment:
+      POSTGRES_DB: parallax
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - parallax-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Etcd for service registry
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: parallax-etcd
+    environment:
+      ETCD_NAME: etcd0
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://localhost:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://localhost:2380
+      ETCD_INITIAL_CLUSTER: etcd0=http://localhost:2380
+      ETCD_INITIAL_CLUSTER_TOKEN: parallax-cluster
+      ETCD_INITIAL_CLUSTER_STATE: new
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    volumes:
+      - parallax-etcd-data:/etcd-data
+
+  # Redis for caching (optional, for future use)
+  redis:
+    image: redis:7-alpine
+    container_name: parallax-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - parallax-redis-data:/data
+
+  # Grafana for monitoring (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: parallax-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: false
+    ports:
+      - "3001:3000"
+    volumes:
+      - parallax-grafana-data:/var/lib/grafana
+      - ./packages/monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - timescaledb
+
+  # Prometheus for metrics (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: parallax-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./packages/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - parallax-prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+volumes:
+  parallax-db-data:
+  parallax-etcd-data:
+  parallax-redis-data:
+  parallax-grafana-data:
+  parallax-prometheus-data:

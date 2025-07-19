@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core entities
+model Pattern {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  version     String      @default("1.0.0")
+  description String
+  script      String      @db.Text
+  metadata    Json?
+  input       Json?
+  minAgents   Int?
+  maxAgents   Int?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  executions  Execution[]
+  
+  @@index([name])
+}
+
+model Agent {
+  id           String   @id @default(uuid())
+  name         String
+  endpoint     String
+  capabilities Json     @default("[]")
+  status       String   @default("unknown")
+  expertise    Json?
+  metadata     Json?
+  lastSeen     DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([status])
+  @@index([lastSeen])
+}
+
+// Time-series data (will be converted to TimescaleDB hypertables)
+model Execution {
+  id           String   @id @default(uuid())
+  time         DateTime @default(now()) @db.Timestamptz
+  patternId    String
+  pattern      Pattern  @relation(fields: [patternId], references: [id])
+  status       String   @default("pending") // pending, running, completed, failed, cancelled
+  input        Json
+  result       Json?
+  error        String?  @db.Text
+  confidence   Float?
+  metrics      Json?
+  warnings     Json?
+  durationMs   Int?
+  agentCount   Int?
+  createdAt    DateTime @default(now())
+  
+  events       ExecutionEvent[]
+  
+  @@index([time, patternId])
+  @@index([status])
+  @@index([time])
+}
+
+model ExecutionEvent {
+  id          String    @id @default(uuid())
+  executionId String
+  execution   Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  time        DateTime  @default(now()) @db.Timestamptz
+  type        String    // started, agent_called, agent_responded, completed, failed
+  agentId     String?
+  data        Json
+  
+  @@index([executionId, time])
+  @@index([time])
+}
+
+// For confidence tracking and calibration
+model ConfidenceMetric {
+  id          String   @id @default(uuid())
+  time        DateTime @default(now()) @db.Timestamptz
+  agentId     String
+  patternId   String?
+  task        String?
+  predicted   Float    // The confidence score returned by agent
+  actual      Float?   // Actual outcome (for calibration)
+  metadata    Json?
+  
+  @@index([time, agentId])
+  @@index([time, patternId])
+  @@index([time])
+}
+
+// For storing pattern versions (future feature)
+model PatternVersion {
+  id          String   @id @default(uuid())
+  patternId   String
+  version     String
+  script      String   @db.Text
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  createdBy   String?
+  
+  @@unique([patternId, version])
+  @@index([patternId])
+}
+
+// For enterprise features (prepared for future)
+model License {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  type        String   // opensource, enterprise, enterprise-plus
+  validFrom   DateTime
+  validUntil  DateTime
+  features    Json
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([key])
+}
+
+// Session/User management (future)
+model Session {
+  id          String   @id @default(uuid())
+  token       String   @unique
+  userId      String?
+  data        Json?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  @@index([token])
+  @@index([expiresAt])
+}
