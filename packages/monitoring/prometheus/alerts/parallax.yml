@@ -1,0 +1,154 @@
+groups:
+  - name: parallax_alerts
+    interval: 30s
+    rules:
+      # Pattern execution alerts
+      - alert: HighPatternFailureRate
+        expr: |
+          (
+            sum(rate(parallax_pattern_executions_total{status="failed"}[5m])) by (pattern)
+            /
+            sum(rate(parallax_pattern_executions_total[5m])) by (pattern)
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: pattern-engine
+        annotations:
+          summary: "High pattern failure rate for {{ $labels.pattern }}"
+          description: "Pattern {{ $labels.pattern }} has a failure rate of {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      - alert: PatternExecutionSlow
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(parallax_pattern_execution_duration_seconds_bucket[5m])) by (pattern, le)
+          ) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: pattern-engine
+        annotations:
+          summary: "Pattern execution slow for {{ $labels.pattern }}"
+          description: "95th percentile execution time for pattern {{ $labels.pattern }} is {{ $value | humanizeDuration }}"
+
+      # Agent alerts
+      - alert: LowAgentAvailability
+        expr: parallax_active_agents < 3
+        for: 5m
+        labels:
+          severity: critical
+          component: agents
+        annotations:
+          summary: "Insufficient agents available"
+          description: "Only {{ $value }} agents are currently active. Minimum required: 3"
+
+      - alert: AgentResponseTimeSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(parallax_agent_response_time_seconds_bucket[5m])) by (agent_id, le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: agents
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} response time degraded"
+          description: "95th percentile response time for agent {{ $labels.agent_id }} is {{ $value | humanizeDuration }}"
+
+      - alert: AgentCircuitBreakerOpen
+        expr: parallax_circuit_breaker_state{state="open"} == 1
+        for: 1m
+        labels:
+          severity: warning
+          component: agents
+        annotations:
+          summary: "Circuit breaker open for agent {{ $labels.agent_id }}"
+          description: "Agent {{ $labels.agent_id }} circuit breaker is open, indicating repeated failures"
+
+      # Confidence calibration alerts
+      - alert: ConfidenceCalibrationDrift
+        expr: abs(parallax_confidence_calibration_error) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          component: confidence
+        annotations:
+          summary: "Confidence calibration drifting"
+          description: "Confidence calibration error is {{ $value | humanizePercentage }}, indicating predictions are not well-calibrated"
+
+      - alert: LowConfidenceScores
+        expr: avg(parallax_confidence_scores) by (pattern) < 0.5
+        for: 10m
+        labels:
+          severity: info
+          component: confidence
+        annotations:
+          summary: "Low average confidence for pattern {{ $labels.pattern }}"
+          description: "Average confidence score for pattern {{ $labels.pattern }} is {{ $value | humanizePercentage }}"
+
+      # System resource alerts
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            process_resident_memory_bytes / 
+            (node_memory_MemTotal_bytes or on() vector(2147483648))
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} of available memory"
+
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanizePercentage }}"
+
+      # Service health alerts
+      - alert: ControlPlaneDown
+        expr: up{job="parallax-control-plane"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: control-plane
+        annotations:
+          summary: "Control plane is down"
+          description: "Parallax control plane on {{ $labels.instance }} is not responding"
+
+      - alert: EtcdDown
+        expr: up{job="etcd"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: etcd
+        annotations:
+          summary: "etcd is down"
+          description: "etcd service on {{ $labels.instance }} is not responding"
+
+      # Queue and backlog alerts
+      - alert: HighExecutionQueueSize
+        expr: parallax_execution_queue_size > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: pattern-engine
+        annotations:
+          summary: "High execution queue size"
+          description: "Pattern execution queue has {{ $value }} pending executions"
+
+      - alert: HighConcurrentExecutions
+        expr: parallax_concurrent_executions > 50
+        for: 5m
+        labels:
+          severity: warning
+          component: pattern-engine
+        annotations:
+          summary: "High number of concurrent executions"
+          description: "{{ $value }} patterns are executing concurrently"

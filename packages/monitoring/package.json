@@ -6,8 +6,9 @@
   "scripts": {
     "validate:dashboards": "node scripts/validate-dashboards.js",
     "format:dashboards": "prettier --write 'grafana/dashboards/*.json'",
-    "start:local": "docker-compose -f docker-compose.monitoring.yml up",
-    "stop:local": "docker-compose -f docker-compose.monitoring.yml down",
+    "start:local": "./start-monitoring.sh",
+    "stop:local": "./stop-monitoring.sh",
+    "logs": "docker-compose -f docker-compose.monitoring.yml logs -f",
     "export:dashboards": "node scripts/export-dashboards.js"
   },
   "devDependencies": {

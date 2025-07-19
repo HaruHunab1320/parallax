@@ -1,0 +1,65 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'parallax-local'
+    environment: 'development'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - 'alertmanager:9093'
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Parallax Control Plane
+  - job_name: 'parallax-control-plane'
+    static_configs:
+      - targets: ['control-plane:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):.*'
+        replacement: '${1}'
+
+  # Parallax Agents (dynamic discovery via etcd)
+  - job_name: 'parallax-agents'
+    etcd_sd_configs:
+      - servers:
+          - 'http://etcd:2379'
+        role: endpoints
+        prefix: '/parallax/agents/'
+    relabel_configs:
+      - source_labels: [__meta_etcd_endpoint_name]
+        target_label: agent_id
+      - source_labels: [__address__]
+        target_label: __address__
+        regex: '(.*)'
+        replacement: '${1}:9090'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter (if deployed)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # etcd monitoring
+  - job_name: 'etcd'
+    static_configs:
+      - targets: ['etcd:2379']
+    metrics_path: '/metrics'
+
+  # PostgreSQL monitoring (if using postgres_exporter)
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
