@@ -50,4 +50,12 @@ export interface ExecutionMetrics {
   activeExecutions?: number;
   successfulExecutions?: number;
   averageDuration?: number;
+  // For individual execution metrics
+  pattern?: string;
+  patternName?: string;
+  timestamp?: string;
+  duration?: number;
+  confidence?: number;
+  success?: boolean;
+  agentCount?: number;
 }

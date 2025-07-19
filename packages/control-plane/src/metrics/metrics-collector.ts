@@ -202,4 +202,20 @@ export class MetricsCollector {
   getRegistry(): Registry {
     return this.registry;
   }
+  
+  /**
+   * Record API call metrics
+   */
+  recordApiCall(resource: string, method: string, statusCode: number): void {
+    // This could be implemented with a counter if needed
+    // For now, just a placeholder
+  }
+  
+  /**
+   * Record pattern execution with timing
+   */
+  recordPatternExecution(pattern: string, duration: number, success: boolean): void {
+    this.patternDuration.observe({ pattern }, duration / 1000); // Convert ms to seconds
+    this.recordPatternResult(pattern, success);
+  }
 }

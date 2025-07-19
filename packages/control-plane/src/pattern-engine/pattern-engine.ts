@@ -9,8 +9,9 @@ import { LocalAgentManager } from './local-agents';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
 import { DatabaseService } from '../db/database.service';
+import { IPatternEngine } from './interfaces';
 
-export class PatternEngine {
+export class PatternEngine implements IPatternEngine {
   private loader: PatternLoader;
   private executions: Map<string, PatternExecution> = new Map();
   private localAgentManager: LocalAgentManager;
@@ -317,8 +318,26 @@ export class PatternEngine {
     return this.executions.get(id);
   }
 
-  getPatterns(): Pattern[] {
+  getPattern(name: string): Pattern | null {
+    return this.loader.getPattern(name) || null;
+  }
+
+  listPatterns(): Pattern[] {
     return this.loader.getAllPatterns();
+  }
+
+  getMetrics(): ExecutionMetrics[] {
+    return Array.from(this.executions.values()).map(execution => ({
+      pattern: execution.patternName,
+      patternName: execution.patternName,
+      timestamp: execution.startTime.toISOString(),
+      duration: execution.endTime 
+        ? execution.endTime.getTime() - execution.startTime.getTime()
+        : 0,
+      confidence: execution.metrics?.confidence || 0,
+      success: execution.status === 'completed',
+      agentCount: execution.metrics?.agentCount || 0
+    }));
   }
 
   async reloadPatterns(): Promise<void> {

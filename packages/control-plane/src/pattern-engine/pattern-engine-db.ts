@@ -1,7 +1,5 @@
-import { Pattern, PatternExecution, ExecutionMetrics } from './types';
-import { v4 as uuidv4 } from 'uuid';
+import { PatternExecution } from './types';
 import { DatabaseService } from '../db/database.service';
-import { Logger } from 'pino';
 
 /**
  * Extension methods for PatternEngine to support database persistence
@@ -110,6 +108,12 @@ export async function convertExecutionFromDb(
     metrics: {
       confidence: dbExecution.confidence || 0,
       warnings: dbExecution.warnings ? dbExecution.warnings as string[] : [],
+      duration: dbExecution.durationMs || 0,
+      pattern: dbExecution.pattern?.name || 'unknown',
+      patternName: dbExecution.pattern?.name || 'unknown',
+      agentCount: dbExecution.agentCount || 0,
+      timestamp: dbExecution.time.toISOString(),
+      success: dbExecution.status === 'completed'
     },
   };
 }

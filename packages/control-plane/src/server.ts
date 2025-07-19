@@ -7,6 +7,7 @@ import cors from 'cors';
 import pino from 'pino';
 import { PatternEngine } from './pattern-engine';
 import { TracedPatternEngine } from './pattern-engine/pattern-engine-traced';
+import { IPatternEngine } from './pattern-engine/interfaces';
 import { RuntimeManager } from './runtime-manager';
 import { RuntimeConfig } from './runtime-manager/types';
 import { EtcdRegistry } from './registry';
@@ -58,7 +59,7 @@ export async function createServer(): Promise<express.Application> {
   const patternsDir = process.env.PARALLAX_PATTERNS_DIR || path.join(process.cwd(), 'patterns');
   
   // Use traced pattern engine if tracing is enabled
-  const patternEngine: PatternEngine | TracedPatternEngine = tracingConfig.exporterType !== 'none' 
+  const patternEngine: IPatternEngine = tracingConfig.exporterType !== 'none' 
     ? new TracedPatternEngine(
         runtimeManager,
         registry,
@@ -80,7 +81,7 @@ export async function createServer(): Promise<express.Application> {
   
   // Health checks
   const healthService = new HealthCheckService(
-    patternEngine,
+    patternEngine as PatternEngine,
     runtimeManager,
     registry,
     logger
@@ -92,9 +93,9 @@ export async function createServer(): Promise<express.Application> {
   app.get('/metrics', metrics.metricsHandler());
   
   // API Routes
-  const patternsRouter = createPatternsRouter(patternEngine, metrics, logger);
+  const patternsRouter = createPatternsRouter(patternEngine as PatternEngine, metrics, logger);
   const agentsRouter = createAgentsRouter(registry, metrics, logger, database);
-  const executionsRouter = createExecutionsRouter(patternEngine, logger, database);
+  const executionsRouter = createExecutionsRouter(patternEngine as PatternEngine, logger, database);
   
   app.use('/api/patterns', patternsRouter);
   app.use('/api/agents', agentsRouter);
@@ -132,7 +133,11 @@ export async function createServer(): Promise<express.Application> {
     const server = createHttpServer(app);
     
     // Set up WebSocket handler for execution streaming
-    createExecutionWebSocketHandler(server, executionsRouter, logger);
+    const wsHandler = createExecutionWebSocketHandler(executionsRouter);
+    
+    // TODO: Add WebSocket server setup here when needed
+    // This would typically involve using the 'ws' package to create a WebSocket server
+    // that uses the wsHandler for incoming connections
     
     server.listen(port, () => {
       logger.info(`Control Plane listening on port ${port}`);

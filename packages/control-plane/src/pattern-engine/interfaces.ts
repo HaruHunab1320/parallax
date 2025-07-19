@@ -1,5 +1,4 @@
 import { Pattern, PatternExecution, ExecutionMetrics } from './types';
-import { Logger } from 'pino';
 
 /**
  * Common interface for pattern engines

@@ -10,12 +10,18 @@ import {
   PatternTracer
 } from '@parallax/telemetry';
 import { DatabaseService } from '../db/database.service';
+import { IPatternEngine } from './interfaces';
+import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
+import { LicenseEnforcer } from '../licensing/license-enforcer';
 
-export class TracedPatternEngine {
+export class TracedPatternEngine implements IPatternEngine {
   private loader: PatternLoader;
   private executions: Map<string, PatternExecution> = new Map();
   private localAgentManager: LocalAgentManager;
   private tracer: PatternTracer;
+  private localAgents: any[] = [];
+  private _calibrationService: ConfidenceCalibrationService;
+  private licenseEnforcer: LicenseEnforcer;
   
   constructor(
     private runtimeManager: RuntimeManager,
@@ -27,6 +33,8 @@ export class TracedPatternEngine {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
     this.tracer = new PatternTracer('control-plane', '0.1.0');
+    this._calibrationService = new ConfidenceCalibrationService(logger);
+    this.licenseEnforcer = new LicenseEnforcer(logger);
   }
 
   async initialize(): Promise<void> {
@@ -179,7 +187,11 @@ export class TracedPatternEngine {
     return this.executions.get(id);
   }
 
-  getPatterns(): Pattern[] {
+  getPattern(name: string): Pattern | null {
+    return this.loader.getPattern(name) || null;
+  }
+
+  listPatterns(): Pattern[] {
     return this.loader.getAllPatterns();
   }
 
@@ -226,7 +238,30 @@ export class TracedPatternEngine {
     };
   }
 
+  getMetrics(): ExecutionMetrics[] {
+    return Array.from(this.executions.values()).map(execution => ({
+      pattern: execution.patternName,
+      patternName: execution.patternName,
+      timestamp: execution.startTime.toISOString(),
+      duration: execution.endTime 
+        ? execution.endTime.getTime() - execution.startTime.getTime()
+        : 0,
+      confidence: execution.metrics?.confidence || 0,
+      success: execution.status === 'completed',
+      agentCount: execution.metrics?.agentCount || 0
+    }));
+  }
+
   async reloadPatterns(): Promise<void> {
     await this.loader.loadPatterns();
+  }
+  
+  // Additional methods for compatibility
+  registerLocalAgents(agents: any[]): void {
+    this.localAgents = agents;
+  }
+
+  getCalibrationService(): ConfidenceCalibrationService {
+    return this._calibrationService;
   }
 }

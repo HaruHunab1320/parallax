@@ -12,136 +12,169 @@ export function createPatternsRouter(
 
   // List all patterns
   router.get('/', (_req, res) => {
-    const patterns = patternEngine.getPatterns();
-    res.json({
-      patterns: patterns.map(p => ({
-        name: p.name,
-        version: p.version,
-        description: p.description,
-        minAgents: p.minAgents,
-        maxAgents: p.maxAgents,
-        input: p.input,
-        metadata: p.metadata
-      }))
-    });
+    try {
+      const patterns = patternEngine.listPatterns();
+      
+      // Update metrics
+      metrics.recordApiCall('patterns', 'list', 200);
+      
+      return res.json({ 
+        patterns,
+        count: patterns.length
+      });
+    } catch (error) {
+      metrics.recordApiCall('patterns', 'list', 500);
+      logger.error({ error }, 'Failed to list patterns');
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to list patterns'
+      });
+    }
   });
 
   // Get pattern details
   router.get('/:name', (req, res) => {
     const { name } = req.params;
-    const patterns = patternEngine.getPatterns();
-    const pattern = patterns.find(p => p.name === name);
-    
-    if (!pattern) {
-      return res.status(404).json({ error: 'Pattern not found' });
-    }
-    
-    res.json({
-      name: pattern.name,
-      version: pattern.version,
-      description: pattern.description,
-      minAgents: pattern.minAgents,
-      maxAgents: pattern.maxAgents,
-      input: pattern.input,
-      agents: pattern.agents,
-      metadata: pattern.metadata,
-      script: pattern.script
-    });
-  });
-
-  // Validate pattern input
-  router.post('/:name/validate', (req, res) => {
-    const { name } = req.params;
-    const input = req.body;
-    
-    const patterns = patternEngine.getPatterns();
-    const pattern = patterns.find(p => p.name === name);
-    
-    if (!pattern) {
-      return res.status(404).json({ error: 'Pattern not found' });
-    }
-    
-    // Basic validation - check required fields
-    const errors: string[] = [];
-    
-    if (pattern.input?.required && !input) {
-      errors.push('Input is required');
-    }
-    
-    if (pattern.input?.schema) {
-      // TODO: Add JSON schema validation
-      logger.warn('JSON schema validation not yet implemented');
-    }
-    
-    res.json({
-      valid: errors.length === 0,
-      errors
-    });
-  });
-
-  // Execute pattern
-  router.post('/:name/execute', async (req, res) => {
-    const { name } = req.params;
-    const endTimer = metrics.recordPatternStart(name);
     
     try {
-      const input = req.body;
-      const options = {
-        timeout: req.query.timeout ? parseInt(req.query.timeout as string) : undefined
+      const pattern = patternEngine.getPattern(name);
+      
+      if (!pattern) {
+        metrics.recordApiCall('patterns', 'get', 404);
+        return res.status(404).json({ error: 'Pattern not found' });
+      }
+      
+      metrics.recordApiCall('patterns', 'get', 200);
+      return res.json(pattern);
+    } catch (error) {
+      metrics.recordApiCall('patterns', 'get', 500);
+      logger.error({ error, patternName: name }, 'Failed to get pattern');
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to get pattern'
+      });
+    }
+  });
+
+  // Validate pattern
+  router.post('/:name/validate', async (req, res) => {
+    const { name } = req.params;
+    const { input } = req.body;
+    
+    if (!input) {
+      return res.status(400).json({ 
+        error: 'Missing required field: input' 
+      });
+    }
+    
+    try {
+      const pattern = patternEngine.getPattern(name);
+      
+      if (!pattern) {
+        return res.status(404).json({ error: 'Pattern not found' });
+      }
+      
+      // Basic validation - check if input matches expected structure
+      const validation = {
+        valid: true,
+        errors: [] as string[]
       };
       
-      const result = await patternEngine.executePattern(name, input, options);
-      
-      // Record metrics
-      endTimer();
-      metrics.recordPatternResult(name, true, result.confidence);
-      
-      res.json({
-        execution: {
-          id: result.id,
-          patternName: result.patternName,
-          status: result.status,
-          startTime: result.startTime,
-          endTime: result.endTime,
-          confidence: result.confidence,
-          result: result.result,
-          error: result.error,
-          metrics: result.metrics,
-          warnings: result.warnings
+      // Check required fields if pattern has input schema
+      if (pattern.metadata?.inputSchema) {
+        const schema = pattern.metadata.inputSchema;
+        const required = schema.required || [];
+        
+        for (const field of required) {
+          if (!(field in input)) {
+            validation.valid = false;
+            validation.errors.push(`Missing required field: ${field}`);
+          }
         }
-      });
-    } catch (error) {
-      endTimer();
-      metrics.recordPatternResult(name, false);
-      metrics.recordPatternError(name, error instanceof Error ? error.constructor.name : 'UnknownError');
+      }
       
-      logger.error({ error, pattern: name }, 'Pattern execution failed');
-      res.status(500).json({
-        error: error instanceof Error ? error.message : 'Pattern execution failed',
-        details: process.env.NODE_ENV === 'development' ? error : undefined
+      return res.json(validation);
+    } catch (error) {
+      logger.error({ error, patternName: name }, 'Failed to validate pattern');
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to validate pattern'
       });
     }
   });
 
-  // Reload patterns (development mode)
-  router.post('/reload', async (_req, res) => {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ error: 'Pattern reload disabled in production' });
+  // Execute pattern (sync endpoint)
+  router.post('/:name/execute', async (req, res) => {
+    const { name } = req.params;
+    const { input, options } = req.body;
+    
+    if (!input) {
+      return res.status(400).json({ 
+        error: 'Missing required field: input' 
+      });
     }
     
     try {
-      await patternEngine.reloadPatterns();
-      const patterns = patternEngine.getPatterns();
+      const startTime = Date.now();
       
-      res.json({
-        message: 'Patterns reloaded successfully',
-        count: patterns.length,
-        patterns: patterns.map(p => p.name)
+      // Execute pattern
+      const result = await patternEngine.executePattern(name, input, options);
+      
+      const duration = Date.now() - startTime;
+      
+      // Update metrics
+      metrics.recordApiCall('patterns', 'execute', 200);
+      metrics.recordPatternExecution(name, duration, true);
+      
+      return res.json({ 
+        execution: result,
+        duration
       });
     } catch (error) {
-      logger.error({ error }, 'Failed to reload patterns');
-      res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to reload patterns'
+      metrics.recordApiCall('patterns', 'execute', 500);
+      metrics.recordPatternExecution(name, 0, false);
+      
+      logger.error({ error, patternName: name }, 'Failed to execute pattern');
+      
+      if (error instanceof Error && error.message.includes('not found')) {
+        return res.status(404).json({ error: error.message });
+      }
+      
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to execute pattern'
+      });
+    }
+  });
+
+  // Get pattern metrics
+  router.get('/:name/metrics', async (_req, res) => {
+    const { name } = _req.params;
+    
+    try {
+      const allMetrics = patternEngine.getMetrics();
+      const patternMetrics = allMetrics.filter(m => 
+        m.pattern === name || m.patternName === name
+      );
+      
+      if (patternMetrics.length === 0) {
+        return res.status(404).json({ error: 'No metrics found for pattern' });
+      }
+      
+      // Calculate aggregate statistics
+      const stats = {
+        totalExecutions: patternMetrics.length,
+        avgDuration: patternMetrics.reduce((sum, m) => sum + (m.duration || 0), 0) / patternMetrics.length,
+        avgConfidence: patternMetrics.reduce((sum, m) => sum + (m.confidence || 0), 0) / patternMetrics.length,
+        successRate: patternMetrics.filter(m => m.success).length / patternMetrics.length,
+        recentExecutions: patternMetrics.slice(-10).reverse()
+      };
+      
+      return res.json({
+        pattern: name,
+        stats,
+        metrics: patternMetrics
+      });
+    } catch (error) {
+      logger.error({ error, patternName: name }, 'Failed to get pattern metrics');
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to get metrics'
       });
     }
   });
