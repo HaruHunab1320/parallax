@@ -50,12 +50,17 @@ parallax/
 ### Prerequisites
 
 - Node.js >= 18
-- pnpm >= 10.11.0
-- Python >= 3.9 (for Python SDK when implemented)
+- pnpm >= 10.11.0  
+- Docker (for etcd and optional services)
+- Python >= 3.9 (for Python SDK)
 
 ### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/parallax/parallax.git
+cd parallax
+
 # Install dependencies
 pnpm install
 
@@ -63,17 +68,35 @@ pnpm install
 pnpm build
 ```
 
-### Run Example Agent
+### Start Parallax - One Command! 🚀
 
 ```bash
-# Terminal 1: Start a standalone agent
-cd examples/standalone-agent
-pnpm dev
+# Start everything you need
+npm start
 
-# Terminal 2: Start control plane with local agent
-PARALLAX_LOCAL_AGENTS="sentiment-agent-1:Sentiment Analyzer:localhost:50051:analysis,text,sentiment" \
-pnpm --filter @parallax/control-plane dev
+# In another terminal, run a demo
+npm run demo:patterns
 ```
+
+That's it! Parallax is now running with:
+- ✅ etcd (service registry) 
+- ✅ Control Plane API (port 8080)
+- ✅ Ready for agents and patterns
+
+### Other Startup Options
+
+```bash
+# Development with monitoring (Prometheus + Grafana + Jaeger)
+npm run dev:monitor
+
+# Full stack with database and web UI
+npm run dev:full
+
+# Production-like environment (all containerized)
+npm run dev:prod
+```
+
+See our [Startup Guide](docs/STARTUP_GUIDE.md) for all options.
 
 ### Create Your First Agent
 

@@ -1,48 +1,79 @@
 # Getting Started with Parallax
 
-## Quick Start - Simple Demo (No Infrastructure Required)
-
-The easiest way to see Parallax in action:
+## 🚀 Quick Start - One Command!
 
 ```bash
+npm start
+```
+
+That's it! This starts:
+- ✅ etcd (service registry)
+- ✅ Control Plane API (port 8080)
+- ✅ Ready for agents and patterns
+
+Then run a demo:
+```bash
+npm run demo:patterns
+```
+
+## 📋 All Startup Options
+
+### Basic Development (Default)
+```bash
+npm start              # or npm run dev
+# Minimal setup: etcd + control plane
+```
+
+### Development with Monitoring
+```bash
+npm run dev:monitor
+# Includes: Prometheus, Grafana, Jaeger
+# Grafana: http://localhost:3000 (admin/admin)
+```
+
+### Full Development Stack
+```bash
+npm run dev:full
+# Includes: PostgreSQL, Redis, all monitoring
+# Perfect for feature development
+```
+
+### Production-like Local
+```bash
+npm run dev:prod
+# Everything containerized like production
+# Tests production configs locally
+```
+
+## 🎮 Running Demos
+
+```bash
+# Pattern orchestration demo (recommended)
+npm run demo:patterns
+
+# Simple agent coordination
 npm run demo:simple
+
+# Full demo application
+npm run demo
 ```
 
-This runs a self-contained demo showing multi-agent coordination without needing any external services.
-
-## Development Commands
+## 🏗️ Starting Individual Components
 
 ```bash
-# Build all packages
-npm run build
+# Infrastructure
+npm run infra:etcd      # Just etcd
+npm run infra:postgres   # Just PostgreSQL  
+npm run infra:all       # All infrastructure
 
-# Run specific services in dev mode
-npm run dev:control-plane  # Start the control plane
-npm run dev:web           # Start the web dashboard
+# Services
+npm run control-plane    # Control plane only
+npm run web             # Web dashboard only
+npm run monitor:start   # Monitoring stack only
 
-# Run demos
-npm run demo:simple      # Simple standalone demo
-npm run demo            # Agent implementation demo  
-npm run demo:patterns   # Pattern orchestration demo
+# Stop everything
+npm run stop:all
 ```
-
-## Full Platform Setup
-
-To run the complete Parallax platform with all features:
-
-### 1. Start the Platform
-```bash
-npm run start
-# or
-./start-local.sh
-```
-
-This will:
-- Start etcd (using Docker) for service discovery
-- Build all packages
-- Start the Control Plane
-- Start example agents
-- Set up the complete infrastructure
 
 ### 2. Run Demos
 
