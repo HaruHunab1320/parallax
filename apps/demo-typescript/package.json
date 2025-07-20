@@ -1,0 +1,22 @@
+{
+  "name": "@parallax/demo-typescript",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "tsx src/standardized-test.ts",
+    "test:demo": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@parallax/sdk-typescript": "workspace:*",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
+  }
+}
