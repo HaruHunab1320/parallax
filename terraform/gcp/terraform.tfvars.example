@@ -1,0 +1,34 @@
+# Example Terraform Variables
+# Copy this to terraform.tfvars and update with your values
+
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+zone       = "us-central1-a"
+
+# Environment
+environment = "production"
+
+# Cluster Configuration
+cluster_name     = "parallax-cluster"
+gke_node_count   = 3
+gke_machine_type = "e2-medium"  # 2 vCPU, 4GB RAM
+gke_disk_size_gb = 30
+
+# Database Configuration
+db_tier          = "db-f1-micro"  # Free tier eligible
+db_disk_size     = 10
+db_backup_enabled = true
+
+# Docker Image
+parallax_image = "gcr.io/your-project-id/parallax-control-plane:latest"
+
+# Domain (optional - leave empty for IP-only access)
+domain_name = ""  # e.g., "parallax.example.com"
+
+# Security - Update for production!
+authorized_networks = [
+  {
+    name  = "office"
+    value = "YOUR_OFFICE_IP/32"
+  }
+]
