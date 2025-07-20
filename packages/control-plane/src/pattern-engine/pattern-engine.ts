@@ -4,7 +4,7 @@ import { RuntimeManager } from '../runtime-manager';
 import { EtcdRegistry } from '../registry';
 import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
-import { GrpcAgentProxy } from '@parallax/runtime';
+import { AgentProxy } from '../grpc/agent-proxy';
 import { LocalAgentManager } from './local-agents';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
@@ -19,6 +19,7 @@ export class PatternEngine implements IPatternEngine {
   private _calibrationService: ConfidenceCalibrationService;
   private licenseEnforcer: LicenseEnforcer;
   private currentExecutionId?: string;
+  private agentProxy: AgentProxy;
   
   constructor(
     private runtimeManager: RuntimeManager,
@@ -31,6 +32,7 @@ export class PatternEngine implements IPatternEngine {
     this.localAgentManager = LocalAgentManager.fromEnv();
     this._calibrationService = new ConfidenceCalibrationService(logger);
     this.licenseEnforcer = new LicenseEnforcer(logger);
+    this.agentProxy = new AgentProxy(logger);
   }
 
   async initialize(): Promise<void> {
@@ -76,7 +78,14 @@ export class PatternEngine implements IPatternEngine {
         const agentResults = await Promise.all(
           agents.map(async (agent) => {
             try {
-              const result = await agent.analyze(input.task || 'analyze', input.data || input);
+              const result = await this.agentProxy.executeTask(
+                agent.address || agent.endpoint,
+                {
+                  description: input.task || 'analyze',
+                  data: input.data || input
+                },
+                30000 // 30 second timeout
+              );
               return {
                 agentId: agent.id,
                 agentName: agent.name,
@@ -85,7 +94,7 @@ export class PatternEngine implements IPatternEngine {
                 result: result.value,
                 confidence: result.confidence,
                 reasoning: result.reasoning,
-                timestamp: result.timestamp
+                timestamp: Date.now()
               };
             } catch (error) {
               this.logger.warn({ agentId: agent.id, error }, 'Agent analysis failed');
@@ -247,29 +256,32 @@ export class PatternEngine implements IPatternEngine {
       agents = this.localAgents;
     } else {
       // Check for local agents from environment (development mode)
-      const localAgentProxies = this.localAgentManager.createProxies();
-      if (localAgentProxies.length > 0) {
-        this.logger.info(`Using ${localAgentProxies.length} local agent proxies`);
-        agents = localAgentProxies;
+      const localAgentConfigs = this.localAgentManager.getAgents();
+      if (localAgentConfigs.length > 0) {
+        this.logger.info(`Using ${localAgentConfigs.length} local agents`);
+        agents = localAgentConfigs.map(config => ({
+          id: config.id,
+          name: config.name,
+          address: config.endpoint,
+          endpoint: config.endpoint,
+          capabilities: config.capabilities,
+          expertise: 0.7,
+          historicalConfidence: 0.75
+        }));
       } else {
         // Get all agent services from registry
         const agentServices = await this.agentRegistry.listServices('agent');
         
-        // Create gRPC proxies for each agent
-        agents = agentServices.map(service => {
-          const proxy = new GrpcAgentProxy(
-            service.id,
-            service.name,
-            service.endpoint
-          );
-          
-          // Add capabilities from registry metadata
-          if (service.metadata.capabilities) {
-            (proxy as any)._capabilities = service.metadata.capabilities;
-          }
-          
-          return proxy;
-        });
+        // Map agent services to agent info objects
+        agents = agentServices.map(service => ({
+          id: service.id,
+          name: service.name,
+          address: service.endpoint,
+          endpoint: service.endpoint,
+          capabilities: service.metadata?.capabilities || [],
+          expertise: service.metadata?.expertise || 0.7,
+          historicalConfidence: service.metadata?.historicalConfidence || 0.75
+        }));
       }
     }
 

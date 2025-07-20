@@ -1,4 +1,3 @@
-import { GrpcAgentProxy } from '@parallax/runtime';
 
 /**
  * Configuration for local agents during development
@@ -30,19 +29,9 @@ export class LocalAgentManager {
     return this.agents;
   }
   
-  createProxies(): GrpcAgentProxy[] {
-    return this.agents.map(config => {
-      const proxy = new GrpcAgentProxy(
-        config.id,
-        config.name,
-        config.endpoint
-      );
-      
-      // Override capabilities
-      (proxy as any)._capabilities = config.capabilities;
-      
-      return proxy;
-    });
+  createProxies(): LocalAgentConfig[] {
+    // Return configs directly - proxies will be created by PatternEngine
+    return this.agents;
   }
   
   getAgentsByCapabilities(requiredCapabilities: string[]): LocalAgentConfig[] {
