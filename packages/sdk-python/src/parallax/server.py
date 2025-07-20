@@ -7,6 +7,7 @@ import sys
 from typing import Any, Optional, Type
 
 from .agent import ParallaxAgent
+from .grpc_agent import GrpcParallaxAgent, serve_grpc_agent
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +27,11 @@ async def serve_agent(
     Returns:
         Actual port the server is listening on
     """
-    # Start the server
-    actual_port = await agent.serve(port, max_workers)
+    # Use gRPC implementation if not already a GrpcParallaxAgent
+    if isinstance(agent, GrpcParallaxAgent):
+        actual_port = await agent.serve(port, max_workers)
+    else:
+        actual_port = await serve_grpc_agent(agent, port)
     
     # Setup signal handlers for graceful shutdown
     loop = asyncio.get_event_loop()

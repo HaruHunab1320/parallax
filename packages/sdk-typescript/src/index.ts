@@ -11,6 +11,7 @@ export {
   Agent
 } from './patterns';
 export * from './server';
+export { GrpcParallaxAgent } from './grpc-agent';
 export { SecureParallaxAgent, serveSecureAgent } from './secure-agent';
 
 // Proto exports
