@@ -6,6 +6,7 @@ option go_package = "github.com/parallax/proto/confidence";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/empty.proto";
 
 // Core confidence result message
 message ConfidenceResult {

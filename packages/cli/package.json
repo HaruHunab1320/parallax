@@ -16,7 +16,6 @@
     "@parallax/runtime": "workspace:*",
     "@parallax/control-plane": "workspace:*",
     "@parallax/data-plane": "workspace:*",
-    "@parallax/proto": "workspace:*",
     "commander": "^13.0.0",
     "chalk": "^5.4.1",
     "ora": "^8.1.1",

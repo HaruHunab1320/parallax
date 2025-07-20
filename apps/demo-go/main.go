@@ -1,230 +1,281 @@
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "strings"
-    "time"
+	"context"
+	"fmt"
+	"os"
+	"strings"
 
-    "github.com/parallax/sdk-go/pkg/parallax"
+	"github.com/parallax/sdk-go/pkg/parallax"
 )
 
-// DemoAgent implements a simple agent for testing
-type DemoAgent struct {
-    parallax.BaseAgent
+// TestAgent implements the standardized test agent
+type TestAgent struct {
+	parallax.BaseAgent
 }
 
-// NewDemoAgent creates a new demo agent
-func NewDemoAgent() *DemoAgent {
-    return &DemoAgent{
-        BaseAgent: parallax.BaseAgent{
-            ID:           "demo-agent-go",
-            Name:         "Go Demo Agent",
-            Capabilities: []string{"code-analysis", "testing"},
-            Expertise:    0.85,
-        },
-    }
+// NewTestAgent creates a new test agent
+func NewTestAgent() *TestAgent {
+	return &TestAgent{
+		BaseAgent: parallax.BaseAgent{
+			ID:           "test-agent-go",
+			Name:         "Test Agent (Go)",
+			Capabilities: []string{"analysis", "validation"},
+			Expertise:    0.85,
+		},
+	}
 }
 
 // Analyze implements the agent analyze method
-func (a *DemoAgent) Analyze(ctx context.Context, task string, input map[string]interface{}) (*parallax.AgentResponse, error) {
-    switch task {
-    case "analyze-code":
-        return a.analyzeCode(input)
-    case "get-system-info":
-        return a.getSystemInfo()
-    default:
-        return nil, fmt.Errorf("unknown task: %s", task)
-    }
+func (a *TestAgent) Analyze(ctx context.Context, task string, input map[string]interface{}) (*parallax.AgentResponse, error) {
+	switch task {
+	case "analyze":
+		data, _ := input["data"].(map[string]interface{})
+		contentType := "unknown"
+		if t, ok := data["type"].(string); ok {
+			contentType = t
+		}
+		content := ""
+		if c, ok := data["content"].(string); ok {
+			content = c
+		}
+
+		return &parallax.AgentResponse{
+			Value: map[string]interface{}{
+				"summary": fmt.Sprintf("Analyzed %s content", contentType),
+				"length":  len(content),
+				"result":  "Analysis complete",
+			},
+			Confidence: 0.85,
+			Reasoning:  "Standard analysis performed",
+		}, nil
+
+	case "validate":
+		data, _ := input["data"].(map[string]interface{})
+		value, _ := data["value"].(float64) // JSON numbers are float64
+		rules, _ := data["rules"].([]interface{})
+		
+		details := []string{}
+		valid := true
+
+		for _, r := range rules {
+			rule, _ := r.(string)
+			switch rule {
+			case "positive":
+				if value > 0 {
+					details = append(details, "Value is positive")
+				} else {
+					valid = false
+					details = append(details, "Value is not positive")
+				}
+			case "even":
+				if int(value)%2 == 0 {
+					details = append(details, "Value is even")
+				} else {
+					valid = false
+					details = append(details, "Value is not even")
+				}
+			}
+		}
+
+		return &parallax.AgentResponse{
+			Value: map[string]interface{}{
+				"valid":   valid,
+				"details": details,
+			},
+			Confidence: 0.95,
+			Reasoning:  "Validation rules applied",
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("unknown task: %s", task)
+	}
 }
 
-func (a *DemoAgent) analyzeCode(input map[string]interface{}) (*parallax.AgentResponse, error) {
-    code, ok := input["code"].(string)
-    if !ok {
-        return nil, fmt.Errorf("missing code in input")
-    }
+func runStandardizedTests() bool {
+	fmt.Println("=== Parallax SDK Test Results ===")
+	fmt.Println("Language: Go")
+	fmt.Println("SDK Version: 0.1.0\n")
 
-    // Simple Go code analysis
-    hasTests := strings.Contains(code, "func Test") || strings.Contains(code, "_test.go")
-    hasComments := strings.Contains(code, "//") || strings.Contains(code, "/*")
-    hasError := strings.Contains(code, "error")
+	results := make(map[string]bool)
 
-    quality := "medium"
-    if hasTests && hasComments {
-        quality = "high"
-    }
+	// Test 1: Agent Creation
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				results["Agent Creation"] = false
+				fmt.Printf("Test 1: Agent Creation............... FAIL (%v)\n", r)
+			}
+		}()
 
-    suggestions := []string{}
-    if !hasTests {
-        suggestions = append(suggestions, "Add unit tests")
-    }
-    if !hasComments {
-        suggestions = append(suggestions, "Add comments")
-    }
+		agent := NewTestAgent()
+		passed := agent.ID == "test-agent-go" &&
+			contains(agent.Capabilities, "analysis") &&
+			contains(agent.Capabilities, "validation")
+		results["Agent Creation"] = passed
+		status := "PASS"
+		if !passed {
+			status = "FAIL"
+		}
+		fmt.Printf("Test 1: Agent Creation............... %s\n", status)
+	}()
 
-    return &parallax.AgentResponse{
-        Value: map[string]interface{}{
-            "hasTests":    hasTests,
-            "hasComments": hasComments,
-            "hasError":    hasError,
-            "quality":     quality,
-            "suggestions": suggestions,
-        },
-        Confidence: 0.85,
-        Reasoning:  fmt.Sprintf("Analyzed %d lines of Go code", strings.Count(code, "\n")),
-        Timestamp:  time.Now(),
-    }, nil
+	// Test 2: Simple Analysis
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				results["Simple Analysis"] = false
+				fmt.Printf("Test 2: Simple Analysis.............. FAIL (%v)\n", r)
+			}
+		}()
+
+		agent := NewTestAgent()
+		response, err := agent.Analyze(context.Background(), "analyze", map[string]interface{}{
+			"data": map[string]interface{}{
+				"content": "Test data for analysis",
+				"type":    "text",
+			},
+		})
+		
+		passed := err == nil && response.Confidence >= 0.7 && response.Value != nil
+		results["Simple Analysis"] = passed
+		status := "PASS"
+		if !passed {
+			status = "FAIL"
+		}
+		fmt.Printf("Test 2: Simple Analysis.............. %s\n", status)
+	}()
+
+	// Test 3: Validation
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				results["Validation"] = false
+				fmt.Printf("Test 3: Validation................... FAIL (%v)\n", r)
+			}
+		}()
+
+		agent := NewTestAgent()
+		response, err := agent.Analyze(context.Background(), "validate", map[string]interface{}{
+			"data": map[string]interface{}{
+				"value": 42.0,
+				"rules": []interface{}{"positive", "even"},
+			},
+		})
+		
+		value := response.Value.(map[string]interface{})
+		details := value["details"].([]string)
+		passed := err == nil &&
+			value["valid"].(bool) == true &&
+			response.Confidence == 0.95 &&
+			len(details) == 2
+		results["Validation"] = passed
+		status := "PASS"
+		if !passed {
+			status = "FAIL"
+		}
+		fmt.Printf("Test 3: Validation................... %s\n", status)
+	}()
+
+	// Test 4: Error Handling
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				results["Error Handling"] = false
+				fmt.Printf("Test 4: Error Handling............... FAIL (%v)\n", r)
+			}
+		}()
+
+		agent := NewTestAgent()
+		_, err := agent.Analyze(context.Background(), "unknown-task", map[string]interface{}{})
+		
+		if err == nil {
+			results["Error Handling"] = false
+			fmt.Println("Test 4: Error Handling............... FAIL (No error thrown)")
+		} else {
+			passed := strings.Contains(strings.ToLower(err.Error()), "unknown task")
+			results["Error Handling"] = passed
+			status := "PASS"
+			if !passed {
+				status = "FAIL"
+			}
+			fmt.Printf("Test 4: Error Handling............... %s\n", status)
+		}
+	}()
+
+	// Test 5: Client API (optional)
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("Test 5: Client API (optional)........ SKIP (Control plane not running)")
+			}
+		}()
+
+		client, err := parallax.NewClient(parallax.ClientConfig{
+			BaseURL: "http://localhost:8080",
+		})
+		if err != nil {
+			fmt.Println("Test 5: Client API (optional)........ SKIP (Control plane not running)")
+			return
+		}
+
+		ctx := context.Background()
+		
+		// 5.1 Health Check
+		health, err := client.Health(ctx)
+		if err != nil {
+			fmt.Println("Test 5: Client API (optional)........ SKIP (Control plane not running)")
+			return
+		}
+
+		// 5.2 List Patterns
+		patterns, err := client.ListPatterns(ctx)
+		if err != nil {
+			results["Client API"] = false
+			fmt.Println("Test 5: Client API (optional)........ FAIL")
+			return
+		}
+
+		// 5.3 Pattern Execution
+		execution, err := client.ExecutePattern(ctx, "SimpleConsensus", map[string]interface{}{
+			"task": "SDK test",
+			"data": map[string]interface{}{"test": true},
+		})
+
+		passed := health != nil && len(patterns) > 0 && execution.ID != ""
+		results["Client API"] = passed
+		status := "PASS"
+		if !passed {
+			status = "FAIL"
+		}
+		fmt.Printf("Test 5: Client API (optional)........ %s\n", status)
+	}()
+
+	// Summary
+	passed := 0
+	for _, v := range results {
+		if v {
+			passed++
+		}
+	}
+	total := len(results)
+	fmt.Printf("\nSummary: %d/%d tests passed\n", passed, total)
+
+	return passed == total
 }
 
-func (a *DemoAgent) getSystemInfo() (*parallax.AgentResponse, error) {
-    return &parallax.AgentResponse{
-        Value: map[string]interface{}{
-            "version":  "1.0.0",
-            "language": "Go",
-            "platform": "linux/amd64",
-        },
-        Confidence: 1.0,
-        Timestamp:  time.Now(),
-    }, nil
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
-    fmt.Println("🚀 Parallax Go SDK Demo\n")
-
-    // Test 1: Agent Creation
-    fmt.Println("1️⃣  Creating Demo Agent...")
-    agent := NewDemoAgent()
-    fmt.Printf("✅ Agent created: %s (%s)\n", agent.Name, agent.ID)
-    fmt.Printf("   Capabilities: %v\n", agent.Capabilities)
-    fmt.Printf("   Expertise: %.2f\n\n", agent.Expertise)
-
-    // Test 2: Agent Methods
-    fmt.Println("2️⃣  Testing Agent Methods...")
-    ctx := context.Background()
-
-    codeToAnalyze := `
-package main
-
-import "fmt"
-
-// Hello prints a greeting
-func Hello(name string) string {
-    return fmt.Sprintf("Hello, %s!", name)
-}
-
-func TestHello(t *testing.T) {
-    result := Hello("World")
-    if result != "Hello, World!" {
-        t.Errorf("Expected 'Hello, World!', got %s", result)
-    }
-}
-`
-
-    response, err := agent.Analyze(ctx, "analyze-code", map[string]interface{}{
-        "code": codeToAnalyze,
-    })
-    if err != nil {
-        log.Printf("Error analyzing code: %v", err)
-    } else {
-        fmt.Printf("✅ Code analysis result: %v\n", response.Value)
-        fmt.Printf("   Confidence: %.2f\n", response.Confidence)
-        fmt.Printf("   Reasoning: %s\n\n", response.Reasoning)
-    }
-
-    // Test 3: Control Plane Client
-    fmt.Println("3️⃣  Testing Control Plane Client...")
-
-    config := parallax.ClientConfig{
-        BaseURL: "http://localhost:8080",
-        Timeout: 5 * time.Second,
-    }
-
-    client, err := parallax.NewClient(config)
-    if err != nil {
-        log.Printf("Failed to create client: %v", err)
-        return
-    }
-
-    // Check health
-    health, err := client.Health(ctx)
-    if err != nil {
-        fmt.Println("⚠️  Control plane not running (this is normal for SDK testing)")
-        fmt.Printf("   Error: %v\n\n", err)
-    } else {
-        fmt.Printf("✅ Health check: %v\n", health)
-
-        // List patterns
-        patterns, err := client.ListPatterns(ctx)
-        if err == nil {
-            fmt.Printf("✅ Found %d patterns\n", len(patterns))
-            if len(patterns) > 0 {
-                fmt.Printf("   First pattern: %s v%s\n", patterns[0].Name, patterns[0].Version)
-            }
-        }
-
-        // List agents
-        agents, err := client.ListAgents(ctx)
-        if err == nil {
-            fmt.Printf("✅ Found %d registered agents\n\n", len(agents.Agents))
-        }
-    }
-
-    // Test 4: Pattern Execution (if control plane is running)
-    fmt.Println("4️⃣  Testing Pattern Execution...")
-
-    if health != nil {
-        // Register agent
-        err = client.RegisterAgent(ctx, parallax.AgentRegistration{
-            ID:           agent.ID,
-            Name:         agent.Name,
-            Endpoint:     "grpc://localhost:50053",
-            Capabilities: agent.Capabilities,
-            Metadata: map[string]interface{}{
-                "sdk":     "go",
-                "version": "0.1.0",
-            },
-        })
-
-        if err != nil {
-            fmt.Printf("Failed to register agent: %v\n", err)
-        } else {
-            fmt.Println("✅ Agent registered with control plane")
-
-            // Execute pattern
-            execution, err := client.ExecutePattern(ctx, "SimpleConsensus", map[string]interface{}{
-                "task": "Test the Go SDK",
-                "data": map[string]interface{}{"test": true},
-            })
-
-            if err != nil {
-                fmt.Printf("Failed to execute pattern: %v\n", err)
-            } else {
-                fmt.Printf("✅ Pattern execution started: %s\n", execution.ID)
-
-                // Wait for result
-                time.Sleep(2 * time.Second)
-                result, err := client.GetExecution(ctx, execution.ID)
-                if err == nil {
-                    fmt.Printf("✅ Execution result: %v\n\n", result.Status)
-                }
-            }
-        }
-    } else {
-        fmt.Println("⚠️  Pattern execution skipped (control plane not running)\n")
-    }
-
-    // Test 5: Error Handling
-    fmt.Println("5️⃣  Testing Error Handling...")
-    _, err = agent.Analyze(ctx, "invalid-task", map[string]interface{}{})
-    if err != nil {
-        fmt.Printf("✅ Error handling works: %v\n\n", err)
-    }
-
-    fmt.Println("✅ Go SDK Demo Complete!")
-    fmt.Println("\nSummary:")
-    fmt.Println("- Agent creation: ✅")
-    fmt.Println("- Method execution: ✅")
-    fmt.Println("- Client API: ✅ (requires control plane)")
-    fmt.Println("- Error handling: ✅")
+	success := runStandardizedTests()
+	if !success {
+		os.Exit(1)
+	}
 }

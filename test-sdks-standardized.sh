@@ -5,6 +5,10 @@
 
 set -e
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -34,7 +38,10 @@ fi
 echo
 
 # Results tracking
-declare -A SDK_RESULTS
+SDK_RESULTS_TYPESCRIPT=""
+SDK_RESULTS_PYTHON=""
+SDK_RESULTS_GO=""
+SDK_RESULTS_RUST=""
 
 # Function to run standardized test
 run_sdk_test() {
@@ -43,14 +50,24 @@ run_sdk_test() {
     
     echo -e "${BLUE}Testing $sdk SDK...${NC}"
     
-    if eval "$command" 2>&1 | tee /tmp/sdk-test-$sdk.log | grep -E "(PASS|FAIL|SKIP|Summary)"; then
+    if eval "$command" 2>&1 | tee /tmp/sdk-test-$sdk.log; then
         # Extract summary
         SUMMARY=$(grep "Summary:" /tmp/sdk-test-$sdk.log | tail -1)
-        SDK_RESULTS[$sdk]=$SUMMARY
+        case $sdk in
+            TypeScript) SDK_RESULTS_TYPESCRIPT="$SUMMARY" ;;
+            Python) SDK_RESULTS_PYTHON="$SUMMARY" ;;
+            Go) SDK_RESULTS_GO="$SUMMARY" ;;
+            Rust) SDK_RESULTS_RUST="$SUMMARY" ;;
+        esac
         echo
         return 0
     else
-        SDK_RESULTS[$sdk]="Failed to run"
+        case $sdk in
+            TypeScript) SDK_RESULTS_TYPESCRIPT="Failed to run" ;;
+            Python) SDK_RESULTS_PYTHON="Failed to run" ;;
+            Go) SDK_RESULTS_GO="Failed to run" ;;
+            Rust) SDK_RESULTS_RUST="Failed to run" ;;
+        esac
         echo -e "${RED}Failed to run $sdk tests${NC}"
         echo
         return 1
@@ -67,7 +84,7 @@ run_sdk_test "TypeScript" "cd apps/demo-typescript && pnpm install --silent && p
 run_sdk_test "Python" "cd apps/demo-python && poetry install --quiet 2>/dev/null && poetry run python standardized_test.py"
 
 # Go
-run_sdk_test "Go" "cd apps/demo-go && go run standardized_test.go"
+run_sdk_test "Go" "cd apps/demo-go && go run main.go"
 
 # Rust
 run_sdk_test "Rust" "cd apps/demo-rust && cargo build --quiet --bin standardized_test 2>/dev/null && cargo run --quiet --bin standardized_test"
@@ -79,17 +96,50 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo
 
 ALL_PASSED=true
-for sdk in TypeScript Python Go Rust; do
-    if [[ -n "${SDK_RESULTS[$sdk]}" ]]; then
-        echo "$sdk: ${SDK_RESULTS[$sdk]}"
-        if [[ ! "${SDK_RESULTS[$sdk]}" =~ "5/5" ]] && [[ ! "${SDK_RESULTS[$sdk]}" =~ "4/4" ]]; then
-            ALL_PASSED=false
-        fi
-    else
-        echo "$sdk: No results"
+
+# TypeScript
+if [[ -n "$SDK_RESULTS_TYPESCRIPT" ]]; then
+    echo "TypeScript: $SDK_RESULTS_TYPESCRIPT"
+    if [[ ! "$SDK_RESULTS_TYPESCRIPT" =~ "5/5" ]] && [[ ! "$SDK_RESULTS_TYPESCRIPT" =~ "4/4" ]]; then
         ALL_PASSED=false
     fi
-done
+else
+    echo "TypeScript: No results"
+    ALL_PASSED=false
+fi
+
+# Python
+if [[ -n "$SDK_RESULTS_PYTHON" ]]; then
+    echo "Python: $SDK_RESULTS_PYTHON"
+    if [[ ! "$SDK_RESULTS_PYTHON" =~ "5/5" ]] && [[ ! "$SDK_RESULTS_PYTHON" =~ "4/4" ]]; then
+        ALL_PASSED=false
+    fi
+else
+    echo "Python: No results"
+    ALL_PASSED=false
+fi
+
+# Go
+if [[ -n "$SDK_RESULTS_GO" ]]; then
+    echo "Go: $SDK_RESULTS_GO"
+    if [[ ! "$SDK_RESULTS_GO" =~ "5/5" ]] && [[ ! "$SDK_RESULTS_GO" =~ "4/4" ]]; then
+        ALL_PASSED=false
+    fi
+else
+    echo "Go: No results"
+    ALL_PASSED=false
+fi
+
+# Rust
+if [[ -n "$SDK_RESULTS_RUST" ]]; then
+    echo "Rust: $SDK_RESULTS_RUST"
+    if [[ ! "$SDK_RESULTS_RUST" =~ "5/5" ]] && [[ ! "$SDK_RESULTS_RUST" =~ "4/4" ]]; then
+        ALL_PASSED=false
+    fi
+else
+    echo "Rust: No results"
+    ALL_PASSED=false
+fi
 
 echo
 if [ "$ALL_PASSED" = true ]; then

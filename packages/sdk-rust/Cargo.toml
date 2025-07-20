@@ -42,6 +42,4 @@ name = "agent"
 path = "examples/agent.rs"
 
 [features]
-default = ["rustls"]
-rustls = ["tonic/tls-roots", "tonic/tls"]
-openssl = ["tonic/tls-openssl"]]
+default = []

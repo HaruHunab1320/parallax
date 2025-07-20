@@ -16,7 +16,12 @@ from .types import AnalyzeResult, Capabilities, HealthStatus
 
 # Proto imports will be generated
 try:
-    from .proto import confidence_pb2, confidence_pb2_grpc
+    import sys
+    import os
+    # Add generated directory to path
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../generated'))
+    import confidence_pb2
+    import confidence_pb2_grpc
 except ImportError:
     # Proto files not generated yet
     confidence_pb2 = None
@@ -157,11 +162,12 @@ class ParallaxAgent(ABC):
         )
 
 
-class _AgentService(confidence_pb2_grpc.ConfidenceAgentServicer):
-    """gRPC service implementation."""
-    
-    def __init__(self, agent: ParallaxAgent):
-        self.agent = agent
+if confidence_pb2_grpc is not None:
+    class _AgentService(confidence_pb2_grpc.ConfidenceAgentServicer):
+        """gRPC service implementation."""
+        
+        def __init__(self, agent: ParallaxAgent):
+            self.agent = agent
     
     async def Analyze(self, request, context):
         """Handle analysis requests."""

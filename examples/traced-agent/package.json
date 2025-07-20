@@ -12,7 +12,6 @@
   "dependencies": {
     "@parallax/sdk-typescript": "workspace:*",
     "@parallax/telemetry": "workspace:*",
-    "@parallax/proto": "workspace:*",
     "pino": "^9.5.0",
     "pino-pretty": "^13.0.0"
   },

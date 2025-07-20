@@ -16,6 +16,7 @@ import { MetricsCollector } from './metrics/metrics-collector';
 import { initializeTracing, getTracingConfig } from '@parallax/telemetry';
 import { createPatternsRouter, createAgentsRouter, createExecutionsRouter, createExecutionWebSocketHandler } from './api';
 import { DatabaseService } from './db/database.service';
+import { GrpcServer } from './grpc';
 import path from 'path';
 import { createServer as createHttpServer } from 'http';
 
@@ -118,9 +119,15 @@ export async function createServer(): Promise<express.Application> {
   
   const port = parseInt(process.env.PORT || '3000');
   
+  // Store gRPC server instance for shutdown
+  let grpcServerInstance: GrpcServer | null = null;
+  
   // Graceful shutdown handler
   const shutdown = async () => {
     logger.info('Shutting down control plane...');
+    if (grpcServerInstance) {
+      await grpcServerInstance.stop();
+    }
     await database.disconnect();
     await tracer.shutdown();
     process.exit(0);
@@ -129,7 +136,12 @@ export async function createServer(): Promise<express.Application> {
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
   
-  const start = () => {
+  // Initialize gRPC server
+  const grpcServer = new GrpcServer(patternEngine, registry, database, logger);
+  grpcServerInstance = grpcServer;
+  const grpcPort = parseInt(process.env.GRPC_PORT || '50051');
+  
+  const start = async () => {
     const server = createHttpServer(app);
     
     // Set up WebSocket handler for execution streaming
@@ -139,15 +151,20 @@ export async function createServer(): Promise<express.Application> {
     // This would typically involve using the 'ws' package to create a WebSocket server
     // that uses the wsHandler for incoming connections
     
+    // Start gRPC server
+    await grpcServer.start(grpcPort);
+    logger.info(`gRPC server listening on port ${grpcPort}`);
+    
     server.listen(port, () => {
-      logger.info(`Control Plane listening on port ${port}`);
+      logger.info(`Control Plane HTTP listening on port ${port}`);
       logger.info(`Health check: http://localhost:${port}/health`);
       logger.info(`API: http://localhost:${port}/api`);
+      logger.info(`gRPC: 0.0.0.0:${grpcPort}`);
       logger.info(`WebSocket: ws://localhost:${port}/api/executions/stream`);
       logger.info(`Tracing: ${tracingConfig.exporterType === 'none' ? 'Disabled' : 'Enabled'}`);
     });
     
-    return server;
+    return { httpServer: server, grpcServer };
   };
   
   return Object.assign(app, { start });

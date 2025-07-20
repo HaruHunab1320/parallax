@@ -8,16 +8,25 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest",
-    "clean": "rm -rf dist",
-    "lint": "eslint src/**/*.ts",
-    "type-check": "tsc --noEmit"
+    "clean": "rm -rf dist generated",
+    "lint": "eslint src/**/*.ts && buf lint",
+    "type-check": "tsc --noEmit",
+    "generate": "./generate-proto.sh"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.4",
-    "@grpc/proto-loader": "^0.7.13"
+    "@grpc/proto-loader": "^0.7.13",
+    "google-protobuf": "^3.21.4"
   },
   "devDependencies": {
+    "@bufbuild/buf": "^1.50.0",
+    "@protobuf-ts/plugin": "^2.11.1",
+    "@protobuf-ts/protoc": "^2.11.1",
+    "@types/google-protobuf": "^3.15.12",
     "@types/node": "^22.14.1",
+    "grpc-tools": "^1.12.4",
+    "grpc_tools_node_protoc_ts": "^5.3.3",
+    "ts-proto": "^2.7.5",
     "typescript": "^5.7.2",
     "vitest": "^2.1.7"
   },

@@ -64,6 +64,12 @@ ENV/
 .mypy_cache/
 .ruff_cache/
 poetry.lock
+*.egg-info/
+
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
 
 # Environment variables
 .env
@@ -76,9 +82,8 @@ poetry.lock
 execution-logs/
 confidence-metrics/
 
-# Proto generated files (Python)
-packages/sdk-python/src/parallax/proto/*_pb2.py
-packages/sdk-python/src/parallax/proto/*_pb2_grpc.py
+# Proto generated files are intentionally committed for all SDKs
+# This allows users to use the SDKs without having protoc installed
 
 # Local agent data
 agent-data/

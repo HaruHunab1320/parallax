@@ -20,6 +20,8 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@grpc/grpc-js": "^1.13.4",
+    "@grpc/proto-loader": "^0.7.15",
     "@parallax/runtime": "workspace:*",
     "@parallax/telemetry": "workspace:*",
     "@prism-lang/confidence": "^0.1.3",

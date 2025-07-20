@@ -12,3 +12,6 @@ export {
 } from './patterns';
 export * from './server';
 export { SecureParallaxAgent, serveSecureAgent } from './secure-agent';
+
+// Proto exports
+export * from './proto';
