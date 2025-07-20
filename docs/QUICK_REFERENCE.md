@@ -6,65 +6,65 @@
 
 ```bash
 # Quick start (minimal)
-npm start                    # Start etcd + control plane
+pnpm start                    # Start etcd + control plane
 
 # Development environments
-npm run dev                  # Same as npm start
-npm run dev:monitor         # + Prometheus, Grafana, Jaeger
-npm run dev:full           # + PostgreSQL, all services
-npm run dev:prod          # Production setup locally
+pnpm run dev                  # Same as pnpm start
+pnpm run dev:monitor         # + Prometheus, Grafana, Jaeger
+pnpm run dev:full           # + PostgreSQL, all services
+pnpm run dev:prod          # Production setup locally
 
 # Individual services
-npm run control-plane      # Just control plane
-npm run web               # Just web dashboard
-npm run monitor:start     # Just monitoring stack
+pnpm run control-plane      # Just control plane
+pnpm run web               # Just web dashboard
+pnpm run monitor:start     # Just monitoring stack
 ```
 
 ### Running Demos
 
 ```bash
-npm run demo:simple       # Basic agent demo
-npm run demo:patterns     # Pattern execution demo
-npm run demo             # Full demo app
+pnpm run demo:simple       # Basic agent demo
+pnpm run demo:patterns     # Pattern execution demo
+pnpm run demo             # Full demo app
 ```
 
 ### Testing
 
 ```bash
 npm test                  # Run all tests
-npm run test:unit        # Unit tests only
-npm run test:integration # Integration tests
-npm run test:e2e        # End-to-end tests
-npm run test:watch      # Watch mode
+pnpm run test:unit        # Unit tests only
+pnpm run test:integration # Integration tests
+pnpm run test:e2e        # End-to-end tests
+pnpm run test:watch      # Watch mode
 ```
 
 ### Infrastructure Management
 
 ```bash
 # Start specific infrastructure
-npm run infra:etcd       # Just etcd
-npm run infra:postgres   # Just PostgreSQL
-npm run infra:all       # All infrastructure
+pnpm run infra:etcd       # Just etcd
+pnpm run infra:postgres   # Just PostgreSQL
+pnpm run infra:all       # All infrastructure
 
 # Stop everything
-npm run stop:all        # Stop all services
-npm run reset          # Stop all + clean Docker
+pnpm run stop:all        # Stop all services
+pnpm run reset          # Stop all + clean Docker
 ```
 
 ### Pattern & Agent Commands
 
 ```bash
-npm run pattern:list                    # List available patterns
-npm run pattern:execute -- --pattern consensus --input '{}'
-npm run agent:list                      # List registered agents
+pnpm run pattern:list                    # List available patterns
+pnpm run pattern:execute -- --pattern consensus --input '{}'
+pnpm run agent:list                      # List registered agents
 ```
 
 ### Kubernetes
 
 ```bash
-npm run k8s:install      # Install with dev values
-npm run k8s:upgrade      # Upgrade deployment
-npm run k8s:uninstall    # Remove from cluster
+pnpm run k8s:install      # Install with dev values
+pnpm run k8s:upgrade      # Upgrade deployment
+pnpm run k8s:uninstall    # Remove from cluster
 ```
 
 ## 📍 Service URLs
@@ -161,13 +161,13 @@ parallax/
 lsof -i :8080
 
 # Stop all Parallax services
-npm run stop:all
+pnpm run stop:all
 ```
 
 ### Docker issues
 ```bash
 # Clean restart
-npm run reset
+pnpm run reset
 
 # Nuclear option
 docker system prune -a --volumes
@@ -176,8 +176,8 @@ docker system prune -a --volumes
 ### Database issues
 ```bash
 cd packages/control-plane
-npm run db:reset
-npm run db:migrate
+pnpm run db:reset
+pnpm run db:migrate
 ```
 
 ## 📚 More Resources

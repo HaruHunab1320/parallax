@@ -62,7 +62,7 @@ done
 echo "🔍 Checking build status..."
 if [ ! -d "packages/runtime/dist" ]; then
     echo "🔨 Building packages (this may take a minute)..."
-    npm run build
+    pnpm run build
 else
     echo "✅ Packages already built"
 fi
@@ -70,7 +70,7 @@ fi
 # Start the control plane
 echo "🎯 Starting Control Plane..."
 cd packages/control-plane
-PARALLAX_PATTERNS_DIR="$PWD/../../patterns" npm run dev &
+PARALLAX_PATTERNS_DIR="$PWD/../../patterns" pnpm run dev &
 CONTROL_PLANE_PID=$!
 cd ../..
 
@@ -86,9 +86,9 @@ echo "  - etcd: http://localhost:2379"
 echo "  - Control Plane: http://localhost:3000"
 echo ""
 echo "You can now run in another terminal:"
-echo "  - Pattern Demo: npm run demo:patterns"
-echo "  - Simple Demo: npm run demo:simple"
-echo "  - Web Dashboard: npm run dev:web"
+echo "  - Pattern Demo: pnpm run demo:patterns"
+echo "  - Simple Demo: pnpm run demo:simple"
+echo "  - Web Dashboard: pnpm run dev:web"
 echo ""
 echo "Press Ctrl+C to stop all services"
 echo ""

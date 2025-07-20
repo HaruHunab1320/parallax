@@ -18,10 +18,10 @@ The Parallax Web Dashboard provides a visual interface for:
 npm install
 
 # Start development server
-npm run dev
+pnpm run dev
 
 # Build for production
-npm run build
+pnpm run build
 
 # Start production server
 npm start
@@ -85,7 +85,7 @@ FROM node:18-alpine
 WORKDIR /app
 COPY . .
 RUN npm ci --only=production
-RUN npm run build
+RUN pnpm run build
 EXPOSE 3000
 CMD ["npm", "start"]
 ```

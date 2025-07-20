@@ -39,7 +39,7 @@ etcd
 
 2. Run the pattern demo:
 ```bash
-npm run demo:patterns
+pnpm run demo:patterns
 ```
 
 ## What Happens

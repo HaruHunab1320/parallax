@@ -62,7 +62,7 @@ async function setupPlatform() {
   logger.info('Pattern engine initialized with real agents');
 
   // List available patterns
-  const patterns = patternEngine.getPatterns();
+  const patterns = patternEngine.listPatterns();
   logger.info(
     {
       patterns: patterns.map((p) => ({
@@ -337,7 +337,7 @@ async function runPatternExamples(patternEngine: PatternEngine) {
 async function showPatternDetails(patternEngine: PatternEngine) {
   logger.info('\n=== Pattern Details ===\n');
   
-  const patterns = patternEngine.getPatterns();
+  const patterns = patternEngine.listPatterns();
   
   // Show details about some key patterns
   const keyPatterns = [
@@ -406,7 +406,7 @@ async function main() {
     
     if (requestedPattern) {
       // Run single pattern
-      const patterns = patternEngine.getPatterns();
+      const patterns = patternEngine.listPatterns();
       const pattern = patterns.find(p => p.name.toLowerCase() === requestedPattern.toLowerCase());
       
       if (!pattern) {

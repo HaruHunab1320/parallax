@@ -54,7 +54,7 @@ done
 # Start the control plane
 echo "🎯 Starting Control Plane..."
 cd packages/control-plane
-npm run dev &
+pnpm run dev &
 CONTROL_PLANE_PID=$!
 cd ../..
 
@@ -64,7 +64,7 @@ sleep 3
 # Start example agent
 echo "🤖 Starting example agent..."
 cd examples/standalone-agent
-npm run dev &
+pnpm run dev &
 AGENT_PID=$!
 cd ../..
 
@@ -80,8 +80,8 @@ echo "Logs:"
 echo "  - etcd: tail -f /tmp/etcd.log"
 echo ""
 echo "You can now run demos in another terminal:"
-echo "  - Pattern Demo: npm run demo:patterns"
-echo "  - Simple Demo: npm run demo:simple"
+echo "  - Pattern Demo: pnpm run demo:patterns"
+echo "  - Simple Demo: pnpm run demo:simple"
 echo ""
 echo "Press Ctrl+C to stop all services"
 echo ""

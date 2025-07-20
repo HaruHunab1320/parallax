@@ -3,7 +3,7 @@
 ## 🚀 Quick Start - One Command!
 
 ```bash
-npm start
+pnpm start
 ```
 
 That's it! This starts:
@@ -13,34 +13,34 @@ That's it! This starts:
 
 Then run a demo:
 ```bash
-npm run demo:patterns
+pnpm run demo:patterns
 ```
 
 ## 📋 All Startup Options
 
 ### Basic Development (Default)
 ```bash
-npm start              # or npm run dev
+pnpm start              # or pnpm run dev
 # Minimal setup: etcd + control plane
 ```
 
 ### Development with Monitoring
 ```bash
-npm run dev:monitor
+pnpm run dev:monitor
 # Includes: Prometheus, Grafana, Jaeger
 # Grafana: http://localhost:3000 (admin/admin)
 ```
 
 ### Full Development Stack
 ```bash
-npm run dev:full
+pnpm run dev:full
 # Includes: PostgreSQL, Redis, all monitoring
 # Perfect for feature development
 ```
 
 ### Production-like Local
 ```bash
-npm run dev:prod
+pnpm run dev:prod
 # Everything containerized like production
 # Tests production configs locally
 ```
@@ -49,30 +49,30 @@ npm run dev:prod
 
 ```bash
 # Pattern orchestration demo (recommended)
-npm run demo:patterns
+pnpm run demo:patterns
 
 # Simple agent coordination
-npm run demo:simple
+pnpm run demo:simple
 
 # Full demo application
-npm run demo
+pnpm run demo
 ```
 
 ## 🏗️ Starting Individual Components
 
 ```bash
 # Infrastructure
-npm run infra:etcd      # Just etcd
-npm run infra:postgres   # Just PostgreSQL  
-npm run infra:all       # All infrastructure
+pnpm run infra:etcd      # Just etcd
+pnpm run infra:postgres   # Just PostgreSQL  
+pnpm run infra:all       # All infrastructure
 
 # Services
-npm run control-plane    # Control plane only
-npm run web             # Web dashboard only
-npm run monitor:start   # Monitoring stack only
+pnpm run control-plane    # Control plane only
+pnpm run web             # Web dashboard only
+pnpm run monitor:start   # Monitoring stack only
 
 # Stop everything
-npm run stop:all
+pnpm run stop:all
 ```
 
 ### 2. Run Demos
@@ -81,10 +81,10 @@ In another terminal, you can run:
 
 ```bash
 # Pattern orchestration demo (requires full platform)
-npm run demo:patterns
+pnpm run demo:patterns
 
 # Agent implementation demo
-npm run demo
+pnpm run demo
 ```
 
 ## Understanding the Demos
@@ -139,8 +139,8 @@ npm run demo
 - Kill existing processes or change ports
 
 ### Build errors
-- Run `npm run build` to ensure all packages are built
-- Run `npm run type-check` to check for TypeScript errors
+- Run `pnpm run build` to ensure all packages are built
+- Run `pnpm run type-check` to check for TypeScript errors
 
 ## Next Steps
 

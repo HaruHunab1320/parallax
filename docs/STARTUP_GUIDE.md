@@ -7,7 +7,7 @@ This guide covers all the ways to start and run the Parallax platform, from simp
 Just want to get Parallax running? One command:
 
 ```bash
-npm start
+pnpm start
 ```
 
 This starts:
@@ -18,8 +18,8 @@ This starts:
 **Next steps:**
 ```bash
 # In another terminal, run demos:
-npm run demo:simple      # Basic agent demo
-npm run demo:patterns    # Pattern execution demo
+pnpm run demo:simple      # Basic agent demo
+pnpm run demo:patterns    # Pattern execution demo
 ```
 
 ## 📊 Development Environments
@@ -28,7 +28,7 @@ npm run demo:patterns    # Pattern execution demo
 The default for everyday development:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 - Starts etcd and control plane
 - Hot reloading enabled
@@ -38,7 +38,7 @@ npm run dev
 Full observability stack included:
 
 ```bash
-npm run dev:monitor
+pnpm run dev:monitor
 ```
 - Everything from basic dev
 - Prometheus (http://localhost:9090)
@@ -49,7 +49,7 @@ npm run dev:monitor
 Includes PostgreSQL/TimescaleDB:
 
 ```bash
-npm run dev:full
+pnpm run dev:full
 ```
 - Everything from basic dev
 - PostgreSQL with TimescaleDB
@@ -60,7 +60,7 @@ npm run dev:full
 Test production setup locally:
 
 ```bash
-npm run dev:prod
+pnpm run dev:prod
 ```
 - All services in containers
 - Production configurations
@@ -98,7 +98,7 @@ docker-compose up
 ### Monitoring Stack Only
 ```bash
 cd packages/monitoring
-npm run start:local
+pnpm run start:local
 # or
 docker-compose -f docker-compose.monitoring.yml up
 ```
@@ -146,29 +146,29 @@ helm install parallax ./k8s/helm/parallax \
 
 ### Just etcd
 ```bash
-npm run infra:etcd
+pnpm run infra:etcd
 # or
 docker run -d -p 2379:2379 --name etcd quay.io/coreos/etcd:latest
 ```
 
 ### Just Control Plane (requires etcd)
 ```bash
-npm run control-plane
+pnpm run control-plane
 # or
-cd packages/control-plane && npm run dev
+cd packages/control-plane && pnpm run dev
 ```
 
 ### Just Web Dashboard
 ```bash
-npm run web
+pnpm run web
 # or
-cd packages/web-dashboard && npm run dev
+cd packages/web-dashboard && pnpm run dev
 ```
 
 ### Just an Agent
 ```bash
 # TypeScript agent
-cd examples/standalone-agent && npm start
+cd examples/standalone-agent && pnpm start
 
 # Python agent
 cd examples/python-agent && python weather_agent.py
@@ -228,25 +228,25 @@ VERSION=latest
 ### 1. Start Everything for Development
 ```bash
 # Terminal 1
-npm run dev:full
+pnpm run dev:full
 
 # Terminal 2 (after services are up)
-npm run demo:patterns
+pnpm run demo:patterns
 ```
 
 ### 2. Test Pattern Execution
 ```bash
 # Start platform
-npm start
+pnpm start
 
 # In another terminal
-npm run pattern:execute -- --pattern consensus --input '{"task": "analyze"}'
+pnpm run pattern:execute -- --pattern consensus --input '{"task": "analyze"}'
 ```
 
 ### 3. Monitor System Performance
 ```bash
 # Start with monitoring
-npm run dev:monitor
+pnpm run dev:monitor
 
 # Open Grafana
 open http://localhost:3000
@@ -258,13 +258,13 @@ open http://localhost:16686
 ### 4. Run Tests with Infrastructure
 ```bash
 # Start test infrastructure
-npm run test:infra
+pnpm run test:infra
 
 # Run tests
 npm test
 
 # Stop test infrastructure
-npm run test:infra:stop
+pnpm run test:infra:stop
 ```
 
 ## 🚨 Troubleshooting
@@ -277,7 +277,7 @@ If you get port already in use errors:
 lsof -i :8080  # or whatever port
 
 # Stop all Parallax services
-npm run stop:all
+pnpm run stop:all
 
 # Clean up Docker containers
 docker-compose down -v
@@ -296,10 +296,10 @@ docker restart etcd
 ```bash
 # Reset database
 cd packages/control-plane
-npm run db:reset
+pnpm run db:reset
 
 # Run migrations manually
-npm run db:migrate
+pnpm run db:migrate
 ```
 
 ## 📋 Service Endpoints
@@ -320,30 +320,30 @@ npm run db:migrate
 
 ### For Agent Development
 ```bash
-npm run dev  # Basic setup
+pnpm run dev  # Basic setup
 ```
 
 ### For Pattern Development
 ```bash
-npm run dev:full  # Includes database for persistence
+pnpm run dev:full  # Includes database for persistence
 ```
 
 ### For UI Development
 ```bash
-npm run dev:full  # Full stack
-cd packages/web-dashboard && npm run dev
+pnpm run dev:full  # Full stack
+cd packages/web-dashboard && pnpm run dev
 ```
 
 ### For Production Testing
 ```bash
-npm run dev:prod  # Everything containerized
+pnpm run dev:prod  # Everything containerized
 ```
 
 ## 🧹 Cleanup
 
 ### Stop Everything
 ```bash
-npm run stop:all
+pnpm run stop:all
 ```
 
 ### Clean Docker Resources
@@ -360,8 +360,8 @@ docker system prune -a --volumes
 
 ### Reset Development Environment
 ```bash
-npm run clean
-npm run reset
+pnpm run clean
+pnpm run reset
 npm install
-npm run build
+pnpm run build
 ```

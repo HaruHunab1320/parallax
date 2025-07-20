@@ -72,10 +72,10 @@ pnpm build
 
 ```bash
 # Start everything you need
-npm start
+pnpm start
 
 # In another terminal, run a demo
-npm run demo:patterns
+pnpm run demo:patterns
 ```
 
 That's it! Parallax is now running with:
@@ -87,13 +87,13 @@ That's it! Parallax is now running with:
 
 ```bash
 # Development with monitoring (Prometheus + Grafana + Jaeger)
-npm run dev:monitor
+pnpm run dev:monitor
 
 # Full stack with database and web UI
-npm run dev:full
+pnpm run dev:full
 
 # Production-like environment (all containerized)
-npm run dev:prod
+pnpm run dev:prod
 ```
 
 See our [Startup Guide](docs/STARTUP_GUIDE.md) for all options.

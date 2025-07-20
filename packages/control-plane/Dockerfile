@@ -31,6 +31,10 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
 
+# Copy root configuration files
+COPY tsconfig.json ./
+COPY turbo.json ./
+
 # Copy source code
 COPY packages/control-plane ./packages/control-plane
 COPY packages/runtime ./packages/runtime

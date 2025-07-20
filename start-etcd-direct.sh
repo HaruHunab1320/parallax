@@ -37,8 +37,8 @@ if curl -s http://localhost:2379/version > /dev/null 2>&1; then
     echo "✅ etcd is running!"
     echo ""
     echo "You can now run:"
-    echo "  npm run demo:patterns"
-    echo "  npm run dev:control-plane"
+    echo "  pnpm run demo:patterns"
+    echo "  pnpm run dev:control-plane"
 else
     echo "❌ etcd failed to start"
     echo "Check logs with: docker logs etcd"

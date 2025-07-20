@@ -16,7 +16,7 @@ This package provides:
 
 ```bash
 # Start monitoring stack
-npm run start:local
+pnpm run start:local
 
 # Access services
 # - Grafana: http://localhost:3000 (admin/admin)
@@ -24,7 +24,7 @@ npm run start:local
 # - Jaeger: http://localhost:16686
 
 # Stop monitoring stack
-npm run stop:local
+pnpm run stop:local
 ```
 
 ### Production Deployment
