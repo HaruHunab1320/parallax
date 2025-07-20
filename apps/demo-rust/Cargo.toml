@@ -20,3 +20,7 @@ path = "src/main.rs"
 [[bin]]
 name = "standardized_test"
 path = "src/standardized_test.rs"
+
+[[bin]]
+name = "grpc_demo"
+path = "src/grpc_demo.rs"

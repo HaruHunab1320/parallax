@@ -152,8 +152,14 @@ export async function createServer(): Promise<express.Application> {
     // that uses the wsHandler for incoming connections
     
     // Start gRPC server
-    await grpcServer.start(grpcPort);
-    logger.info(`gRPC server listening on port ${grpcPort}`);
+    try {
+      await grpcServer.start(grpcPort);
+      logger.info(`gRPC server listening on port ${grpcPort}`);
+    } catch (grpcError: any) {
+      logger.error({ error: grpcError.message || grpcError }, `Failed to start gRPC server on port ${grpcPort}`);
+      // Continue without gRPC for now
+      logger.warn('Continuing without gRPC server - HTTP API will still work');
+    }
     
     server.listen(port, () => {
       logger.info(`Control Plane HTTP listening on port ${port}`);

@@ -1,5 +1,4 @@
 import { ParallaxAgent } from './agent-base';
-import { GrpcParallaxAgent } from './grpc-agent';
 
 /**
  * Start an agent as a gRPC server
@@ -8,30 +7,18 @@ export async function serveAgent(
   agent: ParallaxAgent,
   port: number = 0
 ): Promise<number> {
-  // Create a gRPC-enabled version of the agent
-  const grpcAgent = new GrpcParallaxAgent(
-    agent.id,
-    agent.name,
-    agent.capabilities,
-    agent.metadata
-  );
-  
-  // Override the analyze method to use the original agent's implementation
-  grpcAgent.analyze = agent.analyze.bind(agent);
-  grpcAgent.checkHealth = agent.checkHealth.bind(agent);
-  
-  const actualPort = await grpcAgent.serve(port);
+  const actualPort = await agent.serve(port);
   
   // Handle graceful shutdown
   process.on('SIGINT', async () => {
     console.log('Shutting down agent...');
-    await grpcAgent.shutdown();
+    await agent.shutdown();
     process.exit(0);
   });
   
   process.on('SIGTERM', async () => {
     console.log('Shutting down agent...');
-    await grpcAgent.shutdown();
+    await agent.shutdown();
     process.exit(0);
   });
   

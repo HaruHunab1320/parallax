@@ -11,14 +11,10 @@ import sys
 
 from parallax import (
     ParallaxAgent,
-    AgentCapability,
-    AgentResponse,
-    capabilities,
-    confidence_threshold,
-    with_reasoning,
-    cached
+    serve_agent,
+    AnalyzeResult
 )
-from parallax.client import ParallaxClient
+# from parallax.client import ParallaxClient  # TODO: Implement client
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -32,17 +28,24 @@ class DemoAgent(ParallaxAgent):
         super().__init__(
             agent_id="demo-agent-py",
             name="Python Demo Agent",
-            capabilities=[
-                AgentCapability.CODE_ANALYSIS,
-                AgentCapability.TESTING
-            ],
-            expertise=0.85
+            capabilities=["code-analysis", "testing"],
+            metadata={"expertise": 0.85}
         )
     
-    @capabilities([AgentCapability.CODE_ANALYSIS])
-    @confidence_threshold(0.8)
-    @with_reasoning
-    async def analyze_code(self, code: str) -> AgentResponse:
+    async def analyze(self, task: str, data: Any) -> AnalyzeResult:
+        """Main analysis method that routes to specific handlers"""
+        if task == "analyze_code" or "code" in task:
+            return await self.analyze_code(data.get("code", "") if isinstance(data, dict) else str(data))
+        elif task == "get_system_info" or "system" in task:
+            return await self.get_system_info()
+        else:
+            return AnalyzeResult(
+                value={"task": task, "data": data},
+                confidence=0.5,
+                reasoning="Unknown task type"
+            )
+    
+    async def analyze_code(self, code: str) -> AnalyzeResult:
         """Analyze Python code for quality"""
         # Simulate code analysis
         has_docstrings = '"""' in code or "'''" in code
@@ -66,18 +69,19 @@ class DemoAgent(ParallaxAgent):
         if not has_tests:
             result["suggestions"].append("Add unit tests")
         
-        return AgentResponse(
+        return AnalyzeResult(
             value=result,
             confidence=0.85 + quality_score * 0.15,
-            reasoning=f"Analyzed code with {len(code.split())} lines"
+            reasoning=f"Analyzed code with {len(code.splitlines())} lines",
+            uncertainties=[],
+            metadata={"quality_score": str(quality_score)}
         )
     
-    @cached(ttl=300)  # Cache for 5 minutes
-    async def get_system_info(self) -> AgentResponse:
+    async def get_system_info(self) -> AnalyzeResult:
         """Get system information"""
         import platform
         
-        return AgentResponse(
+        return AnalyzeResult(
             value={
                 "version": "1.0.0",
                 "language": "Python",
@@ -85,7 +89,10 @@ class DemoAgent(ParallaxAgent):
                 "platform": platform.system(),
                 "architecture": platform.machine()
             },
-            confidence=1.0
+            confidence=1.0,
+            reasoning="System information retrieved",
+            uncertainties=[],
+            metadata={}
         )
 
 
@@ -95,7 +102,7 @@ async def test_agent_creation():
     
     agent = DemoAgent()
     logger.info(f"✅ Agent created: {agent.name} ({agent.agent_id})")
-    logger.info(f"   Capabilities: {', '.join(cap.value for cap in agent.capabilities)}")
+    logger.info(f"   Capabilities: {', '.join(agent.capabilities)}")
     logger.info(f"   Expertise: {agent.expertise}\n")
     
     return agent
@@ -120,36 +127,16 @@ def test_calculate_sum():
     logger.info(f"   Confidence: {response.confidence}")
     logger.info(f"   Reasoning: {response.reasoning}\n")
     
-    # Test system info (cached)
+    # Test system info
     sys_response = await agent.analyze("get_system_info", {})
-    logger.info(f"✅ System info: {sys_response.value}")
-    logger.info(f"   Cached: {hasattr(sys_response, '_from_cache')}\n")
+    logger.info(f"✅ System info: {sys_response.value}\n")
 
 
 async def test_client_api():
     """Test 3: Control Plane Client"""
     logger.info("3️⃣  Testing Control Plane Client...")
-    
-    try:
-        client = ParallaxClient(base_url="http://localhost:8080")
-        
-        # Check health
-        health = await client.health()
-        logger.info(f"✅ Health check: {health}")
-        
-        # List patterns
-        patterns = await client.list_patterns()
-        logger.info(f"✅ Found {len(patterns)} patterns")
-        if patterns:
-            logger.info(f"   First pattern: {patterns[0]['name']} v{patterns[0]['version']}")
-        
-        # List agents
-        agents = await client.list_agents()
-        logger.info(f"✅ Found {len(agents)} registered agents\n")
-        
-    except Exception as e:
-        logger.info("⚠️  Control plane not running (this is normal for SDK testing)")
-        logger.info(f"   Error: {e}\n")
+    logger.info("⚠️  Client API not yet implemented in Python SDK")
+    logger.info("   This will be added in a future update\n")
 
 
 async def test_pattern_execution(agent: DemoAgent):
@@ -157,39 +144,19 @@ async def test_pattern_execution(agent: DemoAgent):
     logger.info("4️⃣  Testing Pattern Execution...")
     
     try:
-        client = ParallaxClient(base_url="http://localhost:8080")
+        # Start agent server (this also registers with control plane)
+        port = await serve_agent(agent, 50052)
+        logger.info(f"✅ Agent gRPC server started on port {port} and registered with control plane")
         
-        # Start agent server
-        await agent.start(port=50052)
-        logger.info("✅ Agent gRPC server started on port 50052")
+        # Note: Would execute patterns here if client was implemented
+        logger.info("   Pattern execution would happen here once client is implemented")
         
-        # Register agent
-        await client.register_agent({
-            "id": agent.agent_id,
-            "name": agent.name,
-            "endpoint": "grpc://localhost:50052",
-            "capabilities": [cap.value for cap in agent.capabilities],
-            "metadata": {"sdk": "python", "version": "0.1.0"}
-        })
-        logger.info("✅ Agent registered with control plane")
-        
-        # Execute pattern
-        execution = await client.execute_pattern(
-            pattern_name="SimpleConsensus",
-            input_data={
-                "task": "Test the Python SDK",
-                "data": {"test": True}
-            }
-        )
-        logger.info(f"✅ Pattern execution started: {execution['id']}")
-        
-        # Wait for result
+        # Keep running for a bit to test
         await asyncio.sleep(2)
-        result = await client.get_execution(execution['id'])
-        logger.info(f"✅ Execution result: {result}\n")
+        logger.info("✅ Agent server test successful\n")
         
     except Exception as e:
-        logger.info("⚠️  Pattern execution skipped (control plane not running)")
+        logger.info("⚠️  Agent server failed to start")
         logger.info(f"   Error: {e}\n")
 
 

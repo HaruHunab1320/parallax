@@ -5,31 +5,42 @@
 
 import { 
   ParallaxAgent, 
-  confidence, 
-  withMetadata,
-  cached,
-  ParallaxClient 
+  serveAgent
 } from '@parallax/sdk-typescript';
 
-// Create a custom agent using decorators
+// Create a custom agent
 class DemoAgent extends ParallaxAgent {
   constructor() {
-    super({
-      id: 'demo-agent-ts',
-      name: 'TypeScript Demo Agent',
-      capabilities: ['code-analysis', 'testing'],
-      expertise: 0.85
-    });
+    super(
+      'demo-agent-ts',
+      'TypeScript Demo Agent',
+      ['code-analysis', 'testing'],
+      { expertise: 0.85 }
+    );
   }
 
-  @confidence(0.9)
-  @withMetadata({ source: 'typescript-demo' })
+  async analyze(task: string, data?: any) {
+    // Route based on task
+    if (task === 'analyze-code' || task.includes('code')) {
+      return this.analyzeCode(data?.code || data);
+    } else if (task === 'get-system-info' || task.includes('system')) {
+      return this.getSystemInfo();
+    }
+    
+    // Default response
+    return {
+      value: { task, data },
+      confidence: 0.5,
+      reasoning: 'Unknown task type'
+    };
+  }
+
   async analyzeCode(code: string) {
     // Simulate code analysis
     const hasTests = code.includes('test') || code.includes('describe');
     const hasTypes = code.includes('interface') || code.includes('type');
     
-    return {
+    const result = {
       hasTests,
       hasTypes,
       quality: hasTests && hasTypes ? 'high' : 'medium',
@@ -38,15 +49,26 @@ class DemoAgent extends ParallaxAgent {
         !hasTypes && 'Add TypeScript types'
       ].filter(Boolean)
     };
+
+    return {
+      value: result,
+      confidence: 0.9,
+      reasoning: `Analyzed code with ${hasTests ? '' : 'no '}tests and ${hasTypes ? '' : 'no '}types`
+    };
   }
 
-  @cached(300) // Cache for 5 minutes
   async getSystemInfo() {
-    return {
+    const info = {
       version: '1.0.0',
       language: 'TypeScript',
       platform: process.platform,
       nodeVersion: process.version
+    };
+
+    return {
+      value: info,
+      confidence: 1.0,
+      reasoning: 'System information retrieved'
     };
   }
 }
@@ -60,7 +82,7 @@ async function runDemo() {
   const agent = new DemoAgent();
   console.log(`✅ Agent created: ${agent.name} (${agent.id})`);
   console.log(`   Capabilities: ${agent.capabilities.join(', ')}`);
-  console.log(`   Expertise: ${agent.expertise}\n`);
+  console.log(`   Metadata: ${JSON.stringify(agent.metadata)}\n`);
 
   // 2. Test Agent Methods
   console.log('2️⃣ Testing Agent Methods...');
@@ -83,72 +105,25 @@ async function runDemo() {
   console.log('✅ System info:', systemInfo.value);
   console.log(`   Confidence: ${systemInfo.confidence}\n`);
 
-  // 3. Test Control Plane Client
-  console.log('3️⃣ Testing Control Plane Client...');
+  // 3. Test gRPC Server and Control Plane Integration
+  console.log('3️⃣ Testing gRPC Server and Control Plane Integration...');
   
   try {
-    const client = new ParallaxClient({
-      baseUrl: 'http://localhost:8080',
-      timeout: 5000
-    });
+    // Start the agent's gRPC server (this also registers with control plane)
+    const port = await serveAgent(agent, 50055);
+    console.log(`✅ Agent gRPC server started on port ${port} and registered with control plane`);
+    console.log('   The agent is now ready to receive tasks from the control plane\n');
     
-    // List patterns
-    console.log('Fetching patterns...');
-    const patterns = await client.listPatterns();
-    console.log(`✅ Found ${patterns.length} patterns`);
-    if (patterns.length > 0) {
-      console.log(`   First pattern: ${patterns[0].name} v${patterns[0].version}`);
-    }
-    
-    // Check health
-    const health = await client.health();
-    console.log('✅ Health check:', health);
+    // Keep running for a bit
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
   } catch (error) {
-    console.log('⚠️  Control plane not running (this is normal for SDK testing)');
+    console.log('⚠️  Failed to start gRPC server');
     console.log(`   Error: ${error.message}\n`);
   }
 
-  // 4. Test Pattern Execution (if control plane is running)
-  console.log('4️⃣ Testing Pattern Execution...');
-  
-  try {
-    const client = new ParallaxClient({
-      baseUrl: 'http://localhost:8080'
-    });
-    
-    // Start the agent's gRPC server
-    await agent.start(50051);
-    console.log('✅ Agent gRPC server started on port 50051');
-    
-    // Register the agent
-    await client.registerAgent({
-      id: agent.id,
-      name: agent.name,
-      endpoint: 'grpc://localhost:50051',
-      capabilities: agent.capabilities,
-      metadata: { sdk: 'typescript', version: '0.1.0' }
-    });
-    console.log('✅ Agent registered with control plane');
-    
-    // Execute a pattern
-    const execution = await client.executePattern('SimpleConsensus', {
-      task: 'Test the TypeScript SDK',
-      data: { test: true }
-    });
-    console.log('✅ Pattern execution started:', execution.id);
-    
-    // Wait for result
-    const result = await client.getExecution(execution.id);
-    console.log('✅ Execution result:', result);
-    
-  } catch (error) {
-    console.log('⚠️  Pattern execution skipped (control plane not running)');
-    console.log(`   Error: ${error.message}\n`);
-  }
-
-  // 5. Test Error Handling
-  console.log('5️⃣ Testing Error Handling...');
+  // 4. Test Error Handling
+  console.log('4️⃣ Testing Error Handling...');
   
   try {
     // Test invalid analysis
@@ -160,10 +135,12 @@ async function runDemo() {
   console.log('\n✅ TypeScript SDK Demo Complete!');
   console.log('\nSummary:');
   console.log('- Agent creation: ✅');
-  console.log('- Decorators: ✅');
   console.log('- Method execution: ✅');
-  console.log('- Client API: ✅ (requires control plane)');
+  console.log('- gRPC server: ✅');
   console.log('- Error handling: ✅');
+  
+  // Exit after demo
+  process.exit(0);
 }
 
 // Run the demo

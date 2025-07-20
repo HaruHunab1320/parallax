@@ -38,8 +38,6 @@ export class GrpcServer {
     this.registryService = new RegistryServiceImpl(agentRegistry, logger);
     this.patternService = new PatternServiceImpl(patternEngine, database, logger);
     this.coordinatorService = new CoordinatorServiceImpl(patternEngine, agentRegistry, logger);
-    
-    this.setupServices();
   }
 
   private setupServices() {
@@ -84,21 +82,23 @@ export class GrpcServer {
   }
 
   async start(port: number = 50051): Promise<void> {
+    // Setup services before binding
+    this.setupServices();
+    
     return new Promise((resolve, reject) => {
       const bindAddr = `0.0.0.0:${port}`;
       
       this.server.bindAsync(
         bindAddr,
         grpc.ServerCredentials.createInsecure(), // TODO: Add mTLS for production
-        (error, port) => {
+        (error, actualPort) => {
           if (error) {
-            this.logger.error({ error }, 'Failed to bind gRPC server');
+            this.logger.error({ error: error.message || error }, 'Failed to bind gRPC server');
             reject(error);
             return;
           }
           
-          this.server.start();
-          this.logger.info({ port }, 'gRPC server started');
+          this.logger.info({ port: actualPort }, 'gRPC server started');
           resolve();
         }
       );

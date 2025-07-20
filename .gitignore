@@ -84,6 +84,11 @@ confidence-metrics/
 
 # Proto generated files are intentionally committed for all SDKs
 # This allows users to use the SDKs without having protoc installed
+# But we ignore the TypeScript build artifacts in generated folders
+packages/*/generated/**/*.js
+packages/*/generated/**/*.d.ts
+packages/*/generated/**/*.js.map
+packages/*/generated/**/*.d.ts.map
 
 # Local agent data
 agent-data/

@@ -102,7 +102,6 @@ export abstract class SecureParallaxAgent extends ParallaxAgent {
           if (err) {
             reject(err);
           } else {
-            server.start();
             this.logger?.info({ 
               agentId: this.id, 
               port: actualPort,
