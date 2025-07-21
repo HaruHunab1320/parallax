@@ -11,12 +11,12 @@ use tracing::{debug, info};
 /// Service for pattern operations
 #[derive(Clone)]
 pub struct PatternService {
-    channel: Channel,
+    _channel: Channel,
 }
 
 impl PatternService {
     pub(crate) fn new(channel: Channel) -> Self {
-        Self { channel }
+        Self { _channel: channel }
     }
 
     /// List all available patterns

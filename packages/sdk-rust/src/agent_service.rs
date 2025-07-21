@@ -10,12 +10,12 @@ use tracing::{debug, info};
 /// Service for agent operations
 #[derive(Clone)]
 pub struct AgentService {
-    channel: Channel,
+    _channel: Channel,
 }
 
 impl AgentService {
     pub(crate) fn new(channel: Channel) -> Self {
-        Self { channel }
+        Self { _channel: channel }
     }
 
     /// Register a new agent
