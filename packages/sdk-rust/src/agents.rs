@@ -2,7 +2,7 @@ use crate::{
     error::Result,
     types::{Agent, AgentStatus},
 };
-use futures::Stream;
+use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use tonic::transport::Channel;
 use tracing::{debug, info};
@@ -145,19 +145,18 @@ impl AgentService {
         let initial_stream = stream::iter(agents.into_iter().map(Ok));
         
         // Simulate updates
-        let update_stream = stream::repeat_with(|| {
+        let update_stream = stream::iter((0..5).map(|i| {
             Ok(Agent {
-                id: format!("agent-{}", chrono::Utc::now().timestamp() % 100),
+                id: format!("agent-{}", i),
                 name: "Dynamic Agent".to_string(),
                 status: AgentStatus::Active,
                 capabilities: vec!["dynamic".to_string()],
                 endpoint: "localhost:50099".to_string(),
                 last_seen: chrono::Utc::now(),
-                confidence: 0.5 + (chrono::Utc::now().timestamp() % 50) as f64 / 100.0,
+                confidence: 0.5 + (i as f64) / 10.0,
                 metadata: Default::default(),
             })
-        })
-        .take(5);
+        }));
         
         let combined = initial_stream.chain(update_stream);
         

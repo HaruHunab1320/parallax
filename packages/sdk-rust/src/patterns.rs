@@ -161,7 +161,7 @@ impl PatternService {
         // Mock implementation using async-stream
         use futures::stream;
         
-        let stream = stream::repeat_with(|| {
+        let stream = stream::iter((0..10).map(|_| {
             Ok(PatternExecution {
                 id: uuid::Uuid::new_v4().to_string(),
                 pattern: "stream-test".to_string(),
@@ -176,8 +176,7 @@ impl PatternService {
                 error: None,
                 metadata: Default::default(),
             })
-        })
-        .take(10);
+        }));
         
         Ok(Box::pin(stream))
     }

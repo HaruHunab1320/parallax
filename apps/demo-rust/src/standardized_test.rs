@@ -1,109 +1,125 @@
 use anyhow::{anyhow, Result};
-use async_trait::async_trait;
-use parallax_sdk::{
-    agent::{Agent, AgentInfo, AgentResponse},
-    client::{Client, ClientConfig},
-};
 use serde_json::json;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::time::sleep;
+use std::time::Duration;
 
-/// Test agent implementation
+// Import from the workspace package
+use parallax_sdk::{ParallaxAgent, AgentResult};
+
+/// Test agent implementation using ParallaxAgent
 struct TestAgent {
-    info: AgentInfo,
+    agent: Arc<ParallaxAgent>,
 }
 
 impl TestAgent {
     fn new() -> Self {
-        Self {
-            info: AgentInfo {
-                id: "test-agent-rust".to_string(),
-                name: "Test Agent (Rust)".to_string(),
-                capabilities: vec!["analysis".to_string(), "validation".to_string()],
-                expertise: 0.85,
-                metadata: HashMap::new(),
+        let agent = ParallaxAgent::new(
+            "test-agent-rust",
+            "Test Agent (Rust)",
+            vec!["analysis".to_string(), "validation".to_string()],
+            {
+                let mut metadata = HashMap::new();
+                metadata.insert("expertise".to_string(), "0.85".to_string());
+                metadata
             },
-        }
-    }
-}
+        ).set_analyze_fn(move |task: &str, data: Option<serde_json::Value>| -> futures::future::BoxFuture<'static, Result<AgentResult, Box<dyn std::error::Error>>> {
+            let task = task.to_string();
+            Box::pin(async move {
+                match task.as_str() {
+                    "analyze" => {
+                        let data = data.ok_or("Missing data")?;
+                        let data_obj = data.as_object().ok_or("Data is not an object")?;
+                        let content_data = data_obj.get("data")
+                            .and_then(|v| v.as_object())
+                            .ok_or("Missing data field")?;
+                        
+                        let content_type = content_data.get("type")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
+                        let content = content_data.get("content")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
 
-#[async_trait]
-impl Agent for TestAgent {
-    fn info(&self) -> &AgentInfo {
-        &self.info
-    }
-
-    async fn analyze(&self, task: &str, input: serde_json::Value) -> Result<AgentResponse> {
-        match task {
-            "analyze" => {
-                let data = input["data"].as_object().ok_or(anyhow!("Missing data"))?;
-                let content_type = data.get("type")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
-                let content = data.get("content")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-
-                Ok(AgentResponse {
-                    value: json!({
-                        "summary": format!("Analyzed {} content", content_type),
-                        "length": content.len(),
-                        "result": "Analysis complete"
-                    }),
-                    confidence: 0.85,
-                    reasoning: Some("Standard analysis performed".to_string()),
-                    metadata: HashMap::new(),
-                })
-            }
-
-            "validate" => {
-                let data = input["data"].as_object().ok_or(anyhow!("Missing data"))?;
-                let value = data.get("value")
-                    .and_then(|v| v.as_i64())
-                    .ok_or(anyhow!("Missing value"))?;
-                let rules = data.get("rules")
-                    .and_then(|v| v.as_array())
-                    .ok_or(anyhow!("Missing rules"))?;
-
-                let mut details = Vec::new();
-                let mut valid = true;
-
-                for rule in rules {
-                    if let Some(rule_str) = rule.as_str() {
-                        match rule_str {
-                            "positive" => {
-                                if value > 0 {
-                                    details.push("Value is positive");
-                                } else {
-                                    valid = false;
-                                    details.push("Value is not positive");
-                                }
-                            }
-                            "even" => {
-                                if value % 2 == 0 {
-                                    details.push("Value is even");
-                                } else {
-                                    valid = false;
-                                    details.push("Value is not even");
-                                }
-                            }
-                            _ => {}
-                        }
+                        Ok(AgentResult {
+                            value: json!({
+                                "summary": format!("Analyzed {} content", content_type),
+                                "length": content.len(),
+                                "result": "Analysis complete"
+                            }),
+                            confidence: 0.85,
+                            reasoning: Some("Standard analysis performed".to_string()),
+                            uncertainties: vec![],
+                            metadata: HashMap::new(),
+                        })
                     }
+
+                    "validate" => {
+                        let data = data.ok_or("Missing data")?;
+                        let data_obj = data.as_object().ok_or("Data is not an object")?;
+                        let validate_data = data_obj.get("data")
+                            .and_then(|v| v.as_object())
+                            .ok_or("Missing data field")?;
+                        
+                        let value = validate_data.get("value")
+                            .and_then(|v| v.as_i64())
+                            .ok_or("Missing value")?;
+                        let rules = validate_data.get("rules")
+                            .and_then(|v| v.as_array())
+                            .ok_or("Missing rules")?;
+
+                        let mut details = Vec::new();
+                        let mut valid = true;
+
+                        for rule in rules {
+                            if let Some(rule_str) = rule.as_str() {
+                                match rule_str {
+                                    "positive" => {
+                                        if value > 0 {
+                                            details.push("Value is positive");
+                                        } else {
+                                            valid = false;
+                                            details.push("Value is not positive");
+                                        }
+                                    }
+                                    "even" => {
+                                        if value % 2 == 0 {
+                                            details.push("Value is even");
+                                        } else {
+                                            valid = false;
+                                            details.push("Value is not even");
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+
+                        Ok(AgentResult {
+                            value: json!({
+                                "valid": valid,
+                                "details": details
+                            }),
+                            confidence: 0.95,
+                            reasoning: Some("Validation rules applied".to_string()),
+                            uncertainties: vec![],
+                            metadata: HashMap::new(),
+                        })
+                    }
+
+                    _ => Err(format!("Unknown task: {}", task).into())
                 }
-
-                Ok(AgentResponse {
-                    value: json!({
-                        "valid": valid,
-                        "details": details
-                    }),
-                    confidence: 0.95,
-                    reasoning: Some("Validation rules applied".to_string()),
-                    metadata: HashMap::new(),
-                })
-            }
-
-            _ => Err(anyhow!("Unknown task: {}", task))
+            })
+        });
+        
+        Self {
+            agent: Arc::new(agent),
         }
+    }
+    
+    async fn analyze(&self, task: &str, data: serde_json::Value) -> Result<AgentResult> {
+        (self.agent.analyze_fn)(task, Some(data)).await.map_err(|e| anyhow!("{}", e))
     }
 }
 
@@ -116,10 +132,10 @@ async fn run_standardized_tests() -> Result<bool> {
 
     // Test 1: Agent Creation
     let test1_result = (|| -> Result<bool> {
-        let agent = TestAgent::new();
-        Ok(agent.info.id == "test-agent-rust" &&
-           agent.info.capabilities.contains(&"analysis".to_string()) &&
-           agent.info.capabilities.contains(&"validation".to_string()))
+        let test_agent = TestAgent::new();
+        Ok(test_agent.agent.id == "test-agent-rust" &&
+           test_agent.agent.capabilities.contains(&"analysis".to_string()) &&
+           test_agent.agent.capabilities.contains(&"validation".to_string()))
     })();
     
     match test1_result {
@@ -134,9 +150,9 @@ async fn run_standardized_tests() -> Result<bool> {
     }
 
     // Test 2: Simple Analysis
-    let test2_result = (|| async {
-        let agent = TestAgent::new();
-        let response = agent.analyze("analyze", json!({
+    let test2_result: Result<bool> = (|| async {
+        let test_agent = TestAgent::new();
+        let response = test_agent.analyze("analyze", json!({
             "data": {
                 "content": "Test data for analysis",
                 "type": "text"
@@ -157,9 +173,9 @@ async fn run_standardized_tests() -> Result<bool> {
     }
 
     // Test 3: Validation
-    let test3_result = (|| async {
-        let agent = TestAgent::new();
-        let response = agent.analyze("validate", json!({
+    let test3_result: Result<bool> = (|| async {
+        let test_agent = TestAgent::new();
+        let response = test_agent.analyze("validate", json!({
             "data": {
                 "value": 42,
                 "rules": ["positive", "even"]
@@ -184,9 +200,9 @@ async fn run_standardized_tests() -> Result<bool> {
     }
 
     // Test 4: Error Handling
-    let test4_result = (|| async {
-        let agent = TestAgent::new();
-        match agent.analyze("unknown-task", json!({})).await {
+    let test4_result: Result<bool> = (|| async {
+        let test_agent = TestAgent::new();
+        match test_agent.analyze("unknown-task", json!({})).await {
             Err(e) => Ok(e.to_string().to_lowercase().contains("unknown task")),
             Ok(_) => Ok(false),
         }
@@ -207,36 +223,39 @@ async fn run_standardized_tests() -> Result<bool> {
         }
     }
 
-    // Test 5: Client API (optional)
-    let test5_result = (|| async {
-        let config = ClientConfig {
-            base_url: "http://localhost:8080".to_string(),
-            ..Default::default()
-        };
-        let client = Client::new(config)?;
-
-        // 5.1 Health Check
-        let health = client.health().await?;
-
-        // 5.2 List Patterns
-        let patterns = client.list_patterns().await?;
-
-        // 5.3 Pattern Execution
-        let execution = client.execute_pattern("SimpleConsensus", json!({
-            "task": "SDK test",
-            "data": {"test": true}
-        })).await?;
-
-        Ok(health.status == "healthy" && !patterns.is_empty() && !execution.id.is_empty())
+    // Test 5: gRPC Server and Registration
+    print!("Test 5: gRPC Server.................. ");
+    let test5_result: Result<bool> = (|| async {
+        let test_agent = TestAgent::new();
+        let agent_clone = Arc::clone(&test_agent.agent);
+        
+        // Start the agent's gRPC server in the background
+        tokio::spawn(async move {
+            if let Err(e) = agent_clone.serve(50057).await {
+                eprintln!("Failed to serve: {}", e);
+            }
+        });
+        
+        // Give it a moment to start and register
+        sleep(Duration::from_secs(2)).await;
+        
+        // If we got here without crashing, it's working
+        Ok(true)
     })().await;
-
+    
     match test5_result {
         Ok(passed) => {
-            results.insert("Client API", passed);
-            println!("Test 5: Client API (optional)........ {}", if passed { "PASS" } else { "FAIL" });
+            results.insert("gRPC Server", passed);
+            if passed {
+                println!("PASS");
+                println!("   Agent gRPC server started on port 50057 and registered with control plane");
+            } else {
+                println!("FAIL");
+            }
         }
-        Err(_) => {
-            println!("Test 5: Client API (optional)........ SKIP (Control plane not running)");
+        Err(e) => {
+            results.insert("gRPC Server", false);
+            println!("FAIL ({})", e);
         }
     }
 

@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tonic_build::configure()
         .out_dir("generated")
-        .compile(
+        .compile_protos(
             &[
                 "../../proto/confidence.proto",
                 "../../proto/coordinator.proto",

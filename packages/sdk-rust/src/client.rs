@@ -49,7 +49,7 @@ impl Client {
         let mut endpoint = Endpoint::from_shared(config.endpoint.clone())?
             .timeout(config.timeout)
             .connect_timeout(config.connect_timeout)
-            .keep_alive_interval(config.keep_alive_interval)
+            .http2_keep_alive_interval(config.keep_alive_interval)
             .keep_alive_timeout(config.keep_alive_timeout);
 
         // Configure TLS if provided

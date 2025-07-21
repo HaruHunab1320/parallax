@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use parallax_sdk::{
     agent::{Agent, AgentInfo, AgentResponse},
     client::{Client, ClientConfig},
-    patterns::PatternExecution,
+    types::PatternExecution,
 };
 use serde_json::json;
 use std::collections::HashMap;
@@ -150,12 +150,12 @@ mod tests {
     info!("3️⃣  Testing Control Plane Client...");
 
     let config = ClientConfig {
-        base_url: "http://localhost:8080".to_string(),
+        endpoint: "http://localhost:8080".to_string(),
         timeout: std::time::Duration::from_secs(5),
         ..Default::default()
     };
 
-    match Client::new(config) {
+    match Client::new(config).await {
         Ok(client) => {
             // Check health
             match client.health().await {
@@ -185,7 +185,7 @@ mod tests {
                     info!("4️⃣  Testing Pattern Execution...");
 
                     // Register agent
-                    let registration = parallax_sdk::agent::AgentRegistration {
+                    let registration = parallax_sdk::generated::AgentRegistration {
                         id: agent.info.id.clone(),
                         name: agent.info.name.clone(),
                         endpoint: "grpc://localhost:50054".to_string(),
