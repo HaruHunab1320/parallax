@@ -5,7 +5,7 @@ Example weather analysis agent for Parallax.
 This demonstrates:
 - Basic agent implementation
 - Confidence based on data quality
-- Using decorators
+- Confidence based on data quality
 - Expressing uncertainty
 """
 
@@ -19,12 +19,6 @@ import sys
 sys.path.append('../../packages/sdk-python/src')
 
 from parallax import ParallaxAgent, run_agent
-from parallax.decorators import (
-    confidence_threshold,
-    requires_data,
-    with_reasoning,
-    with_uncertainty_tracking,
-)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -49,14 +43,16 @@ class WeatherAnalysisAgent(ParallaxAgent):
             }
         )
         
-    @confidence_threshold(min_confidence=0.1, max_confidence=0.99)
-    @with_reasoning
-    @with_uncertainty_tracking
-    @requires_data("temperature")
     async def analyze(
         self, task: str, data: Optional[Any] = None
     ) -> tuple[Any, float]:
         """Analyze weather conditions and provide recommendations."""
+        
+        # Check required data
+        if not data or "temperature" not in data:
+            return {
+                "error": "Missing required temperature data"
+            }, 0.0
         
         temperature = data.get("temperature")
         humidity = data.get("humidity", 50)  # Default 50%
@@ -89,9 +85,7 @@ class WeatherAnalysisAgent(ParallaxAgent):
         elif temperature > 0:
             temp_desc = "cold"
             recommendation = "Wear warm clothing"
-            # Add uncertainty for cold weather predictions
-            if hasattr(self, '_uncertainties'):
-                self._uncertainties.append("Cold weather patterns are less predictable")
+            # Cold weather patterns are less predictable
         else:
             temp_desc = "freezing"
             recommendation = "Stay warm, watch for ice"
@@ -102,8 +96,7 @@ class WeatherAnalysisAgent(ParallaxAgent):
             recommendation += ", bring an umbrella"
             if temperature < 5:
                 recommendation += " (watch for freezing rain)"
-                if hasattr(self, '_uncertainties'):
-                    self._uncertainties.append("Freezing rain conditions are hazardous")
+                # Freezing rain conditions are hazardous
                 confidence *= 0.9
         elif conditions == "snow":
             recommendation = "Drive carefully, " + recommendation
@@ -112,8 +105,7 @@ class WeatherAnalysisAgent(ParallaxAgent):
         # High wind adjustment
         if wind_speed > 50:
             recommendation += ", strong wind warning"
-            if hasattr(self, '_uncertainties'):
-                self._uncertainties.append("High winds may cause rapid weather changes")
+            # High winds may cause rapid weather changes
             confidence *= 0.9
         
         # Create detailed result
@@ -140,6 +132,28 @@ class WeatherAnalysisAgent(ParallaxAgent):
             result["travel_safety"] = self._travel_safety(
                 temperature, conditions, wind_speed
             )
+        
+        # Ensure confidence is within bounds
+        confidence = max(0.1, min(0.99, confidence))
+        
+        # Add reasoning
+        result["reasoning"] = (
+            f"Analysis completed by {self.name} "
+            f"with confidence {confidence:.2f} based on "
+            f"{'complete' if humidity != 50 and wind_speed != 0 else 'partial'} data"
+        )
+        
+        # Add uncertainties if any
+        uncertainties = []
+        if temperature < 0:
+            uncertainties.append("Cold weather patterns are less predictable")
+        if conditions == "rain" and temperature < 5:
+            uncertainties.append("Freezing rain conditions are hazardous")
+        if wind_speed > 50:
+            uncertainties.append("High winds may cause rapid weather changes")
+        
+        if uncertainties:
+            result["uncertainties"] = uncertainties
         
         return result, confidence
     

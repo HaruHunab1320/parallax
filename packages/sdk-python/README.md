@@ -53,16 +53,10 @@ if __name__ == "__main__":
     run_agent(agent)
 ```
 
-### 2. Using Decorators
+### 2. Agent with Validation
 
 ```python
 from parallax import ParallaxAgent
-from parallax.decorators import (
-    confidence_threshold,
-    requires_data,
-    with_reasoning,
-    cached
-)
 
 class AdvancedAgent(ParallaxAgent):
     def __init__(self):
@@ -72,18 +66,23 @@ class AdvancedAgent(ParallaxAgent):
             ["analysis", "ml"]
         )
     
-    @confidence_threshold(min_confidence=0.3)
-    @requires_data("input_data")
-    @with_reasoning
-    @cached(ttl_seconds=300)
     async def analyze(self, task: str, data: dict = None) -> tuple[dict, float]:
+        # Validate input data
+        if not data or "input_data" not in data:
+            return {"error": "Missing required input_data"}, 0.0
+        
         # Complex analysis
         result = await self.ml_model.predict(data["input_data"])
+        confidence = 0.92
+        
+        # Ensure confidence is within bounds
+        confidence = max(0.3, min(1.0, confidence))
         
         return {
             "prediction": result,
-            "model": "v2.1"
-        }, 0.92
+            "model": "v2.1",
+            "reasoning": f"Analysis completed with confidence {confidence:.2f}"
+        }, confidence
 ```
 
 ### 3. Async Server
@@ -157,17 +156,18 @@ def __init__(self):
 Track and report uncertainties:
 
 ```python
-from parallax.decorators import with_uncertainty_tracking
-
-@with_uncertainty_tracking
 async def analyze(self, task: str, data: dict = None) -> tuple[dict, float]:
     result = await self.process(data)
+    uncertainties = []
     
     if data.get("missing_context"):
-        self._uncertainties.append("Missing important context")
+        uncertainties.append("Missing important context")
     
     if not self.recent_training:
-        self._uncertainties.append("Model not recently updated")
+        uncertainties.append("Model not recently updated")
+    
+    if uncertainties:
+        result["uncertainties"] = uncertainties
     
     return result, 0.7
 ```
@@ -276,14 +276,18 @@ Base class for all agents.
 - `serve(port: int) -> int` - Start gRPC server
 - `shutdown(grace_period: float)` - Graceful shutdown
 
-### Decorators
+### Response Format
 
-- `@capability(*capabilities)` - Declare method capabilities
-- `@confidence_threshold(min, max)` - Validate confidence bounds
-- `@requires_data(*fields)` - Validate required fields
-- `@with_reasoning` - Ensure reasoning in result
-- `@with_uncertainty_tracking` - Track uncertainties
-- `@cached(ttl_seconds)` - Cache results
+Agents should return a tuple of (result, confidence):
+
+```python
+async def analyze(self, task: str, data: dict = None) -> tuple[dict, float]:
+    return {
+        "value": "analysis result",
+        "reasoning": "Explanation of the analysis",
+        "uncertainties": ["List of uncertainties if any"]
+    }, 0.85  # Confidence score 0.0-1.0
+```
 
 ### Types
 

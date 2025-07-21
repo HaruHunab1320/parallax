@@ -17,12 +17,6 @@ import sys
 sys.path.append('../../packages/sdk-python/src')
 
 from parallax import ParallaxAgent, run_agent
-from parallax.decorators import (
-    confidence_threshold,
-    requires_data,
-    with_reasoning,
-    with_uncertainty_tracking,
-)
 
 
 class DocumentSummarizerAgent(ParallaxAgent):
@@ -55,14 +49,16 @@ class DocumentSummarizerAgent(ParallaxAgent):
             'should', 'may', 'might', 'must', 'shall', 'can', 'cannot'
         }
     
-    @confidence_threshold(min_confidence=0.1, max_confidence=0.95)
-    @with_reasoning
-    @with_uncertainty_tracking
-    @requires_data("text")
     async def analyze(
         self, task: str, data: Dict[str, Any] = None
     ) -> Tuple[Dict[str, Any], float]:
         """Analyze and summarize the document."""
+        
+        # Validate required data
+        if not data or "text" not in data:
+            return {
+                "error": "No text provided for summarization"
+            }, 0.0
         
         text = data.get("text", "")
         options = data.get("options", {})
@@ -120,6 +116,27 @@ class DocumentSummarizerAgent(ParallaxAgent):
         if focus:
             result["focus_highlights"] = self._extract_focus_highlights(text, focus)
         
+        # Ensure confidence is within bounds
+        final_confidence = max(0.1, min(0.95, final_confidence))
+        
+        # Add reasoning
+        result["reasoning"] = (
+            f"Summarization completed using {strategy} strategy "
+            f"with confidence {final_confidence:.2f}"
+        )
+        
+        # Add uncertainties if any
+        uncertainties = []
+        if len(text) < 100:
+            uncertainties.append("Document is very short")
+        elif len(text) > 50000:
+            uncertainties.append("Document exceeds optimal length")
+        if '.' not in text:
+            uncertainties.append("No clear sentence structure detected")
+        
+        if uncertainties:
+            result["uncertainties"] = uncertainties
+        
         return result, final_confidence
     
     def _calculate_base_confidence(self, text: str) -> float:
@@ -130,12 +147,10 @@ class DocumentSummarizerAgent(ParallaxAgent):
         length = len(text)
         if length < 100:
             confidence *= 0.5  # Too short
-            if hasattr(self, '_uncertainties'):
-                self._uncertainties.append("Document is very short")
+            # Document is very short
         elif length > 50000:
             confidence *= 0.8  # Very long
-            if hasattr(self, '_uncertainties'):
-                self._uncertainties.append("Document exceeds optimal length")
+            # Document exceeds optimal length
         
         # Language complexity
         avg_word_length = sum(len(word) for word in text.split()) / max(len(text.split()), 1)
@@ -148,8 +163,7 @@ class DocumentSummarizerAgent(ParallaxAgent):
         
         if not has_sentences:
             confidence *= 0.7
-            if hasattr(self, '_uncertainties'):
-                self._uncertainties.append("No clear sentence structure detected")
+            # No clear sentence structure detected
         
         return confidence
     

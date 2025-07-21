@@ -1,5 +1,4 @@
 export * from './tracing/tracer-provider';
-export * from './tracing/decorators';
 export * from './tracing/pattern-tracer';
 export * from './config';
 

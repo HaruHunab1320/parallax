@@ -9,6 +9,13 @@ const PROTO_DIR = path.join(__dirname, '../../../proto');
  * Base class for Parallax agents in TypeScript.
  * Agents are standalone services that communicate via gRPC.
  */
+interface GrpcProto {
+  parallax: {
+    confidence: any;
+    registry: any;
+  };
+}
+
 export abstract class ParallaxAgent {
   private server: grpc.Server;
   private registryClient: any;
@@ -68,7 +75,7 @@ export abstract class ParallaxAgent {
       includeDirs: [PROTO_DIR]
     });
     
-    const confidenceDescriptor = grpc.loadPackageDefinition(confidenceDefinition);
+    const confidenceDescriptor = grpc.loadPackageDefinition(confidenceDefinition) as unknown as GrpcProto;
     this.confidenceProto = confidenceDescriptor.parallax.confidence;
 
     // Load registry proto
@@ -82,7 +89,7 @@ export abstract class ParallaxAgent {
       includeDirs: [PROTO_DIR]
     });
     
-    const registryDescriptor = grpc.loadPackageDefinition(registryDefinition);
+    const registryDescriptor = grpc.loadPackageDefinition(registryDefinition) as unknown as GrpcProto;
     this.registryProto = registryDescriptor.parallax.registry;
   }
 
@@ -189,7 +196,7 @@ export abstract class ParallaxAgent {
     if (!this.registryClient || !this.leaseId) return;
     
     return new Promise((resolve, reject) => {
-      this.registryClient.renew({ lease_id: this.leaseId }, (error: any, response: any) => {
+      this.registryClient.renew({ lease_id: this.leaseId }, (error: any, _response: any) => {
         if (error) {
           reject(error);
           return;
@@ -283,7 +290,7 @@ export abstract class ParallaxAgent {
    * Handle get capabilities requests
    */
   private async handleGetCapabilities(
-    call: grpc.ServerUnaryCall<any, any>,
+    _call: grpc.ServerUnaryCall<any, any>,
     callback: grpc.sendUnaryData<any>
   ) {
     callback(null, {
@@ -297,7 +304,7 @@ export abstract class ParallaxAgent {
    * Handle health check requests
    */
   private async handleHealthCheck(
-    call: grpc.ServerUnaryCall<any, any>,
+    _call: grpc.ServerUnaryCall<any, any>,
     callback: grpc.sendUnaryData<any>
   ) {
     const health = await this.checkHealth();

@@ -6,7 +6,7 @@ TypeScript SDK for building agents that integrate with the Parallax AI orchestra
 
 The TypeScript SDK provides:
 - Base classes for creating agents
-- TypeScript decorators for confidence tracking
+- Built-in confidence tracking
 - gRPC server implementation
 - Type-safe interfaces for Parallax communication
 - Utilities for testing agents
@@ -26,13 +26,12 @@ pnpm add @parallax/sdk-typescript
 ### Basic Agent
 
 ```typescript
-import { ParallaxAgent, confidence } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallax/sdk-typescript';
 
 class WeatherAgent extends ParallaxAgent {
   name = 'weather-agent';
   capabilities = ['weather', 'forecast'];
 
-  @confidence()
   async analyze(task: string, data: any) {
     // Your agent logic here
     const forecast = await this.getForecast(data.location);
@@ -58,14 +57,12 @@ agent.start(8001);
 ### Advanced Agent with Metadata
 
 ```typescript
-import { ParallaxAgent, confidence, withMetadata } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallax/sdk-typescript';
 
 class AnalyticsAgent extends ParallaxAgent {
   name = 'analytics-agent';
   capabilities = ['data-analysis', 'statistics', 'ml-prediction'];
   
-  @confidence()
-  @withMetadata()
   async analyze(task: string, data: any) {
     const startTime = Date.now();
     
@@ -129,24 +126,21 @@ abstract class ParallaxAgent {
 }
 ```
 
-### Decorators
+### Agent Response Format
 
-#### @confidence()
-Automatically wraps return values with confidence tracking.
+Agents should return responses in this format:
 
 ```typescript
-@confidence({ default: 0.5, factors: ['data_quality', 'model_certainty'] })
-async analyze(task: string, data: any) {
-  // Return value will be wrapped with confidence
-  return computeResult(data);
+interface AgentResponse {
+  value: any;           // The actual result
+  confidence: number;   // 0.0 to 1.0
+  reasoning?: string;   // Explanation of the result
+  uncertainties?: string[];  // Any uncertainties
+  metadata?: Record<string, any>;  // Additional metadata
 }
 ```
 
-#### @withMetadata()
-Adds metadata to responses.
-
 ```typescript
-@withMetadata()
 async analyze(task: string, data: any) {
   return {
     value: result,
@@ -279,6 +273,6 @@ See `/examples` directory for:
 - Monitor confidence factors
 
 ### Performance issues
-- Enable caching with @cached decorator
+- Built-in result caching
 - Review async operation efficiency
 - Check resource utilization
