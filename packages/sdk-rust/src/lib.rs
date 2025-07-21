@@ -5,7 +5,7 @@
 pub mod client;
 pub mod types;
 pub mod patterns;
-pub mod agents;
+pub mod agent_service;
 pub mod agent;
 pub mod error;
 pub mod generated;
@@ -18,5 +18,5 @@ pub use error::{Error, Result};
 
 // Re-export commonly used items
 pub use patterns::PatternService;
-pub use agents::AgentService;
+pub use agent_service::AgentService;
 pub use parallax_agent::{ParallaxAgent, AgentResult};
