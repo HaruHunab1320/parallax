@@ -1,4 +1,4 @@
-use crate::{agents::AgentService, error::Result, patterns::PatternService};
+use crate::{agent_service::AgentService, error::Result, patterns::PatternService};
 use std::time::Duration;
 use tonic::transport::{Channel, Endpoint};
 use tracing::info;

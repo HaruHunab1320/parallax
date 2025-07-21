@@ -6,7 +6,6 @@ pub mod client;
 pub mod types;
 pub mod patterns;
 pub mod agent_service;
-pub mod agent;
 pub mod error;
 pub mod generated;
 pub mod parallax_agent;
