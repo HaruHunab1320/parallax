@@ -149,16 +149,6 @@ async analyze(task: string, data: any) {
 }
 ```
 
-#### @cached()
-Caches responses based on input hash.
-
-```typescript
-@cached({ ttl: 300 }) // 5 minutes
-async analyze(task: string, data: any) {
-  return expensiveComputation(data);
-}
-```
-
 ### Types
 
 ```typescript
@@ -273,6 +263,6 @@ See `/examples` directory for:
 - Monitor confidence factors
 
 ### Performance issues
-- Built-in result caching
+- Implement result caching if needed
 - Review async operation efficiency
 - Check resource utilization
