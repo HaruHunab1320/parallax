@@ -4,7 +4,7 @@
 // - protoc             v5.29.3
 // source: coordinator.proto
 
-package coordinator
+package generated
 
 import (
 	context "context"
@@ -86,7 +86,7 @@ func (c *coordinatorClient) GetHistory(ctx context.Context, in *GetHistoryReques
 }
 
 // CoordinatorServer is the server API for Coordinator service.
-// All implementations must embed UnimplementedCoordinatorServer
+// All implementations should embed UnimplementedCoordinatorServer
 // for forward compatibility.
 //
 // Coordinator service
@@ -97,10 +97,9 @@ type CoordinatorServer interface {
 	StreamCoordinate(*CoordinateRequest, grpc.ServerStreamingServer[CoordinateResponse]) error
 	// Get coordination history
 	GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error)
-	mustEmbedUnimplementedCoordinatorServer()
 }
 
-// UnimplementedCoordinatorServer must be embedded to have
+// UnimplementedCoordinatorServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
@@ -116,8 +115,7 @@ func (UnimplementedCoordinatorServer) StreamCoordinate(*CoordinateRequest, grpc.
 func (UnimplementedCoordinatorServer) GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHistory not implemented")
 }
-func (UnimplementedCoordinatorServer) mustEmbedUnimplementedCoordinatorServer() {}
-func (UnimplementedCoordinatorServer) testEmbeddedByValue()                     {}
+func (UnimplementedCoordinatorServer) testEmbeddedByValue() {}
 
 // UnsafeCoordinatorServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to CoordinatorServer will

@@ -4,7 +4,7 @@
 // - protoc             v5.29.3
 // source: confidence.proto
 
-package confidence
+package generated
 
 import (
 	context "context"
@@ -100,7 +100,7 @@ func (c *confidenceAgentClient) StreamAnalyze(ctx context.Context, in *AgentRequ
 type ConfidenceAgent_StreamAnalyzeClient = grpc.ServerStreamingClient[ConfidenceResult]
 
 // ConfidenceAgentServer is the server API for ConfidenceAgent service.
-// All implementations must embed UnimplementedConfidenceAgentServer
+// All implementations should embed UnimplementedConfidenceAgentServer
 // for forward compatibility.
 //
 // Service definition for confidence-aware agents
@@ -113,10 +113,9 @@ type ConfidenceAgentServer interface {
 	HealthCheck(context.Context, *emptypb.Empty) (*Health, error)
 	// Stream analysis for long-running tasks
 	StreamAnalyze(*AgentRequest, grpc.ServerStreamingServer[ConfidenceResult]) error
-	mustEmbedUnimplementedConfidenceAgentServer()
 }
 
-// UnimplementedConfidenceAgentServer must be embedded to have
+// UnimplementedConfidenceAgentServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
@@ -135,8 +134,7 @@ func (UnimplementedConfidenceAgentServer) HealthCheck(context.Context, *emptypb.
 func (UnimplementedConfidenceAgentServer) StreamAnalyze(*AgentRequest, grpc.ServerStreamingServer[ConfidenceResult]) error {
 	return status.Errorf(codes.Unimplemented, "method StreamAnalyze not implemented")
 }
-func (UnimplementedConfidenceAgentServer) mustEmbedUnimplementedConfidenceAgentServer() {}
-func (UnimplementedConfidenceAgentServer) testEmbeddedByValue()                         {}
+func (UnimplementedConfidenceAgentServer) testEmbeddedByValue() {}
 
 // UnsafeConfidenceAgentServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to ConfidenceAgentServer will

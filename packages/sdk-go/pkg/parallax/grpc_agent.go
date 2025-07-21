@@ -13,13 +13,14 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	confidence "github.com/parallax/sdk-go/generated"
-	registry "github.com/parallax/sdk-go/generated"
+	confidence "parallax/sdk-go/generated"
+	registry "parallax/sdk-go/generated"
 )
 
 // Agent defines the interface that all Parallax agents must implement
@@ -152,13 +153,11 @@ func (g *GrpcAgent) register() error {
 	defer cancel()
 
 	req := &registry.RegisterRequest{
-		Agent: &registry.Agent{
+		Agent: &registry.AgentRegistration{
 			Id:           g.agent.GetID(),
 			Name:         g.agent.GetName(),
-			Address:      fmt.Sprintf("localhost:%d", g.port),
+			Endpoint:     fmt.Sprintf("localhost:%d", g.port),
 			Capabilities: g.agent.GetCapabilities(),
-			Metadata:     g.agent.GetMetadata(),
-			Status:       registry.Agent_HEALTHY,
 		},
 	}
 
@@ -168,7 +167,7 @@ func (g *GrpcAgent) register() error {
 	}
 
 	g.mu.Lock()
-	g.leaseID = resp.Registration.LeaseId
+	g.leaseID = resp.LeaseId
 	g.mu.Unlock()
 
 	log.Printf("Agent %s registered with control plane, lease_id: %s", g.agent.GetID(), g.leaseID)
@@ -220,7 +219,7 @@ func (g *GrpcAgent) renewLeaseLoop() {
 				continue
 			}
 
-			if !resp.Renewed {
+			if !resp.Success {
 				log.Printf("Lease renewal failed")
 				// Try to re-register
 				if err := g.register(); err != nil {
@@ -251,7 +250,7 @@ func (g *GrpcAgent) unregister() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	req := &registry.UnregisterRequest{AgentId: g.agent.GetID()}
+	req := &registry.AgentRegistration{Id: g.agent.GetID()}
 	
 	_, err = client.Unregister(ctx, req)
 	if err != nil {
@@ -262,55 +261,48 @@ func (g *GrpcAgent) unregister() error {
 	return nil
 }
 
-// Execute implements the ConfidenceAgent.Execute RPC
-func (g *GrpcAgent) Execute(ctx context.Context, req *confidence.ExecuteRequest) (*confidence.ExecuteResponse, error) {
-	task := req.GetTask()
-	if task == nil {
-		return nil, status.Error(grpc.codes.InvalidArgument, "task is required")
+// Analyze implements the ConfidenceAgent.Analyze RPC
+func (g *GrpcAgent) Analyze(ctx context.Context, req *confidence.AgentRequest) (*confidence.ConfidenceResult, error) {
+	if req.TaskDescription == "" {
+		return nil, status.Error(codes.InvalidArgument, "task description is required")
 	}
 
 	// Parse task data if provided
 	var data interface{}
-	if task.Data != "" {
-		if err := json.Unmarshal([]byte(task.Data), &data); err != nil {
-			return nil, status.Errorf(grpc.codes.InvalidArgument, "invalid task data: %v", err)
-		}
+	if req.Data != nil {
+		data = req.Data.AsMap()
 	}
 
 	// Call agent's analyze method
-	result, err := g.agent.Analyze(ctx, task.Description, data)
+	result, err := g.agent.Analyze(ctx, req.TaskDescription, data)
 	if err != nil {
-		return nil, status.Errorf(grpc.codes.Internal, "analysis failed: %v", err)
+		return nil, status.Errorf(codes.Internal, "analysis failed: %v", err)
 	}
 
 	// Marshal result value
 	valueJSON, err := json.Marshal(result.Value)
 	if err != nil {
-		return nil, status.Errorf(grpc.codes.Internal, "failed to marshal result: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to marshal result: %v", err)
 	}
 
 	// Build response
-	resp := &confidence.ExecuteResponse{
-		Result: &confidence.ConfidenceResult{
-			ValueJson:     string(valueJSON),
-			Confidence:    result.Confidence,
-			AgentId:       g.agent.GetID(),
-			Timestamp:     timestamppb.Now(),
-			Reasoning:     result.Reasoning,
-			Uncertainties: result.Uncertainties,
-			Metadata:      result.Metadata,
-		},
-	}
-
-	return resp, nil
+	return &confidence.ConfidenceResult{
+		ValueJson:     string(valueJSON),
+		Confidence:    result.Confidence,
+		AgentId:       g.agent.GetID(),
+		Timestamp:     timestamppb.Now(),
+		Reasoning:     result.Reasoning,
+		Uncertainties: result.Uncertainties,
+		Metadata:      result.Metadata,
+	}, nil
 }
 
-// StreamExecute implements the ConfidenceAgent.StreamExecute RPC
-func (g *GrpcAgent) StreamExecute(req *confidence.ExecuteRequest, stream confidence.ConfidenceAgent_StreamExecuteServer) error {
+// StreamAnalyze implements the ConfidenceAgent.StreamAnalyze RPC
+func (g *GrpcAgent) StreamAnalyze(req *confidence.AgentRequest, stream grpc.ServerStreamingServer[confidence.ConfidenceResult]) error {
 	// For now, just execute once and send result
 	// TODO: Implement proper streaming
 	
-	resp, err := g.Execute(stream.Context(), req)
+	resp, err := g.Analyze(stream.Context(), req)
 	if err != nil {
 		return err
 	}
@@ -319,32 +311,31 @@ func (g *GrpcAgent) StreamExecute(req *confidence.ExecuteRequest, stream confide
 }
 
 // GetCapabilities implements the ConfidenceAgent.GetCapabilities RPC
-func (g *GrpcAgent) GetCapabilities(ctx context.Context, req *emptypb.Empty) (*confidence.GetCapabilitiesResponse, error) {
-	return &confidence.GetCapabilitiesResponse{
-		Capabilities:   g.agent.GetCapabilities(),
-		ExpertiseLevel: confidence.GetCapabilitiesResponse_EXPERT,
+func (g *GrpcAgent) GetCapabilities(ctx context.Context, req *emptypb.Empty) (*confidence.Capabilities, error) {
+	return &confidence.Capabilities{
+		Capabilities: g.agent.GetCapabilities(),
 	}, nil
 }
 
 // HealthCheck implements the ConfidenceAgent.HealthCheck RPC
-func (g *GrpcAgent) HealthCheck(ctx context.Context, req *emptypb.Empty) (*confidence.HealthCheckResponse, error) {
+func (g *GrpcAgent) HealthCheck(ctx context.Context, req *emptypb.Empty) (*confidence.Health, error) {
 	health, err := g.agent.CheckHealth(ctx)
 	if err != nil {
-		return nil, status.Errorf(grpc.codes.Internal, "health check failed: %v", err)
+		return nil, status.Errorf(codes.Internal, "health check failed: %v", err)
 	}
 
 	// Map status string to enum
-	var pbStatus confidence.HealthCheckResponse_Status
+	var pbStatus confidence.Health_Status
 	switch health.Status {
 	case "healthy":
-		pbStatus = confidence.HealthCheckResponse_HEALTHY
+		pbStatus = confidence.Health_HEALTHY
 	case "degraded":
-		pbStatus = confidence.HealthCheckResponse_DEGRADED
+		pbStatus = confidence.Health_DEGRADED
 	default:
-		pbStatus = confidence.HealthCheckResponse_UNHEALTHY
+		pbStatus = confidence.Health_UNHEALTHY
 	}
 
-	return &confidence.HealthCheckResponse{
+	return &confidence.Health{
 		Status:  pbStatus,
 		Message: health.Message,
 	}, nil

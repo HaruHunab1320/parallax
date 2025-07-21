@@ -1,6 +1,7 @@
 package parallax
 
 import (
+	"encoding/json"
 	"time"
 	
 	"github.com/google/uuid"
@@ -18,4 +19,13 @@ var (
 // generateID generates a unique ID
 func generateID() string {
 	return uuid.New().String()
+}
+
+// mustMarshalJSON marshals data to JSON string, panics on error
+func mustMarshalJSON(v interface{}) string {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return string(data)
 }

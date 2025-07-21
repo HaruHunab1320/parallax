@@ -4,7 +4,7 @@
 // - protoc             v5.29.3
 // source: patterns.proto
 
-package patterns
+package generated
 
 import (
 	context "context"
@@ -112,7 +112,7 @@ func (c *patternServiceClient) UploadPattern(ctx context.Context, in *UploadPatt
 }
 
 // PatternServiceServer is the server API for PatternService service.
-// All implementations must embed UnimplementedPatternServiceServer
+// All implementations should embed UnimplementedPatternServiceServer
 // for forward compatibility.
 //
 // Pattern execution service
@@ -127,10 +127,9 @@ type PatternServiceServer interface {
 	GetPattern(context.Context, *GetPatternRequest) (*Pattern, error)
 	// Upload new pattern
 	UploadPattern(context.Context, *UploadPatternRequest) (*UploadPatternResponse, error)
-	mustEmbedUnimplementedPatternServiceServer()
 }
 
-// UnimplementedPatternServiceServer must be embedded to have
+// UnimplementedPatternServiceServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
@@ -152,8 +151,7 @@ func (UnimplementedPatternServiceServer) GetPattern(context.Context, *GetPattern
 func (UnimplementedPatternServiceServer) UploadPattern(context.Context, *UploadPatternRequest) (*UploadPatternResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UploadPattern not implemented")
 }
-func (UnimplementedPatternServiceServer) mustEmbedUnimplementedPatternServiceServer() {}
-func (UnimplementedPatternServiceServer) testEmbeddedByValue()                        {}
+func (UnimplementedPatternServiceServer) testEmbeddedByValue() {}
 
 // UnsafePatternServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to PatternServiceServer will

@@ -4,10 +4,9 @@
 // 	protoc        v5.29.3
 // source: coordinator.proto
 
-package coordinator
+package generated
 
 import (
-	confidence "github.com/parallax/proto/confidence"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -464,10 +463,10 @@ func (x *CoordinateRequest_Constraints) GetTimeoutMs() int32 {
 }
 
 type CoordinateResponse_ConsensusResult struct {
-	state          protoimpl.MessageState         `protogen:"open.v1"`
-	ConsensusLevel float64                        `protobuf:"fixed64,1,opt,name=consensus_level,json=consensusLevel,proto3" json:"consensus_level,omitempty"`
-	Recommendation string                         `protobuf:"bytes,2,opt,name=recommendation,proto3" json:"recommendation,omitempty"`
-	AgentResults   []*confidence.ConfidenceResult `protobuf:"bytes,3,rep,name=agent_results,json=agentResults,proto3" json:"agent_results,omitempty"`
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ConsensusLevel float64                `protobuf:"fixed64,1,opt,name=consensus_level,json=consensusLevel,proto3" json:"consensus_level,omitempty"`
+	Recommendation string                 `protobuf:"bytes,2,opt,name=recommendation,proto3" json:"recommendation,omitempty"`
+	AgentResults   []*ConfidenceResult    `protobuf:"bytes,3,rep,name=agent_results,json=agentResults,proto3" json:"agent_results,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -516,7 +515,7 @@ func (x *CoordinateResponse_ConsensusResult) GetRecommendation() string {
 	return ""
 }
 
-func (x *CoordinateResponse_ConsensusResult) GetAgentResults() []*confidence.ConfidenceResult {
+func (x *CoordinateResponse_ConsensusResult) GetAgentResults() []*ConfidenceResult {
 	if x != nil {
 		return x.AgentResults
 	}
@@ -858,7 +857,7 @@ const file_coordinator_proto_rawDesc = "" +
 	"Coordinate\x12'.parallax.coordinator.CoordinateRequest\x1a(.parallax.coordinator.CoordinateResponse\x12g\n" +
 	"\x10StreamCoordinate\x12'.parallax.coordinator.CoordinateRequest\x1a(.parallax.coordinator.CoordinateResponse0\x01\x12_\n" +
 	"\n" +
-	"GetHistory\x12'.parallax.coordinator.GetHistoryRequest\x1a(.parallax.coordinator.GetHistoryResponseB'Z%github.com/parallax/proto/coordinatorb\x06proto3"
+	"GetHistory\x12'.parallax.coordinator.GetHistoryRequest\x1a(.parallax.coordinator.GetHistoryResponseb\x06proto3"
 
 var (
 	file_coordinator_proto_rawDescOnce sync.Once
@@ -887,7 +886,7 @@ var file_coordinator_proto_goTypes = []any{
 	(*CoordinateResponse_EpistemicResult_Disagreement)(nil), // 9: parallax.coordinator.CoordinateResponse.EpistemicResult.Disagreement
 	(*GetHistoryResponse_HistoryEntry)(nil),                 // 10: parallax.coordinator.GetHistoryResponse.HistoryEntry
 	(*structpb.Struct)(nil),                                 // 11: google.protobuf.Struct
-	(*confidence.ConfidenceResult)(nil),                     // 12: parallax.confidence.ConfidenceResult
+	(*ConfidenceResult)(nil),                                // 12: parallax.confidence.ConfidenceResult
 }
 var file_coordinator_proto_depIdxs = []int32{
 	0,  // 0: parallax.coordinator.CoordinateRequest.strategy:type_name -> parallax.coordinator.CoordinateRequest.Strategy
@@ -921,6 +920,7 @@ func file_coordinator_proto_init() {
 	if File_coordinator_proto != nil {
 		return
 	}
+	file_confidence_proto_init()
 	file_coordinator_proto_msgTypes[1].OneofWrappers = []any{
 		(*CoordinateResponse_Consensus)(nil),
 		(*CoordinateResponse_Epistemic)(nil),

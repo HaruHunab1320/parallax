@@ -33,15 +33,31 @@ fi
 export PATH="$PATH:$(go env GOPATH)/bin"
 
 # Generate Go code
+# Use M flags to map proto files to Go package without modifying proto files
 protoc \
     -I$PROTO_DIR \
     --go_out=$OUT_DIR \
     --go_opt=paths=source_relative \
+    --go_opt=Mconfidence.proto=. \
+    --go_opt=Mcoordinator.proto=. \
+    --go_opt=Mpatterns.proto=. \
+    --go_opt=Mregistry.proto=. \
     --go-grpc_out=$OUT_DIR \
     --go-grpc_opt=paths=source_relative \
+    --go-grpc_opt=require_unimplemented_servers=false \
+    --go-grpc_opt=Mconfidence.proto=. \
+    --go-grpc_opt=Mcoordinator.proto=. \
+    --go-grpc_opt=Mpatterns.proto=. \
+    --go-grpc_opt=Mregistry.proto=. \
     $PROTO_DIR/confidence.proto \
     $PROTO_DIR/coordinator.proto \
     $PROTO_DIR/patterns.proto \
     $PROTO_DIR/registry.proto
+
+# The M flag with "." creates package "__", so we need to fix that
+echo "Updating package declarations to 'generated'..."
+for file in $OUT_DIR/*.go; do
+    sed -i '' 's/^package __$/package generated/' "$file"
+done
 
 echo "Proto files generated successfully!"

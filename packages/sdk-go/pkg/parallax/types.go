@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// Agent represents an AI agent in the system
-type Agent struct {
+// AgentInfo represents an AI agent's information in the system
+type AgentInfo struct {
 	ID           string            `json:"id"`
 	Name         string            `json:"name"`
 	Status       AgentStatus       `json:"status"`
@@ -124,13 +124,13 @@ type PatternService interface {
 // AgentService defines operations on agents
 type AgentService interface {
 	// Register registers a new agent
-	Register(ctx context.Context, agent *Agent) error
+	Register(ctx context.Context, agent *AgentInfo) error
 
 	// List returns all registered agents
-	List(ctx context.Context) ([]*Agent, error)
+	List(ctx context.Context) ([]*AgentInfo, error)
 
 	// Get returns a specific agent by ID
-	Get(ctx context.Context, id string) (*Agent, error)
+	Get(ctx context.Context, id string) (*AgentInfo, error)
 
 	// UpdateStatus updates an agent's status
 	UpdateStatus(ctx context.Context, id string, status AgentStatus) error
@@ -145,5 +145,5 @@ type AgentService interface {
 	Unregister(ctx context.Context, id string) error
 
 	// StreamAgents streams agent updates
-	StreamAgents(ctx context.Context) (<-chan *Agent, error)
+	StreamAgents(ctx context.Context) (<-chan *AgentInfo, error)
 }

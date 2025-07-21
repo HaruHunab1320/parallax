@@ -4,7 +4,7 @@
 // - protoc             v5.29.3
 // source: registry.proto
 
-package registry
+package generated
 
 import (
 	context "context"
@@ -125,7 +125,7 @@ func (c *registryClient) Watch(ctx context.Context, in *WatchRequest, opts ...gr
 type Registry_WatchClient = grpc.ServerStreamingClient[WatchEvent]
 
 // RegistryServer is the server API for Registry service.
-// All implementations must embed UnimplementedRegistryServer
+// All implementations should embed UnimplementedRegistryServer
 // for forward compatibility.
 //
 // Service registry service
@@ -142,10 +142,9 @@ type RegistryServer interface {
 	GetAgent(context.Context, *GetAgentRequest) (*AgentRegistration, error)
 	// Watch for agent changes
 	Watch(*WatchRequest, grpc.ServerStreamingServer[WatchEvent]) error
-	mustEmbedUnimplementedRegistryServer()
 }
 
-// UnimplementedRegistryServer must be embedded to have
+// UnimplementedRegistryServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
@@ -170,8 +169,7 @@ func (UnimplementedRegistryServer) GetAgent(context.Context, *GetAgentRequest) (
 func (UnimplementedRegistryServer) Watch(*WatchRequest, grpc.ServerStreamingServer[WatchEvent]) error {
 	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
 }
-func (UnimplementedRegistryServer) mustEmbedUnimplementedRegistryServer() {}
-func (UnimplementedRegistryServer) testEmbeddedByValue()                  {}
+func (UnimplementedRegistryServer) testEmbeddedByValue() {}
 
 // UnsafeRegistryServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to RegistryServer will

@@ -4,7 +4,7 @@
 // 	protoc        v5.29.3
 // source: confidence.proto
 
-package confidence
+package generated
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -495,7 +495,7 @@ const file_confidence_proto_rawDesc = "" +
 	"\aAnalyze\x12!.parallax.confidence.AgentRequest\x1a%.parallax.confidence.ConfidenceResult\x12L\n" +
 	"\x0fGetCapabilities\x12\x16.google.protobuf.Empty\x1a!.parallax.confidence.Capabilities\x12B\n" +
 	"\vHealthCheck\x12\x16.google.protobuf.Empty\x1a\x1b.parallax.confidence.Health\x12[\n" +
-	"\rStreamAnalyze\x12!.parallax.confidence.AgentRequest\x1a%.parallax.confidence.ConfidenceResult0\x01B&Z$github.com/parallax/proto/confidenceb\x06proto3"
+	"\rStreamAnalyze\x12!.parallax.confidence.AgentRequest\x1a%.parallax.confidence.ConfidenceResult0\x01b\x06proto3"
 
 var (
 	file_confidence_proto_rawDescOnce sync.Once

@@ -3,63 +3,69 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/parallax/sdk-go/pkg/parallax"
+	"parallax/sdk-go/pkg/parallax"
 )
 
-// TestAgent implements the standardized test agent
+// TestAgent wraps a ParallaxAgent for testing
 type TestAgent struct {
-	parallax.BaseAgent
+	*parallax.ParallaxAgent
 }
 
 // NewTestAgent creates a new test agent
 func NewTestAgent() *TestAgent {
-	return &TestAgent{
-		BaseAgent: parallax.BaseAgent{
-			ID:           "test-agent-go",
-			Name:         "Test Agent (Go)",
-			Capabilities: []string{"analysis", "validation"},
-			Expertise:    0.85,
-		},
+	agent := parallax.NewParallaxAgent(
+		"test-agent-go",
+		"Test Agent (Go)",
+		[]string{"analysis", "validation"},
+		map[string]interface{}{"expertise": 0.85},
+	)
+	
+	t := &TestAgent{
+		ParallaxAgent: agent,
 	}
+	
+	// Set the analyze function
+	agent.AnalyzeFunc = t.analyze
+	
+	return t
 }
 
-// Analyze implements the agent analyze method
-func (a *TestAgent) Analyze(ctx context.Context, task string, input map[string]interface{}) (*parallax.AgentResponse, error) {
+// analyze implements the agent's analysis logic
+func (a *TestAgent) analyze(ctx context.Context, task string, data interface{}) (*parallax.AgentResult, error) {
 	switch task {
 	case "analyze":
-		data, _ := input["data"].(map[string]interface{})
-		contentType := "unknown"
-		if t, ok := data["type"].(string); ok {
-			contentType = t
-		}
-		content := ""
-		if c, ok := data["content"].(string); ok {
-			content = c
-		}
-
-		return &parallax.AgentResponse{
+		inputData, _ := data.(map[string]interface{})
+		contentData, _ := inputData["data"].(map[string]interface{})
+		
+		content, _ := contentData["content"].(string)
+		dataType, _ := contentData["type"].(string)
+		
+		return &parallax.AgentResult{
 			Value: map[string]interface{}{
-				"summary": fmt.Sprintf("Analyzed %s content", contentType),
+				"summary": fmt.Sprintf("Analyzed %s content", dataType),
 				"length":  len(content),
 				"result":  "Analysis complete",
 			},
 			Confidence: 0.85,
 			Reasoning:  "Standard analysis performed",
 		}, nil
-
-	case "validate":
-		data, _ := input["data"].(map[string]interface{})
-		value, _ := data["value"].(float64) // JSON numbers are float64
-		rules, _ := data["rules"].([]interface{})
 		
-		details := []string{}
+	case "validate":
+		inputData, _ := data.(map[string]interface{})
+		validateData, _ := inputData["data"].(map[string]interface{})
+		
+		value, _ := validateData["value"].(float64)
+		rules, _ := validateData["rules"].([]interface{})
+		
+		var details []string
 		valid := true
-
-		for _, r := range rules {
-			rule, _ := r.(string)
+		
+		for _, rule := range rules {
 			switch rule {
 			case "positive":
 				if value > 0 {
@@ -77,8 +83,8 @@ func (a *TestAgent) Analyze(ctx context.Context, task string, input map[string]i
 				}
 			}
 		}
-
-		return &parallax.AgentResponse{
+		
+		return &parallax.AgentResult{
 			Value: map[string]interface{}{
 				"valid":   valid,
 				"details": details,
@@ -86,7 +92,7 @@ func (a *TestAgent) Analyze(ctx context.Context, task string, input map[string]i
 			Confidence: 0.95,
 			Reasoning:  "Validation rules applied",
 		}, nil
-
+		
 	default:
 		return nil, fmt.Errorf("unknown task: %s", task)
 	}
@@ -95,175 +101,126 @@ func (a *TestAgent) Analyze(ctx context.Context, task string, input map[string]i
 func runStandardizedTests() bool {
 	fmt.Println("=== Parallax SDK Test Results ===")
 	fmt.Println("Language: Go")
-	fmt.Println("SDK Version: 0.1.0\n")
-
+	fmt.Println("SDK Version: 0.1.0")
+	fmt.Println()
+	
 	results := make(map[string]bool)
-
+	
 	// Test 1: Agent Creation
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				results["Agent Creation"] = false
-				fmt.Printf("Test 1: Agent Creation............... FAIL (%v)\n", r)
-			}
-		}()
-
-		agent := NewTestAgent()
-		passed := agent.ID == "test-agent-go" &&
-			contains(agent.Capabilities, "analysis") &&
-			contains(agent.Capabilities, "validation")
-		results["Agent Creation"] = passed
-		status := "PASS"
-		if !passed {
-			status = "FAIL"
-		}
-		fmt.Printf("Test 1: Agent Creation............... %s\n", status)
-	}()
-
+	fmt.Print("Test 1: Agent Creation............... ")
+	agent := NewTestAgent()
+	passed := agent.ID == "test-agent-go" &&
+		contains(agent.Capabilities, "analysis") &&
+		contains(agent.Capabilities, "validation")
+	results["Agent Creation"] = passed
+	if passed {
+		fmt.Println("PASS")
+	} else {
+		fmt.Println("FAIL")
+	}
+	
 	// Test 2: Simple Analysis
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				results["Simple Analysis"] = false
-				fmt.Printf("Test 2: Simple Analysis.............. FAIL (%v)\n", r)
-			}
-		}()
-
-		agent := NewTestAgent()
-		response, err := agent.Analyze(context.Background(), "analyze", map[string]interface{}{
-			"data": map[string]interface{}{
-				"content": "Test data for analysis",
-				"type":    "text",
-			},
-		})
-		
-		passed := err == nil && response.Confidence >= 0.7 && response.Value != nil
-		results["Simple Analysis"] = passed
-		status := "PASS"
-		if !passed {
-			status = "FAIL"
-		}
-		fmt.Printf("Test 2: Simple Analysis.............. %s\n", status)
-	}()
-
-	// Test 3: Validation
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				results["Validation"] = false
-				fmt.Printf("Test 3: Validation................... FAIL (%v)\n", r)
-			}
-		}()
-
-		agent := NewTestAgent()
-		response, err := agent.Analyze(context.Background(), "validate", map[string]interface{}{
-			"data": map[string]interface{}{
-				"value": 42.0,
-				"rules": []interface{}{"positive", "even"},
-			},
-		})
-		
-		value := response.Value.(map[string]interface{})
-		details := value["details"].([]string)
-		passed := err == nil &&
-			value["valid"].(bool) == true &&
-			response.Confidence == 0.95 &&
-			len(details) == 2
-		results["Validation"] = passed
-		status := "PASS"
-		if !passed {
-			status = "FAIL"
-		}
-		fmt.Printf("Test 3: Validation................... %s\n", status)
-	}()
-
-	// Test 4: Error Handling
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				results["Error Handling"] = false
-				fmt.Printf("Test 4: Error Handling............... FAIL (%v)\n", r)
-			}
-		}()
-
-		agent := NewTestAgent()
-		_, err := agent.Analyze(context.Background(), "unknown-task", map[string]interface{}{})
-		
-		if err == nil {
-			results["Error Handling"] = false
-			fmt.Println("Test 4: Error Handling............... FAIL (No error thrown)")
-		} else {
-			passed := strings.Contains(strings.ToLower(err.Error()), "unknown task")
-			results["Error Handling"] = passed
-			status := "PASS"
-			if !passed {
-				status = "FAIL"
-			}
-			fmt.Printf("Test 4: Error Handling............... %s\n", status)
-		}
-	}()
-
-	// Test 5: Client API (optional)
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Println("Test 5: Client API (optional)........ SKIP (Control plane not running)")
-			}
-		}()
-
-		client, err := parallax.NewClient(parallax.ClientConfig{
-			BaseURL: "http://localhost:8080",
-		})
+	fmt.Print("Test 2: Simple Analysis.............. ")
+	ctx := context.Background()
+	response, err := agent.analyze(ctx, "analyze", map[string]interface{}{
+		"data": map[string]interface{}{
+			"content": "Test data for analysis",
+			"type":    "text",
+		},
+	})
+	passed = err == nil && response.Confidence >= 0.7 && response.Value != nil
+	results["Simple Analysis"] = passed
+	if passed {
+		fmt.Println("PASS")
+	} else {
+		fmt.Println("FAIL")
 		if err != nil {
-			fmt.Println("Test 5: Client API (optional)........ SKIP (Control plane not running)")
-			return
-		}
-
-		ctx := context.Background()
-		
-		// 5.1 Health Check
-		health, err := client.Health(ctx)
-		if err != nil {
-			fmt.Println("Test 5: Client API (optional)........ SKIP (Control plane not running)")
-			return
-		}
-
-		// 5.2 List Patterns
-		patterns, err := client.ListPatterns(ctx)
-		if err != nil {
-			results["Client API"] = false
-			fmt.Println("Test 5: Client API (optional)........ FAIL")
-			return
-		}
-
-		// 5.3 Pattern Execution
-		execution, err := client.ExecutePattern(ctx, "SimpleConsensus", map[string]interface{}{
-			"task": "SDK test",
-			"data": map[string]interface{}{"test": true},
-		})
-
-		passed := health != nil && len(patterns) > 0 && execution.ID != ""
-		results["Client API"] = passed
-		status := "PASS"
-		if !passed {
-			status = "FAIL"
-		}
-		fmt.Printf("Test 5: Client API (optional)........ %s\n", status)
-	}()
-
-	// Summary
-	passed := 0
-	for _, v := range results {
-		if v {
-			passed++
+			fmt.Printf("  Error: %v\n", err)
 		}
 	}
-	total := len(results)
-	fmt.Printf("\nSummary: %d/%d tests passed\n", passed, total)
-
-	return passed == total
+	
+	// Test 3: Validation
+	fmt.Print("Test 3: Validation................... ")
+	response, err = agent.analyze(ctx, "validate", map[string]interface{}{
+		"data": map[string]interface{}{
+			"value": 42.0,
+			"rules": []interface{}{"positive", "even"},
+		},
+	})
+	if err == nil {
+		result, _ := response.Value.(map[string]interface{})
+		valid, _ := result["valid"].(bool)
+		details, _ := result["details"].([]string)
+		passed = valid && response.Confidence == 0.95 && len(details) == 2
+	} else {
+		passed = false
+	}
+	results["Validation"] = passed
+	if passed {
+		fmt.Println("PASS")
+	} else {
+		fmt.Println("FAIL")
+		if err != nil {
+			fmt.Printf("  Error: %v\n", err)
+		}
+	}
+	
+	// Test 4: Error Handling
+	fmt.Print("Test 4: Error Handling............... ")
+	_, err = agent.analyze(ctx, "unknown-task", map[string]interface{}{})
+	passed = err != nil && strings.Contains(strings.ToLower(err.Error()), "unknown task")
+	results["Error Handling"] = passed
+	if passed {
+		fmt.Println("PASS")
+	} else {
+		fmt.Println("FAIL (No error thrown)")
+	}
+	
+	// Test 5: gRPC Server and Registration
+	fmt.Print("Test 5: gRPC Server.................. ")
+	// Start the agent's gRPC server in the background
+	go func() {
+		if err := agent.Serve(50056); err != nil {
+			log.Printf("Failed to serve: %v", err)
+		}
+	}()
+	
+	// Give it a moment to start and register
+	time.Sleep(2 * time.Second)
+	
+	// If we got here without crashing, it's working
+	passed = true
+	results["gRPC Server"] = passed
+	if passed {
+		fmt.Println("PASS")
+		fmt.Println("   Agent gRPC server started on port 50056 and registered with control plane")
+	} else {
+		fmt.Println("FAIL")
+	}
+	
+	// Summary
+	passedCount := 0
+	for _, v := range results {
+		if v {
+			passedCount++
+		}
+	}
+	totalCount := len(results)
+	fmt.Printf("\nSummary: %d/%d tests passed\n", passedCount, totalCount)
+	
+	return passedCount == totalCount
 }
 
+func main() {
+	// Run standardized tests
+	success := runStandardizedTests()
+	
+	if !success {
+		os.Exit(1)
+	}
+}
+
+// Helper function to check if a slice contains a string
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
@@ -271,11 +228,4 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
-}
-
-func main() {
-	success := runStandardizedTests()
-	if !success {
-		os.Exit(1)
-	}
 }

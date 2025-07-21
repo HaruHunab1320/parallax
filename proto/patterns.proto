@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package parallax.patterns;
 
-option go_package = "github.com/parallax/proto/patterns";
-
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
 import "confidence.proto";

@@ -4,10 +4,9 @@
 // 	protoc        v5.29.3
 // source: patterns.proto
 
-package patterns
+package generated
 
 import (
-	confidence "github.com/parallax/proto/confidence"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -242,7 +241,7 @@ type ExecutePatternResponse struct {
 	Result        *structpb.Struct                         `protobuf:"bytes,4,opt,name=result,proto3" json:"result,omitempty"`           // Pattern execution result
 	Confidence    float64                                  `protobuf:"fixed64,5,opt,name=confidence,proto3" json:"confidence,omitempty"` // Overall confidence
 	Metrics       *ExecutePatternResponse_ExecutionMetrics `protobuf:"bytes,6,opt,name=metrics,proto3" json:"metrics,omitempty"`
-	AgentResults  []*confidence.ConfidenceResult           `protobuf:"bytes,7,rep,name=agent_results,json=agentResults,proto3" json:"agent_results,omitempty"`
+	AgentResults  []*ConfidenceResult                      `protobuf:"bytes,7,rep,name=agent_results,json=agentResults,proto3" json:"agent_results,omitempty"`
 	ErrorMessage  string                                   `protobuf:"bytes,8,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -320,7 +319,7 @@ func (x *ExecutePatternResponse) GetMetrics() *ExecutePatternResponse_ExecutionM
 	return nil
 }
 
-func (x *ExecutePatternResponse) GetAgentResults() []*confidence.ConfidenceResult {
+func (x *ExecutePatternResponse) GetAgentResults() []*ConfidenceResult {
 	if x != nil {
 		return x.AgentResults
 	}
@@ -891,7 +890,7 @@ const file_patterns_proto_rawDesc = "" +
 	"\fListPatterns\x12&.parallax.patterns.ListPatternsRequest\x1a'.parallax.patterns.ListPatternsResponse\x12N\n" +
 	"\n" +
 	"GetPattern\x12$.parallax.patterns.GetPatternRequest\x1a\x1a.parallax.patterns.Pattern\x12b\n" +
-	"\rUploadPattern\x12'.parallax.patterns.UploadPatternRequest\x1a(.parallax.patterns.UploadPatternResponseB$Z\"github.com/parallax/proto/patternsb\x06proto3"
+	"\rUploadPattern\x12'.parallax.patterns.UploadPatternRequest\x1a(.parallax.patterns.UploadPatternResponseb\x06proto3"
 
 var (
 	file_patterns_proto_rawDescOnce sync.Once
@@ -922,7 +921,7 @@ var file_patterns_proto_goTypes = []any{
 	nil,                                             // 11: parallax.patterns.ExecutePatternRequest.Options.ContextEntry
 	(*ExecutePatternResponse_ExecutionMetrics)(nil), // 12: parallax.patterns.ExecutePatternResponse.ExecutionMetrics
 	(*structpb.Struct)(nil),                         // 13: google.protobuf.Struct
-	(*confidence.ConfidenceResult)(nil),             // 14: parallax.confidence.ConfidenceResult
+	(*ConfidenceResult)(nil),                        // 14: parallax.confidence.ConfidenceResult
 	(*timestamppb.Timestamp)(nil),                   // 15: google.protobuf.Timestamp
 }
 var file_patterns_proto_depIdxs = []int32{
@@ -961,6 +960,7 @@ func file_patterns_proto_init() {
 	if File_patterns_proto != nil {
 		return
 	}
+	file_confidence_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

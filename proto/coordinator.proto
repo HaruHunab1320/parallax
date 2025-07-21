@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package parallax.coordinator;
 
-option go_package = "github.com/parallax/proto/coordinator";
-
 import "google/protobuf/struct.proto";
 import "confidence.proto";
 

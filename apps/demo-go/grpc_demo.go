@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/parallax/sdk-go/pkg/parallax"
+	"parallax/sdk-go/pkg/parallax"
 )
 
 // DemoAgent implements a demo agent for testing

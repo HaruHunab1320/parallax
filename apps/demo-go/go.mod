@@ -1,10 +1,21 @@
-module github.com/parallax/demo-go
+module parallax/demo-go
 
-go 1.21
+go 1.23.0
+
+toolchain go1.24.5
+
+require parallax/sdk-go v0.1.0
 
 require (
-    github.com/parallax/sdk-go v0.1.0
-    google.golang.org/grpc v1.59.0
+	github.com/google/uuid v1.6.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.26.0 // indirect
+	golang.org/x/net v0.42.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250715232539-7130f93afb79 // indirect
+	google.golang.org/grpc v1.73.0 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 )
 
-replace github.com/parallax/sdk-go => ../../packages/sdk-go
+replace parallax/sdk-go => ../../packages/sdk-go

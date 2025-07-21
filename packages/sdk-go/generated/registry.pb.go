@@ -4,7 +4,7 @@
 // 	protoc        v5.29.3
 // source: registry.proto
 
-package registry
+package generated
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -760,7 +760,7 @@ const file_registry_proto_rawDesc = "" +
 	"\n" +
 	"ListAgents\x12$.parallax.registry.ListAgentsRequest\x1a%.parallax.registry.ListAgentsResponse\x12T\n" +
 	"\bGetAgent\x12\".parallax.registry.GetAgentRequest\x1a$.parallax.registry.AgentRegistration\x12I\n" +
-	"\x05Watch\x12\x1f.parallax.registry.WatchRequest\x1a\x1d.parallax.registry.WatchEvent0\x01B$Z\"github.com/parallax/proto/registryb\x06proto3"
+	"\x05Watch\x12\x1f.parallax.registry.WatchRequest\x1a\x1d.parallax.registry.WatchEvent0\x01b\x06proto3"
 
 var (
 	file_registry_proto_rawDescOnce sync.Once

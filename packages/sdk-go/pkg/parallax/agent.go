@@ -3,7 +3,6 @@ package parallax
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -15,7 +14,7 @@ type agentService struct {
 }
 
 // Register registers a new agent
-func (s *agentService) Register(ctx context.Context, agent *Agent) error {
+func (s *agentService) Register(ctx context.Context, agent *AgentInfo) error {
 	s.logger.Info("Registering agent",
 		zap.String("id", agent.ID),
 		zap.String("name", agent.Name),
@@ -42,13 +41,13 @@ func (s *agentService) Register(ctx context.Context, agent *Agent) error {
 }
 
 // List returns all registered agents
-func (s *agentService) List(ctx context.Context) ([]*Agent, error) {
+func (s *agentService) List(ctx context.Context) ([]*AgentInfo, error) {
 	s.logger.Debug("Listing agents")
 	
 	// TODO: Implement gRPC call
 	
 	// Mock implementation
-	return []*Agent{
+	return []*AgentInfo{
 		{
 			ID:           "agent-1",
 			Name:         "Sentiment Analyzer",
@@ -84,7 +83,7 @@ func (s *agentService) List(ctx context.Context) ([]*Agent, error) {
 }
 
 // Get returns a specific agent by ID
-func (s *agentService) Get(ctx context.Context, id string) (*Agent, error) {
+func (s *agentService) Get(ctx context.Context, id string) (*AgentInfo, error) {
 	s.logger.Debug("Getting agent", zap.String("id", id))
 	
 	agents, err := s.List(ctx)
@@ -148,13 +147,13 @@ func (s *agentService) Unregister(ctx context.Context, id string) error {
 }
 
 // StreamAgents streams agent updates
-func (s *agentService) StreamAgents(ctx context.Context) (<-chan *Agent, error) {
+func (s *agentService) StreamAgents(ctx context.Context) (<-chan *AgentInfo, error) {
 	s.logger.Debug("Streaming agents")
 	
 	// TODO: Implement gRPC streaming
 	
 	// Mock implementation
-	ch := make(chan *Agent)
+	ch := make(chan *AgentInfo)
 	
 	go func() {
 		defer close(ch)
@@ -179,7 +178,7 @@ func (s *agentService) StreamAgents(ctx context.Context) (<-chan *Agent, error) 
 				return
 			case <-ticker.C:
 				// Simulate agent status updates
-				agent := &Agent{
+				agent := &AgentInfo{
 					ID:           fmt.Sprintf("agent-%d", timeNow().Unix()%100),
 					Name:         "Dynamic Agent",
 					Status:       AgentStatusActive,
