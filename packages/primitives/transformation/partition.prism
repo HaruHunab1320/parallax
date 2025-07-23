@@ -1,91 +1,73 @@
-/**
- * @primitive partition
- * @category transformation
- * @description Split data based on conditions
- * @confidence minimum-of-decisions
- */
+// Primitive: partition
+// Category: transformation
+// Description: Split data based on conditions
+// Confidence: minimum-of-decisions
 
-// Partition data into groups
+// Partition transformation pattern
 export const partition = (predicate) => {
   return (items) => {
-    if (!Array.isArray(items)) {
-      return { error: "Input must be an array" } ~> 0.0
+    // Simple validation
+    if (!items || items.length === 0) {
+      return {
+        type: "partition",
+        items: [],
+        config: { predicate: predicate }
+      } ~> 1.0
     }
     
-    const truthy = []
-    const falsy = []
-    let minConfidence = 1.0
-    
-    for (const item of items) {
-      const result = predicate(item)
-      const confidence = ~result
-      minConfidence = Math.min(minConfidence, confidence)
-      
-      if (result) {
-        truthy.push(item)
-      } else {
-        falsy.push(item)
-      }
-    }
-    
+    // Return pattern description
     return {
-      truthy: truthy,
-      falsy: falsy,
-      counts: {
-        truthy: truthy.length,
-        falsy: falsy.length
+      type: "partition",
+      items: items,
+      config: {
+        predicate: predicate
       }
-    } ~> minConfidence
+    } ~> 1.0
   }
 }
 
-// Multi-way partition
+// Multi-way partition pattern
 export const multiPartition = (classifier) => {
   return (items) => {
-    if (!Array.isArray(items)) {
-      return { error: "Input must be an array" } ~> 0.0
+    // Simple validation
+    if (!items || items.length === 0) {
+      return {
+        type: "multiPartition",
+        items: [],
+        config: { classifier: classifier }
+      } ~> 1.0
     }
     
-    const partitions = {}
-    let minConfidence = 1.0
-    
-    for (const item of items) {
-      const classification = classifier(item)
-      const confidence = ~classification
-      minConfidence = Math.min(minConfidence, confidence)
-      
-      const key = classification.class || classification
-      if (!partitions[key]) {
-        partitions[key] = []
+    // Return pattern description
+    return {
+      type: "multiPartition",
+      items: items,
+      config: {
+        classifier: classifier
       }
-      
-      partitions[key].push(item)
-    }
-    
-    return partitions ~> minConfidence
+    } ~> 1.0
   }
 }
 
-// Chunk items into fixed sizes
+// Chunk transformation pattern
 export const chunk = (size) => {
   return (items) => {
-    if (!Array.isArray(items)) {
-      return { error: "Input must be an array" } ~> 0.0
+    // Simple validation
+    if (!items || items.length === 0) {
+      return {
+        type: "chunk",
+        items: [],
+        config: { size: size }
+      } ~> 1.0
     }
     
-    const chunks = []
-    let minConfidence = 1.0
-    
-    for (let i = 0; i < items.length; i += size) {
-      const chunk = items.slice(i, i + size)
-      chunks.push(chunk)
-      
-      // Track minimum confidence in chunk
-      for (const item of chunk) {
-        minConfidence = Math.min(minConfidence, ~item)
+    // Return pattern description
+    return {
+      type: "chunk",
+      items: items,
+      config: {
+        size: size || 10
       }
-    }
-    
-    return chunks ~> minConfidence
+    } ~> 1.0
   }
 }

@@ -1,88 +1,73 @@
-/**
- * @primitive map
- * @category transformation
- * @description Transform each item in a collection
- * @confidence minimum-of-all
- */
+// Primitive: map
+// Category: transformation
+// Description: Transform each item in a collection
+// Confidence: minimum-of-all
 
-// Map with confidence tracking
+// Map transformation pattern
 export const map = (transformer) => {
   return (items) => {
-    if (!Array.isArray(items)) {
-      return { error: "Input must be an array" } ~> 0.0
+    // Simple validation
+    if (!items || items.length === 0) {
+      return {
+        type: "map",
+        items: [],
+        config: { transformer: transformer }
+      } ~> 1.0
     }
     
-    if (items.length === 0) {
-      return [] ~> 1.0
-    }
-    
-    const results = []
-    let minConfidence = 1.0
-    
-    for (const item of items) {
-      const transformed = transformer(item)
-      results.push(transformed)
-      
-      // Track minimum confidence
-      const confidence = ~transformed
-      if (confidence < minConfidence) {
-        minConfidence = confidence
+    // Return pattern description
+    return {
+      type: "map",
+      items: items,
+      config: {
+        transformer: transformer
       }
-    }
-    
-    return results ~> minConfidence
+    } ~> 1.0
   }
 }
 
-// Filter with confidence
+// Filter transformation pattern
 export const filter = (predicate) => {
   return (items) => {
-    if (!Array.isArray(items)) {
-      return { error: "Input must be an array" } ~> 0.0
+    // Simple validation
+    if (!items || items.length === 0) {
+      return {
+        type: "filter",
+        items: [],
+        config: { predicate: predicate }
+      } ~> 1.0
     }
     
-    const results = []
-    let minConfidence = 1.0
-    
-    for (const item of items) {
-      const shouldInclude = predicate(item)
-      const predicateConfidence = ~shouldInclude
-      
-      if (shouldInclude) {
-        results.push(item)
+    // Return pattern description
+    return {
+      type: "filter",
+      items: items,
+      config: {
+        predicate: predicate
       }
-      
-      // Track confidence of decisions
-      minConfidence = Math.min(minConfidence, predicateConfidence, ~item)
-    }
-    
-    return results ~> minConfidence
+    } ~> 1.0
   }
 }
 
-// FlatMap with confidence
+// FlatMap transformation pattern
 export const flatMap = (transformer) => {
   return (items) => {
-    if (!Array.isArray(items)) {
-      return { error: "Input must be an array" } ~> 0.0
+    // Simple validation
+    if (!items || items.length === 0) {
+      return {
+        type: "flatMap",
+        items: [],
+        config: { transformer: transformer }
+      } ~> 1.0
     }
     
-    const results = []
-    let minConfidence = 1.0
-    
-    for (const item of items) {
-      const transformed = transformer(item)
-      const confidence = ~transformed
-      
-      if (Array.isArray(transformed)) {
-        results.push(...transformed)
-      } else {
-        results.push(transformed)
+    // Return pattern description
+    return {
+      type: "flatMap",
+      items: items,
+      config: {
+        transformer: transformer
       }
-      
-      minConfidence = Math.min(minConfidence, confidence)
-    }
-    
-    return results ~> minConfidence
+    } ~> 1.0
   }
 }

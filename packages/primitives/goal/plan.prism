@@ -1,105 +1,43 @@
-/**
- * @primitive plan
- * @category goal
- * @description Goal-oriented planning and execution
- * @confidence from-achievement
- */
+// Primitive: plan
+// Category: goal
+// Description: Goal-oriented planning and execution
+// Confidence: from-achievement
 
-// Goal-directed planning
+// Goal-directed planning pattern
 export const plan = (planner) => {
-  return async (goal) => {
-    // Generate plan to achieve goal
-    const plan = await planner(goal)
-    
-    if (!plan || ~plan < 0.5) {
-      return {
-        error: "Could not create viable plan",
-        goal: goal
-      } ~> 0.0
-    }
-    
-    return plan
+  return (goal) => {
+    return {
+      type: "plan",
+      goal: goal,
+      config: {
+        planner: planner
+      }
+    } ~> 1.0
   }
 }
 
-// Milestone tracking
+// Milestone tracking pattern
 export const milestone = (milestones) => {
   return (workflow) => {
-    return async (input) => {
-      const achievements = []
-      let overallProgress = 0
-      let minConfidence = 1.0
-      
-      // Wrap workflow to track milestones
-      const tracked = async (data) => {
-        const result = await workflow(data)
-        
-        // Check milestone achievements
-        for (const [name, check] of Object.entries(milestones)) {
-          if (check(result)) {
-            achievements.push({
-              milestone: name,
-              achieved: true,
-              timestamp: Date.now()
-            })
-          }
-        }
-        
-        overallProgress = achievements.length / Object.keys(milestones).length
-        minConfidence = Math.min(minConfidence, ~result)
-        
-        return {
-          result: result,
-          progress: overallProgress,
-          achievements: achievements
-        } ~> (minConfidence * overallProgress)
+    return {
+      type: "milestone",
+      workflow: workflow,
+      config: {
+        milestones: milestones
       }
-      
-      return tracked(input)
-    }
+    } ~> 1.0
   }
 }
 
-// Adaptive strategy
+// Adaptive strategy pattern
 export const adapt = (strategies) => {
-  return async (context) => {
-    let currentStrategy = strategies[0]
-    let attempts = []
-    
-    for (const strategy of strategies) {
-      const result = await strategy(context)
-      attempts.push({
-        strategy: strategy.name || "unnamed",
-        result: result,
-        confidence: ~result
-      })
-      
-      // Use first successful strategy
-      if (~result > 0.7) {
-        return {
-          result: result,
-          strategy: strategy.name,
-          attempts: attempts
-        } ~> ~result
-      }
-      
-      // Learn from failure for next attempt
-      context = {
-        ...context,
-        previousAttempts: attempts
-      }
-    }
-    
-    // All strategies failed, return best attempt
-    const best = attempts.reduce((a, b) => 
-      a.confidence > b.confidence ? a : b
-    )
-    
+  return (task) => {
     return {
-      result: best.result,
-      strategy: best.strategy,
-      attempts: attempts,
-      fallback: true
-    } ~> (best.confidence * 0.8)
+      type: "adapt",
+      task: task,
+      config: {
+        strategies: strategies
+      }
+    } ~> 1.0
   }
 }

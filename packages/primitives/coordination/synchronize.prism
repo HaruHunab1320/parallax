@@ -1,77 +1,56 @@
-/**
- * @primitive synchronize
- * @category coordination
- * @description Synchronize state and actions across multiple agents
- * @confidence minimum-sync
- */
+// Primitive: synchronize
+// Category: coordination
+// Description: Synchronize state and actions across multiple agents
+// Confidence: minimum-sync
 
-// Barrier synchronization
+// Barrier synchronization pattern
 export const barrier = (count) => {
-  const waiting = []
-  
-  return (agent) => {
-    waiting.push(agent)
-    
-    if (waiting.length < count) {
-      // Wait for more agents
-      return { status: "waiting", count: waiting.length } ~> 0.5
-    }
-    
-    // All agents ready, proceed
-    const results = []
-    let minConfidence = 1.0
-    
-    for (const a of waiting) {
-      const result = a.proceed()
-      results.push(result)
-      minConfidence = Math.min(minConfidence, ~result)
-    }
-    
-    // Clear for next barrier
-    waiting.length = 0
-    
-    return results ~> minConfidence
-  }
-}
-
-// State synchronization
-export const syncState = (agents) => {
-  return (state) => {
-    const updates = []
-    let minConfidence = 1.0
-    
-    // Broadcast state to all agents
-    for (const agent of agents) {
-      const ack = agent.updateState(state)
-      updates.push(ack)
-      minConfidence = Math.min(minConfidence, ~ack)
-    }
-    
-    // Verify all agents synchronized
-    const allSynced = updates.every(u => u.synced === true)
-    
+  return (task) => {
     return {
-      synced: allSynced,
-      updates: updates,
-      timestamp: Date.now()
-    } ~> (allSynced ? minConfidence : minConfidence * 0.5)
+      type: "barrier",
+      task: task,
+      config: {
+        count: count
+      }
+    } ~> 1.0
   }
 }
 
-// Lock-based coordination
+// State synchronization pattern  
+export const syncState = (agentList) => {
+  return (task) => {
+    return {
+      type: "syncState",
+      task: task,
+      config: {
+        targets: agentList
+      }
+    } ~> 1.0
+  }
+}
+
+// Lock-based coordination pattern
 export const withLock = (lockManager) => {
-  return async (resource, operation) => {
-    const lock = await lockManager.acquire(resource)
-    
-    if (!lock.acquired) {
-      return { error: "Could not acquire lock" } ~> 0.0
-    }
-    
-    try {
-      const result = await operation()
-      return result
-    } finally {
-      await lockManager.release(lock)
-    }
+  return (task) => {
+    return {
+      type: "withLock",
+      task: task,
+      config: {
+        lockManager: lockManager
+      }
+    } ~> 1.0
+  }
+}
+
+// Rendezvous synchronization pattern
+export const rendezvous = (channels) => {
+  return (task) => {
+    return {
+      type: "rendezvous",
+      task: task,
+      config: {
+        channels: channels
+      }
+    } ~> 1.0
   }
 }

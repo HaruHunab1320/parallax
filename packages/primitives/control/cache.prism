@@ -1,94 +1,24 @@
-/**
- * @primitive cache
- * @category control
- * @description Cache results with confidence decay
- * @confidence time-decayed
- */
+// Primitive: cache
+// Category: control
+// Description: Cache results with confidence decay
+// Confidence: time-decayed
+
 
 // Cache with confidence decay over time
-export const cache = (options = {}) => {
-  const {
-    ttl = 300000,           // 5 minutes default
-    decayRate = 0.9,        // Confidence decay per minute
-    minConfidence = 0.3     // Minimum cache confidence
-  } = options
-  
-  const cacheStore = new Map()
-  
-  return (keyGenerator) => {
-    return async (operation) => {
-      const key = typeof keyGenerator === "function" 
-        ? keyGenerator(operation) 
-        : JSON.stringify(operation)
-      
-      // Check cache
-      if (cacheStore.has(key)) {
-        const cached = cacheStore.get(key)
-        const age = Date.now() - cached.timestamp
-        
-        // Check if expired
-        if (age > ttl) {
-          cacheStore.delete(key)
-        } else {
-          // Calculate decayed confidence
-          const minutesOld = age / 60000
-          const decayedConfidence = cached.confidence * Math.pow(decayRate, minutesOld)
-          
-          if (decayedConfidence >= minConfidence) {
-            return cached.value ~> decayedConfidence
-          }
-        }
+export const cache = (options) => {
+  return (input) => {
+    return {
+      type: "cache",
+      input: input,
+      config: {
+        ttl: options?.ttl || 300000,
+        maxSize: options?.maxSize || 1000,
+        strategy: options?.strategy || "lru",
+        decayFunction: options?.decayFunction || "exponential",
+        decayRate: options?.decayRate || 0.1,
+        minConfidence: options?.minConfidence || 0.3,
+        keyFunction: options?.keyFunction || "default"
       }
-      
-      // Execute operation
-      const result = await operation()
-      const confidence = ~result
-      
-      // Cache result
-      if (confidence > minConfidence) {
-        cacheStore.set(key, {
-          value: result,
-          confidence: confidence,
-          timestamp: Date.now()
-        })
-      }
-      
-      return result
-    }
+    } ~> 0.85
   }
-}
-
-// Invalidating cache
-export const invalidatingCache = (options = {}) => {
-  const cacheInstance = cache(options)
-  const invalidatePatterns = []
-  
-  const wrapper = (keyGenerator) => {
-    const cached = cacheInstance(keyGenerator)
-    
-    // Add invalidation method
-    cached.invalidate = (pattern) => {
-      if (typeof pattern === "function") {
-        // Invalidate keys matching predicate
-        for (const [key, value] of cacheInstance.cacheStore) {
-          if (pattern(key, value)) {
-            cacheInstance.cacheStore.delete(key)
-          }
-        }
-      } else {
-        // Direct key invalidation
-        cacheInstance.cacheStore.delete(pattern)
-      }
-    }
-    
-    return cached
-  }
-  
-  return wrapper
-}
-
-// Distributed cache placeholder
-export const distributedCache = (redisClient, options = {}) => {
-  // This would integrate with Redis or similar
-  return cache(options) // Fallback to local cache for now
 }

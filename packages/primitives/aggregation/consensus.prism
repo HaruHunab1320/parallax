@@ -1,97 +1,56 @@
-/**
- * @primitive consensus
- * @category aggregation
- * @description Build weighted consensus from multiple opinions
- * @confidence weighted-average
- */
+// Primitive: consensus
+// Category: aggregation
+// Description: Build consensus from multiple results
+// Confidence: weighted-average
 
-// Build consensus from multiple results
-export const consensus = (results) => {
-  // Validate inputs
-  if (!Array.isArray(results) || results.length === 0) {
-    return { error: "No results to build consensus from" } ~> 0.0
-  }
-  
-  // Extract values and confidences
-  const opinions = results.map(r => ({
-    value: r,
-    confidence: ~r
-  }))
-  
-  // Filter out very low confidence results
-  const validOpinions = opinions.filter(o => o.confidence > 0.3)
-  
-  if (validOpinions.length === 0) {
-    return {
-      consensus: null,
-      message: "No opinions with sufficient confidence"
-    } ~> 0.1
-  }
-  
-  // Calculate weighted consensus
-  let totalWeight = 0
-  let weightedSum = 0
-  
-  validOpinions.forEach(opinion => {
-    totalWeight += opinion.confidence
-    // For numeric values, calculate weighted average
-    if (typeof opinion.value === "number") {
-      weightedSum += opinion.value * opinion.confidence
+// Consensus aggregation pattern
+export const consensus = () => {
+  return (results) => {
+    // Simple validation
+    if (!results || results.length === 0) {
+      return {
+        type: "consensus",
+        results: [],
+        config: { strategy: "weighted" }
+      } ~> 0.0
     }
-  })
-  
-  // Determine consensus type
-  const avgConfidence = totalWeight / validOpinions.length
-  const agreement = calculateAgreement(validOpinions)
-  
-  // Build consensus result
-  const consensusResult = {
-    consensus: typeof validOpinions[0].value === "number" 
-      ? weightedSum / totalWeight 
-      : findMostConfidentValue(validOpinions),
-    confidence: avgConfidence * agreement,
-    participantCount: validOpinions.length,
-    totalCount: results.length,
-    agreementLevel: agreement
-  }
-  
-  // Apply confidence based on consensus quality
-  const finalConfidence = avgConfidence * agreement * (validOpinions.length / results.length)
-  
-  return consensusResult ~> finalConfidence
-}
-
-// Helper: Calculate agreement level between opinions
-function calculateAgreement(opinions) {
-  if (opinions.length < 2) return 1.0
-  
-  // For numeric values, check variance
-  if (typeof opinions[0].value === "number") {
-    const values = opinions.map(o => o.value)
-    const mean = values.reduce((a, b) => a + b) / values.length
-    const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
-    const stdDev = Math.sqrt(variance)
     
-    // Convert to agreement score (lower variance = higher agreement)
-    return Math.max(0, 1 - (stdDev / mean))
+    // Return pattern description
+    return {
+      type: "consensus",
+      results: results,
+      config: {
+        strategy: "weighted",
+        threshold: 0.5
+      }
+    } ~> 0.9
   }
-  
-  // For non-numeric, check how many agree with the top choice
-  const valueCounts = {}
-  opinions.forEach(o => {
-    const key = JSON.stringify(o.value)
-    valueCounts[key] = (valueCounts[key] || 0) + o.confidence
-  })
-  
-  const totalWeight = Object.values(valueCounts).reduce((a, b) => a + b, 0)
-  const maxWeight = Math.max(...Object.values(valueCounts))
-  
-  return maxWeight / totalWeight
 }
 
-// Helper: Find value with highest confidence
-function findMostConfidentValue(opinions) {
-  return opinions.reduce((best, current) => 
-    current.confidence > best.confidence ? current : best
-  ).value
+// Majority consensus (unweighted)
+export const majorityConsensus = () => {
+  return (results) => {
+    return {
+      type: "consensus",
+      results: results || [],
+      config: {
+        strategy: "majority",
+        threshold: 0.5
+      }
+    } ~> 0.85
+  }
+}
+
+// Unanimous consensus
+export const unanimousConsensus = () => {
+  return (results) => {
+    return {
+      type: "consensus",
+      results: results || [],
+      config: {
+        strategy: "unanimous",
+        threshold: 1.0
+      }
+    } ~> 0.95
+  }
 }

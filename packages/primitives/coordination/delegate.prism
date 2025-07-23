@@ -1,99 +1,43 @@
-/**
- * @primitive delegate
- * @category coordination
- * @description Route tasks to capable agents
- * @confidence from-selected-agent
- */
+// Primitive: delegate
+// Category: coordination
+// Description: Route tasks to capable agents
+// Confidence: from-selected-agent
 
-// Capability-based delegation
+// Capability-based delegation pattern
 export const delegate = (router) => {
-  return async (task) => {
-    // Router determines best agent for task
-    const selection = await router(task)
-    
-    if (!selection || ~selection < 0.3) {
-      return { 
-        error: "No suitable agent found",
-        task: task 
-      } ~> 0.0
-    }
-    
-    // Execute with selected agent
-    const result = await selection.agent(task)
-    
-    // Confidence is product of routing and execution
-    return result ~> (~selection * ~result)
+  return (task) => {
+    return {
+      type: "delegate",
+      task: task,
+      config: {
+        router: router
+      }
+    } ~> 1.0
   }
 }
 
-// Hierarchical delegation
+// Hierarchical delegation pattern
 export const hierarchy = (levels) => {
-  return async (directive) => {
-    let current = directive
-    let level = 0
-    let results = []
-    let minConfidence = 1.0
-    
-    // Cascade down hierarchy
-    while (level < levels.length) {
-      const agents = levels[level]
-      const levelResults = []
-      
-      for (const agent of agents) {
-        const result = await agent(current)
-        levelResults.push(result)
-        minConfidence = Math.min(minConfidence, ~result)
-      }
-      
-      results.push({
-        level: level,
-        results: levelResults
-      })
-      
-      // Prepare for next level
-      current = aggregateForNextLevel(levelResults)
-      level++
-    }
-    
+  return (directive) => {
     return {
+      type: "hierarchy",
       directive: directive,
-      levels: results
-    } ~> minConfidence
-  }
-}
-
-// Approval workflow
-export const approval = (approvers) => {
-  return async (request) => {
-    const decisions = []
-    let approved = true
-    let minConfidence = 1.0
-    
-    for (const approver of approvers) {
-      const decision = await approver(request)
-      decisions.push(decision)
-      
-      const confidence = ~decision
-      minConfidence = Math.min(minConfidence, confidence)
-      
-      if (!decision.approved) {
-        approved = false
-        break // Stop on first rejection
+      config: {
+        levels: levels
       }
-    }
-    
-    return {
-      request: request,
-      approved: approved,
-      decisions: decisions
-    } ~> (approved ? minConfidence : minConfidence * 0.5)
+    } ~> 1.0
   }
 }
 
-function aggregateForNextLevel(results) {
-  // Combine results for next hierarchy level
-  return {
-    summary: results.map(r => r.summary || r),
-    confidence: results.reduce((min, r) => Math.min(min, ~r), 1.0)
+// Approval workflow pattern
+export const approval = (approvers) => {
+  return (request) => {
+    return {
+      type: "approval",
+      request: request,
+      config: {
+        approvers: approvers
+      }
+    } ~> 1.0
   }
 }

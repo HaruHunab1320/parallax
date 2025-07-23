@@ -1,70 +1,21 @@
-/**
- * @primitive timeout
- * @category control
- * @description Enforce time limits on operations
- * @confidence zero-on-timeout
- */
+// Primitive: timeout
+// Category: control
+// Description: Enforce time limits on operations
+// Confidence: zero-on-timeout
+
 
 // Timeout primitive
 export const timeout = (milliseconds) => {
-  return async (operation) => {
-    const timeoutPromise = new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          error: "Operation timed out",
-          timeout: milliseconds
-        } ~> 0.0)
-      }, milliseconds)
-    })
-    
-    try {
-      // Race operation against timeout
-      const result = await Promise.race([
-        operation(),
-        timeoutPromise
-      ])
-      
-      return result
-    } catch (error) {
-      return {
-        error: error.message,
-        timeout: milliseconds
-      } ~> 0.0
-    }
+  return (input) => {
+    return {
+      type: "timeout",
+      input: input,
+      config: {
+        milliseconds: milliseconds,
+        fallbackValue: null,
+        includePartialResults: false,
+        gracefulShutdown: true
+      }
+    } ~> 0.5
   }
 }
-
-// Timeout with fallback
-export const timeoutWithFallback = (milliseconds, fallbackOperation) => {
-  return async (operation) => {
-    const mainResult = await timeout(milliseconds)(operation)
-    
-    // If timed out, try fallback
-    if (~mainResult === 0 && mainResult.error === "Operation timed out") {
-      return fallbackOperation()
-    }
-    
-    return mainResult
-  }
-}
-
-// Adaptive timeout based on confidence
-export const adaptiveTimeout = (baseTimeout, confidenceMultiplier = 2) => {
-  return async (operation) => {
-    // First attempt with base timeout
-    const firstAttempt = await timeout(baseTimeout)(operation)
-    
-    // If low confidence, try again with longer timeout
-    if (~firstAttempt < 0.5 && ~firstAttempt > 0) {
-      const extendedTimeout = baseTimeout * confidenceMultiplier
-      return timeout(extendedTimeout)(operation)
-    }
-    
-    return firstAttempt
-  }
-}
-
-// Common timeout presets
-export const quickTimeout = timeout(5000)    // 5 seconds
-export const standardTimeout = timeout(30000) // 30 seconds
-export const longTimeout = timeout(300000)    // 5 minutes

@@ -10,7 +10,20 @@ const chalk = require('chalk');
 const validator = createValidator();
 
 // Primitive file patterns
-const primitiveCategories = ['execution', 'aggregation', 'confidence', 'control'];
+const primitiveCategories = [
+  'execution', 
+  'aggregation', 
+  'confidence', 
+  'control',
+  'transformation',
+  'workflow',
+  'coordination',
+  'goal',
+  'temporal',
+  'resource',
+  'transaction',
+  'event'
+];
 
 async function validatePrimitiveFile(filePath) {
   try {
@@ -72,8 +85,12 @@ function extractExports(ast) {
     if (!node) return;
     
     if (node.type === 'ExportStatement') {
-      if (node.declaration && node.declaration.id) {
-        exports.push(node.declaration.id.name);
+      if (node.declaration) {
+        if (node.declaration.identifier) {
+          exports.push(node.declaration.identifier);
+        } else if (node.declaration.id) {
+          exports.push(node.declaration.id.name);
+        }
       }
     }
     
@@ -200,8 +217,59 @@ async function analyzeConfidenceFlow() {
   console.log(chalk.green('\n✅ Confidence flow patterns are consistent'));
 }
 
+async function validateSingleFile(category, fileName) {
+  const filePath = path.join(__dirname, '..', category, fileName);
+  console.log(chalk.bold.blue(`\nValidating ${category}/${fileName}:`));
+  
+  try {
+    const content = await fs.readFile(filePath, 'utf8');
+    
+    // Show first 30 lines for context
+    const lines = content.split('\n');
+    console.log(chalk.gray('\nFile preview (first 30 lines):'));
+    console.log(lines.slice(0, 30).map((line, i) => 
+      chalk.gray(`${(i + 1).toString().padStart(3)} |`) + ' ' + line
+    ).join('\n'));
+    
+    console.log(chalk.bold('\nValidation Result:'));
+    const result = await validatePrimitiveFile(filePath);
+    
+    if (!result.success && validation.errors) {
+      console.log(chalk.red('\nDetailed errors:'));
+      validation.errors.forEach(err => {
+        console.log(chalk.red(`  Line ${err.line}: ${err.message}`));
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.log(chalk.red('Error reading file:', error.message));
+    return { success: false, error: error.message };
+  }
+}
+
+// Main execution
+async function main() {
+  const args = process.argv.slice(2);
+  
+  if (args.length === 0) {
+    // Validate all primitives
+    await validateAllPrimitives();
+  } else if (args.length === 2) {
+    // Validate specific primitive
+    const [category, fileName] = args;
+    await validateSingleFile(category, fileName);
+  } else {
+    console.log(chalk.yellow('Usage:'));
+    console.log('  node validate-primitives.js                    # Validate all primitives');
+    console.log('  node validate-primitives.js <category> <file>  # Validate specific primitive');
+    console.log(chalk.gray('\nExample:'));
+    console.log('  node validate-primitives.js execution parallel.prism');
+  }
+}
+
 // Run validation
-validateAllPrimitives().catch(error => {
+main().catch(error => {
   console.error(chalk.red('Fatal error:'), error);
   process.exit(1);
 });

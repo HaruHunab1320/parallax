@@ -13,7 +13,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@prism-lang/core": "^1.0.25",
+    "@prism-lang/core": "*",
     "@grpc/grpc-js": "^1.12.4",
     "@parallax/security": "workspace:*",
     "pino": "^9.5.0"

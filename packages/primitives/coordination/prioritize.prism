@@ -1,149 +1,43 @@
-/**
- * @primitive prioritize
- * @category coordination
- * @description Priority-based task scheduling
- * @confidence from-execution
- */
+// Primitive: prioritize
+// Category: coordination
+// Description: Priority-based task scheduling
+// Confidence: from-execution
 
-// Priority queue for tasks
-export const priorityQueue = () => {
-  const queue = []
-  const processing = new Set()
-  
-  const enqueue = (task, priority = 0) => {
-    const item = {
-      task: task,
-      priority: priority,
-      enqueued: Date.now(),
-      id: Math.random()
-    }
-    
-    // Insert in priority order
-    let inserted = false
-    for (let i = 0; i < queue.length; i++) {
-      if (queue[i].priority < priority) {
-        queue.splice(i, 0, item)
-        inserted = true
-        break
+// Priority queue pattern
+export const priorityQueue = (maxConcurrent) => {
+  return (tasks) => {
+    return {
+      type: "priorityQueue",
+      tasks: tasks,
+      config: {
+        maxConcurrent: maxConcurrent || 1
       }
-    }
-    
-    if (!inserted) {
-      queue.push(item)
-    }
-    
-    return { 
-      queued: true, 
-      position: queue.findIndex(q => q.id === item.id),
-      queueLength: queue.length 
     } ~> 1.0
   }
-  
-  const process = async (executor, maxConcurrent = 1) => {
-    if (processing.size >= maxConcurrent || queue.length === 0) {
-      return { processed: false, reason: "at_capacity_or_empty" } ~> 0.5
-    }
-    
-    const item = queue.shift()
-    processing.add(item.id)
-    
-    try {
-      const result = await executor(item.task)
-      
-      return {
-        processed: true,
-        priority: item.priority,
-        waitTime: Date.now() - item.enqueued,
-        result: result
-      } ~> ~result
-      
-    } finally {
-      processing.delete(item.id)
-    }
-  }
-  
-  const status = () => ({
-    queued: queue.length,
-    processing: processing.size,
-    topPriority: queue[0]?.priority || null
-  })
-  
-  return { enqueue, process, status }
 }
 
-// Multi-level priority scheduling
+// Multi-level priority scheduling pattern
 export const multiLevelPriority = (levels) => {
-  const queues = new Map()
-  
-  // Initialize priority levels
-  for (const level of levels) {
-    queues.set(level.name, {
-      queue: priorityQueue(),
-      weight: level.weight || 1,
-      processed: 0
-    })
+  return (tasks) => {
+    return {
+      type: "multiLevelPriority",
+      tasks: tasks,
+      config: {
+        levels: levels
+      }
+    } ~> 1.0
   }
-  
-  return {
-    enqueue: (task, level, priority = 0) => {
-      const queueData = queues.get(level)
-      if (!queueData) {
-        return { error: "Invalid priority level" } ~> 0.0
+}
+
+// Task prioritization pattern
+export const prioritize = (scorer) => {
+  return (tasks) => {
+    return {
+      type: "prioritize",
+      tasks: tasks,
+      config: {
+        scorer: scorer
       }
-      
-      return queueData.queue.enqueue(task, priority)
-    },
-    
-    process: async (executor) => {
-      // Weighted round-robin across levels
-      let totalWeight = 0
-      let weights = []
-      
-      for (const [level, data] of queues) {
-        const status = data.queue.status()
-        if (status.queued > 0) {
-          totalWeight += data.weight
-          weights.push({ level, weight: data.weight, data })
-        }
-      }
-      
-      if (totalWeight === 0) {
-        return { processed: false, reason: "all_queues_empty" } ~> 0.5
-      }
-      
-      // Select level based on weights
-      let random = Math.random() * totalWeight
-      let selected = null
-      
-      for (const w of weights) {
-        random -= w.weight
-        if (random <= 0) {
-          selected = w
-          break
-        }
-      }
-      
-      // Process from selected queue
-      const result = await selected.data.queue.process(executor)
-      if (result.processed) {
-        selected.data.processed++
-      }
-      
-      return {
-        ...result,
-        level: selected.level
-      }
-    },
-    
-    status: () => {
-      const status = {}
-      for (const [level, data] of queues) {
-        status[level] = {
-          ...data.queue.status(),
-          processed: data.processed
-        }
-      }
-      return status
-    }
+    } ~> 1.0
   }
 }

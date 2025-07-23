@@ -8,8 +8,8 @@
     "test": "npm run validate"
   },
   "dependencies": {
-    "@prism-lang/core": "latest",
-    "@prism-lang/validator": "latest"
+    "@prism-lang/core": "*",
+    "@prism-lang/validator": "*"
   },
   "devDependencies": {
     "chalk": "^4.1.2"

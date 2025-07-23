@@ -1,132 +1,24 @@
-/**
- * @primitive circuit
- * @category control
- * @description Circuit breaker for fault tolerance
- * @confidence based-on-state
- */
+// Primitive: circuit
+// Category: control
+// Description: Circuit breaker for fault tolerance
+// Confidence: based-on-state
+
 
 // Circuit breaker pattern
-export const circuitBreaker = (options = {}) => {
-  const {
-    threshold = 5,        // failures before opening
-    timeout = 60000,      // time before half-open
-    volumeThreshold = 10  // min requests before opening
-  } = options
-  
-  let state = "closed" // closed, open, half-open
-  let failures = 0
-  let successes = 0
-  let lastFailureTime = null
-  let totalRequests = 0
-  
-  return async (operation) => {
-    totalRequests++
-    
-    // Check circuit state
-    if (state === "open") {
-      const now = Date.now()
-      if (now - lastFailureTime > timeout) {
-        state = "half-open"
-        failures = 0
-        successes = 0
-      } else {
-        return {
-          error: "Circuit breaker is open",
-          state: state,
-          willRetryIn: timeout - (now - lastFailureTime)
-        } ~> 0.0
+export const circuitBreaker = (options) => {
+  return (input) => {
+    return {
+      type: "circuitBreaker",
+      input: input,
+      config: {
+        threshold: options?.threshold || 5,
+        timeout: options?.timeout || 60000,
+        resetTimeout: options?.resetTimeout || 30000,
+        halfOpenRequests: options?.halfOpenRequests || 3,
+        errorThreshold: options?.errorThreshold || 0.5,
+        volumeThreshold: options?.volumeThreshold || 10,
+        states: ["closed", "open", "half-open"]
       }
-    }
-    
-    try {
-      // Execute operation
-      const result = await operation()
-      const confidence = ~result
-      
-      if (confidence < 0.5) {
-        throw new Error("Low confidence result")
-      }
-      
-      // Success handling
-      successes++
-      
-      if (state === "half-open" && successes >= 3) {
-        state = "closed"
-        failures = 0
-      }
-      
-      return result
-      
-    } catch (error) {
-      failures++
-      lastFailureTime = Date.now()
-      
-      // Check if should open circuit
-      if (state === "closed" && 
-          failures >= threshold && 
-          totalRequests >= volumeThreshold) {
-        state = "open"
-      } else if (state === "half-open") {
-        state = "open"
-      }
-      
-      return {
-        error: error.message,
-        state: state,
-        failures: failures,
-        totalRequests: totalRequests
-      } ~> 0.1
-    }
-  }
-}
-
-// Bulkhead isolation
-export const bulkhead = (compartments) => {
-  const compartmentStates = new Map()
-  
-  // Initialize compartments
-  for (const [name, config] of Object.entries(compartments)) {
-    compartmentStates.set(name, {
-      healthy: true,
-      capacity: config.capacity,
-      inUse: 0
-    })
-  }
-  
-  return async (task) => {
-    const compartment = task.compartment || "default"
-    const state = compartmentStates.get(compartment)
-    
-    if (!state || !state.healthy) {
-      return {
-        error: "Compartment unavailable",
-        compartment: compartment
-      } ~> 0.0
-    }
-    
-    if (state.inUse >= state.capacity) {
-      return {
-        error: "Compartment at capacity",
-        compartment: compartment,
-        capacity: state.capacity
-      } ~> 0.2
-    }
-    
-    // Reserve capacity
-    state.inUse++
-    
-    try {
-      const result = await task.operation()
-      
-      // Check if compartment should be marked unhealthy
-      if (~result < 0.3) {
-        state.healthy = false
-      }
-      
-      return result
-      
-    } finally {
-      state.inUse--
-    }
+    } ~> 0.9
   }
 }

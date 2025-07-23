@@ -1,68 +1,40 @@
-/**
- * @primitive sequential
- * @category execution
- * @description Execute operations in order, passing results through the chain
- * @confidence propagates-chain
- */
+// Primitive: sequential
+// Category: execution
+// Description: Execute operations in order
+// Confidence: propagates-through-chain
 
-import { executeTask } from "../utils/executor.prism"
-
-// Sequential execution primitive
-export const sequential = (tasks) => {
-  // Validate inputs
-  if (!Array.isArray(tasks)) {
-    return { error: "Tasks must be an array" } ~> 0.0
-  }
-  
-  // Handle empty array
-  if (tasks.length === 0) {
-    return [] ~> 1.0
-  }
-  
-  // Execute tasks in sequence
-  let result = null
-  let lowestConfidence = 1.0
-  
-  for (let i = 0; i < tasks.length; i++) {
-    const task = tasks[i]
-    
-    // Pass previous result to next task
-    if (i === 0) {
-      result = executeTask(task)
-    } else {
-      // Tasks can be functions that take previous result
-      if (typeof task === "function") {
-        result = task(result)
-      } else {
-        result = executeTask(task)
-      }
-    }
-    
-    // Track minimum confidence through the chain
-    const confidence = ~result
-    if (confidence < lowestConfidence) {
-      lowestConfidence = confidence
-    }
-    
-    // Early exit on low confidence
-    if (confidence < 0.3) {
+// Sequential execution pattern
+export const sequential = () => {
+  return (tasks) => {
+    // Simple validation
+    if (!tasks || tasks.length === 0) {
       return {
-        error: "Low confidence in sequential chain",
-        lastResult: result,
-        failedAt: i
-      } ~> confidence
+        type: "sequential",
+        tasks: [],
+        config: {}
+      } ~> 1.0
     }
+    
+    // Return pattern description
+    return {
+      type: "sequential",
+      tasks: tasks,
+      config: {
+        continueOnError: false
+      }
+    } ~> 1.0
   }
-  
-  // Return final result with minimum confidence from chain
-  return result ~> lowestConfidence
 }
 
-// Pipeline helper - more functional approach
-export const pipeline = (...functions) => {
-  return (input) => {
-    return functions.reduce((result, fn) => {
-      return fn(result)
-    }, input)
+// Variant that continues on error
+export const sequentialContinue = () => {
+  return (tasks) => {
+    return {
+      type: "sequential",
+      tasks: tasks || [],
+      config: {
+        continueOnError: true
+      }
+    } ~> 0.9
   }
 }

@@ -1,71 +1,57 @@
-/**
- * @primitive reduce
- * @category aggregation
- * @description Reduce array to single value with confidence tracking
- * @confidence accumulator-based
- */
+// Primitive: reduce
+// Category: aggregation
+// Description: Reduce multiple values to single result
+// Confidence: accumulated
 
-// Reduce with confidence propagation
+// Reduce aggregation pattern
 export const reduce = (reducer, initial) => {
-  return (items) => {
-    if (!Array.isArray(items) || items.length === 0) {
-      return initial
+  return (results) => {
+    // Simple validation
+    if (!results || results.length === 0) {
+      return {
+        type: "reduce",
+        results: [],
+        config: { reducer: reducer, initial: initial }
+      } ~> 1.0
     }
     
-    let accumulator = initial
-    let minConfidence = ~initial
-    
-    for (const item of items) {
-      // Apply reducer
-      accumulator = reducer(accumulator, item)
-      
-      // Track minimum confidence
-      const itemConf = ~item
-      const accConf = ~accumulator
-      minConfidence = Math.min(minConfidence, itemConf, accConf)
-    }
-    
-    return accumulator ~> minConfidence
+    // Return pattern description
+    return {
+      type: "reduce",
+      results: results,
+      config: {
+        reducer: reducer,
+        initial: initial
+      }
+    } ~> 0.9
   }
 }
 
 // Map-reduce pattern
 export const mapReduce = (mapper, reducer, initial) => {
-  return (items) => {
-    if (!Array.isArray(items)) {
-      return { error: "Input must be an array" } ~> 0.0
-    }
-    
-    // Map phase with confidence tracking
-    const mapped = items.map(item => mapper(item))
-    
-    // Reduce phase
-    return reduce(reducer, initial)(mapped)
+  return (results) => {
+    return {
+      type: "reduce",
+      results: results || [],
+      config: {
+        mapper: mapper,
+        reducer: reducer,
+        initial: initial
+      }
+    } ~> 0.85
   }
 }
 
-// Group by with confidence
-export const groupBy = (keySelector) => {
-  return (items) => {
-    if (!Array.isArray(items)) {
-      return {} ~> 0.0
-    }
-    
-    const groups = {}
-    let minConfidence = 1.0
-    
-    for (const item of items) {
-      const key = keySelector(item)
-      const confidence = ~item
-      
-      if (!groups[key]) {
-        groups[key] = []
+// Group by key then reduce
+export const groupBy = (keyFn, reducer) => {
+  return (results) => {
+    return {
+      type: "reduce",
+      results: results || [],
+      config: {
+        groupBy: keyFn,
+        reducer: reducer
       }
-      
-      groups[key].push(item)
-      minConfidence = Math.min(minConfidence, confidence)
-    }
-    
-    return groups ~> minConfidence
+    } ~> 0.9
   }
 }

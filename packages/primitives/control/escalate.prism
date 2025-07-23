@@ -1,136 +1,47 @@
-/**
- * @primitive escalate
- * @category control
- * @description Escalate to higher authority based on confidence
- * @confidence from-handler
- */
+// Primitive: escalate
+// Category: control
+// Description: Escalate to higher-level handlers based on severity
+// Confidence: decreases-with-level
 
-// Escalation primitive with configurable paths
-export const escalate = (escalationPath) => {
-  return async (input) => {
-    const confidence = ~input
-    
-    // Determine escalation level
-    const handler = uncertain if (~input) {
-      high -> escalationPath.level1 || null
-      medium -> escalationPath.level2 || escalationPath.level1
-      low -> escalationPath.level3 || escalationPath.level2 || escalationPath.level1
-    }
-    
-    if (!handler) {
-      return input  // No escalation needed
-    }
-    
-    // Escalate to appropriate handler
-    const escalationContext = {
-      originalInput: input,
-      originalConfidence: confidence,
-      escalationReason: getEscalationReason(confidence),
-      timestamp: Date.now()
-    }
-    
-    const result = await handler(escalationContext)
-    
-    // Add escalation metadata
+// Escalate control pattern
+export const escalate = (levels) => {
+  return (issue) => {
     return {
-      ...result,
-      escalated: true,
-      escalationLevel: getEscalationLevel(confidence),
-      originalConfidence: confidence
-    }
+      type: "escalate",
+      issue: issue,
+      config: {
+        levels: levels || []
+      }
+    } ~> 0.7
   }
-}
-
-// Helper: Get escalation reason
-function getEscalationReason(confidence) {
-  if (confidence < 0.3) {
-    return "Very low confidence requires expert review"
-  } else if (confidence < 0.5) {
-    return "Low confidence requires senior validation"
-  } else if (confidence < 0.7) {
-    return "Medium confidence requires supervisory approval"
-  } else {
-    return "Standard review process"
-  }
-}
-
-// Helper: Get escalation level
-function getEscalationLevel(confidence) {
-  if (confidence < 0.3) return 3
-  if (confidence < 0.5) return 2
-  if (confidence < 0.7) return 1
-  return 0
 }
 
 // Time-based escalation
-export const timeBasedEscalation = (timeout, timeoutHandler) => {
-  return async (operation) => {
-    const startTime = Date.now()
-    
-    // Race between operation and timeout
-    const result = await Promise.race([
-      operation(),
-      new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            error: "Operation timed out",
-            timeout: timeout,
-            escalated: true
-          } ~> 0.0)
-        }, timeout)
-      })
-    ])
-    
-    // If timed out, escalate
-    if (result.error === "Operation timed out") {
-      return timeoutHandler({
-        originalOperation: operation,
-        timeout: timeout,
-        duration: Date.now() - startTime
-      })
-    }
-    
-    return result
+export const timeBasedEscalation = (timeouts) => {
+  return (issue) => {
+    return {
+      type: "escalate",
+      issue: issue,
+      config: {
+        strategy: "time-based",
+        timeouts: timeouts || []
+      }
+    } ~> 0.65
   }
 }
 
-// Multi-factor escalation
-export const multiFactorEscalation = (factors) => {
-  return async (input) => {
-    const evaluations = {}
-    
-    // Evaluate all factors
-    for (const [factor, evaluator] of Object.entries(factors.evaluators)) {
-      evaluations[factor] = await evaluator(input)
-    }
-    
-    // Calculate combined escalation score
-    let escalationScore = 0
-    let totalWeight = 0
-    
-    for (const [factor, result] of Object.entries(evaluations)) {
-      const weight = factors.weights[factor] || 1
-      const needsEscalation = ~result < (factors.thresholds[factor] || 0.7)
-      
-      if (needsEscalation) {
-        escalationScore += weight
+// Confidence-based escalation
+export const confidenceBasedEscalation = () => {
+  return (issue) => {
+    return {
+      type: "escalate",
+      issue: issue,
+      config: {
+        strategy: "confidence-based",
+        lowThreshold: 0.3,
+        mediumThreshold: 0.6,
+        highThreshold: 0.8
       }
-      totalWeight += weight
-    }
-    
-    const escalationRatio = escalationScore / totalWeight
-    
-    // Escalate if score exceeds threshold
-    if (escalationRatio > 0.5) {
-      const handler = factors.handlers[Math.ceil(escalationRatio * 3)] || factors.handlers.default
-      
-      return handler({
-        input: input,
-        evaluations: evaluations,
-        escalationScore: escalationRatio
-      })
-    }
-    
-    return input
+    } ~> 0.7
   }
 }

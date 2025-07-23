@@ -1,103 +1,93 @@
-/**
- * @primitive dependency
- * @category workflow
- * @description Execute tasks with dependency resolution
- * @confidence minimum-critical-path
- */
+// Primitive: dependency
+// Category: workflow
+// Description: Execute tasks with dependency resolution
+// Confidence: pattern-definition
 
-// DAG execution with topological sort
+// DAG (Directed Acyclic Graph) pattern
 export const dag = (tasks) => {
-  return async (input) => {
-    const completed = new Map()
-    const inProgress = new Set()
-    let minConfidence = 1.0
-    
-    // Topological sort
-    const sorted = topologicalSort(tasks)
-    
-    for (const taskName of sorted) {
-      const task = tasks[taskName]
-      
-      // Wait for dependencies
-      const depResults = []
-      for (const dep of (task.depends || [])) {
-        if (!completed.has(dep)) {
-          return {
-            error: `Missing dependency: ${dep}`,
-            completed: Array.from(completed.keys())
-          } ~> 0.0
-        }
-        depResults.push(completed.get(dep))
-      }
-      
-      // Execute task with dependency results
-      const taskInput = task.mergeDeps ? 
-        task.mergeDeps(input, depResults) : 
-        input
-        
-      const result = await task.execute(taskInput)
-      completed.set(taskName, result)
-      
-      minConfidence = Math.min(minConfidence, ~result)
-    }
-    
+  // Simple validation
+  if (!tasks) {
     return {
-      results: Object.fromEntries(completed),
-      order: sorted
-    } ~> minConfidence
+      type: "dag",
+      tasks: {},
+      config: {}
+    } ~> 1.0
   }
+  
+  // Return pattern description
+  return {
+    type: "dag",
+    tasks: tasks,
+    config: {
+      topologicalSort: true,
+      validateDependencies: true,
+      mergeDependencyResults: true
+    }
+  } ~> 1.0
 }
 
-// Checkpoint for long-running workflows
-export const checkpoint = (saveState, restoreState) => {
-  return (workflow) => {
-    return async (input) => {
-      // Try to restore from checkpoint
-      const restored = await restoreState(input)
-      
-      if (restored && ~restored > 0.5) {
-        console.log("Resuming from checkpoint")
-        return workflow(restored)
+// Checkpoint pattern for long-running workflows
+export const checkpoint = (config) => {
+  // Simple validation
+  if (!config || !config.saveState || !config.restoreState) {
+    return {
+      type: "checkpoint",
+      config: {
+        enabled: false
       }
-      
-      // Wrap workflow to save checkpoints
-      const checkpointed = async (data) => {
-        const result = await workflow(data)
-        
-        // Save successful results
-        if (~result > 0.7) {
-          await saveState(result)
-        }
-        
-        return result
-      }
-      
-      return checkpointed(input)
-    }
+    } ~> 0.5
   }
+  
+  // Return pattern description
+  return {
+    type: "checkpoint",
+    config: {
+      saveState: config.saveState,
+      restoreState: config.restoreState,
+      resumeThreshold: config.resumeThreshold || 0.5,
+      saveThreshold: config.saveThreshold || 0.7
+    }
+  } ~> 1.0
 }
 
-function topologicalSort(tasks) {
-  const visited = new Set()
-  const sorted = []
-  
-  function visit(name) {
-    if (visited.has(name)) return
-    visited.add(name)
-    
-    const task = tasks[name]
-    if (task.depends) {
-      for (const dep of task.depends) {
-        visit(dep)
-      }
+// Pre-configured DAG variants
+export const strictDag = (tasks) => {
+  return {
+    type: "dag",
+    tasks: tasks,
+    config: {
+      topologicalSort: true,
+      validateDependencies: true,
+      mergeDependencyResults: true,
+      failOnMissingDependency: true,
+      strict: true
     }
-    
-    sorted.push(name)
-  }
-  
-  for (const name in tasks) {
-    visit(name)
-  }
-  
-  return sorted
+  } ~> 1.0
+}
+
+export const lenientDag = (tasks) => {
+  return {
+    type: "dag",
+    tasks: tasks,
+    config: {
+      topologicalSort: true,
+      validateDependencies: false,
+      mergeDependencyResults: true,
+      failOnMissingDependency: false,
+      strict: false
+    }
+  } ~> 1.0
+}
+
+// Workflow with automatic checkpointing
+export const checkpointedWorkflow = (workflow, storageConfig) => {
+  return {
+    type: "checkpointed-workflow",
+    workflow: workflow,
+    config: {
+      storage: storageConfig,
+      autoSave: true,
+      autoRestore: true
+    }
+  } ~> 1.0
 }

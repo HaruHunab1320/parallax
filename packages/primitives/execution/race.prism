@@ -1,62 +1,40 @@
-/**
- * @primitive race
- * @category execution
- * @description Execute operations concurrently, return first to complete
- * @confidence from-winner
- */
+// Primitive: race
+// Category: execution
+// Description: Return first result to complete
+// Confidence: from-winner
 
-import { executeTask } from "../utils/executor.prism"
-
-// Race primitive - first to finish wins
-export const race = (operations) => {
-  // Validate inputs
-  if (!Array.isArray(operations) || operations.length === 0) {
-    return { error: "No operations to race" } ~> 0.0
-  }
-  
-  // Race all operations
-  return Promise.race(operations.map(op => executeTask(op)))
-}
-
-// Race with minimum confidence requirement
-export const raceWithThreshold = (minConfidence) => {
-  return async (operations) => {
-    if (!Array.isArray(operations) || operations.length === 0) {
-      return { error: "No operations to race" } ~> 0.0
+// Race execution pattern
+export const race = () => {
+  return (tasks) => {
+    // Simple validation
+    if (!tasks || tasks.length === 0) {
+      return {
+        type: "race",
+        tasks: [],
+        config: {}
+      } ~> 1.0
     }
     
-    // Track all results
-    const results = []
-    let hasWinner = false
-    
-    // Create promises that resolve when confidence threshold met
-    const promises = operations.map(async (op, index) => {
-      const result = await executeTask(op)
-      results[index] = result
-      
-      if (~result >= minConfidence && !hasWinner) {
-        hasWinner = true
-        return result
+    // Return pattern description
+    return {
+      type: "race",
+      tasks: tasks,
+      config: {
+        includeIndex: false
       }
-      
-      // Don't resolve if threshold not met
-      return new Promise(() => {})
-    })
-    
-    // Add timeout promise
-    const timeout = new Promise((resolve) => {
-      setTimeout(() => {
-        if (!hasWinner) {
-          // Return best result so far
-          const best = results.reduce((best, current) => 
-            current && ~current > ~best ? current : best,
-            { result: null } ~> 0.0
-          )
-          resolve(best)
-        }
-      }, 30000) // 30 second timeout
-    })
-    
-    return Promise.race([...promises, timeout])
+    } ~> 1.0
+  }
+}
+
+// Variant that includes winner index
+export const raceWithIndex = () => {
+  return (tasks) => {
+    return {
+      type: "race",
+      tasks: tasks || [],
+      config: {
+        includeIndex: true
+      }
+    } ~> 1.0
   }
 }

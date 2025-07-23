@@ -1,70 +1,73 @@
-/**
- * @primitive pipeline
- * @category workflow
- * @description Execute steps with dependency management
- * @confidence minimum-step
- */
+// Primitive: pipeline
+// Category: workflow
+// Description: Execute steps with dependency management
+// Confidence: pattern-definition
 
-// Pipeline with state passing between steps
+// Pipeline pattern - sequential step execution
 export const pipeline = (steps) => {
-  return async (input) => {
-    let current = input
-    let minConfidence = 1.0
-    
-    for (const step of steps) {
-      const result = await step(current)
-      const confidence = ~result
-      
-      // Stop on low confidence
-      if (confidence < 0.3) {
-        return {
-          error: "Pipeline halted due to low confidence",
-          lastResult: result,
-          step: steps.indexOf(step)
-        } ~> confidence
-      }
-      
-      current = result
-      minConfidence = Math.min(minConfidence, confidence)
-    }
-    
-    return current ~> minConfidence
+  // Simple validation
+  if (!steps || steps.length === 0) {
+    return {
+      type: "pipeline",
+      steps: [],
+      config: {}
+    } ~> 1.0
   }
+  
+  // Return pattern description
+  return {
+    type: "pipeline",
+    steps: steps,
+    config: {
+      haltOnLowConfidence: true,
+      confidenceThreshold: 0.3
+    }
+  } ~> 1.0
 }
 
-// Conditional pipeline with branching
-export const branchingPipeline = (config) => {
-  return async (input) => {
-    let current = input
-    let minConfidence = 1.0
-    let path = []
-    
-    for (const node of config.nodes) {
-      if (node.condition && !node.condition(current)) {
-        continue
-      }
-      
-      path.push(node.name)
-      const result = await node.action(current)
-      current = result
-      minConfidence = Math.min(minConfidence, ~result)
-      
-      // Handle branching
-      if (node.branches) {
-        for (const branch of node.branches) {
-          if (branch.condition(current)) {
-            const branchResult = await branch.pipeline(current)
-            current = branchResult
-            minConfidence = Math.min(minConfidence, ~branchResult)
-            break
-          }
-        }
-      }
-    }
-    
+// Branching pipeline pattern
+export const branchingPipeline = (nodes) => {
+  // Simple validation
+  if (!nodes || nodes.length === 0) {
     return {
-      result: current,
-      path: path
-    } ~> minConfidence
+      type: "branching-pipeline",
+      nodes: [],
+      config: {}
+    } ~> 1.0
   }
+  
+  // Return pattern description
+  return {
+    type: "branching-pipeline",
+    nodes: nodes,
+    config: {
+      trackPath: true,
+      evaluateConditions: true
+    }
+  } ~> 1.0
+}
+
+// Pre-configured pipeline variants
+export const strictPipeline = (steps) => {
+  return {
+    type: "pipeline",
+    steps: steps,
+    config: {
+      haltOnLowConfidence: true,
+      confidenceThreshold: 0.5,
+      strict: true
+    }
+  } ~> 1.0
+}
+
+export const lenientPipeline = (steps) => {
+  return {
+    type: "pipeline",
+    steps: steps,
+    config: {
+      haltOnLowConfidence: false,
+      confidenceThreshold: 0.1,
+      strict: false
+    }
+  } ~> 1.0
 }

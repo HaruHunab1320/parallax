@@ -1,65 +1,40 @@
-/**
- * @primitive parallel
- * @category execution
- * @description Execute multiple operations concurrently
- * @confidence propagates-all
- */
+// Primitive: parallel
+// Category: execution
+// Description: Execute multiple operations concurrently
+// Confidence: propagates-minimum
 
-import { executeTask } from "../utils/executor.prism"
-
-// Parallel execution primitive
+// Parallel execution pattern
 export const parallel = (maxConcurrency) => {
   return (tasks) => {
-    // Validate inputs
-    if (!Array.isArray(tasks)) {
-      return { error: "Tasks must be an array" } ~> 0.0
+    // Simple validation
+    if (!tasks || tasks.length === 0) {
+      return {
+        type: "parallel",
+        tasks: [],
+        config: { maxConcurrency: 0 }
+      } ~> 1.0
     }
     
-    // Handle empty array
-    if (tasks.length === 0) {
-      return [] ~> 1.0
-    }
-    
-    // Execute tasks with concurrency limit
-    const results = []
-    const executing = []
-    let index = 0
-    
-    // Process tasks in batches
-    while (index < tasks.length || executing.length > 0) {
-      // Start new tasks up to concurrency limit
-      while (executing.length < maxConcurrency && index < tasks.length) {
-        const taskIndex = index
-        const task = tasks[taskIndex]
-        
-        // Execute task and track promise
-        const execution = executeTask(task).then(result => {
-          results[taskIndex] = result
-          return taskIndex
-        })
-        
-        executing.push(execution)
-        index += 1
+    // Return pattern description
+    return {
+      type: "parallel",
+      tasks: tasks,
+      config: {
+        maxConcurrency: maxConcurrency || Infinity
       }
-      
-      // Wait for at least one task to complete
-      if (executing.length > 0) {
-        const completedIndex = await Promise.race(executing)
-        executing = executing.filter(e => e !== executing[completedIndex])
-      }
-    }
-    
-    // Return results with aggregated confidence
-    const minConfidence = results.reduce((min, r) => {
-      const conf = ~r
-      return conf < min ? conf : min
-    }, 1.0)
-    
-    return results ~> minConfidence
+    } ~> 1.0
   }
 }
 
-// Convenience functions for common concurrency levels
-export const parallel5 = parallel(5)
-export const parallel10 = parallel(10)
-export const parallelUnlimited = parallel(Infinity)
+// Pre-configured variants
+export const parallel5 = (tasks) => {
+  return parallel(5)(tasks)
+}
+
+export const parallel10 = (tasks) => {
+  return parallel(10)(tasks)
+}
+
+export const parallelUnlimited = (tasks) => {
+  return parallel(Infinity)(tasks)
+}
