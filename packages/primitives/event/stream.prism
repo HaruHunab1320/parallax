@@ -1,0 +1,132 @@
+/**
+ * @primitive stream
+ * @category event
+ * @description Event streaming and reactive patterns
+ * @confidence from-processors
+ */
+
+// Event stream processing
+export const eventStream = () => {
+  const processors = []
+  const buffer = []
+  let isPaused = false
+  
+  const emit = async (event) => {
+    if (isPaused) {
+      buffer.push(event)
+      return { buffered: true } ~> 0.7
+    }
+    
+    let minConfidence = 1.0
+    const results = []
+    
+    for (const processor of processors) {
+      try {
+        const result = await processor(event)
+        results.push(result)
+        minConfidence = Math.min(minConfidence, ~result)
+      } catch (err) {
+        results.push({ error: err.message } ~> 0.0)
+        minConfidence = 0.0
+      }
+    }
+    
+    return {
+      event: event,
+      processed: processors.length,
+      results: results
+    } ~> minConfidence
+  }
+  
+  const subscribe = (processor) => {
+    processors.push(processor)
+    
+    // Process buffered events
+    if (buffer.length > 0 && !isPaused) {
+      const toProcess = [...buffer]
+      buffer.length = 0
+      
+      for (const event of toProcess) {
+        emit(event)
+      }
+    }
+    
+    // Return unsubscribe
+    return () => {
+      const index = processors.indexOf(processor)
+      if (index > -1) {
+        processors.splice(index, 1)
+      }
+    }
+  }
+  
+  const pause = () => {
+    isPaused = true
+    return { paused: true } ~> 1.0
+  }
+  
+  const resume = () => {
+    isPaused = false
+    
+    // Process buffer
+    const toProcess = [...buffer]
+    buffer.length = 0
+    
+    for (const event of toProcess) {
+      emit(event)
+    }
+    
+    return { resumed: true, processed: toProcess.length } ~> 1.0
+  }
+  
+  return { emit, subscribe, pause, resume }
+}
+
+// Windowed aggregation
+export const window = (size, slide = size) => {
+  const windows = []
+  let currentWindow = []
+  let windowStart = Date.now()
+  
+  return (aggregator) => {
+    return async (event) => {
+      const now = Date.now()
+      
+      // Add to current window
+      currentWindow.push(event)
+      
+      // Check if window complete
+      if (now - windowStart >= size) {
+        // Process window
+        const result = await aggregator(currentWindow)
+        windows.push({
+          start: windowStart,
+          end: now,
+          count: currentWindow.length,
+          result: result
+        })
+        
+        // Slide window
+        if (slide < size) {
+          // Keep some events for next window
+          const cutoff = now - (size - slide)
+          currentWindow = currentWindow.filter(e => 
+            e.timestamp > cutoff
+          )
+        } else {
+          currentWindow = []
+        }
+        
+        windowStart = now - (size - slide)
+        
+        return result
+      }
+      
+      // Window not complete yet
+      return {
+        buffered: true,
+        windowSize: currentWindow.length
+      } ~> 0.5
+    }
+  }
+}

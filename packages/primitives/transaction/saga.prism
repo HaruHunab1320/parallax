@@ -1,0 +1,112 @@
+/**
+ * @primitive saga
+ * @category transaction
+ * @description Manage distributed transactions with compensations
+ * @confidence minimum-step-success
+ */
+
+// Saga pattern for distributed transactions
+export const saga = (steps) => {
+  return async (input) => {
+    const completed = []
+    let currentInput = input
+    let minConfidence = 1.0
+    
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i]
+      
+      try {
+        // Execute step
+        const result = await step.action(currentInput)
+        const confidence = ~result
+        
+        if (confidence < 0.3) {
+          // Low confidence triggers compensation
+          throw new Error("Low confidence execution")
+        }
+        
+        completed.push({
+          step: step.name,
+          result: result,
+          compensation: step.compensate
+        })
+        
+        currentInput = result
+        minConfidence = Math.min(minConfidence, confidence)
+        
+      } catch (error) {
+        // Compensate in reverse order
+        for (let j = completed.length - 1; j >= 0; j--) {
+          const toCompensate = completed[j]
+          if (toCompensate.compensation) {
+            await toCompensate.compensation(toCompensate.result)
+          }
+        }
+        
+        return {
+          error: `Saga failed at ${step.name}: ${error.message}`,
+          compensated: true,
+          failedStep: i
+        } ~> 0.0
+      }
+    }
+    
+    return {
+      result: currentInput,
+      steps: completed.length,
+      saga: "completed"
+    } ~> minConfidence
+  }
+}
+
+// Two-phase commit for strong consistency
+export const twoPhaseCommit = (participants) => {
+  return async (transaction) => {
+    const prepareResults = []
+    let allPrepared = true
+    let minConfidence = 1.0
+    
+    // Phase 1: Prepare
+    for (const participant of participants) {
+      const prepared = await participant.prepare(transaction)
+      prepareResults.push({
+        participant: participant.id,
+        prepared: prepared.success,
+        confidence: ~prepared
+      })
+      
+      if (!prepared.success) {
+        allPrepared = false
+      }
+      
+      minConfidence = Math.min(minConfidence, ~prepared)
+    }
+    
+    // Phase 2: Commit or Abort
+    if (allPrepared && minConfidence > 0.7) {
+      // Commit all
+      for (const participant of participants) {
+        await participant.commit(transaction)
+      }
+      
+      return {
+        transaction: transaction,
+        status: "committed",
+        participants: prepareResults
+      } ~> minConfidence
+      
+    } else {
+      // Abort all
+      for (const participant of participants) {
+        await participant.abort(transaction)
+      }
+      
+      return {
+        transaction: transaction,
+        status: "aborted",
+        reason: allPrepared ? "Low confidence" : "Prepare failed",
+        participants: prepareResults
+      } ~> 0.0
+    }
+  }
+}

@@ -1,0 +1,70 @@
+/**
+ * @primitive pipeline
+ * @category workflow
+ * @description Execute steps with dependency management
+ * @confidence minimum-step
+ */
+
+// Pipeline with state passing between steps
+export const pipeline = (steps) => {
+  return async (input) => {
+    let current = input
+    let minConfidence = 1.0
+    
+    for (const step of steps) {
+      const result = await step(current)
+      const confidence = ~result
+      
+      // Stop on low confidence
+      if (confidence < 0.3) {
+        return {
+          error: "Pipeline halted due to low confidence",
+          lastResult: result,
+          step: steps.indexOf(step)
+        } ~> confidence
+      }
+      
+      current = result
+      minConfidence = Math.min(minConfidence, confidence)
+    }
+    
+    return current ~> minConfidence
+  }
+}
+
+// Conditional pipeline with branching
+export const branchingPipeline = (config) => {
+  return async (input) => {
+    let current = input
+    let minConfidence = 1.0
+    let path = []
+    
+    for (const node of config.nodes) {
+      if (node.condition && !node.condition(current)) {
+        continue
+      }
+      
+      path.push(node.name)
+      const result = await node.action(current)
+      current = result
+      minConfidence = Math.min(minConfidence, ~result)
+      
+      // Handle branching
+      if (node.branches) {
+        for (const branch of node.branches) {
+          if (branch.condition(current)) {
+            const branchResult = await branch.pipeline(current)
+            current = branchResult
+            minConfidence = Math.min(minConfidence, ~branchResult)
+            break
+          }
+        }
+      }
+    }
+    
+    return {
+      result: current,
+      path: path
+    } ~> minConfidence
+  }
+}

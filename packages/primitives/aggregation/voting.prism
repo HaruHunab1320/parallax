@@ -1,0 +1,130 @@
+/**
+ * @primitive voting
+ * @category aggregation
+ * @description Aggregate results using various voting strategies
+ * @confidence strategy-dependent
+ */
+
+// Voting primitive with multiple strategies
+export const voting = (strategy = "majority") => {
+  return (votes) => {
+    // Validate inputs
+    if (!Array.isArray(votes) || votes.length === 0) {
+      return { error: "No votes to aggregate" } ~> 0.0
+    }
+    
+    // Apply voting strategy
+    const result = uncertain if (strategy) {
+      "majority" -> majorityVote(votes)
+      "weighted" -> weightedVote(votes) 
+      "unanimous" -> unanimousVote(votes)
+      "threshold" -> thresholdVote(votes, 0.7)
+      default -> majorityVote(votes)
+    }
+    
+    return result
+  }
+}
+
+// Majority voting - most common value wins
+function majorityVote(votes) {
+  const counts = {}
+  let totalConfidence = 0
+  
+  votes.forEach(vote => {
+    const key = JSON.stringify(vote)
+    counts[key] = (counts[key] || { count: 0, confidence: 0 })
+    counts[key].count += 1
+    counts[key].confidence += ~vote
+    totalConfidence += ~vote
+  })
+  
+  // Find winner
+  let winner = null
+  let maxCount = 0
+  
+  Object.entries(counts).forEach(([key, data]) => {
+    if (data.count > maxCount) {
+      maxCount = data.count
+      winner = JSON.parse(key)
+    }
+  })
+  
+  // Calculate confidence based on majority strength
+  const majorityStrength = maxCount / votes.length
+  const avgConfidence = totalConfidence / votes.length
+  
+  return winner ~> (majorityStrength * avgConfidence)
+}
+
+// Weighted voting - confidence weights the votes
+function weightedVote(votes) {
+  const weighted = {}
+  let totalWeight = 0
+  
+  votes.forEach(vote => {
+    const key = JSON.stringify(vote)
+    const confidence = ~vote
+    weighted[key] = (weighted[key] || 0) + confidence
+    totalWeight += confidence
+  })
+  
+  // Find winner by weighted score
+  let winner = null
+  let maxWeight = 0
+  
+  Object.entries(weighted).forEach(([key, weight]) => {
+    if (weight > maxWeight) {
+      maxWeight = weight
+      winner = JSON.parse(key)
+    }
+  })
+  
+  // Confidence is the winning weight ratio
+  return winner ~> (maxWeight / totalWeight)
+}
+
+// Unanimous voting - all must agree
+function unanimousVote(votes) {
+  if (votes.length === 0) {
+    return null ~> 0.0
+  }
+  
+  const first = JSON.stringify(votes[0])
+  const allAgree = votes.every(v => JSON.stringify(v) === first)
+  
+  if (allAgree) {
+    // Confidence is minimum of all votes
+    const minConfidence = votes.reduce((min, v) => {
+      const conf = ~v
+      return conf < min ? conf : min
+    }, 1.0)
+    
+    return votes[0] ~> minConfidence
+  } else {
+    return {
+      result: null,
+      message: "No unanimous agreement"
+    } ~> 0.0
+  }
+}
+
+// Threshold voting - requires minimum agreement level
+function thresholdVote(votes, threshold) {
+  const result = weightedVote(votes)
+  const confidence = ~result
+  
+  if (confidence >= threshold) {
+    return result
+  } else {
+    return {
+      result: null,
+      message: `Agreement ${confidence} below threshold ${threshold}`
+    } ~> confidence
+  }
+}
+
+// Export convenience functions
+export const majorityVoting = voting("majority")
+export const weightedVoting = voting("weighted")
+export const unanimousVoting = voting("unanimous")

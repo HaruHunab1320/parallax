@@ -1,0 +1,177 @@
+/**
+ * @primitive store
+ * @category state
+ * @description State management and consistency patterns
+ * @confidence from-consensus
+ */
+
+// Shared state store with consistency
+export const sharedStore = (initial = {}) => {
+  let state = initial
+  const subscribers = []
+  let version = 0
+  
+  const getState = () => {
+    return { ...state, _version: version } ~> 1.0
+  }
+  
+  const setState = (updates) => {
+    const oldState = state
+    state = { ...state, ...updates }
+    version++
+    
+    // Notify subscribers
+    let minConfidence = 1.0
+    for (const sub of subscribers) {
+      const result = sub(state, oldState)
+      minConfidence = Math.min(minConfidence, ~result || 1.0)
+    }
+    
+    return state ~> minConfidence
+  }
+  
+  const subscribe = (handler) => {
+    subscribers.push(handler)
+    return () => {
+      const index = subscribers.indexOf(handler)
+      if (index > -1) {
+        subscribers.splice(index, 1)
+      }
+    }
+  }
+  
+  return { getState, setState, subscribe }
+}
+
+// Distributed consensus store
+export const consensusStore = (nodes) => {
+  return {
+    read: (key) => {
+      const values = []
+      let minConfidence = 1.0
+      
+      // Read from all nodes
+      for (const node of nodes) {
+        const result = node.read(key)
+        values.push(result)
+        minConfidence = Math.min(minConfidence, ~result)
+      }
+      
+      // Find consensus value
+      const consensus = findConsensus(values)
+      
+      if (!consensus.agreed) {
+        return { error: "No consensus", values } ~> 0.3
+      }
+      
+      return consensus.value ~> (minConfidence * consensus.agreement)
+    },
+    
+    write: (key, value) => {
+      const acks = []
+      let minConfidence = 1.0
+      
+      // Write to all nodes
+      for (const node of nodes) {
+        const ack = node.write(key, value)
+        acks.push(ack)
+        minConfidence = Math.min(minConfidence, ~ack)
+      }
+      
+      // Check if majority acknowledged
+      const successCount = acks.filter(a => a.success).length
+      const majority = successCount > nodes.length / 2
+      
+      return {
+        written: majority,
+        acks: successCount,
+        total: nodes.length
+      } ~> (majority ? minConfidence : minConfidence * 0.5)
+    }
+  }
+}
+
+// Event sourcing store
+export const eventStore = () => {
+  const events = []
+  let currentState = {}
+  
+  const append = (event) => {
+    events.push({
+      ...event,
+      timestamp: Date.now(),
+      id: events.length
+    })
+    
+    // Apply event to state
+    currentState = applyEvent(currentState, event)
+    
+    return currentState ~> 1.0
+  }
+  
+  const replay = (fromId = 0) => {
+    let state = {}
+    let minConfidence = 1.0
+    
+    for (let i = fromId; i < events.length; i++) {
+      state = applyEvent(state, events[i])
+      minConfidence = Math.min(minConfidence, ~events[i] || 1.0)
+    }
+    
+    return state ~> minConfidence
+  }
+  
+  const getEvents = (filter) => {
+    if (!filter) {
+      return events ~> 1.0
+    }
+    
+    const filtered = events.filter(filter)
+    return filtered ~> 0.9
+  }
+  
+  return { append, replay, getEvents, currentState: () => currentState }
+}
+
+function findConsensus(values) {
+  const counts = new Map()
+  
+  // Count occurrences
+  for (const val of values) {
+    const key = JSON.stringify(val)
+    counts.set(key, (counts.get(key) || 0) + 1)
+  }
+  
+  // Find most common
+  let maxCount = 0
+  let consensusValue = null
+  
+  for (const [key, count] of counts) {
+    if (count > maxCount) {
+      maxCount = count
+      consensusValue = JSON.parse(key)
+    }
+  }
+  
+  return {
+    agreed: maxCount > values.length / 2,
+    value: consensusValue,
+    agreement: maxCount / values.length
+  }
+}
+
+function applyEvent(state, event) {
+  // Simple event application
+  switch (event.type) {
+    case 'SET':
+      return { ...state, [event.key]: event.value }
+    case 'DELETE':
+      const newState = { ...state }
+      delete newState[event.key]
+      return newState
+    case 'UPDATE':
+      return { ...state, ...event.updates }
+    default:
+      return state
+  }
+}

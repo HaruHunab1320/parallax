@@ -1,0 +1,17 @@
+{
+  "name": "@parallax/primitives",
+  "version": "0.1.0",
+  "description": "Core primitive library for Parallax pattern composition",
+  "main": "index.js",
+  "scripts": {
+    "validate": "node test/validate-primitives.js",
+    "test": "npm run validate"
+  },
+  "dependencies": {
+    "@prism-lang/core": "latest",
+    "@prism-lang/validator": "latest"
+  },
+  "devDependencies": {
+    "chalk": "^4.1.2"
+  }
+}

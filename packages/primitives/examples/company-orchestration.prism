@@ -1,0 +1,151 @@
+/**
+ * @example company-orchestration
+ * @description Orchestrating an entire company with Parallax
+ */
+
+import {
+  hierarchy,
+  delegate,
+  approval,
+  milestone,
+  periodic,
+  parallel,
+  consensus,
+  threshold,
+  pipeline,
+  dag
+} from "../index.prism"
+
+// Company-wide decision making
+export const companyStrategy = (executiveTeam) => {
+  return pipeline([
+    // Gather insights from departments
+    parallel(5),
+    
+    // Filter high-confidence insights
+    threshold(0.7),
+    
+    // Build consensus on strategy
+    consensus,
+    
+    // Executive approval workflow
+    approval([
+      executiveTeam.ceo,
+      executiveTeam.board
+    ])
+  ])
+}
+
+// Hierarchical task delegation
+export const organizationalFlow = hierarchy([
+  // C-Suite level
+  [ceo],
+  
+  // Executive level
+  [cto, cfo, coo, cmo],
+  
+  // Department heads
+  [engLead, financeLead, opsLead, marketingLead],
+  
+  // Team leads
+  [frontendLead, backendLead, dataLead, qaLead],
+  
+  // Individual contributors
+  [...engineers, ...analysts, ...specialists]
+])
+
+// Department coordination
+export const departmentCoordination = (departments) => {
+  const router = (task) => {
+    // Route based on task type
+    if (task.type === "technical") {
+      return { agent: departments.engineering } ~> 0.9
+    } else if (task.type === "financial") {
+      return { agent: departments.finance } ~> 0.9
+    } else if (task.type === "operational") {
+      return { agent: departments.operations } ~> 0.9
+    }
+    
+    // Default to most relevant department
+    return { agent: departments.general } ~> 0.6
+  }
+  
+  return delegate(router)
+}
+
+// Quarterly planning workflow
+export const quarterlyPlanning = dag({
+  "gather-metrics": {
+    execute: gatherCompanyMetrics,
+    depends: []
+  },
+  "department-planning": {
+    execute: parallel(4), // All departments plan in parallel
+    depends: ["gather-metrics"]
+  },
+  "resource-allocation": {
+    execute: allocateResources,
+    depends: ["department-planning"]
+  },
+  "executive-review": {
+    execute: approval([ceo, cfo]),
+    depends: ["resource-allocation"]
+  },
+  "finalize-okrs": {
+    execute: finalizeObjectives,
+    depends: ["executive-review"]
+  }
+})
+
+// Performance tracking
+export const performanceTracking = milestone({
+  "q1-revenue": (state) => state.revenue >= 1000000,
+  "q1-headcount": (state) => state.employees >= 50,
+  "q1-product-launch": (state) => state.productsLaunched > 0,
+  "q1-customer-satisfaction": (state) => state.nps >= 40
+})
+
+// Continuous operations
+export const dailyOperations = periodic(
+  24 * 60 * 60 * 1000, // Daily
+  365 // Run for a year
+)(async () => {
+  // Morning standup across all teams
+  const standups = await parallel(10)(gatherTeamUpdates)
+  
+  // Identify blockers and issues
+  const issues = await extractIssues(standups)
+  
+  // Route issues to appropriate handlers
+  const resolutions = await departmentCoordination(issues)
+  
+  // Update dashboards
+  await updateCompanyDashboard(resolutions)
+  
+  return { date: new Date(), resolved: resolutions.length } ~> 0.85
+})
+
+// Helper functions
+function gatherCompanyMetrics() {
+  return { revenue: 950000, growth: 0.15 } ~> 0.9
+}
+
+function allocateResources(plans) {
+  return { allocated: true, distribution: plans } ~> 0.8
+}
+
+function finalizeObjectives(approved) {
+  return { okrs: approved, published: true } ~> 0.95
+}
+
+function gatherTeamUpdates(team) {
+  return { team: team.name, status: "on-track" } ~> 0.8
+}
+
+function extractIssues(updates) {
+  return updates.filter(u => u.status !== "on-track")
+}
+
+function updateCompanyDashboard(data) {
+  return { updated: true } ~> 1.0
+}

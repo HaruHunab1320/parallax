@@ -1,0 +1,173 @@
+/**
+ * @primitive pubsub
+ * @category event
+ * @description Event-driven publish/subscribe patterns
+ * @confidence from-handlers
+ */
+
+// Event emitter pattern
+export const eventBus = () => {
+  const subscribers = new Map()
+  
+  const subscribe = (event, handler) => {
+    if (!subscribers.has(event)) {
+      subscribers.set(event, [])
+    }
+    subscribers.get(event).push(handler)
+    
+    // Return unsubscribe function
+    return () => {
+      const handlers = subscribers.get(event)
+      const index = handlers.indexOf(handler)
+      if (index > -1) {
+        handlers.splice(index, 1)
+      }
+    }
+  }
+  
+  const publish = (event, data) => {
+    const handlers = subscribers.get(event) || []
+    
+    if (handlers.length === 0) {
+      return { event, delivered: false } ~> 0.3
+    }
+    
+    const results = []
+    let minConfidence = 1.0
+    
+    for (const handler of handlers) {
+      const result = handler(data)
+      results.push(result)
+      minConfidence = Math.min(minConfidence, ~result)
+    }
+    
+    return {
+      event,
+      delivered: true,
+      handlers: handlers.length,
+      results
+    } ~> minConfidence
+  }
+  
+  return { subscribe, publish }
+}
+
+// Topic-based pub/sub
+export const topicBus = () => {
+  const topics = new Map()
+  
+  return {
+    subscribe: (topic, pattern, handler) => {
+      if (!topics.has(topic)) {
+        topics.set(topic, [])
+      }
+      
+      topics.get(topic).push({ pattern, handler })
+      
+      return () => {
+        const subs = topics.get(topic)
+        const index = subs.findIndex(s => s.handler === handler)
+        if (index > -1) {
+          subs.splice(index, 1)
+        }
+      }
+    },
+    
+    publish: (topic, message) => {
+      const subscribers = topics.get(topic) || []
+      const matches = []
+      
+      // Find matching patterns
+      for (const sub of subscribers) {
+        if (matchesPattern(message, sub.pattern)) {
+          matches.push(sub)
+        }
+      }
+      
+      if (matches.length === 0) {
+        return { delivered: false } ~> 0.2
+      }
+      
+      // Deliver to matching subscribers
+      const results = []
+      let minConfidence = 1.0
+      
+      for (const match of matches) {
+        const result = match.handler(message)
+        results.push(result)
+        minConfidence = Math.min(minConfidence, ~result)
+      }
+      
+      return {
+        topic,
+        delivered: true,
+        matches: matches.length,
+        results
+      } ~> minConfidence
+    }
+  }
+}
+
+// Reactive stream
+export const stream = () => {
+  const observers = []
+  
+  const subscribe = (observer) => {
+    observers.push(observer)
+    
+    return () => {
+      const index = observers.indexOf(observer)
+      if (index > -1) {
+        observers.splice(index, 1)
+      }
+    }
+  }
+  
+  const next = (value) => {
+    let minConfidence = 1.0
+    
+    for (const observer of observers) {
+      if (observer.next) {
+        const result = observer.next(value)
+        minConfidence = Math.min(minConfidence, ~result || 1.0)
+      }
+    }
+    
+    return value ~> minConfidence
+  }
+  
+  const error = (err) => {
+    for (const observer of observers) {
+      if (observer.error) {
+        observer.error(err)
+      }
+    }
+    
+    return err ~> 0.0
+  }
+  
+  const complete = () => {
+    for (const observer of observers) {
+      if (observer.complete) {
+        observer.complete()
+      }
+    }
+    
+    return { completed: true } ~> 1.0
+  }
+  
+  return { subscribe, next, error, complete }
+}
+
+function matchesPattern(message, pattern) {
+  // Simple pattern matching
+  if (!pattern) return true
+  
+  for (const [key, value] of Object.entries(pattern)) {
+    if (message[key] !== value) {
+      return false
+    }
+  }
+  
+  return true
+}

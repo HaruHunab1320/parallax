@@ -1,0 +1,106 @@
+/**
+ * @primitive merge
+ * @category aggregation
+ * @description Merge results from multiple sources
+ * @confidence strategy-dependent
+ */
+
+// Merge multiple results with different strategies
+export const merge = (strategy = "combine") => {
+  return (results) => {
+    if (!Array.isArray(results) || results.length === 0) {
+      return null ~> 0.0
+    }
+    
+    const mergeResult = uncertain if (strategy) {
+      "combine" -> combineResults(results)
+      "override" -> overrideResults(results)
+      "deep" -> deepMerge(results)
+      "concat" -> concatResults(results)
+      default -> combineResults(results)
+    }
+    
+    return mergeResult
+  }
+}
+
+// Combine strategy - merge all non-conflicting values
+function combineResults(results) {
+  const combined = {}
+  let minConfidence = 1.0
+  
+  for (const result of results) {
+    const confidence = ~result
+    minConfidence = Math.min(minConfidence, confidence)
+    
+    if (typeof result === "object" && result !== null) {
+      Object.assign(combined, result)
+    }
+  }
+  
+  return combined ~> minConfidence
+}
+
+// Override strategy - later results override earlier
+function overrideResults(results) {
+  let merged = {}
+  let lastConfidence = 0
+  
+  for (const result of results) {
+    const confidence = ~result
+    
+    if (typeof result === "object" && result !== null) {
+      merged = { ...merged, ...result }
+      lastConfidence = confidence
+    }
+  }
+  
+  return merged ~> lastConfidence
+}
+
+// Deep merge strategy
+function deepMerge(results) {
+  const merged = {}
+  let minConfidence = 1.0
+  
+  for (const result of results) {
+    const confidence = ~result
+    minConfidence = Math.min(minConfidence, confidence)
+    
+    deepMergeInto(merged, result)
+  }
+  
+  return merged ~> minConfidence
+}
+
+function deepMergeInto(target, source) {
+  if (typeof source !== "object" || source === null) return
+  
+  for (const key in source) {
+    if (typeof source[key] === "object" && source[key] !== null) {
+      if (!target[key]) target[key] = {}
+      deepMergeInto(target[key], source[key])
+    } else {
+      target[key] = source[key]
+    }
+  }
+}
+
+// Concatenate arrays
+function concatResults(results) {
+  const concatenated = []
+  let minConfidence = 1.0
+  
+  for (const result of results) {
+    const confidence = ~result
+    minConfidence = Math.min(minConfidence, confidence)
+    
+    if (Array.isArray(result)) {
+      concatenated.push(...result)
+    } else {
+      concatenated.push(result)
+    }
+  }
+  
+  return concatenated ~> minConfidence
+}

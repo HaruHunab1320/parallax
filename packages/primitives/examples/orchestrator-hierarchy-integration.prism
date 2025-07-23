@@ -1,0 +1,307 @@
+/**
+ * @example orchestrator-hierarchy-integration
+ * @description How hierarchy works WITH the orchestrator, not against it
+ */
+
+import {
+  delegate,
+  hierarchy,
+  parallel,
+  consensus,
+  pool
+} from "../index.prism"
+
+/**
+ * KEY INSIGHT: The orchestrator remains the central coordinator.
+ * Hierarchy is just another pattern it can use.
+ * 
+ * Agents DON'T talk directly to each other.
+ * They talk to the orchestrator, which routes based on patterns.
+ */
+
+// Example 1: Orchestrator uses delegation pattern
+export const orchestratorWithDelegation = (task) => {
+  // The ORCHESTRATOR decides to use delegation pattern
+  // Agents don't know about each other
+  
+  const delegationPattern = delegate((task) => {
+    // Orchestrator's routing logic
+    if (task.requires === "ml_expertise") {
+      return { agent: "ml_specialist_agent" } ~> 0.9
+    } else if (task.requires === "data_analysis") {
+      return { agent: "data_analyst_agent" } ~> 0.9
+    } else if (task.requires === "frontend_dev") {
+      return { agent: "frontend_agent" } ~> 0.9
+    }
+    
+    // Default to general agent
+    return { agent: "general_purpose_agent" } ~> 0.6
+  })
+  
+  // Orchestrator executes the pattern
+  return delegationPattern(task)
+}
+
+// Example 2: Orchestrator implements organizational hierarchy
+export const orchestratorAsCompany = (companyRequest) => {
+  /**
+   * The orchestrator PLAYS THE ROLE of the entire hierarchy
+   * Individual agents just do their specialized work
+   */
+  
+  // Phase 1: CEO-level analysis (orchestrator calls CEO agent)
+  const strategicAnalysis = callAgent("ceo_agent", {
+    type: "analyze_strategic_impact",
+    request: companyRequest
+  })
+  
+  // Phase 2: Orchestrator decides which departments need involvement
+  const requiredDepartments = analyzeRequirements(strategicAnalysis)
+  
+  // Phase 3: Parallel consultation with departments
+  const departmentInputs = parallel(requiredDepartments.length)(
+    requiredDepartments.map(dept => 
+      () => callAgent(`${dept}_head_agent`, {
+        type: "department_analysis",
+        context: strategicAnalysis
+      })
+    )
+  )
+  
+  // Phase 4: Orchestrator aggregates and decides on implementation
+  const implementation = requiredDepartments.map((dept, i) => {
+    const deptAnalysis = departmentInputs[i]
+    
+    // Orchestrator decides which team members to involve
+    if (deptAnalysis.complexity === "high") {
+      return parallel(3)([
+        callAgent(`${dept}_senior_agent`, deptAnalysis),
+        callAgent(`${dept}_specialist_agent`, deptAnalysis),
+        callAgent(`${dept}_analyst_agent`, deptAnalysis)
+      ])
+    } else {
+      return callAgent(`${dept}_junior_agent`, deptAnalysis)
+    }
+  })
+  
+  // Phase 5: Build consensus on approach
+  const finalApproach = consensus(implementation)
+  
+  return finalApproach
+}
+
+// Example 3: Virtual hierarchy through orchestration
+export const virtualManagementLayer = (projectRequest) => {
+  /**
+   * The orchestrator creates a "virtual manager" by:
+   * 1. Breaking down the project
+   * 2. Assigning to specialists
+   * 3. Monitoring progress
+   * 4. Aggregating results
+   * 
+   * No actual "manager agent" needed!
+   */
+  
+  // Orchestrator acts as project manager
+  const projectPlan = {
+    tasks: breakdownProject(projectRequest),
+    milestones: defineMilestones(projectRequest),
+    assignments: new Map()
+  }
+  
+  // Assign tasks to specialist agents
+  const taskAssignments = projectPlan.tasks.map(task => {
+    const bestAgent = findBestAgentForTask(task)
+    projectPlan.assignments.set(task.id, bestAgent)
+    
+    return {
+      task: task,
+      agent: bestAgent,
+      deadline: task.estimatedTime
+    }
+  })
+  
+  // Execute with progress tracking
+  const execution = milestone(projectPlan.milestones)(
+    parallel(5)(
+      taskAssignments.map(assignment => 
+        () => callAgent(assignment.agent, assignment.task)
+      )
+    )
+  )
+  
+  return execution
+}
+
+// Example 4: Escalation without direct communication
+export const orchestratorEscalation = (issue) => {
+  /**
+   * Agents report issues to orchestrator, not to each other
+   * Orchestrator decides escalation path
+   */
+  
+  // Try level 1 resolution
+  const level1Attempt = callAgent("support_agent", issue)
+  
+  if (~level1Attempt > 0.8) {
+    return level1Attempt // Resolved
+  }
+  
+  // Orchestrator escalates to level 2
+  const level2Context = {
+    original_issue: issue,
+    level1_attempt: level1Attempt,
+    escalation_reason: "low_confidence"
+  }
+  
+  const level2Attempt = callAgent("senior_support_agent", level2Context)
+  
+  if (~level2Attempt > 0.8) {
+    return level2Attempt // Resolved
+  }
+  
+  // Orchestrator escalates to specialist
+  const specialistContext = {
+    ...level2Context,
+    level2_attempt: level2Attempt,
+    requires_expertise: identifyRequiredExpertise(issue, level2Attempt)
+  }
+  
+  return callAgent("specialist_agent", specialistContext)
+}
+
+// Example 5: Team coordination without peer communication
+export const orchestratedTeamwork = (teamProject) => {
+  /**
+   * Orchestrator coordinates a "team" where members
+   * never directly communicate
+   */
+  
+  const teamPool = pool([
+    "frontend_agent",
+    "backend_agent", 
+    "database_agent",
+    "devops_agent",
+    "qa_agent"
+  ])
+  
+  // Orchestrator manages shared state
+  const projectState = {
+    completed: [],
+    inProgress: new Map(),
+    blocked: [],
+    sharedContext: {}
+  }
+  
+  // Work items flow through orchestrator
+  const processWorkItem = async (item) => {
+    // Orchestrator assigns based on type and availability
+    const { resource: agent } = await teamPool.acquire()
+    
+    // Give agent the work + relevant context
+    const agentInput = {
+      task: item,
+      relevantContext: extractRelevantContext(projectState, item),
+      dependencies: projectState.completed.filter(c => 
+        item.dependencies.includes(c.id)
+      )
+    }
+    
+    projectState.inProgress.set(item.id, agent)
+    
+    try {
+      const result = await callAgent(agent, agentInput)
+      
+      // Orchestrator updates shared state
+      projectState.completed.push({ id: item.id, result })
+      projectState.sharedContext[item.type] = result.output
+      
+      // Check if this unblocks other work
+      checkAndUnblock(projectState, result)
+      
+      return result
+    } finally {
+      projectState.inProgress.delete(item.id)
+      teamPool.release(agent)
+    }
+  }
+  
+  // Process all work items
+  return adaptiveExecution(teamProject.workItems, processWorkItem)
+}
+
+// Helper functions
+function callAgent(agentId, input) {
+  // Orchestrator's interface to agents
+  // Agents ONLY communicate through this
+  return orchestratorClient.callAgent(agentId, input)
+}
+
+function analyzeRequirements(analysis) {
+  // Orchestrator logic to determine needed departments
+  if (analysis.type === "technical") {
+    return ["engineering", "product", "qa"]
+  } else if (analysis.type === "financial") {
+    return ["finance", "legal", "operations"]
+  }
+  return ["general"]
+}
+
+function breakdownProject(request) {
+  // Orchestrator decomposes project into tasks
+  return [
+    { id: 1, type: "design", estimatedTime: "2d" },
+    { id: 2, type: "frontend", estimatedTime: "5d", dependencies: [1] },
+    { id: 3, type: "backend", estimatedTime: "5d", dependencies: [1] },
+    { id: 4, type: "testing", estimatedTime: "3d", dependencies: [2, 3] }
+  ]
+}
+
+function findBestAgentForTask(task) {
+  // Orchestrator's agent selection logic
+  const agentCapabilities = {
+    "designer_agent": ["design", "ux"],
+    "frontend_agent": ["frontend", "react"],
+    "backend_agent": ["backend", "api"],
+    "qa_agent": ["testing", "automation"]
+  }
+  
+  // Find best match
+  for (const [agent, capabilities] of Object.entries(agentCapabilities)) {
+    if (capabilities.includes(task.type)) {
+      return agent
+    }
+  }
+  
+  return "general_agent"
+}
+
+function extractRelevantContext(state, item) {
+  // Orchestrator filters context for each agent
+  // Agents only see what they need
+  return {
+    relatedWork: state.completed.filter(c => 
+      item.dependencies.includes(c.id)
+    ),
+    relevantState: state.sharedContext[item.type] || {}
+  }
+}
+
+/**
+ * KEY PATTERNS:
+ * 
+ * 1. Orchestrator as Manager: The orchestrator plays the role of
+ *    all management layers, agents just execute
+ * 
+ * 2. Virtual Hierarchy: Hierarchical patterns without hierarchical
+ *    agents - orchestrator implements the structure
+ * 
+ * 3. Mediated Communication: Agents never talk directly, orchestrator
+ *    routes all information flow
+ * 
+ * 4. Dynamic Organization: Orchestrator can change "org structure"
+ *    just by changing patterns
+ * 
+ * 5. Stateless Agents: Agents remain specialized and stateless,
+ *    orchestrator maintains all coordination state
+ */

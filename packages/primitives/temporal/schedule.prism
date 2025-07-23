@@ -1,0 +1,108 @@
+/**
+ * @primitive schedule
+ * @category temporal
+ * @description Time-based task scheduling
+ * @confidence decays-with-delay
+ */
+
+// Delayed execution
+export const delay = (ms) => {
+  return async (operation) => {
+    // Confidence decays with delay
+    const decayRate = 0.99 // per second
+    const decayFactor = Math.pow(decayRate, ms / 1000)
+    
+    await new Promise(resolve => setTimeout(resolve, ms))
+    
+    const result = await operation()
+    return result ~> (~result * decayFactor)
+  }
+}
+
+// Rate limiting
+export const throttle = (limit, window = 1000) => {
+  const calls = []
+  
+  return async (operation) => {
+    const now = Date.now()
+    
+    // Remove old calls outside window
+    while (calls.length > 0 && calls[0] < now - window) {
+      calls.shift()
+    }
+    
+    // Check if within limit
+    if (calls.length >= limit) {
+      return {
+        error: "Rate limit exceeded",
+        limit: limit,
+        window: window
+      } ~> 0.2
+    }
+    
+    calls.push(now)
+    const result = await operation()
+    
+    // Confidence based on capacity used
+    const capacityUsed = calls.length / limit
+    return result ~> (~result * (1 - capacityUsed * 0.2))
+  }
+}
+
+// Debouncing
+export const debounce = (wait) => {
+  let timeout = null
+  let lastArgs = null
+  
+  return (operation) => {
+    return new Promise((resolve) => {
+      lastArgs = arguments
+      
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+      
+      timeout = setTimeout(async () => {
+        const result = await operation.apply(null, lastArgs)
+        resolve(result)
+      }, wait)
+    })
+  }
+}
+
+// Periodic execution
+export const periodic = (interval, maxRuns = Infinity) => {
+  return (operation) => {
+    let runs = 0
+    const results = []
+    let minConfidence = 1.0
+    
+    const execute = async () => {
+      if (runs >= maxRuns) {
+        return {
+          completed: true,
+          runs: runs,
+          results: results
+        } ~> minConfidence
+      }
+      
+      const result = await operation()
+      results.push(result)
+      runs++
+      
+      minConfidence = Math.min(minConfidence, ~result)
+      
+      // Schedule next execution
+      setTimeout(execute, interval)
+    }
+    
+    // Start execution
+    execute()
+    
+    // Return control handle
+    return {
+      stop: () => { runs = maxRuns },
+      status: () => ({ runs, minConfidence })
+    } ~> 1.0
+  }
+}

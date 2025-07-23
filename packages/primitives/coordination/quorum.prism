@@ -1,0 +1,95 @@
+/**
+ * @primitive quorum
+ * @category coordination
+ * @description Ensure minimum participation before decisions
+ * @confidence based-on-participation
+ */
+
+// Basic quorum requirement
+export const quorum = (minParticipants) => {
+  return async (agents) => {
+    const responses = []
+    let responded = 0
+    
+    // Collect responses with timeout
+    const timeout = setTimeout(() => {}, 30000)
+    
+    for (const agent of agents) {
+      try {
+        const response = await Promise.race([
+          agent(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Timeout")), 5000)
+          )
+        ])
+        responses.push(response)
+        responded++
+      } catch (err) {
+        responses.push({ error: err.message } ~> 0.0)
+      }
+    }
+    
+    clearTimeout(timeout)
+    
+    // Check if quorum met
+    const quorumMet = responded >= minParticipants
+    
+    if (!quorumMet) {
+      return {
+        error: "Quorum not met",
+        required: minParticipants,
+        responded: responded,
+        responses: responses
+      } ~> 0.2
+    }
+    
+    // Aggregate responses with quorum confidence
+    const participation = responded / agents.length
+    return {
+      responses: responses,
+      participation: participation,
+      quorumMet: true
+    } ~> (participation * 0.8 + 0.2)
+  }
+}
+
+// Weighted quorum (some agents matter more)
+export const weightedQuorum = (weights, threshold) => {
+  return async (agents) => {
+    const responses = []
+    let totalWeight = 0
+    let respondedWeight = 0
+    
+    // Calculate total weight
+    for (const [agent, weight] of Object.entries(weights)) {
+      totalWeight += weight
+    }
+    
+    // Collect weighted responses
+    for (const [agentId, agent] of Object.entries(agents)) {
+      const weight = weights[agentId] || 1
+      
+      try {
+        const response = await agent()
+        responses.push({ agentId, response, weight })
+        respondedWeight += weight
+      } catch (err) {
+        responses.push({ 
+          agentId, 
+          error: err.message, 
+          weight 
+        })
+      }
+    }
+    
+    // Check if weighted quorum met
+    const weightPercentage = respondedWeight / totalWeight
+    const quorumMet = weightPercentage >= threshold
+    
+    return {
+      responses: responses,
+      weightPercentage: weightPercentage,
+      quorumMet: quorumMet
+    } ~> (quorumMet ? weightPercentage : weightPercentage * 0.5)
+  }
+}

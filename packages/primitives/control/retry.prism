@@ -1,0 +1,93 @@
+/**
+ * @primitive retry
+ * @category control
+ * @description Retry operations on low confidence or failure
+ * @confidence best-attempt
+ */
+
+// Retry primitive with configurable strategies
+export const retry = (maxAttempts = 3, options = {}) => {
+  return async (operation) => {
+    const {
+      minConfidence = 0.7,
+      backoff = "exponential",
+      initialDelay = 1000,
+      maxDelay = 10000
+    } = options
+    
+    let bestResult = null
+    let bestConfidence = 0
+    let lastError = null
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Execute operation
+        const result = await operation()
+        const confidence = ~result
+        
+        // Track best result
+        if (confidence > bestConfidence) {
+          bestResult = result
+          bestConfidence = confidence
+        }
+        
+        // Return if confidence is sufficient
+        if (confidence >= minConfidence) {
+          return result
+        }
+        
+        // Calculate delay for next attempt
+        if (attempt < maxAttempts) {
+          const delay = calculateDelay(attempt, backoff, initialDelay, maxDelay)
+          await sleep(delay)
+        }
+        
+      } catch (error) {
+        lastError = error
+        
+        // On error, wait before retry
+        if (attempt < maxAttempts) {
+          const delay = calculateDelay(attempt, backoff, initialDelay, maxDelay)
+          await sleep(delay)
+        }
+      }
+    }
+    
+    // Return best result we got, or error
+    if (bestResult !== null) {
+      return bestResult
+    } else if (lastError) {
+      return {
+        error: lastError.message,
+        attempts: maxAttempts
+      } ~> 0.0
+    } else {
+      return {
+        error: "All attempts failed",
+        attempts: maxAttempts
+      } ~> 0.0
+    }
+  }
+}
+
+// Helper: Calculate backoff delay
+function calculateDelay(attempt, strategy, initialDelay, maxDelay) {
+  let delay = uncertain if (strategy) {
+    "exponential" -> initialDelay * Math.pow(2, attempt - 1)
+    "linear" -> initialDelay * attempt
+    "constant" -> initialDelay
+    default -> initialDelay
+  }
+  
+  return Math.min(delay, maxDelay)
+}
+
+// Helper: Sleep function
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+// Convenience retry functions
+export const retryWithExponentialBackoff = retry(3, { backoff: "exponential" })
+export const retryWithLinearBackoff = retry(3, { backoff: "linear" })
+export const quickRetry = retry(3, { initialDelay: 100, maxDelay: 1000 })

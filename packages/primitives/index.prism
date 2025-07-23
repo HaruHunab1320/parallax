@@ -1,0 +1,293 @@
+/**
+ * @module primitives
+ * @description Core primitive library for Parallax pattern composition
+ */
+
+// Execution primitives
+export { 
+  parallel, 
+  parallel5, 
+  parallel10, 
+  parallelUnlimited 
+} from "./execution/parallel.prism"
+
+export { 
+  sequential, 
+  pipeline 
+} from "./execution/sequential.prism"
+
+export {
+  race,
+  raceWithThreshold
+} from "./execution/race.prism"
+
+export {
+  batch,
+  batch10,
+  batch50,
+  batch100
+} from "./execution/batch.prism"
+
+// Aggregation primitives
+export { 
+  consensus 
+} from "./aggregation/consensus.prism"
+
+export { 
+  voting,
+  majorityVoting,
+  weightedVoting,
+  unanimousVoting
+} from "./aggregation/voting.prism"
+
+export {
+  reduce,
+  mapReduce,
+  groupBy
+} from "./aggregation/reduce.prism"
+
+export {
+  merge
+} from "./aggregation/merge.prism"
+
+// Confidence primitives
+export { 
+  threshold,
+  thresholdWithFallback,
+  multiThreshold,
+  highConfidence,
+  mediumConfidence,
+  lowConfidence
+} from "./confidence/threshold.prism"
+
+export { 
+  boost,
+  decay,
+  clamp,
+  normalize,
+  applyConfidence,
+  combineConfidence
+} from "./confidence/transform.prism"
+
+// Control flow primitives
+export { 
+  retry,
+  retryWithExponentialBackoff,
+  retryWithLinearBackoff,
+  quickRetry
+} from "./control/retry.prism"
+
+export { 
+  fallback,
+  confidenceFallback
+} from "./control/fallback.prism"
+
+export {
+  circuitBreaker,
+  bulkhead
+} from "./control/circuit.prism"
+
+export { 
+  escalate,
+  timeBasedEscalation,
+  multiFactorEscalation
+} from "./control/escalate.prism"
+
+export {
+  timeout,
+  timeoutWithFallback,
+  adaptiveTimeout,
+  quickTimeout,
+  standardTimeout,
+  longTimeout
+} from "./control/timeout.prism"
+
+export {
+  cache,
+  invalidatingCache,
+  distributedCache
+} from "./control/cache.prism"
+
+// Transformation primitives
+export {
+  map,
+  filter,
+  flatMap
+} from "./transformation/map.prism"
+
+export {
+  partition,
+  multiPartition,
+  chunk
+} from "./transformation/partition.prism"
+
+export {
+  sample,
+  weightedSample,
+  take,
+  takeLast
+} from "./transformation/sample.prism"
+
+// Workflow primitives
+export {
+  pipeline,
+  branchingPipeline
+} from "./workflow/pipeline.prism"
+
+export {
+  dag,
+  checkpoint
+} from "./workflow/dependency.prism"
+
+// Coordination primitives
+export {
+  delegate,
+  hierarchy,
+  approval
+} from "./coordination/delegate.prism"
+
+export {
+  quorum,
+  weightedQuorum
+} from "./coordination/quorum.prism"
+
+export {
+  priorityQueue,
+  multiLevelPriority
+} from "./coordination/prioritize.prism"
+
+// Goal-oriented primitives
+export {
+  plan,
+  milestone,
+  adapt
+} from "./goal/plan.prism"
+
+// Temporal primitives
+export {
+  delay,
+  throttle,
+  debounce,
+  periodic
+} from "./temporal/schedule.prism"
+
+// Resource primitives
+export {
+  pool,
+  loadBalance
+} from "./resource/pool.prism"
+
+// Transaction primitives
+export {
+  saga,
+  twoPhaseCommit
+} from "./transaction/saga.prism"
+
+// Event primitives
+export {
+  eventStream,
+  window
+} from "./event/stream.prism"
+
+// Primitive registry for runtime discovery
+export const PRIMITIVE_REGISTRY = {
+  execution: {
+    parallel: parallel,
+    sequential: sequential,
+    pipeline: pipeline,
+    race: race,
+    batch: batch
+  },
+  aggregation: {
+    consensus: consensus,
+    voting: voting,
+    majorityVoting: majorityVoting,
+    weightedVoting: weightedVoting,
+    unanimousVoting: unanimousVoting,
+    reduce: reduce,
+    mapReduce: mapReduce,
+    groupBy: groupBy,
+    merge: merge
+  },
+  confidence: {
+    threshold: threshold,
+    boost: boost,
+    decay: decay,
+    clamp: clamp,
+    normalize: normalize,
+    combineConfidence: combineConfidence
+  },
+  control: {
+    retry: retry,
+    fallback: fallback,
+    escalate: escalate,
+    circuitBreaker: circuitBreaker,
+    timeout: timeout,
+    cache: cache
+  },
+  transformation: {
+    map: map,
+    filter: filter,
+    flatMap: flatMap,
+    partition: partition,
+    multiPartition: multiPartition,
+    chunk: chunk,
+    sample: sample,
+    weightedSample: weightedSample
+  },
+  workflow: {
+    pipeline: pipeline,
+    branchingPipeline: branchingPipeline,
+    dag: dag,
+    checkpoint: checkpoint
+  },
+  coordination: {
+    delegate: delegate,
+    hierarchy: hierarchy,
+    approval: approval,
+    quorum: quorum,
+    weightedQuorum: weightedQuorum,
+    priorityQueue: priorityQueue,
+    multiLevelPriority: multiLevelPriority
+  },
+  goal: {
+    plan: plan,
+    milestone: milestone,
+    adapt: adapt
+  },
+  temporal: {
+    delay: delay,
+    throttle: throttle,
+    debounce: debounce,
+    periodic: periodic
+  },
+  resource: {
+    pool: pool,
+    loadBalance: loadBalance
+  },
+  transaction: {
+    saga: saga,
+    twoPhaseCommit: twoPhaseCommit
+  },
+  event: {
+    eventStream: eventStream,
+    window: window
+  }
+}
+
+// Helper to list all primitives
+export function listPrimitives() {
+  const primitives = []
+  
+  Object.entries(PRIMITIVE_REGISTRY).forEach(([category, items]) => {
+    Object.entries(items).forEach(([name, primitive]) => {
+      primitives.push({
+        name: name,
+        category: category,
+        primitive: primitive
+      })
+    })
+  })
+  
+  return primitives
+}

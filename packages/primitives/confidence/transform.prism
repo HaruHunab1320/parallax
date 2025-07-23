@@ -1,0 +1,79 @@
+/**
+ * @primitive transform
+ * @category confidence
+ * @description Transform confidence values using various strategies
+ * @confidence transformed
+ */
+
+// Boost confidence by a factor
+export const boost = (factor) => {
+  return (input) => {
+    const originalConfidence = ~input
+    const boosted = Math.min(1.0, originalConfidence * factor)
+    return input ~> boosted
+  }
+}
+
+// Decay confidence over time or iterations
+export const decay = (rate) => {
+  return (input) => {
+    const originalConfidence = ~input
+    const decayed = originalConfidence * rate
+    return input ~> decayed
+  }
+}
+
+// Clamp confidence to a range
+export const clamp = (min, max) => {
+  return (input) => {
+    const originalConfidence = ~input
+    const clamped = Math.max(min, Math.min(max, originalConfidence))
+    return input ~> clamped
+  }
+}
+
+// Normalize confidence based on context
+export const normalize = (context) => {
+  return (input) => {
+    const originalConfidence = ~input
+    
+    // Extract min and max from context
+    const minConf = context.minConfidence || 0
+    const maxConf = context.maxConfidence || 1
+    
+    // Normalize to 0-1 range
+    const normalized = (originalConfidence - minConf) / (maxConf - minConf)
+    
+    return input ~> normalized
+  }
+}
+
+// Apply confidence from another source
+export const applyConfidence = (confidenceSource) => {
+  return (input) => {
+    const sourceConfidence = ~confidenceSource
+    return input ~> sourceConfidence
+  }
+}
+
+// Combine multiple confidence values
+export const combineConfidence = (strategy = "multiply") => {
+  return (inputs) => {
+    if (!Array.isArray(inputs) || inputs.length === 0) {
+      return null ~> 0.0
+    }
+    
+    const confidences = inputs.map(i => ~i)
+    
+    let combined = uncertain if (strategy) {
+      "multiply" -> confidences.reduce((a, b) => a * b, 1.0)
+      "average" -> confidences.reduce((a, b) => a + b, 0) / confidences.length
+      "minimum" -> Math.min(...confidences)
+      "maximum" -> Math.max(...confidences)
+      default -> confidences.reduce((a, b) => a * b, 1.0)
+    }
+    
+    // Return first input with combined confidence
+    return inputs[0] ~> combined
+  }
+}

@@ -1,0 +1,387 @@
+/**
+ * @example shared-state-patterns
+ * @description How agents handle shared state in Parallax
+ */
+
+import {
+  parallel,
+  consensus,
+  saga,
+  delegate,
+  eventStream,
+  cache
+} from "../index.prism"
+
+/**
+ * KEY PRINCIPLE: Parallax orchestrates, agents manage state
+ * 
+ * Parallax doesn't know or care about:
+ * - Databases
+ * - Redis
+ * - File systems
+ * - APIs
+ * 
+ * Parallax only knows about:
+ * - Patterns
+ * - Agents
+ * - Confidence
+ */
+
+// Example 1: E-commerce Inventory Management
+export const inventoryManagement = () => {
+  /**
+   * Multiple agents need to read/write inventory levels
+   * They coordinate through a shared database
+   */
+  
+  // Pattern doesn't know about the database
+  const checkAndReserveInventory = saga([
+    {
+      name: "check_availability",
+      action: (order) => callAgent("inventory_reader", {
+        action: "check_stock",
+        items: order.items
+        // Agent internally queries PostgreSQL
+      }),
+      compensate: null // Read-only, no compensation needed
+    },
+    {
+      name: "reserve_items", 
+      action: (availability) => callAgent("inventory_writer", {
+        action: "reserve_stock",
+        items: availability.available
+        // Agent internally uses Redis for fast reservation
+      }),
+      compensate: (reservation) => callAgent("inventory_writer", {
+        action: "release_stock",
+        reservationId: reservation.id
+        // Agent releases the Redis reservation
+      })
+    },
+    {
+      name: "update_database",
+      action: (reservation) => callAgent("inventory_writer", {
+        action: "commit_reservation",
+        reservation: reservation
+        // Agent writes to PostgreSQL with Redis lock
+      }),
+      compensate: (commit) => callAgent("inventory_writer", {
+        action: "rollback_reservation",
+        commitId: commit.id
+      })
+    }
+  ])
+  
+  return checkAndReserveInventory
+}
+
+// Example 2: Collaborative Document Editing
+export const documentCollaboration = () => {
+  /**
+   * Multiple agents edit the same document
+   * They use a shared document store
+   */
+  
+  const editDocument = (docId, edits) => {
+    // Orchestrator coordinates the editing process
+    return pipeline([
+      // Agent acquires lock from Redis
+      (edits) => callAgent("doc_locker", {
+        action: "acquire_lock",
+        docId: docId,
+        ttl: 30000
+      }),
+      
+      // Agent reads current version from MongoDB
+      (lock) => callAgent("doc_reader", {
+        action: "read_latest",
+        docId: docId,
+        lock: lock
+      }),
+      
+      // Multiple agents can suggest edits
+      (doc) => parallel(3)([
+        () => callAgent("grammar_agent", { doc, edits }),
+        () => callAgent("style_agent", { doc, edits }),
+        () => callAgent("fact_checker", { doc, edits })
+      ]),
+      
+      // Consensus on final edits
+      (suggestions) => consensus(suggestions),
+      
+      // Agent writes back to MongoDB
+      (finalEdits) => callAgent("doc_writer", {
+        action: "write_version",
+        docId: docId,
+        edits: finalEdits
+      }),
+      
+      // Agent releases lock
+      (result) => callAgent("doc_locker", {
+        action: "release_lock",
+        docId: docId
+      })
+    ])
+  }
+  
+  return editDocument
+}
+
+// Example 3: Multi-Agent Game State (Minecraft Example)
+export const minecraftWorldState = () => {
+  /**
+   * Agents share world state through a game server
+   * Each agent has a different view/cache of the world
+   */
+  
+  const coordinatedMining = (target) => {
+    return {
+      // Phase 1: Agents check shared world state
+      explore: parallel(3)([
+        () => callAgent("scout_1", {
+          action: "find_ores",
+          area: "north"
+          // Agent queries game server API for chunk data
+        }),
+        () => callAgent("scout_2", {
+          action: "find_ores", 
+          area: "south"
+          // Agent has local cache, syncs with server
+        }),
+        () => callAgent("scout_3", {
+          action: "find_caves",
+          area: "east"
+          // Agent uses Redis for fast cave mapping
+        })
+      ]),
+      
+      // Phase 2: Share discoveries through game server
+      share: (discoveries) => callAgent("coordinator", {
+        action: "update_team_map",
+        discoveries: discoveries
+        // Agent writes to shared Redis geo-cache
+      }),
+      
+      // Phase 3: Coordinate mining without conflicts
+      mine: delegate((task) => {
+        // Router agent checks Redis for who's mining where
+        return callAgent("mining_coordinator", {
+          action: "assign_mining_area",
+          task: task
+          // Returns agent assignment based on Redis state
+        })
+      })
+    }
+  }
+  
+  return coordinatedMining
+}
+
+// Example 4: Financial Trading System
+export const tradingSystem = () => {
+  /**
+   * Critical shared state: positions, balances, orders
+   * Multiple persistence layers for different needs
+   */
+  
+  const executeTrade = twoPhaseCommit([
+    {
+      id: "position_manager",
+      prepare: (trade) => callAgent("position_agent", {
+        action: "validate_position",
+        trade: trade
+        // Agent checks PostgreSQL + Redis cache
+      }),
+      commit: (trade) => callAgent("position_agent", {
+        action: "update_position",
+        trade: trade
+        // Agent updates both DB and cache atomically
+      }),
+      abort: (trade) => callAgent("position_agent", {
+        action: "rollback",
+        trade: trade
+      })
+    },
+    {
+      id: "risk_manager",
+      prepare: (trade) => callAgent("risk_agent", {
+        action: "check_limits",
+        trade: trade
+        // Agent queries time-series DB for exposure
+      }),
+      commit: (trade) => callAgent("risk_agent", {
+        action: "update_exposure",
+        trade: trade
+        // Agent updates risk metrics in InfluxDB
+      }),
+      abort: (trade) => callAgent("risk_agent", {
+        action: "revert_exposure",
+        trade: trade
+      })
+    },
+    {
+      id: "ledger",
+      prepare: (trade) => callAgent("ledger_agent", {
+        action: "prepare_entries",
+        trade: trade
+        // Agent stages in event store
+      }),
+      commit: (trade) => callAgent("ledger_agent", {
+        action: "commit_entries",
+        trade: trade
+        // Agent appends to immutable ledger
+      }),
+      abort: (trade) => callAgent("ledger_agent", {
+        action: "discard_entries",
+        trade: trade
+      })
+    }
+  ])
+  
+  return executeTrade
+}
+
+// Example 5: Shared State Patterns
+export const commonStatePatterns = () => {
+  /**
+   * Common patterns agents use for state management:
+   */
+  
+  return {
+    // 1. Read-through cache pattern
+    cachedRead: (key) => callAgent("cache_reader", {
+      strategy: "read_through",
+      key: key,
+      // Agent checks Redis, falls back to DB
+      implementation: `
+        const cached = await redis.get(key)
+        if (cached) return cached
+        
+        const data = await postgres.query(...)
+        await redis.setex(key, 3600, data)
+        return data
+      `
+    }),
+    
+    // 2. Write-through cache pattern  
+    cachedWrite: (key, value) => callAgent("cache_writer", {
+      strategy: "write_through",
+      key: key,
+      value: value,
+      // Agent writes to both systems
+      implementation: `
+        await postgres.insert(...)
+        await redis.set(key, value)
+      `
+    }),
+    
+    // 3. Event sourcing pattern
+    eventSourced: (action) => callAgent("event_store", {
+      strategy: "event_sourcing",
+      action: action,
+      // Agent appends events, rebuilds state
+      implementation: `
+        await eventStore.append(action)
+        await projections.update(action)
+        await readModel.refresh()
+      `
+    }),
+    
+    // 4. Optimistic locking
+    optimisticUpdate: (id, update) => callAgent("optimistic_updater", {
+      strategy: "optimistic_lock",
+      id: id,
+      update: update,
+      // Agent uses version numbers
+      implementation: `
+        const current = await db.find(id)
+        const updated = {...current, ...update, version: current.version + 1}
+        const result = await db.update({id, version: current.version}, updated)
+        if (!result) throw new ConcurrencyError()
+      `
+    }),
+    
+    // 5. Distributed lock pattern
+    withLock: (resource, operation) => callAgent("lock_manager", {
+      strategy: "distributed_lock",
+      resource: resource,
+      operation: operation,
+      // Agent uses Redis/Zookeeper for locks
+      implementation: `
+        const lock = await redlock.lock(resource, 5000)
+        try {
+          return await operation()
+        } finally {
+          await lock.unlock()
+        }
+      `
+    })
+  }
+}
+
+/**
+ * AGENT IMPLEMENTATION EXAMPLES:
+ * 
+ * Agents are responsible for:
+ * - Choosing storage technology (PostgreSQL, Redis, MongoDB, etc.)
+ * - Implementing consistency guarantees
+ * - Managing connections and pools
+ * - Handling cache invalidation
+ * - Implementing locks and transactions
+ * 
+ * Parallax just orchestrates the patterns!
+ */
+
+// Example agent implementation (not Prism code)
+class InventoryAgent {
+  constructor() {
+    this.postgres = new PostgresClient()
+    this.redis = new RedisClient()
+  }
+  
+  async checkStock(items) {
+    // Check Redis cache first
+    const cached = await this.redis.mget(items.map(i => `stock:${i.id}`))
+    
+    // Fetch missing from database
+    const missing = items.filter((_, i) => !cached[i])
+    if (missing.length > 0) {
+      const dbResults = await this.postgres.query(
+        'SELECT id, quantity FROM inventory WHERE id = ANY($1)',
+        [missing.map(i => i.id)]
+      )
+      
+      // Update cache
+      for (const row of dbResults) {
+        await this.redis.setex(`stock:${row.id}`, 300, row.quantity)
+      }
+    }
+    
+    // Return with confidence based on data freshness
+    return results ~> 0.95
+  }
+}
+
+/**
+ * KEY PATTERNS FOR SHARED STATE:
+ * 
+ * 1. AGENTS OWN THEIR DATA
+ *    - Each agent manages its own connections
+ *    - Agents decide on storage technology
+ *    - Agents implement consistency
+ * 
+ * 2. ORCHESTRATOR IS STATE-AGNOSTIC
+ *    - Doesn't know about databases
+ *    - Only cares about confidence
+ *    - Patterns work regardless of storage
+ * 
+ * 3. STATE COORDINATION THROUGH AGENTS
+ *    - Agents can share databases
+ *    - Agents can use message queues
+ *    - Agents can implement event sourcing
+ * 
+ * 4. FLEXIBILITY IS KEY
+ *    - Different agents can use different storage
+ *    - Can migrate storage without changing patterns
+ *    - Can add caching without pattern changes
+ */

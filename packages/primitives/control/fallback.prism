@@ -1,0 +1,120 @@
+/**
+ * @primitive fallback
+ * @category control
+ * @description Provide fallback options when primary fails
+ * @confidence from-successful
+ */
+
+// Fallback primitive - try alternatives in order
+export const fallback = (...alternatives) => {
+  return async (input) => {
+    let lastError = null
+    
+    for (const alternative of alternatives) {
+      try {
+        // Try alternative
+        const result = await alternative(input)
+        const confidence = ~result
+        
+        // Return if confidence is acceptable
+        if (confidence > 0.3) {
+          return result
+        }
+        
+      } catch (error) {
+        lastError = error
+      }
+    }
+    
+    // All alternatives failed
+    return {
+      error: "All fallback options exhausted",
+      lastError: lastError?.message,
+      alternatives: alternatives.length
+    } ~> 0.0
+  }
+}
+
+// Confidence-based fallback
+export const confidenceFallback = (primary, fallbackMap) => {
+  return async (input) => {
+    // Try primary first
+    const primaryResult = await primary(input)
+    const primaryConfidence = ~primaryResult
+    
+    // Check if we need fallback based on confidence
+    const fallback = uncertain if (~primaryResult) {
+      high -> null  // No fallback needed
+      medium -> fallbackMap.medium
+      low -> fallbackMap.low
+    }
+    
+    if (fallback) {
+      const fallbackResult = await fallback(input)
+      
+      // Return better result
+      if (~fallbackResult > primaryConfidence) {
+        return fallbackResult
+      }
+    }
+    
+    return primaryResult
+  }
+}
+
+// Circuit breaker fallback
+export const circuitBreaker = (operation, options = {}) => {
+  const {
+    threshold = 5,
+    timeout = 60000,
+    fallback = () => ({ error: "Circuit open" } ~> 0.0)
+  } = options
+  
+  let failures = 0
+  let lastFailureTime = 0
+  let circuitOpen = false
+  
+  return async (input) => {
+    // Check if circuit should be reset
+    if (circuitOpen && Date.now() - lastFailureTime > timeout) {
+      circuitOpen = false
+      failures = 0
+    }
+    
+    // If circuit is open, use fallback
+    if (circuitOpen) {
+      return fallback(input)
+    }
+    
+    try {
+      const result = await operation(input)
+      const confidence = ~result
+      
+      // Reset failures on success
+      if (confidence > 0.5) {
+        failures = 0
+        return result
+      } else {
+        // Low confidence counts as failure
+        failures++
+        lastFailureTime = Date.now()
+        
+        if (failures >= threshold) {
+          circuitOpen = true
+        }
+        
+        return result
+      }
+      
+    } catch (error) {
+      failures++
+      lastFailureTime = Date.now()
+      
+      if (failures >= threshold) {
+        circuitOpen = true
+      }
+      
+      return fallback(input)
+    }
+  }
+}

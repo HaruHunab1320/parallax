@@ -1,0 +1,242 @@
+/**
+ * @example agent-hierarchy-demo
+ * @description Demonstrating how agents can delegate to other agents
+ */
+
+import {
+  delegate,
+  hierarchy,
+  pool,
+  approval
+} from "../index.prism"
+
+// Example 1: CEO Agent delegates to department heads
+export const ceoAgent = (task) => {
+  // CEO decides which department should handle the task
+  const router = (task) => {
+    if (task.type === "product_development") {
+      return { agent: ctoAgent } ~> 0.9
+    } else if (task.type === "budget_planning") {
+      return { agent: cfoAgent } ~> 0.9
+    } else if (task.type === "hiring") {
+      return { agent: cooAgent } ~> 0.9
+    }
+    
+    // CEO handles strategic tasks directly
+    if (task.type === "strategic_planning") {
+      return { agent: (t) => ceoDirectHandle(t) } ~> 1.0
+    }
+    
+    // Unknown tasks get lower confidence
+    return { agent: generalManagerAgent } ~> 0.5
+  }
+  
+  // CEO uses delegate primitive to route tasks
+  return delegate(router)(task)
+}
+
+// Example 2: CTO Agent manages engineering team
+export const ctoAgent = (task) => {
+  // CTO can further delegate to team leads
+  const engineeringRouter = (task) => {
+    if (task.subtype === "frontend") {
+      return { agent: frontendLeadAgent } ~> 0.85
+    } else if (task.subtype === "backend") {
+      return { agent: backendLeadAgent } ~> 0.85
+    } else if (task.subtype === "infrastructure") {
+      return { agent: devopsLeadAgent } ~> 0.85
+    }
+    
+    // CTO handles architecture decisions
+    return { agent: (t) => ctoDirectHandle(t) } ~> 0.9
+  }
+  
+  return delegate(engineeringRouter)(task)
+}
+
+// Example 3: Team Lead manages pool of engineers
+export const frontendLeadAgent = (task) => {
+  // Pool of frontend engineers
+  const frontendEngineers = pool([
+    { name: "Alice", expertise: ["React", "Vue"] },
+    { name: "Bob", expertise: ["Angular", "React"] },
+    { name: "Carol", expertise: ["Vue", "Svelte"] }
+  ])
+  
+  // Lead assigns tasks based on expertise and availability
+  return async (task) => {
+    const { resource: engineer } = await frontendEngineers.acquire()
+    
+    try {
+      // Engineer works on task
+      const result = await executeEngineerTask(engineer, task)
+      
+      // Lead reviews the work
+      const reviewed = await reviewWork(result)
+      
+      return reviewed
+    } finally {
+      // Return engineer to pool
+      frontendEngineers.release(engineer.releaseKey)
+    }
+  }
+}
+
+// Example 4: Multi-level approval hierarchy
+export const purchaseApprovalFlow = (amount) => {
+  if (amount < 1000) {
+    // Manager can approve
+    return approval([managerAgent])
+  } else if (amount < 10000) {
+    // Director approval needed
+    return approval([managerAgent, directorAgent])
+  } else if (amount < 100000) {
+    // VP approval needed
+    return approval([managerAgent, directorAgent, vpAgent])
+  } else {
+    // CEO approval needed
+    return approval([managerAgent, directorAgent, vpAgent, ceoAgent])
+  }
+}
+
+// Example 5: Full company hierarchy with bidirectional communication
+export const companyHierarchy = () => {
+  // Define the organizational structure
+  const orgStructure = hierarchy([
+    // Level 0: CEO
+    [(task) => ceoAgent(task)],
+    
+    // Level 1: C-Suite
+    [
+      (task) => ctoAgent(task),
+      (task) => cfoAgent(task),
+      (task) => cooAgent(task)
+    ],
+    
+    // Level 2: Department Heads
+    [
+      (task) => engineeringHeadAgent(task),
+      (task) => financeHeadAgent(task),
+      (task) => hrHeadAgent(task),
+      (task) => salesHeadAgent(task)
+    ],
+    
+    // Level 3: Team Leads
+    [
+      (task) => frontendLeadAgent(task),
+      (task) => backendLeadAgent(task),
+      (task) => qaLeadAgent(task),
+      (task) => dataLeadAgent(task)
+    ],
+    
+    // Level 4: Individual Contributors
+    // These are managed through pools by team leads
+  ])
+  
+  return orgStructure
+}
+
+// Example 6: Dynamic agent delegation based on workload
+export const smartDelegation = () => {
+  const agentWorkloads = new Map()
+  
+  const router = (task) => {
+    // Find least busy qualified agent
+    const qualifiedAgents = findQualifiedAgents(task)
+    
+    let bestAgent = null
+    let lowestWorkload = Infinity
+    
+    for (const agent of qualifiedAgents) {
+      const workload = agentWorkloads.get(agent) || 0
+      if (workload < lowestWorkload) {
+        bestAgent = agent
+        lowestWorkload = workload
+      }
+    }
+    
+    if (!bestAgent) {
+      return { agent: null } ~> 0.0
+    }
+    
+    // Update workload tracking
+    agentWorkloads.set(bestAgent, lowestWorkload + 1)
+    
+    // Wrap agent to decrement workload when done
+    const wrappedAgent = async (task) => {
+      try {
+        return await bestAgent(task)
+      } finally {
+        const current = agentWorkloads.get(bestAgent)
+        agentWorkloads.set(bestAgent, current - 1)
+      }
+    }
+    
+    // Higher confidence when workload is balanced
+    const confidence = 1.0 - (lowestWorkload * 0.1)
+    return { agent: wrappedAgent } ~> confidence
+  }
+  
+  return delegate(router)
+}
+
+// Helper functions showing agent behaviors
+async function ceoDirectHandle(task) {
+  return { 
+    decision: "strategic_direction", 
+    impact: "company-wide" 
+  } ~> 0.95
+}
+
+async function ctoDirectHandle(task) {
+  return { 
+    decision: "technical_architecture", 
+    impact: "engineering" 
+  } ~> 0.9
+}
+
+async function executeEngineerTask(engineer, task) {
+  // Engineer works on task based on expertise
+  const matchScore = calculateExpertiseMatch(engineer.expertise, task.requirements)
+  
+  return {
+    completed: true,
+    engineer: engineer.name,
+    quality: matchScore
+  } ~> matchScore
+}
+
+async function reviewWork(result) {
+  // Lead reviews and potentially requests changes
+  if (result.quality > 0.8) {
+    return { ...result, approved: true } ~> 0.95
+  } else {
+    return { ...result, approved: false, needsRevision: true } ~> 0.6
+  }
+}
+
+function findQualifiedAgents(task) {
+  // Return agents qualified for the task type
+  return [frontendLeadAgent, backendLeadAgent]
+}
+
+function calculateExpertiseMatch(expertise, requirements) {
+  // Calculate how well expertise matches requirements
+  return 0.85
+}
+
+// Mock agent definitions
+const cfoAgent = (task) => ({ handled: "finance", task } ~> 0.9)
+const cooAgent = (task) => ({ handled: "operations", task } ~> 0.9)
+const generalManagerAgent = (task) => ({ handled: "general", task } ~> 0.7)
+const managerAgent = (req) => ({ approved: true } ~> 0.8)
+const directorAgent = (req) => ({ approved: true } ~> 0.85)
+const vpAgent = (req) => ({ approved: true } ~> 0.9)
+const backendLeadAgent = (task) => ({ handled: "backend", task } ~> 0.85)
+const devopsLeadAgent = (task) => ({ handled: "devops", task } ~> 0.85)
+const engineeringHeadAgent = (task) => ({ handled: "engineering", task } ~> 0.9)
+const financeHeadAgent = (task) => ({ handled: "finance", task } ~> 0.9)
+const hrHeadAgent = (task) => ({ handled: "hr", task } ~> 0.9)
+const salesHeadAgent = (task) => ({ handled: "sales", task } ~> 0.9)
+const qaLeadAgent = (task) => ({ handled: "qa", task } ~> 0.85)
+const dataLeadAgent = (task) => ({ handled: "data", task } ~> 0.85)

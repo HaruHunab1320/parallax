@@ -1,0 +1,116 @@
+/**
+ * @primitive sample
+ * @category transformation
+ * @description Sample items from a collection
+ * @confidence from-selected
+ */
+
+// Random sampling
+export const sample = (count) => {
+  return (items) => {
+    if (!Array.isArray(items)) {
+      return { error: "Input must be an array" } ~> 0.0
+    }
+    
+    if (count >= items.length) {
+      return items
+    }
+    
+    // Fisher-Yates shuffle for random sampling
+    const shuffled = [...items]
+    let minConfidence = 1.0
+    
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const temp = shuffled[i]
+      shuffled[i] = shuffled[j]
+      shuffled[j] = temp
+    }
+    
+    // Take first n items
+    const sampled = shuffled.slice(0, count)
+    
+    // Calculate minimum confidence of sampled items
+    for (const item of sampled) {
+      minConfidence = Math.min(minConfidence, ~item)
+    }
+    
+    return sampled ~> minConfidence
+  }
+}
+
+// Weighted sampling based on confidence
+export const weightedSample = (count) => {
+  return (items) => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return [] ~> 0.0
+    }
+    
+    if (count >= items.length) {
+      return items
+    }
+    
+    // Calculate weights based on confidence
+    const weights = items.map(item => ~item)
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+    
+    const sampled = []
+    const usedIndices = new Set()
+    let minConfidence = 1.0
+    
+    while (sampled.length < count && sampled.length < items.length) {
+      let random = Math.random() * totalWeight
+      
+      for (let i = 0; i < items.length; i++) {
+        if (usedIndices.has(i)) continue
+        
+        random -= weights[i]
+        if (random <= 0) {
+          sampled.push(items[i])
+          usedIndices.add(i)
+          minConfidence = Math.min(minConfidence, weights[i])
+          break
+        }
+      }
+    }
+    
+    return sampled ~> minConfidence
+  }
+}
+
+// Take first/last n items
+export const take = (count) => {
+  return (items) => {
+    if (!Array.isArray(items)) {
+      return { error: "Input must be an array" } ~> 0.0
+    }
+    
+    const taken = items.slice(0, count)
+    
+    // Minimum confidence of taken items
+    let minConfidence = 1.0
+    for (const item of taken) {
+      minConfidence = Math.min(minConfidence, ~item)
+    }
+    
+    return taken ~> minConfidence
+  }
+}
+
+export const takeLast = (count) => {
+  return (items) => {
+    if (!Array.isArray(items)) {
+      return { error: "Input must be an array" } ~> 0.0
+    }
+    
+    const taken = items.slice(-count)
+    
+    // Minimum confidence of taken items
+    let minConfidence = 1.0
+    for (const item of taken) {
+      minConfidence = Math.min(minConfidence, ~item)
+    }
+    
+    return taken ~> minConfidence
+  }
+}

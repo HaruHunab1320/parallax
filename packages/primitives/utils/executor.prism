@@ -1,0 +1,79 @@
+/**
+ * @module executor
+ * @description Utility functions for task execution
+ */
+
+// Execute a task with proper error handling
+export const executeTask = async (task) => {
+  try {
+    // If task is a function, call it
+    if (typeof task === "function") {
+      return await task()
+    }
+    
+    // If task has an execute method, use it
+    if (task && typeof task.execute === "function") {
+      return await task.execute()
+    }
+    
+    // Otherwise, return the task as-is
+    return task
+    
+  } catch (error) {
+    // Return error with zero confidence
+    return {
+      error: error.message || "Task execution failed",
+      stack: error.stack
+    } ~> 0.0
+  }
+}
+
+// Execute with timeout
+export const executeWithTimeout = (timeout) => {
+  return async (task) => {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Execution timeout")), timeout)
+    })
+    
+    try {
+      const result = await Promise.race([
+        executeTask(task),
+        timeoutPromise
+      ])
+      
+      return result
+    } catch (error) {
+      return {
+        error: error.message,
+        timeout: timeout
+      } ~> 0.0
+    }
+  }
+}
+
+// Execute with retries
+export const executeWithRetries = (maxRetries = 3) => {
+  return async (task) => {
+    let lastError = null
+    
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const result = await executeTask(task)
+        
+        // Return if successful (confidence > 0)
+        if (~result > 0) {
+          return result
+        }
+        
+        lastError = result.error || "Low confidence"
+      } catch (error) {
+        lastError = error.message
+      }
+    }
+    
+    return {
+      error: lastError,
+      attempts: maxRetries
+    } ~> 0.0
+  }
+}

@@ -1,0 +1,116 @@
+/**
+ * @test composition-test
+ * @description Test complex primitive compositions
+ */
+
+import {
+  parallel,
+  sequential,
+  race,
+  consensus,
+  voting,
+  threshold,
+  retry,
+  fallback,
+  map,
+  filter,
+  reduce,
+  combineConfidence
+} from "../index.prism"
+
+// Test 1: Parallel consensus with threshold filtering
+export const parallelConsensusTest = (agents) => {
+  return agents
+    |> parallel(5)
+    |> threshold(0.7)
+    |> consensus
+}
+
+// Test 2: Sequential pipeline with retry and fallback
+export const reliablePipeline = (steps) => {
+  const withRetry = retry({ maxAttempts: 3 })
+  const withFallback = fallback((error) => {
+    return { error: error.message, defaulted: true } ~> 0.5
+  })
+  
+  return steps
+    |> map(step => withRetry(step))
+    |> map(step => withFallback(step))
+    |> sequential
+}
+
+// Test 3: Race with voting fallback
+export const fastConsensus = (sources) => {
+  const racedResult = sources |> race
+  const votedResult = sources |> voting
+  
+  return uncertain if (~racedResult > 0.8) {
+    racedResult
+  } else {
+    votedResult
+  }
+}
+
+// Test 4: Map-reduce with confidence aggregation
+export const aggregateAnalysis = (data) => {
+  return data
+    |> filter(item => ~item > 0.5)
+    |> map(item => {
+      const analysis = analyzeItem(item)
+      return analysis ~> (~item * ~analysis)
+    })
+    |> reduce((acc, item) => {
+      const combined = combineResults(acc, item)
+      const confidence = combineConfidence([~acc, ~item])
+      return combined ~> confidence
+    }, { results: [] } ~> 1.0)
+}
+
+// Test 5: Complex orchestration pattern
+export const complexOrchestration = (input) => {
+  // Parallel exploration
+  const explorations = [
+    exploreOption1,
+    exploreOption2,
+    exploreOption3
+  ] |> parallel(3)
+  
+  // Filter high-confidence results
+  const viable = explorations |> threshold(0.6)
+  
+  // Build consensus if multiple viable options
+  const result = uncertain if (viable.length > 1) {
+    viable |> consensus
+  } else if (viable.length === 1) {
+    viable[0]
+  } else {
+    // Fallback to best effort
+    explorations |> voting
+  }
+  
+  return result
+}
+
+// Helper functions for testing
+function analyzeItem(item) {
+  return { analyzed: true, data: item } ~> 0.8
+}
+
+function combineResults(acc, item) {
+  return {
+    results: [...acc.results, item],
+    count: acc.results.length + 1
+  }
+}
+
+function exploreOption1(input) {
+  return { option: 1, value: input } ~> 0.7
+}
+
+function exploreOption2(input) {
+  return { option: 2, value: input } ~> 0.8
+}
+
+function exploreOption3(input) {
+  return { option: 3, value: input } ~> 0.6
+}

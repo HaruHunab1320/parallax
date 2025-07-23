@@ -1,0 +1,62 @@
+/**
+ * @primitive threshold
+ * @category confidence
+ * @description Filter values based on confidence threshold
+ * @confidence binary
+ */
+
+// Threshold gate primitive
+export const threshold = (minConfidence) => {
+  return (input) => {
+    const confidence = ~input
+    
+    if (confidence >= minConfidence) {
+      return input
+    } else {
+      return null ~> 0.0
+    }
+  }
+}
+
+// Threshold with fallback
+export const thresholdWithFallback = (minConfidence, fallback) => {
+  return (input) => {
+    const confidence = ~input
+    
+    if (confidence >= minConfidence) {
+      return input
+    } else {
+      // Execute fallback with its own confidence
+      return fallback()
+    }
+  }
+}
+
+// Multi-threshold routing
+export const multiThreshold = (thresholds) => {
+  return (input) => {
+    const confidence = ~input
+    
+    // Sort thresholds in descending order
+    const sorted = Object.entries(thresholds)
+      .sort(([a], [b]) => parseFloat(b) - parseFloat(a))
+    
+    // Find first matching threshold
+    for (const [threshold, handler] of sorted) {
+      if (confidence >= parseFloat(threshold)) {
+        return handler(input)
+      }
+    }
+    
+    // No threshold matched
+    return {
+      error: "No threshold matched",
+      confidence: confidence
+    } ~> 0.0
+  }
+}
+
+// Common threshold presets
+export const highConfidence = threshold(0.8)
+export const mediumConfidence = threshold(0.6)
+export const lowConfidence = threshold(0.3)

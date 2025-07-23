@@ -1,0 +1,95 @@
+/**
+ * @example basic-composition
+ * @description Examples of composing primitives into patterns
+ */
+
+import { 
+  parallel, 
+  consensus, 
+  threshold, 
+  retry,
+  fallback 
+} from "../index.prism"
+
+// Example 1: Simple consensus pattern
+export const simpleConsensus = (agents, task) => {
+  // Execute task on all agents in parallel
+  const results = agents ~|> parallel(5) ~|> ((agents) => {
+    return agents.map(agent => agent.execute(task))
+  })
+  
+  // Build consensus and filter by confidence
+  return results ~|> consensus ~|> threshold(0.7)
+}
+
+// Example 2: Robust analysis with retries
+export const robustAnalysis = (analyzer, data) => {
+  // Create retry-wrapped analyzer
+  const reliableAnalyzer = retry(3, { minConfidence: 0.8 })
+  
+  // Analyze with automatic retries on low confidence
+  return data ~|> reliableAnalyzer(analyzer.analyze)
+}
+
+// Example 3: Multi-strategy with fallback
+export const multiStrategyProcessing = (strategies, input) => {
+  // Try each strategy with fallback
+  const processor = fallback(
+    strategies.fast,
+    strategies.accurate,
+    strategies.comprehensive
+  )
+  
+  return input ~|> processor
+}
+
+// Example 4: Confidence-aware pipeline
+export const confidencePipeline = (stages) => {
+  return (input) => {
+    let result = input
+    
+    // Process through stages, stopping on low confidence
+    for (const stage of stages) {
+      result = result ~|> stage ~|> threshold(0.5)
+      
+      // Null means threshold not met
+      if (result === null) {
+        return {
+          error: "Pipeline halted due to low confidence",
+          lastStage: stage.name
+        } ~> 0.0
+      }
+    }
+    
+    return result
+  }
+}
+
+// Example 5: Adaptive execution based on confidence
+export const adaptiveExecution = (input) => {
+  // First, try fast approach
+  const quickResult = input ~|> quickAnalysis
+  
+  // If confidence is low, use more thorough approach
+  return uncertain if (~quickResult) {
+    high -> quickResult
+    medium -> input ~|> balancedAnalysis ~|> boost(1.1)
+    low -> input ~|> comprehensiveAnalysis ~|> retry(2)
+  }
+}
+
+// Helper functions for examples
+const quickAnalysis = (input) => {
+  // Simulate fast but less confident analysis
+  return { result: "quick", data: input } ~> 0.6
+}
+
+const balancedAnalysis = (input) => {
+  // Simulate balanced analysis
+  return { result: "balanced", data: input } ~> 0.75
+}
+
+const comprehensiveAnalysis = (input) => {
+  // Simulate thorough analysis
+  return { result: "comprehensive", data: input } ~> 0.9
+}

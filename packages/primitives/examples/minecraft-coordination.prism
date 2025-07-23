@@ -1,0 +1,290 @@
+/**
+ * @example minecraft-coordination
+ * @description Coordinating agents to craft diamond tools in Minecraft
+ */
+
+import {
+  dag,
+  delegate,
+  pool,
+  milestone,
+  adapt,
+  parallel,
+  pipeline,
+  checkpoint,
+  throttle,
+  loadBalance
+} from "../index.prism"
+
+// Main goal: Craft diamond pickaxe
+export const craftDiamondPickaxe = dag({
+  // Phase 1: Initial resources
+  "gather-wood": {
+    execute: delegate(routeToGatherer),
+    depends: []
+  },
+  "craft-planks": {
+    execute: craftingAgent,
+    depends: ["gather-wood"],
+    mergeDeps: (input, [wood]) => ({ 
+      recipe: "planks", 
+      materials: wood 
+    })
+  },
+  "craft-sticks": {
+    execute: craftingAgent,
+    depends: ["craft-planks"],
+    mergeDeps: (input, [planks]) => ({ 
+      recipe: "sticks", 
+      materials: planks 
+    })
+  },
+  
+  // Phase 2: Wooden tools
+  "craft-wooden-pickaxe": {
+    execute: craftingAgent,
+    depends: ["craft-planks", "craft-sticks"],
+    mergeDeps: (input, [planks, sticks]) => ({
+      recipe: "wooden_pickaxe",
+      materials: { planks, sticks }
+    })
+  },
+  
+  // Phase 3: Stone tools
+  "mine-cobblestone": {
+    execute: minerAgent,
+    depends: ["craft-wooden-pickaxe"],
+    mergeDeps: (input, [pickaxe]) => ({
+      tool: pickaxe,
+      target: "stone",
+      amount: 3
+    })
+  },
+  "craft-stone-pickaxe": {
+    execute: craftingAgent,
+    depends: ["mine-cobblestone", "craft-sticks"],
+    mergeDeps: (input, [cobblestone, sticks]) => ({
+      recipe: "stone_pickaxe",
+      materials: { cobblestone, sticks }
+    })
+  },
+  
+  // Phase 4: Iron tools
+  "mine-iron-ore": {
+    execute: minerAgent,
+    depends: ["craft-stone-pickaxe"],
+    mergeDeps: (input, [pickaxe]) => ({
+      tool: pickaxe,
+      target: "iron_ore",
+      amount: 3
+    })
+  },
+  "smelt-iron": {
+    execute: smeltingAgent,
+    depends: ["mine-iron-ore", "gather-coal"],
+    mergeDeps: (input, [ore, coal]) => ({
+      input: ore,
+      fuel: coal,
+      output: "iron_ingot"
+    })
+  },
+  "craft-iron-pickaxe": {
+    execute: craftingAgent,
+    depends: ["smelt-iron", "craft-sticks"],
+    mergeDeps: (input, [iron, sticks]) => ({
+      recipe: "iron_pickaxe",
+      materials: { iron, sticks }
+    })
+  },
+  
+  // Phase 5: Diamond tools
+  "mine-diamonds": {
+    execute: deepMiningOperation,
+    depends: ["craft-iron-pickaxe"],
+    mergeDeps: (input, [pickaxe]) => ({
+      tool: pickaxe,
+      target: "diamond",
+      depth: "11-16",
+      amount: 3
+    })
+  },
+  "craft-diamond-pickaxe": {
+    execute: craftingAgent,
+    depends: ["mine-diamonds", "craft-sticks"],
+    mergeDeps: (input, [diamonds, sticks]) => ({
+      recipe: "diamond_pickaxe",
+      materials: { diamonds, sticks }
+    })
+  },
+  
+  // Parallel support tasks
+  "gather-coal": {
+    execute: minerAgent,
+    depends: ["craft-wooden-pickaxe"]
+  },
+  "build-shelter": {
+    execute: builderAgent,
+    depends: ["gather-wood"]
+  },
+  "defend-base": {
+    execute: defenderAgent,
+    depends: ["build-shelter"]
+  }
+})
+
+// Resource management
+const agentPool = pool([
+  { name: "Steve", skills: ["mining", "crafting"] },
+  { name: "Alex", skills: ["gathering", "building"] },
+  { name: "Herobrine", skills: ["combat", "mining"] },
+  { name: "Notch", skills: ["crafting", "smelting"] }
+])
+
+// Smart agent routing
+function routeToGatherer(task) {
+  if (task.type === "gather") {
+    return agentPool.acquire()
+      .then(({ resource }) => ({ 
+        agent: (t) => resource.gather(t) 
+      }))
+  }
+  return { agent: null } ~> 0.0
+}
+
+// Mining coordination with safety
+const deepMiningOperation = adapt([
+  // Strategy 1: Strip mining
+  stripMiningStrategy,
+  
+  // Strategy 2: Cave exploration
+  caveExplorationStrategy,
+  
+  // Strategy 3: Branch mining
+  branchMiningStrategy
+])
+
+// Progress tracking
+const diamondToolProgress = milestone({
+  "wood-acquired": (state) => state.materials.wood >= 4,
+  "stone-tools": (state) => state.tools.includes("stone_pickaxe"),
+  "iron-tools": (state) => state.tools.includes("iron_pickaxe"),
+  "diamonds-found": (state) => state.materials.diamonds >= 3,
+  "diamond-pickaxe": (state) => state.tools.includes("diamond_pickaxe")
+})
+
+// Coordinated mining with multiple agents
+const coordinatedMining = (target) => {
+  const agents = [minerAgent1, minerAgent2, minerAgent3]
+  
+  return pipeline([
+    // Assign mining areas to prevent overlap
+    loadBalance(agents, "least-loaded"),
+    
+    // Limit simultaneous mining to prevent cave-ins
+    throttle(2, 5000),
+    
+    // Share discovered resources
+    (results) => shareResources(results),
+    
+    // Save progress periodically
+    checkpoint(saveWorld, loadWorld)
+  ])
+}
+
+// Agent implementations
+async function craftingAgent(task) {
+  const { recipe, materials } = task
+  
+  // Check if materials sufficient
+  if (!hasRequiredMaterials(recipe, materials)) {
+    return { error: "Insufficient materials" } ~> 0.2
+  }
+  
+  // Craft item
+  return { 
+    crafted: recipe, 
+    remaining: updateInventory(materials, recipe) 
+  } ~> 0.95
+}
+
+async function minerAgent(task) {
+  const { tool, target, amount } = task
+  
+  // Simulate mining with tool durability
+  const mined = await mineBlocks(tool, target, amount)
+  
+  return {
+    mined: mined,
+    toolDurability: tool.durability - mined.count * 0.1
+  } ~> (mined.count / amount)
+}
+
+async function smeltingAgent(task) {
+  const { input, fuel, output } = task
+  
+  return {
+    smelted: output,
+    amount: input.amount
+  } ~> 0.9
+}
+
+// Mining strategies
+function stripMiningStrategy(context) {
+  return { 
+    method: "strip", 
+    efficiency: 0.7,
+    diamonds: 2 
+  } ~> 0.7
+}
+
+function caveExplorationStrategy(context) {
+  return { 
+    method: "cave", 
+    efficiency: 0.5,
+    diamonds: 3,
+    danger: "high"
+  } ~> 0.5
+}
+
+function branchMiningStrategy(context) {
+  return { 
+    method: "branch", 
+    efficiency: 0.8,
+    diamonds: 3 
+  } ~> 0.8
+}
+
+// Helper functions
+function hasRequiredMaterials(recipe, materials) {
+  // Check recipe requirements
+  return true
+}
+
+function updateInventory(materials, recipe) {
+  // Update after crafting
+  return materials
+}
+
+async function mineBlocks(tool, target, amount) {
+  return { count: amount, blocks: target }
+}
+
+function shareResources(results) {
+  // Distribute mined resources among team
+  return results
+}
+
+async function saveWorld(state) {
+  return state
+}
+
+async function loadWorld(input) {
+  return null // No saved state
+}
+
+// Mock agents
+const minerAgent1 = (task) => minerAgent(task)
+const minerAgent2 = (task) => minerAgent(task)
+const minerAgent3 = (task) => minerAgent(task)
+const builderAgent = (task) => ({ built: true } ~> 0.9)
+const defenderAgent = (task) => ({ defended: true } ~> 0.8)

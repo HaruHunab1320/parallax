@@ -1,0 +1,61 @@
+/**
+ * @primitive batch
+ * @category execution
+ * @description Process items in fixed-size batches
+ * @confidence minimum-per-batch
+ */
+
+import { executeTask } from "../utils/executor.prism"
+
+// Batch processing primitive
+export const batch = (batchSize) => {
+  return async (items, processor) => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return [] ~> 1.0
+    }
+    
+    const results = []
+    
+    // Process in batches
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batchItems = items.slice(i, i + batchSize)
+      
+      // Process batch in parallel
+      const batchResults = await Promise.all(
+        batchItems.map(item => executeTask(() => processor(item)))
+      )
+      
+      // Track minimum confidence per batch
+      const batchConfidence = batchResults.reduce((min, result) => {
+        const conf = ~result
+        return conf < min ? conf : min
+      }, 1.0)
+      
+      // Add batch results
+      results.push(...batchResults)
+      
+      // Early exit on low confidence batch
+      if (batchConfidence < 0.3) {
+        return {
+          error: "Batch processing halted due to low confidence",
+          processed: i + batchItems.length,
+          total: items.length,
+          results: results
+        } ~> batchConfidence
+      }
+    }
+    
+    // Calculate overall confidence
+    const overallConfidence = results.reduce((min, r) => {
+      const conf = ~r
+      return conf < min ? conf : min
+    }, 1.0)
+    
+    return results ~> overallConfidence
+  }
+}
+
+// Convenience batch sizes
+export const batch10 = batch(10)
+export const batch50 = batch(50)
+export const batch100 = batch(100)

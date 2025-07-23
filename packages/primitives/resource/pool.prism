@@ -1,0 +1,98 @@
+/**
+ * @primitive pool
+ * @category resource
+ * @description Resource pooling and allocation
+ * @confidence based-on-availability
+ */
+
+// Resource pool
+export const pool = (resources) => {
+  const available = [...resources]
+  const inUse = new Map()
+  
+  const acquire = async () => {
+    if (available.length === 0) {
+      return {
+        error: "No resources available",
+        inUse: inUse.size,
+        total: resources.length
+      } ~> 0.0
+    }
+    
+    const resource = available.pop()
+    const id = Date.now() + Math.random()
+    inUse.set(id, resource)
+    
+    // Confidence based on pool utilization
+    const utilization = inUse.size / resources.length
+    const confidence = 1.0 - (utilization * 0.3)
+    
+    return {
+      resource: resource,
+      releaseKey: id,
+      utilization: utilization
+    } ~> confidence
+  }
+  
+  const release = (releaseKey) => {
+    if (!inUse.has(releaseKey)) {
+      return { error: "Invalid release key" } ~> 0.0
+    }
+    
+    const resource = inUse.get(releaseKey)
+    inUse.delete(releaseKey)
+    available.push(resource)
+    
+    return { released: true } ~> 1.0
+  }
+  
+  return { acquire, release, status: () => ({
+    available: available.length,
+    inUse: inUse.size,
+    total: resources.length
+  })}
+}
+
+// Load balancing across resources
+export const loadBalance = (resources, strategy = "round-robin") => {
+  let index = 0
+  const loads = new Map(resources.map(r => [r, 0]))
+  
+  return async (task) => {
+    let selected
+    
+    switch (strategy) {
+      case "round-robin":
+        selected = resources[index % resources.length]
+        index++
+        break
+        
+      case "least-loaded":
+        selected = Array.from(loads.entries())
+          .sort((a, b) => a[1] - b[1])[0][0]
+        break
+        
+      case "random":
+        selected = resources[Math.floor(Math.random() * resources.length)]
+        break
+        
+      default:
+        selected = resources[0]
+    }
+    
+    // Track load
+    loads.set(selected, loads.get(selected) + 1)
+    
+    // Execute task
+    const result = await selected(task)
+    
+    // Update load
+    loads.set(selected, loads.get(selected) - 1)
+    
+    // Confidence based on resource load
+    const avgLoad = Array.from(loads.values())
+      .reduce((a, b) => a + b, 0) / resources.length
+    
+    return result ~> (~result * (1 - Math.min(avgLoad * 0.1, 0.5)))
+  }
+}

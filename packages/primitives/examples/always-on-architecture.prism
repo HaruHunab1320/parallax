@@ -1,0 +1,337 @@
+/**
+ * @example always-on-architecture
+ * @description How Parallax handles 24/7 operations
+ */
+
+import {
+  periodic,
+  eventStream,
+  delegate,
+  pool,
+  circuitBreaker,
+  priorityQueue,
+  milestone
+} from "../index.prism"
+
+/**
+ * ARCHITECTURE OVERVIEW:
+ * 
+ * 1. Agents run in their own environments (containers, servers, etc)
+ * 2. Agents are REACTIVE - they respond to requests from orchestrator
+ * 3. Orchestrator runs patterns that generate continuous work
+ * 4. Multiple trigger sources keep the system active
+ */
+
+// Example 1: Event-Driven Architecture
+export const eventDrivenCompany = () => {
+  const companyEvents = eventStream()
+  
+  // External events trigger orchestration
+  // - Customer orders
+  // - Market data updates  
+  // - Employee requests
+  // - System monitoring alerts
+  // - Scheduled tasks
+  
+  // Subscribe different patterns to different events
+  companyEvents.subscribe(async (event) => {
+    switch (event.type) {
+      case "customer_order":
+        // Orchestrator kicks off order processing pattern
+        return processOrder(event.data)
+        
+      case "market_update":
+        // Orchestrator triggers analysis pattern
+        return analyzeMarket(event.data)
+        
+      case "system_alert":
+        // Orchestrator runs incident response pattern
+        return handleIncident(event.data)
+        
+      case "scheduled_task":
+        // Orchestrator executes scheduled pattern
+        return executeScheduled(event.data)
+    }
+  })
+  
+  return companyEvents
+}
+
+// Example 2: Periodic Operations
+export const continuousOperations = () => {
+  // Different patterns run at different intervals
+  
+  // Real-time monitoring (every second)
+  const monitoring = periodic(1000)(async () => {
+    return orchestratePattern("system_health_check", {
+      agents: ["monitor_1", "monitor_2", "monitor_3"],
+      pattern: circuitBreaker()
+    })
+  })
+  
+  // Customer service (every minute)
+  const customerService = periodic(60000)(async () => {
+    return orchestratePattern("process_customer_queue", {
+      agents: ["support_agent_pool"],
+      pattern: priorityQueue()
+    })
+  })
+  
+  // Business operations (every hour)
+  const businessOps = periodic(3600000)(async () => {
+    return orchestratePattern("business_metrics", {
+      agents: ["analytics_agent", "reporting_agent"],
+      pattern: milestone({
+        hourly_revenue: (s) => s.revenue > 0,
+        customer_satisfaction: (s) => s.nps > 40
+      })
+    })
+  })
+  
+  // Daily operations
+  const dailyOps = periodic(86400000)(async () => {
+    return orchestratePattern("daily_reconciliation", {
+      agents: ["finance_agent", "audit_agent"],
+      pattern: twoPhaseCommit()
+    })
+  })
+  
+  return {
+    monitoring,
+    customerService,
+    businessOps,
+    dailyOps
+  }
+}
+
+// Example 3: Queue-Based Processing
+export const queueDrivenSystem = () => {
+  /**
+   * Work queues keep agents busy
+   * Orchestrator continuously processes queues
+   */
+  
+  const workQueues = {
+    orders: priorityQueue(),
+    support: priorityQueue(),
+    analytics: priorityQueue(),
+    maintenance: priorityQueue()
+  }
+  
+  // Continuous queue processing
+  const processQueues = async () => {
+    while (true) {
+      // Check each queue for work
+      for (const [queueName, queue] of Object.entries(workQueues)) {
+        const status = queue.status()
+        
+        if (status.queued > 0) {
+          // Orchestrator assigns work to agents
+          await queue.process(async (task) => {
+            return orchestratePattern(`process_${queueName}`, {
+              task: task,
+              agents: getAgentsForQueue(queueName),
+              pattern: delegate(routeByTaskType)
+            })
+          })
+        }
+      }
+      
+      // Small delay to prevent spinning
+      await delay(100)
+    }
+  }
+  
+  return { workQueues, processQueues }
+}
+
+// Example 4: Hybrid Push-Pull Architecture
+export const hybridArchitecture = () => {
+  /**
+   * PUSH: External events push work to orchestrator
+   * PULL: Agents pull work when available
+   * SCHEDULE: Time-based patterns ensure activity
+   */
+  
+  // Agent pools register their availability
+  const agentPools = {
+    compute: pool(["gpu_1", "gpu_2", "gpu_3"]),
+    analysis: pool(["analyst_1", "analyst_2"]),
+    customer: pool(["support_1", "support_2", "support_3"])
+  }
+  
+  // Push: Events trigger work
+  const eventProcessor = eventStream()
+  
+  // Pull: Agents request work when idle
+  const workRequest = async (agentType) => {
+    // Orchestrator finds work for idle agent
+    const work = await findWorkForAgent(agentType)
+    
+    if (work) {
+      return orchestratePattern("assigned_work", {
+        work: work,
+        pattern: getPatternForWork(work)
+      })
+    }
+    
+    return { idle: true } ~> 0.5
+  }
+  
+  // Schedule: Ensure minimum activity
+  const heartbeat = periodic(5000)(async () => {
+    // Check system health
+    const health = await checkSystemHealth()
+    
+    // Generate synthetic work if too quiet
+    if (health.idleAgents > health.totalAgents * 0.5) {
+      return generateMaintenanceWork()
+    }
+    
+    return health
+  })
+  
+  return { agentPools, eventProcessor, workRequest, heartbeat }
+}
+
+// Example 5: Real 24/7 Company Implementation
+export const company247 = () => {
+  /**
+   * Multiple stimulation sources ensure continuous operation:
+   */
+  
+  // 1. Customer interactions (24/7)
+  const customerStream = eventStream()
+  websocket.on("customer_action", (action) => {
+    customerStream.emit({
+      type: "customer",
+      data: action,
+      timestamp: Date.now()
+    })
+  })
+  
+  // 2. Market feeds (during market hours)
+  const marketStream = eventStream()
+  marketFeed.subscribe((data) => {
+    marketStream.emit({
+      type: "market",
+      data: data
+    })
+  })
+  
+  // 3. Scheduled operations
+  const scheduled = {
+    // Every minute: process pending orders
+    orderProcessing: periodic(60000)(() => 
+      orchestratePattern("process_orders", {
+        pattern: batchProcessOrders
+      })
+    ),
+    
+    // Every 5 minutes: update dashboards
+    dashboards: periodic(300000)(() =>
+      orchestratePattern("update_dashboards", {
+        pattern: aggregateMetrics
+      })
+    ),
+    
+    // Every hour: run analytics
+    analytics: periodic(3600000)(() =>
+      orchestratePattern("hourly_analytics", {
+        pattern: analyzePerformance
+      })
+    ),
+    
+    // Every day: reconciliation
+    reconciliation: periodic(86400000)(() =>
+      orchestratePattern("daily_reconciliation", {
+        pattern: reconcileAccounts
+      })
+    )
+  }
+  
+  // 4. System monitoring (continuous)
+  const monitoring = {
+    health: periodic(1000)(() => checkHealth()),
+    alerts: eventStream(),
+    incidents: priorityQueue()
+  }
+  
+  // 5. Agent availability events
+  const agentEvents = eventStream()
+  // Agents notify when they come online/offline
+  // Orchestrator rebalances work accordingly
+  
+  return {
+    streams: { customerStream, marketStream, agentEvents },
+    scheduled,
+    monitoring,
+    
+    // Main orchestration loop
+    run: async () => {
+      console.log("Company systems online 24/7")
+      
+      // All streams and schedulers run in parallel
+      // System continues until explicitly stopped
+      await Promise.all([
+        processCustomerStream(customerStream),
+        processMarketStream(marketStream),
+        processAgentEvents(agentEvents),
+        runScheduledOps(scheduled),
+        runMonitoring(monitoring)
+      ])
+    }
+  }
+}
+
+/**
+ * KEY INSIGHTS:
+ * 
+ * 1. ORCHESTRATOR IS REACTIVE
+ *    - Responds to events, schedules, queues
+ *    - Doesn't need to "loop" - it's event-driven
+ * 
+ * 2. AGENTS ARE STATELESS WORKERS
+ *    - Wait for orchestrator requests
+ *    - Process and return results
+ *    - Don't need to know about the bigger picture
+ * 
+ * 3. MULTIPLE STIMULATION SOURCES
+ *    - External events (customers, markets)
+ *    - Time-based schedules
+ *    - Queue processing
+ *    - System monitoring
+ *    - Agent availability
+ * 
+ * 4. PATTERNS COMPOSE THE BEHAVIOR
+ *    - Same agents can be used in different patterns
+ *    - Patterns determine the workflow
+ *    - Orchestrator selects patterns based on context
+ * 
+ * 5. FAULT TOLERANCE BUILT IN
+ *    - Circuit breakers prevent cascading failures
+ *    - Agent pools handle individual failures
+ *    - Patterns include retry/fallback logic
+ */
+
+// Helper functions showing orchestrator interface
+async function orchestratePattern(name, config) {
+  // This is where Parallax orchestrator executes patterns
+  return parallaxOrchestrator.execute(name, config)
+}
+
+function getAgentsForQueue(queueName) {
+  // Map queue types to agent pools
+  const mapping = {
+    orders: ["order_processor_1", "order_processor_2"],
+    support: ["support_agent_1", "support_agent_2"],
+    analytics: ["analyst_1", "analyst_2"],
+    maintenance: ["maintenance_bot"]
+  }
+  return mapping[queueName] || ["general_agent"]
+}
+
+// Mock external connections
+const websocket = { on: (event, handler) => {} }
+const marketFeed = { subscribe: (handler) => {} }
+const parallaxOrchestrator = { execute: async (name, config) => ({ executed: name } ~> 0.9) }

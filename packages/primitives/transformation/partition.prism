@@ -1,0 +1,91 @@
+/**
+ * @primitive partition
+ * @category transformation
+ * @description Split data based on conditions
+ * @confidence minimum-of-decisions
+ */
+
+// Partition data into groups
+export const partition = (predicate) => {
+  return (items) => {
+    if (!Array.isArray(items)) {
+      return { error: "Input must be an array" } ~> 0.0
+    }
+    
+    const truthy = []
+    const falsy = []
+    let minConfidence = 1.0
+    
+    for (const item of items) {
+      const result = predicate(item)
+      const confidence = ~result
+      minConfidence = Math.min(minConfidence, confidence)
+      
+      if (result) {
+        truthy.push(item)
+      } else {
+        falsy.push(item)
+      }
+    }
+    
+    return {
+      truthy: truthy,
+      falsy: falsy,
+      counts: {
+        truthy: truthy.length,
+        falsy: falsy.length
+      }
+    } ~> minConfidence
+  }
+}
+
+// Multi-way partition
+export const multiPartition = (classifier) => {
+  return (items) => {
+    if (!Array.isArray(items)) {
+      return { error: "Input must be an array" } ~> 0.0
+    }
+    
+    const partitions = {}
+    let minConfidence = 1.0
+    
+    for (const item of items) {
+      const classification = classifier(item)
+      const confidence = ~classification
+      minConfidence = Math.min(minConfidence, confidence)
+      
+      const key = classification.class || classification
+      if (!partitions[key]) {
+        partitions[key] = []
+      }
+      
+      partitions[key].push(item)
+    }
+    
+    return partitions ~> minConfidence
+  }
+}
+
+// Chunk items into fixed sizes
+export const chunk = (size) => {
+  return (items) => {
+    if (!Array.isArray(items)) {
+      return { error: "Input must be an array" } ~> 0.0
+    }
+    
+    const chunks = []
+    let minConfidence = 1.0
+    
+    for (let i = 0; i < items.length; i += size) {
+      const chunk = items.slice(i, i + size)
+      chunks.push(chunk)
+      
+      // Track minimum confidence in chunk
+      for (const item of chunk) {
+        minConfidence = Math.min(minConfidence, ~item)
+      }
+    }
+    
+    return chunks ~> minConfidence
+  }
+}
