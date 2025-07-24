@@ -1,0 +1,21 @@
+{
+  "name": "@parallax/meta-agents",
+  "version": "0.1.0",
+  "description": "Pattern-aware agents and meta-orchestration for Parallax",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node test/test-integration.js"
+  },
+  "dependencies": {
+    "@parallax/sdk-typescript": "workspace:*",
+    "@parallax/primitives": "workspace:*",
+    "ai": "^3.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

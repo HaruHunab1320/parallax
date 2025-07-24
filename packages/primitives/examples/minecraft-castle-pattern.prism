@@ -1,0 +1,79 @@
+// Generated Pattern: parallel-voting-threshold-fallback
+// Description: Analyze Minecraft world for optimal castle location
+// Generated: 2025-01-23T22:15:00Z
+// Complexity: 5.5
+// Estimated Confidence: 0.88
+
+import { parallel } from "@parallax/primitives/execution/parallel.prism"
+import { voting } from "@parallax/primitives/aggregation/voting.prism"
+import { threshold } from "@parallax/primitives/confidence/threshold.prism"
+import { fallback } from "@parallax/primitives/control/fallback.prism"
+import { cache } from "@parallax/primitives/control/cache.prism"
+
+export const minecraftCastleAnalysisPattern = (config) => {
+  return (input) => {
+    // Extract configuration
+    agents = config.agents || []
+    minConfidence = config.minConfidence || 0.85
+    analysisRadius = config.analysisRadius || 500
+    
+    // Layer 1: Parallel analysis of different aspects
+    // Each agent analyzes a different aspect of potential locations
+    analysisResults = parallel(4)(agents.map(agent => {
+      return {
+        agent: agent,
+        task: {
+          type: "analyze_location",
+          aspects: agent.capabilities, // terrain, resources, threats, water
+          worldData: input.worldData,
+          coordinates: input.potentialLocations,
+          radius: analysisRadius
+        }
+      }
+    }))
+    
+    // Layer 2: Weighted voting on best location
+    // Different aspects have different importance
+    votingResult = voting("weighted")({
+      results: analysisResults,
+      weights: {
+        terrain: 0.3,      // Flat land is important
+        resources: 0.25,   // Stone, wood nearby
+        threats: 0.25,     // Distance from hostile mobs
+        water: 0.2         // Water access for farms
+      }
+    }) ~> 0.9
+    
+    // Layer 3: Confidence threshold
+    // Only accept high-confidence recommendations
+    thresholdResult = threshold(minConfidence)(votingResult) ~> 0.95
+    
+    // Layer 4: Cache the result for fast re-queries
+    cachedResult = cache(3600)({
+      key: `castle_analysis_${input.worldSeed}_${input.region}`,
+      value: thresholdResult
+    })
+    
+    // Layer 5: Fallback to default safe location
+    finalResult = fallback({
+      strategy: "default_spawn_area",
+      reason: "No location met confidence threshold"
+    })(cachedResult)
+    
+    return finalResult ~> 0.88
+  }
+}
+
+// Usage example:
+// const pattern = minecraftCastleAnalysisPattern({
+//   agents: [terrainAgent, resourceAgent, threatAgent, waterAgent],
+//   minConfidence: 0.85,
+//   analysisRadius: 500
+// })
+// 
+// const result = pattern({
+//   worldData: minecraftWorld,
+//   potentialLocations: scanResults,
+//   worldSeed: "12345",
+//   region: "plains_biome_1"
+// })

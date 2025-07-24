@@ -1,0 +1,22 @@
+/**
+ * @name TestParallelPrimitive
+ * @version 1.0.0
+ * @description Test pattern using the parallel primitive
+ * @input {"type": "object", "properties": {"tasks": {"type": "array"}}}
+ * @minAgents 2
+ */
+
+// Import our parallel primitive
+import { parallel } from "../packages/primitives/execution/parallel.prism"
+
+// Use the primitive to create a pattern
+parallelPattern = parallel(2)
+
+// Apply the pattern to the input tasks
+result = parallelPattern(input.tasks)
+
+// The result should be a pattern description object
+// { type: "parallel", tasks: [...], config: { maxConcurrency: 2 } }
+
+// Return the pattern description
+result

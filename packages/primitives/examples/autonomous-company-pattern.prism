@@ -1,0 +1,122 @@
+// Generated Pattern: parallel-consensus-quorum-escalate
+// Description: Autonomous company product feature decision with human escalation
+// Generated: 2025-01-23T22:20:00Z
+// Complexity: 6.5
+// Estimated Confidence: 0.92
+
+import { parallel } from "@parallax/primitives/execution/parallel.prism"
+import { consensus } from "@parallax/primitives/aggregation/consensus.prism"
+import { quorum } from "@parallax/primitives/coordination/quorum.prism"
+import { escalate } from "@parallax/primitives/control/escalate.prism"
+import { retry } from "@parallax/primitives/control/retry.prism"
+import { transform } from "@parallax/primitives/confidence/transform.prism"
+import { circuit } from "@parallax/primitives/control/circuit.prism"
+
+export const autonomousFeatureDecisionPattern = (config) => {
+  return (input) => {
+    // Extract configuration
+    departments = config.departments || []
+    minConsensus = config.minConsensus || 0.8
+    quorumSize = config.quorumSize || 3
+    boardEscalation = config.boardEscalation || "human-board@company.ai"
+    
+    // Layer 1: Circuit breaker for external API calls
+    // Prevents cascading failures during analysis
+    protectedAnalysis = circuit({
+      threshold: 5,
+      timeout: 30000,
+      halfOpenAfter: 60000
+    })((task) => {
+      // Layer 2: Parallel department analysis with retry
+      // Each department analyzes from their perspective
+      departmentAnalyses = parallel(null)(departments.map(dept => {
+        return retry(2, "exponential")({
+          agent: dept.agent,
+          task: {
+            type: "analyze_feature_proposal",
+            proposal: input.featureProposal,
+            perspective: dept.perspective,
+            data: {
+              market: dept.perspective == "market" ? input.marketData : null,
+              technical: dept.perspective == "technical" ? input.techSpecs : null,
+              customers: dept.perspective == "customer" ? input.feedbackData : null,
+              competitive: dept.perspective == "competitive" ? input.competitorData : null
+            },
+            criteria: input.evaluationCriteria
+          }
+        })
+      }))
+      
+      return departmentAnalyses
+    })
+    
+    analysisResults = protectedAnalysis(input) ~> 0.85
+    
+    // Layer 3: Build consensus among departments
+    // Need high agreement to proceed autonomously
+    consensusResult = consensus(minConsensus)(analysisResults) ~> 0.9
+    
+    // Layer 4: Boost confidence if we have strong market signal
+    marketBoost = transform("boost", 0.1)
+    boostedResult = input.marketData.signal == "strong" 
+      ? marketBoost(consensusResult) 
+      : consensusResult
+    
+    // Layer 5: Require quorum for major decisions
+    // At least 3 departments must participate
+    quorumResult = quorum(quorumSize)({
+      participants: analysisResults,
+      decision: boostedResult
+    }) ~> 0.95
+    
+    // Layer 6: Escalation to human board if needed
+    // Triggered by low confidence or high risk features
+    needsEscalation = quorumResult.confidence < 0.85 || 
+                      input.featureProposal.risk == "high" ||
+                      !quorumResult.achieved
+    
+    finalDecision = needsEscalation
+      ? escalate(boardEscalation)({
+          reason: "Consensus below threshold or high-risk feature",
+          analysisResults: analysisResults,
+          consensusResult: consensusResult,
+          quorumResult: quorumResult,
+          proposal: input.featureProposal
+        })
+      : {
+          decision: "approved",
+          reasoning: consensusResult.reasoning,
+          confidence: quorumResult.confidence,
+          departmentInputs: analysisResults
+        }
+    
+    return finalDecision ~> 0.92
+  }
+}
+
+// Usage example:
+// const pattern = autonomousFeatureDecisionPattern({
+//   departments: [
+//     { agent: marketAnalysisAgent, perspective: "market" },
+//     { agent: techFeasibilityAgent, perspective: "technical" },
+//     { agent: customerInsightAgent, perspective: "customer" },
+//     { agent: competitiveIntelAgent, perspective: "competitive" }
+//   ],
+//   minConsensus: 0.8,
+//   quorumSize: 3,
+//   boardEscalation: "human-board@company.ai"
+// })
+// 
+// const decision = pattern({
+//   featureProposal: {
+//     name: "AI-Powered Code Review",
+//     description: "Automated PR reviews using LLM",
+//     risk: "medium",
+//     estimatedROI: "$2M annual"
+//   },
+//   marketData: { signal: "strong", demand: 0.87 },
+//   techSpecs: { complexity: "medium", timeToMarket: "3 months" },
+//   feedbackData: { customerRequests: 145, sentiment: 0.92 },
+//   competitorData: { hasFeature: false, marketGap: true },
+//   evaluationCriteria: ["roi", "technical_feasibility", "market_fit", "risk"]
+// })

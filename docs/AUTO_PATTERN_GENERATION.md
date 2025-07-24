@@ -775,7 +775,215 @@ import "github.com/parallax/meta-agents-go"
 use parallax_meta::{PatternAware, WithConfidence};
 ```
 
-### 3. Getting Started
+### 3. Pattern Composer Agent with Structured Outputs
+
+The Pattern Composer Agent uses structured outputs to ensure reliable pattern generation:
+
+#### Architecture
+
+```typescript
+import { generateObject } from 'ai';
+import { z } from 'zod';
+import { openai } from '@ai-sdk/openai';
+
+// Define schemas for structured LLM outputs
+const RequirementsAnalysisSchema = z.object({
+  goal: z.string().describe('The main objective'),
+  strategy: z.enum(['parallel', 'sequential', 'consensus', 'resilient']),
+  actors: z.array(z.string()).optional(),
+  constraints: z.object({
+    minConfidence: z.number().min(0).max(1).default(0.5),
+    maxTime: z.number().optional(),
+    fallback: z.string().optional()
+  }),
+  reasoning: z.string().describe('Why these choices were made')
+});
+
+const PrimitiveSelectionSchema = z.object({
+  selected: z.array(z.object({
+    name: z.enum(['parallel', 'sequential', 'consensus', 'voting', 'retry', 'fallback', 'threshold']),
+    config: z.record(z.any()).optional(),
+    reason: z.string()
+  })),
+  order: z.array(z.string()).describe('Execution order of primitives'),
+  confidence: z.number().min(0).max(1)
+});
+```
+
+#### Primitive Descriptors (MCP Tool Pattern)
+
+Primitives are described like MCP tools, with rich metadata for agent understanding:
+
+```typescript
+interface PrimitiveDescriptor {
+  name: string;
+  category: string;
+  description: string;
+  
+  // When to use this primitive
+  whenToUse: string[];
+  whenNotToUse: string[];
+  
+  // Parameters
+  parameters: {
+    name: string;
+    type: string;
+    description: string;
+    required: boolean;
+    default?: any;
+    examples: any[];
+  }[];
+  
+  // Composition hints
+  commonlyUsedWith: string[];
+  incompatibleWith: string[];
+  followedBy: string[];
+  precededBy: string[];
+  
+  // Examples
+  examples: {
+    scenario: string;
+    code: string;
+    explanation: string;
+  }[];
+}
+
+// Example descriptor
+const parallelDescriptor: PrimitiveDescriptor = {
+  name: "parallel",
+  category: "execution",
+  description: "Executes multiple tasks concurrently with optional concurrency limit",
+  
+  whenToUse: [
+    "Tasks are independent and can run simultaneously",
+    "You want to reduce total execution time",
+    "Multiple agents need to work on different parts of a problem"
+  ],
+  
+  whenNotToUse: [
+    "Tasks depend on each other's outputs",
+    "Order of execution matters",
+    "Resource constraints prevent concurrent execution"
+  ],
+  
+  parameters: [{
+    name: "maxConcurrency",
+    type: "number",
+    description: "Maximum number of tasks to run simultaneously",
+    required: false,
+    default: "Infinity",
+    examples: [3, 5, 10]
+  }],
+  
+  commonlyUsedWith: ["voting", "consensus", "merge"],
+  incompatibleWith: ["sequential"],
+  
+  examples: [{
+    scenario: "Get code reviews from multiple reviewers",
+    code: "parallel(3)(reviewerTasks)",
+    explanation: "Limits to 3 concurrent reviews"
+  }]
+};
+```
+
+#### Implementation
+
+```typescript
+export class PatternComposerAgent extends ParallaxAgent {
+  private primitiveDB: PrimitiveDescriptor[];
+  
+  constructor(config: { 
+    id: string; 
+    llmProvider: LLMProvider;  // User supplies their own LLM
+  }) {
+    super(config.id, 'Pattern Composer', ['pattern-composition']);
+    this.llm = config.llmProvider;
+    this.loadPrimitiveDescriptors();
+  }
+  
+  async analyze(task: string, data?: any): Promise<[any, number]> {
+    // 1. Analyze requirements with structured output
+    const requirements = await generateObject({
+      model: this.llm,
+      schema: RequirementsAnalysisSchema,
+      prompt: this.buildAnalysisPrompt(task, data)
+    });
+    
+    // 2. Select primitives based on descriptors
+    const primitives = await this.selectPrimitives(requirements.object);
+    
+    // 3. Use deterministic composer to generate pattern
+    const pattern = await this.composer.composePattern(requirements.object);
+    const code = await this.assembler.assemble(pattern);
+    
+    return [{
+      code,
+      requirements: requirements.object,
+      primitives: primitives.object.selected,
+      confidence: primitives.object.confidence
+    }, primitives.object.confidence];
+  }
+  
+  private async selectPrimitives(requirements: RequirementsAnalysis) {
+    return generateObject({
+      model: this.llm,
+      schema: PrimitiveSelectionSchema,
+      prompt: `Select primitives for: ${JSON.stringify(requirements)}
+      
+Available primitives:
+${this.primitiveDB.map(p => 
+  `- ${p.name}: ${p.description}
+   When to use: ${p.whenToUse.join('; ')}`
+).join('\n')}`
+    });
+  }
+}
+```
+
+#### Usage Example
+
+```typescript
+// User provides their own LLM
+import { createPatternComposerAgent } from '@parallax/meta-agents';
+import { openai } from '@ai-sdk/openai';
+
+const composer = createPatternComposerAgent({
+  llmProvider: openai('gpt-4-turbo', {
+    apiKey: process.env.OPENAI_API_KEY
+  })
+});
+
+// Register with Parallax
+await parallax.registerAgent(composer);
+
+// Natural language pattern generation
+const result = await composer.analyze(
+  "Process data from 5 sources and ensure at least 4 agree",
+  { sources: ['api1', 'api2', 'db1', 'db2', 'cache'] }
+);
+
+// Result contains validated, structured pattern
+console.log(result.code);
+// import { parallel } from "@parallax/primitives/execution/parallel.prism"
+// import { voting } from "@parallax/primitives/aggregation/voting.prism"
+// import { quorum } from "@parallax/primitives/coordination/quorum.prism"
+// ...
+```
+
+#### Benefits of Structured Outputs
+
+1. **Type Safety**: Zod schemas ensure LLM outputs match expected structures
+2. **No Parsing Errors**: Eliminates JSON parsing issues
+3. **Predictable Integration**: Composer always receives valid inputs
+4. **Better Prompting**: Schema descriptions guide the LLM
+5. **Fallback Handling**: Schemas can provide sensible defaults
+
+This approach maintains clean separation:
+- **Platform**: Remains pure orchestration, no AI
+- **Composition Engine**: Deterministic pattern assembly
+- **Pattern Composer Agent**: Handles all AI/LLM interactions with user-provided LLM
+
+### 4. Getting Started
 
 ```typescript
 // 1. Create your agent
