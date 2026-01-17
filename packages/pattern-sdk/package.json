@@ -1,0 +1,59 @@
+{
+  "name": "@parallax/pattern-sdk",
+  "version": "0.1.0",
+  "description": "Pattern generation SDK for Parallax AI orchestration platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "parallax-generate": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^1.2.22",
+    "@parallax/primitives": "workspace:*",
+    "@prism-lang/validator": "^1.0.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "dotenv": "^16.6.1",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^9.2.0",
+    "js-yaml": "^4.1.0",
+    "ora": "^8.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@prism-lang/cli": "^1.2.3",
+    "@prism-lang/repl": "^1.2.3",
+    "@types/fs-extra": "^11.0.4",
+    "@types/inquirer": "^9.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.16.5",
+    "@typescript-eslint/eslint-plugin": "^8.1.0",
+    "@typescript-eslint/parser": "^8.1.0",
+    "eslint": "^9.9.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.7"
+  },
+  "peerDependencies": {
+    "ai": "^3.0.0"
+  },
+  "keywords": [
+    "parallax",
+    "pattern",
+    "generation",
+    "orchestration",
+    "ai",
+    "sdk"
+  ],
+  "author": "Parallax AI",
+  "license": "Apache-2.0"
+}

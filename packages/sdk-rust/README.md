@@ -249,12 +249,105 @@ match client.patterns().execute(pattern, input, None).await {
 }
 ```
 
+## Confidence Extraction
+
+The SDK provides automatic confidence extraction utilities:
+
+```rust
+use parallax_sdk::{
+    ParallaxAgent, AgentResult, 
+    with_confidence, ConfidenceConfig, ExtractionStrategy
+};
+use serde_json::{Value, json};
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let agent = Arc::new(
+        ParallaxAgent::new("my-agent", "My Agent", vec!["analysis".to_string()], Default::default())
+    );
+    
+    // Configure confidence extraction
+    let config = ConfidenceConfig {
+        default_confidence: 0.7,
+        strategy: ExtractionStrategy::Hybrid,
+    };
+    
+    // Wrap your analysis function with confidence extraction
+    let analyze_with_confidence = with_confidence(
+        |task: &str, data: Option<Value>| async move {
+            // Your analysis logic - just return the result
+            Ok(json!({
+                "answer": "The sentiment is positive",
+                "details": "Based on keyword analysis..."
+            }))
+        },
+        Some(config),
+    );
+    
+    // Set the wrapped function
+    let agent = agent.set_analyze_fn(analyze_with_confidence);
+    
+    // Serve the agent
+    parallax_sdk::serve_agent(Arc::new(agent), 50051).await?;
+    Ok(())
+}
+```
+
+### Confidence Aggregation
+
+```rust
+use parallax_sdk::ConfidenceAggregator;
+
+// Aggregate confidence from multiple sources
+let confidences = vec![0.8, 0.85, 0.75, 0.9];
+
+// Different aggregation strategies
+let min_conf = ConfidenceAggregator::combine(&confidences, "min", None); // 0.75
+let max_conf = ConfidenceAggregator::combine(&confidences, "max", None); // 0.9
+let avg_conf = ConfidenceAggregator::combine(&confidences, "avg", None); // 0.825
+let consensus = ConfidenceAggregator::combine(&confidences, "consensus", None); // Higher when values agree
+
+// Calculate confidence from result consistency
+let results = vec![
+    json!({"answer": "positive"}),
+    json!({"answer": "positive"}),
+    json!({"answer": "neutral"}),
+];
+let consistency = ConfidenceAggregator::from_consistency(&results); // ~0.8 (2 out of 3 agree)
+```
+
+### Require Minimum Confidence
+
+```rust
+use parallax_sdk::{require_confidence, AgentResult};
+
+// Use the macro to enforce minimum confidence
+let analyze_with_threshold = require_confidence!(0.8, |task: &str, data: Option<Value>| async move {
+    // Your analysis that returns AgentResult
+    Ok(AgentResult {
+        value: json!("Analysis result"),
+        confidence: 0.75, // This will fail the threshold
+        reasoning: None,
+        uncertainties: vec![],
+        metadata: Default::default(),
+    })
+});
+
+// This will return an error because confidence is below 0.8
+match analyze_with_threshold("analyze", None).await {
+    Ok(result) => println!("Success: {:?}", result),
+    Err(e) => println!("Failed threshold: {}", e),
+}
+```
+
 ## Examples
 
 See the [examples](examples/) directory:
 
 - [Basic Usage](examples/basic.rs) - Simple client usage
 - [Agent Implementation](examples/agent.rs) - Implementing an agent
+- [Confidence Extraction](examples/confidence.rs) - Using confidence utilities
 
 Run examples:
 
@@ -264,6 +357,9 @@ cargo run --example basic
 
 # Agent example
 cargo run --example agent
+
+# Confidence example
+cargo run --example confidence
 ```
 
 ## Features

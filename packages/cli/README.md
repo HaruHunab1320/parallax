@@ -84,6 +84,19 @@ parallax pattern history
 parallax pattern history consensus-builder --limit 20
 ```
 
+### Scenario Compilation
+
+```bash
+# Compile a scenario YAML/JSON into a Prism pattern
+parallax scenario compile ./scenarios/scenarios.yaml --id launch_readiness_gate --output ./patterns/generated/launch-readiness.prism
+
+# Override the default confidence threshold used by the generated pattern
+parallax scenario compile ./scenarios/scenarios.yaml --id incident_response_bridge --confidence 0.82
+
+# Compile + run against the control plane (requires Parallax running)
+parallax scenario run ./scenarios/scenarios.yaml --id launch_readiness_gate --file ./input.json
+```
+
 ## Examples
 
 ### Running a Security Analysis

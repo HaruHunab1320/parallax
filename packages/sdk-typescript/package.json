@@ -16,7 +16,8 @@
   "dependencies": {
     "@grpc/grpc-js": "^1.12.4",
     "@grpc/proto-loader": "^0.7.13",
-    "google-protobuf": "^3.21.4"
+    "google-protobuf": "^3.21.4",
+    "@prism-lang/confidence": "^1.2.3"
   },
   "devDependencies": {
     "@bufbuild/buf": "^1.50.0",

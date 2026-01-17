@@ -89,6 +89,28 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@20.19.9)
 
+  apps/full-system-demo:
+    dependencies:
+      '@parallax/meta-agents':
+        specifier: workspace:*
+        version: link:../../packages/meta-agents
+      '@parallax/primitives':
+        specifier: workspace:*
+        version: link:../../packages/primitives
+      '@parallax/sdk-typescript':
+        specifier: workspace:*
+        version: link:../../packages/sdk-typescript
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.9
+      tsx:
+        specifier: ^4.19.2
+        version: 4.20.3
+      typescript:
+        specifier: ^5.0.0
+        version: 5.8.3
+
   apps/pattern-demo:
     dependencies:
       '@parallax/control-plane':
@@ -589,6 +611,85 @@ importers:
         specifier: ^3.0.0
         version: 3.6.2
 
+  packages/pattern-sdk:
+    dependencies:
+      '@ai-sdk/google':
+        specifier: ^1.2.22
+        version: 1.2.22(zod@3.25.76)
+      '@parallax/primitives':
+        specifier: workspace:*
+        version: link:../primitives
+      '@prism-lang/validator':
+        specifier: ^1.0.0
+        version: 1.3.0(@prism-lang/llm@1.2.3)
+      ai:
+        specifier: ^3.0.0
+        version: 3.4.33(react@18.3.1)(sswr@2.2.0(svelte@5.36.16))(svelte@5.36.16)(vue@3.5.18(typescript@5.8.3))(zod@3.25.76)
+      chalk:
+        specifier: ^5.3.0
+        version: 5.4.1
+      commander:
+        specifier: ^12.0.0
+        version: 12.1.0
+      dotenv:
+        specifier: ^16.6.1
+        version: 16.6.1
+      fs-extra:
+        specifier: ^11.2.0
+        version: 11.3.0
+      inquirer:
+        specifier: ^9.2.0
+        version: 9.3.7
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.0
+      ora:
+        specifier: ^8.0.0
+        version: 8.2.0
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
+    devDependencies:
+      '@prism-lang/cli':
+        specifier: ^1.2.3
+        version: 1.2.3(@prism-lang/confidence@1.2.3)(react@18.3.1)
+      '@prism-lang/repl':
+        specifier: ^1.2.3
+        version: 1.2.3(@prism-lang/confidence@1.2.3)(react@18.3.1)
+      '@types/fs-extra':
+        specifier: ^11.0.4
+        version: 11.0.4
+      '@types/inquirer':
+        specifier: ^9.0.0
+        version: 9.0.8
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
+      '@types/node':
+        specifier: ^22.16.5
+        version: 22.16.5
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.1.0
+        version: 8.38.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0(jiti@2.4.2))(typescript@5.8.3))(eslint@9.31.0(jiti@2.4.2))(typescript@5.8.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.1.0
+        version: 8.38.0(eslint@9.31.0(jiti@2.4.2))(typescript@5.8.3)
+      eslint:
+        specifier: ^9.9.0
+        version: 9.31.0(jiti@2.4.2)
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@types/node@22.16.5)(typescript@5.8.3)
+      tsx:
+        specifier: ^4.20.3
+        version: 4.20.3
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
+      vitest:
+        specifier: ^2.1.7
+        version: 2.1.9(@types/node@22.16.5)
+
   packages/primitives:
     dependencies:
       '@prism-lang/core':
@@ -637,6 +738,9 @@ importers:
       '@grpc/proto-loader':
         specifier: ^0.7.13
         version: 0.7.15
+      '@prism-lang/confidence':
+        specifier: ^1.2.3
+        version: 1.2.3(@prism-lang/llm@1.2.3)
       google-protobuf:
         specifier: ^3.21.4
         version: 3.21.4
@@ -2117,6 +2221,10 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
+  '@prism-lang/cli@1.2.3':
+    resolution: {integrity: sha512-vot45cbXOk5JEDZAUVIrcc5hRn4O7tEtGW4yrhl4osuhz2zvRGUNhNHI5tF9cTUJUBh0tbfhn0QryfKtjTzK+Q==}
+    hasBin: true
+
   '@prism-lang/confidence@1.2.3':
     resolution: {integrity: sha512-FeMuy7PDZLIB6nj75cEUUgVeVWSm2q82mv1VVheLOa9gkbKVcWGQONjP60wBzzH5kiUsmnf0lrPAczOzVgm33A==}
 
@@ -2135,6 +2243,9 @@ packages:
     peerDependenciesMeta:
       '@prism-lang/confidence':
         optional: true
+
+  '@prism-lang/repl@1.2.3':
+    resolution: {integrity: sha512-fGz0XyWJxwh4rLWZkUukEfhm8nmMfXz0/Sa4zUFxLaNLfbtPEB9a6JQtkTEQlNpg/m4LUFXmcNGJEb24WwP0Tw==}
 
   '@prism-lang/validator@1.3.0':
     resolution: {integrity: sha512-SANtQaoqpqtqupiZJT4PylQP+TmcasxeGON7vjMj0OsVjbjmF0OeHm0gJSktGzAmI5Y8SIXhtgl3Yg6VkUlunA==}
@@ -2810,6 +2921,9 @@ packages:
   '@types/express@5.0.3':
     resolution: {integrity: sha512-wGA0NX93b19/dZC1J18tKWVIYWyyF2ZjT9vin/NRu0qzzvfVzWjs04iq2rQ3H65vCTQYlRqs3YHfY7zjdV+9Kw==}
 
+  '@types/fs-extra@11.0.4':
+    resolution: {integrity: sha512-yTbItCNreRooED33qjunPthRcSjERP1r4MqCZc7wv0u2sUkzTFp45tgUfS5+r7FrZPdmCCNflLhVSP/o+SemsQ==}
+
   '@types/glob@7.2.0':
     resolution: {integrity: sha512-ZUxbzKl0IfJILTS6t7ip5fQQM/J3TJYubDm3nMbgubNNYS62eXeUpoLUC8/7fJNiFYHTrGPQn7hspDUzIHX3UA==}
 
@@ -2840,11 +2954,17 @@ packages:
   '@types/jest@29.5.14':
     resolution: {integrity: sha512-ZN+4sdnLUbo8EVvVc2ao0GFW6oVrQRPn4K2lglySj7APvSrgzxHiNNK99us4WDMi57xxA2yggblIAMNhXOotLQ==}
 
+  '@types/js-yaml@4.0.9':
+    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
+
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
+
+  '@types/jsonfile@6.1.4':
+    resolution: {integrity: sha512-D5qGUYwjvnNNextdU59/+fI+spnwtTFmyQP0h+PfIOSkNfpU6AOICUOkm4i0OnSk+NyjdPJrxCDro0sJsWlRpQ==}
 
   '@types/jsonwebtoken@9.0.10':
     resolution: {integrity: sha512-asx5hIG9Qmf/1oStypjanR7iKTv0gXQ1Ov/jfrX6kS/EO0OFni8orbmGCn0672NHR3kXHwpAwR+B368ZGN/2rA==}
@@ -3685,6 +3805,10 @@ packages:
     resolution: {integrity: sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==}
     engines: {node: '>=14'}
 
+  commander@12.1.0:
+    resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
+    engines: {node: '>=18'}
+
   commander@13.1.0:
     resolution: {integrity: sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==}
     engines: {node: '>=18'}
@@ -4472,6 +4596,10 @@ packages:
     resolution: {integrity: sha512-oRXApq54ETRj4eMiFzGnHWGy+zo5raudjuxN0b8H7s/RU2oW0Wvsx9O0ACRN/kRq9E8Vu/ReskGB5o3ji+FzHQ==}
     engines: {node: '>=12'}
 
+  fs-extra@11.3.0:
+    resolution: {integrity: sha512-Z4XaCL6dUDHfP/jT25jJKMmtxvuwbkrD1vNSMFlo9lNLY2c5FHYSQgHPRZUjAB26TpDEoW9HCOgplrdbaPV/ew==}
+    engines: {node: '>=14.14'}
+
   fs-minipass@2.1.0:
     resolution: {integrity: sha512-V/JgOLFCS+R6Vcq0slCuaeWEdNC3ouDlJMNIsacH2VtALiu9mV4LPrHc5cDl8k5aw6J8jwgWWpiTo5RYhmIzvg==}
     engines: {node: '>= 8'}
@@ -4755,6 +4883,10 @@ packages:
   inquirer@8.2.6:
     resolution: {integrity: sha512-M1WuAmb7pn9zdFRtQYk26ZBoY043Sse0wVDdk4Bppr+JOXyQYybdtvK+l9wUibhtjdjvtoiNy8tk+EgsYIUqKg==}
     engines: {node: '>=12.0.0'}
+
+  inquirer@9.3.7:
+    resolution: {integrity: sha512-LJKFHCSeIRq9hanN14IlOtPSTe3lNES7TYDTE2xxdAy1LS5rYphajK1qtwvj3YmQXvvk0U2Vbmcni8P9EIQW9w==}
+    engines: {node: '>=18'}
 
   internal-slot@1.1.0:
     resolution: {integrity: sha512-4gd7VpWNQNB4UKKCFFVcp1AVv+FMOgs9NKzjHKusc8jTMhd5eL1NqQqOpE0KzMds804/yHlglp3uxgluOqAPLw==}
@@ -5468,6 +5600,10 @@ packages:
   mute-stream@0.0.8:
     resolution: {integrity: sha512-nnbWWOkoWyUsTjKrhgD0dcz22mdkSnpYqbEjIm2nhwhuxlSkpywJmBo8h0ZqJdkp73mb90SssHkN4rsRaBAfAA==}
 
+  mute-stream@1.0.0:
+    resolution: {integrity: sha512-avsJQhyd+680gKXyG/sQc0nXaC6rBkPOfyHYcFb9+hdkqQkR9bdnkJ0AMZhke0oesPqIO+mFFJ+IdBc7mst4IA==}
+    engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
+
   mute-stream@2.0.0:
     resolution: {integrity: sha512-WWdIxpyjEn+FhQJQQv9aQAYlHoNVdzIzUySNV1gHUPDSdZJ3yZn7pAAbQcV7B56Mvu881q9FZV+0Vx2xC44VWA==}
     engines: {node: ^18.17.0 || >=20.5.0}
@@ -6119,6 +6255,10 @@ packages:
 
   run-async@2.4.1:
     resolution: {integrity: sha512-tvVnVv01b8c1RrA6Ep7JkStj85Guv/YrMcwqYQnwjsAS2cTmmPGBBjAjpCW7RrSodNSoE2/qg9O4bceNvUuDgQ==}
+    engines: {node: '>=0.12.0'}
+
+  run-async@3.0.0:
+    resolution: {integrity: sha512-540WwVDOMxA6dN6We19EcT9sc3hkXPw5mzRNGM3FkdN/vtE9NFvj5lFAPNwUDmJjXidm3v7TC1cTE7t17Ulm1Q==}
     engines: {node: '>=0.12.0'}
 
   run-async@4.0.5:
@@ -8392,6 +8532,16 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
+  '@prism-lang/cli@1.2.3(@prism-lang/confidence@1.2.3)(react@18.3.1)':
+    dependencies:
+      '@prism-lang/core': 1.3.0(@prism-lang/llm@1.2.3)
+      '@prism-lang/llm': 1.2.3(@prism-lang/confidence@1.2.3)(react@18.3.1)
+      '@prism-lang/repl': 1.2.3(@prism-lang/confidence@1.2.3)(react@18.3.1)
+      dotenv: 16.6.1
+    transitivePeerDependencies:
+      - '@prism-lang/confidence'
+      - react
+
   '@prism-lang/confidence@1.2.3(@prism-lang/llm@1.2.3)':
     dependencies:
       '@prism-lang/core': 1.3.0(@prism-lang/llm@1.2.3)
@@ -8414,6 +8564,14 @@ snapshots:
     optionalDependencies:
       '@prism-lang/confidence': 1.2.3(@prism-lang/llm@1.2.3)
     transitivePeerDependencies:
+      - react
+
+  '@prism-lang/repl@1.2.3(@prism-lang/confidence@1.2.3)(react@18.3.1)':
+    dependencies:
+      '@prism-lang/core': 1.3.0(@prism-lang/llm@1.2.3)
+      '@prism-lang/llm': 1.2.3(@prism-lang/confidence@1.2.3)(react@18.3.1)
+    transitivePeerDependencies:
+      - '@prism-lang/confidence'
       - react
 
   '@prism-lang/validator@1.3.0(@prism-lang/llm@1.2.3)':
@@ -9013,7 +9171,7 @@ snapshots:
 
   '@types/bcrypt@5.0.2':
     dependencies:
-      '@types/node': 22.16.5
+      '@types/node': 20.19.9
 
   '@types/body-parser@1.19.6':
     dependencies:
@@ -9028,7 +9186,7 @@ snapshots:
 
   '@types/cors@2.8.19':
     dependencies:
-      '@types/node': 22.16.5
+      '@types/node': 20.19.9
 
   '@types/d3-array@3.2.1': {}
 
@@ -9064,7 +9222,7 @@ snapshots:
   '@types/dockerode@3.3.42':
     dependencies:
       '@types/docker-modem': 3.0.6
-      '@types/node': 22.16.5
+      '@types/node': 20.19.9
       '@types/ssh2': 1.15.5
 
   '@types/estree@1.0.8': {}
@@ -9095,6 +9253,11 @@ snapshots:
       '@types/body-parser': 1.19.6
       '@types/express-serve-static-core': 5.0.6
       '@types/serve-static': 1.15.8
+
+  '@types/fs-extra@11.0.4':
+    dependencies:
+      '@types/jsonfile': 6.1.4
+      '@types/node': 20.19.9
 
   '@types/glob@7.2.0':
     dependencies:
@@ -9134,14 +9297,20 @@ snapshots:
       expect: 29.7.0
       pretty-format: 29.7.0
 
+  '@types/js-yaml@4.0.9': {}
+
   '@types/json-schema@7.0.15': {}
 
   '@types/json5@0.0.29': {}
 
+  '@types/jsonfile@6.1.4':
+    dependencies:
+      '@types/node': 20.19.9
+
   '@types/jsonwebtoken@9.0.10':
     dependencies:
       '@types/ms': 2.1.0
-      '@types/node': 22.16.5
+      '@types/node': 20.19.9
 
   '@types/methods@1.1.4': {}
 
@@ -9232,7 +9401,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 22.16.5
+      '@types/node': 20.19.9
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -10159,6 +10328,8 @@ snapshots:
 
   commander@10.0.1: {}
 
+  commander@12.1.0: {}
+
   commander@13.1.0: {}
 
   commander@4.1.1: {}
@@ -10687,7 +10858,7 @@ snapshots:
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
       eslint-plugin-react: 7.37.5(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.0.0-canary-7118f5dd7-20230705(eslint@8.57.1)
@@ -10717,7 +10888,7 @@ snapshots:
       tinyglobby: 0.2.14
       unrs-resolver: 1.9.2
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -10732,7 +10903,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -11176,6 +11347,12 @@ snapshots:
       jsonfile: 6.1.0
       universalify: 2.0.1
 
+  fs-extra@11.3.0:
+    dependencies:
+      graceful-fs: 4.2.11
+      jsonfile: 6.1.0
+      universalify: 2.0.1
+
   fs-minipass@2.1.0:
     dependencies:
       minipass: 3.3.6
@@ -11523,6 +11700,21 @@ snapshots:
       strip-ansi: 6.0.1
       through: 2.3.8
       wrap-ansi: 6.2.0
+
+  inquirer@9.3.7:
+    dependencies:
+      '@inquirer/figures': 1.0.13
+      ansi-escapes: 4.3.2
+      cli-width: 4.1.0
+      external-editor: 3.1.0
+      mute-stream: 1.0.0
+      ora: 5.4.1
+      run-async: 3.0.0
+      rxjs: 7.8.2
+      string-width: 4.2.3
+      strip-ansi: 6.0.1
+      wrap-ansi: 6.2.0
+      yoctocolors-cjs: 2.1.2
 
   internal-slot@1.1.0:
     dependencies:
@@ -12421,6 +12613,8 @@ snapshots:
 
   mute-stream@0.0.8: {}
 
+  mute-stream@1.0.0: {}
+
   mute-stream@2.0.0: {}
 
   mz@2.7.0:
@@ -13173,6 +13367,8 @@ snapshots:
 
   run-async@2.4.1: {}
 
+  run-async@3.0.0: {}
+
   run-async@4.0.5: {}
 
   run-parallel@1.2.0:
@@ -13826,7 +14022,6 @@ snapshots:
       typescript: 5.8.3
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
-    optional: true
 
   ts-node@10.9.2(@types/node@24.1.0)(typescript@5.8.3):
     dependencies:

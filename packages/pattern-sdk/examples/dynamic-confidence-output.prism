@@ -1,0 +1,31 @@
+// Pattern: Multi-agent analysis with dynamic confidence
+// Uses primitives: parallel, consensus
+export const multiAgentAnalysisWithDynamicConfidencePattern = (config) => {
+  input = config.input
+  agentList = config["agents"] || []
+  minConfidence = 0.8
+  // Main orchestration flow
+  
+  // Execute agents in parallel
+  // Execute agents in parallel - confidence will be extracted from responses
+  step1 = agentList.map(a => a.execute(input))
+  
+  // Build consensus from results
+  // Build consensus from results
+  totalConf = step1.reduce((sum, r) => sum + (r.confidence || 0.5), 0)
+  avgConf = step1.length > 0 ? totalConf / step1.length : 0.5
+  step2 = {
+      type: "consensus",
+      results: step1,
+      confidence: avgConf
+    }
+  
+  // Store final result
+  result = step2
+  
+  // Calculate final confidence from result
+  finalConfidence = result.confidence || 0.5
+  
+  // Return result with runtime confidence
+  return result ~> finalConfidence
+}

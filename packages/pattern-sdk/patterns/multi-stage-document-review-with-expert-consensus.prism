@@ -1,0 +1,52 @@
+// Pattern: multi-stage-document-review-with-expert-consensus
+// Version: 1.0.0
+// Description: Multi-stage document review with expert consensus
+// Generated: 2025-07-26T23:05:50.454Z
+// Generator: @parallax/pattern-sdk
+// Primitives: sequential, parallel, consensus, threshold, retry, fallback
+
+// Pattern: Multi-stage document review with expert consensus
+// Uses primitives: sequential, parallel, consensus, threshold, retry, fallback
+export const multiStageDocumentReviewWithExpertConsensusPattern = (config) => {
+  input = config.input
+  agentList = config["agents"] || []
+  minConfidence = 0.85
+  // Main orchestration flow
+  
+  // To execute the document review stages in a defined order (initial review followed by expert review).
+  step1 = input
+  
+  // To enable concurrent execution of document reviewers in the initial review stage.
+  step2 = step1
+  
+  // To aggregate the results from the parallel document reviewers and the expert reviewers to reach a consensus view.
+  // Build consensus from results
+  totalConf = reduce(step2, (sum, r) => sum + (r.confidence || 0.5), 0)
+  avgConf = step2.length > 0 ? totalConf / step2.length : 0.5
+  step3 = {
+      type: "consensus",
+      results: step2,
+      confidence: avgConf
+    }
+  
+  // To ensure the confidence level of the consensus view meets the minimum requirement.
+  // Apply confidence threshold
+  step4 = step3.confidence >= minConfidence ? step3 : null
+  
+  // To handle potential failures during document review or expert validation.
+  // Retry logic would go here
+  step5 = step4
+  
+  // To provide an alternative processing path if the primary review process fails or does not meet the required confidence level.
+  // Fallback logic would go here  
+  step6 = step5
+  
+  // Store final result
+  result = step6
+  
+  // Calculate final confidence from result
+  finalConfidence = result.confidence || 0.5
+  
+  // Return result with runtime confidence
+  return result ~> finalConfidence
+}

@@ -1,0 +1,50 @@
+// Pattern: analyze-distributed-system-logs-for-anomalies-and-errors
+// Version: 1.0.0
+// Description: Analyze distributed system logs for anomalies and errors
+// Generated: 2025-07-26T23:06:24.730Z
+// Generator: @parallax/pattern-sdk
+// Primitives: sequential, parallel, merge, retry, timeout, threshold
+
+// Pattern: Analyze distributed system logs for anomalies and errors
+// Uses primitives: sequential, parallel, merge, retry, timeout, threshold
+export const analyzeDistributedSystemLogsForAnomaliesAndErrorsPattern = (config) => {
+  input = config.input
+  agentList = config["agents"] || []
+  minConfidence = 0.8
+  // Main orchestration flow
+  
+  // To orchestrate the execution of stages in a defined order: log-collection -> anomaly-detection -> correlation.
+  step1 = input
+  
+  // To execute log parsing and anomaly detection concurrently across multiple agents.
+  step2 = step1
+  
+  // To execute log parsing and anomaly detection concurrently across multiple agents.
+  step3 = step2
+  
+  // To aggregate the results from the parallel anomaly detection stage into a single set of findings for the correlation stage.
+  step4 = step3
+  
+  // To orchestrate the execution of stages in a defined order: log-collection -> anomaly-detection -> correlation.
+  step5 = step4
+  
+  // To handle potential failures during log collection, anomaly detection, or correlation, adhering to the 'maxRetries' constraint.
+  // Retry logic would go here
+  step6 = step5
+  
+  // To enforce a maximum execution time for the entire orchestration or individual stages, preventing indefinite hangs, adhering to the 'timeout' constraint.
+  step7 = step6
+  
+  // To ensure that the aggregated results meet a minimum confidence level before proceeding, adhering to the 'minConfidence' constraint.
+  // Apply confidence threshold
+  step8 = step7.confidence >= minConfidence ? step7 : null
+  
+  // Store final result
+  result = step8
+  
+  // Calculate final confidence from result
+  finalConfidence = result.confidence || 0.5
+  
+  // Return result with runtime confidence
+  return result ~> finalConfidence
+}

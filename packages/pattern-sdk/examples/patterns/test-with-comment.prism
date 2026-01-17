@@ -1,0 +1,6 @@
+// Test pattern
+
+export function executePattern(agents, input) {
+  const result = input
+  return result ~> 0.9
+}

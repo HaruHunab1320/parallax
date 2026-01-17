@@ -1,0 +1,41 @@
+// Pattern Metadata
+// Name: ProcessWithFallbackToExpertOnLowConfidence
+// Version: 1.0.0
+// Description: Process with fallback to expert on low confidence
+// Agent Capabilities: analyzer
+// Minimum Agents: 2
+
+ProcessWithFallbackToExpertOnLowConfidencePattern = (input) => {
+  // Extract input data
+  data = input
+  task = "Process with fallback to expert on low confidence"
+  minConfidence = 0.8
+
+  // Generic pattern - process input
+  // This is a simple pass-through with confidence
+
+  // Process the input
+  processedResult = {
+    task: task,
+    input: data,
+    processed: true
+  }
+
+  // Assign confidence based on goal
+  confidence = 0.7 // Default confidence
+  confidence = 0.8
+
+  // Build result
+  result = {
+    goal: "Process with fallback to expert on low confidence",
+    status: "completed",
+    output: processedResult,
+    confidence: confidence
+  }
+
+  // Return with confidence
+  return result ~> confidence
+}
+
+// Export the pattern
+ProcessWithFallbackToExpertOnLowConfidencePattern

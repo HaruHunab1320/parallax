@@ -1,0 +1,8 @@
+// Simple import test
+
+import { parallel } from "../../primitives/execution/parallel.prism"
+
+export function testPattern(input) {
+  const result = input |> parallel(3)
+  return result ~> 0.9
+}

@@ -1,0 +1,46 @@
+// Pattern: multi-stage-data-analysis-with-quality-control
+// Version: 1.0.0
+// Description: Multi-stage data analysis with quality control
+// Generated: 2025-07-26T22:57:07.348Z
+// Generator: @parallax/pattern-sdk
+// Primitives: parallel, consensus, threshold, retry
+
+// Pattern: Multi-stage data analysis with quality control
+// Uses primitives: parallel, consensus, threshold, retry
+export const multiStageDataAnalysisWithQualityControlPattern = (config) => {
+  input = config.input
+  agentList = config["agents"] || []
+  minConfidence = 0.85
+  // Main orchestration flow
+  
+  // Analyze data in parallel
+  // Execute agents in parallel - confidence will be extracted from responses
+  step1 = map(agentList, a => a.execute(input))
+  
+  // Build consensus from analyses
+  // Build consensus from results
+  totalConf = reduce(step1, (sum, r) => sum + (r.confidence || 0.5), 0)
+  avgConf = step1.length > 0 ? totalConf / step1.length : 0.5
+  step2 = {
+      type: "consensus",
+      results: step1,
+      confidence: avgConf
+    }
+  
+  // Filter low confidence results
+  // Apply confidence threshold
+  step3 = step2.confidence >= minConfidence ? step2 : null
+  
+  // Retry failed analyses
+  // Retry logic would go here
+  step4 = step3
+  
+  // Store final result
+  result = step4
+  
+  // Calculate final confidence from result
+  finalConfidence = result.confidence || 0.5
+  
+  // Return result with runtime confidence
+  return result ~> finalConfidence
+}

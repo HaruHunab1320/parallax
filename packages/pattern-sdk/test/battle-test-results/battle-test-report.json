@@ -1,0 +1,108 @@
+{
+  "summary": {
+    "totalTests": 5,
+    "successful": 2,
+    "failed": 3,
+    "successRate": 40,
+    "averageComplexity": 4.6,
+    "validSyntaxRate": 60,
+    "properConfidenceFlowRate": 100
+  },
+  "byCategory": {
+    "simple": {
+      "total": 1,
+      "successful": 0,
+      "failed": 1,
+      "successRate": 0
+    },
+    "consensus": {
+      "total": 1,
+      "successful": 0,
+      "failed": 1,
+      "successRate": 0
+    },
+    "error-handling": {
+      "total": 1,
+      "successful": 1,
+      "failed": 0,
+      "successRate": 100
+    },
+    "complex": {
+      "total": 1,
+      "successful": 0,
+      "failed": 1,
+      "successRate": 0
+    },
+    "edge-cases": {
+      "total": 1,
+      "successful": 1,
+      "failed": 0,
+      "successRate": 100
+    }
+  },
+  "commonIssues": [
+    {
+      "issue": "Validation error: Cannot apply / to type any",
+      "count": 2
+    },
+    {
+      "issue": "Parallel primitive used but no agent mapping found",
+      "count": 1
+    }
+  ],
+  "successfulPatterns": [
+    {
+      "id": "error-2",
+      "name": "Fallback pattern",
+      "category": "error-handling",
+      "complexity": 4.5,
+      "primitives": [
+        "sequential",
+        "threshold",
+        "fallback"
+      ]
+    },
+    {
+      "id": "edge-1",
+      "name": "No agents specified",
+      "category": "edge-cases",
+      "complexity": 2.5,
+      "primitives": [
+        "sequential",
+        "threshold"
+      ]
+    }
+  ],
+  "failedPatterns": [
+    {
+      "id": "simple-1",
+      "name": "Basic parallel execution",
+      "category": "simple",
+      "issues": [
+        "Validation error: Cannot apply / to type any"
+      ]
+    },
+    {
+      "id": "consensus-1",
+      "name": "Simple consensus",
+      "category": "consensus",
+      "issues": [
+        "Validation error: Cannot apply / to type any"
+      ]
+    },
+    {
+      "id": "complex-1",
+      "name": "Multi-stage pipeline with consensus",
+      "category": "complex",
+      "issues": [
+        "Parallel primitive used but no agent mapping found"
+      ]
+    }
+  ],
+  "recommendations": [
+    "Enhance Prism syntax generation to reduce validation errors",
+    "Improve handling of simple patterns (0% success rate)",
+    "Improve handling of consensus patterns (0% success rate)",
+    "Improve handling of complex patterns (0% success rate)"
+  ]
+}

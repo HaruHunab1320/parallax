@@ -9,6 +9,7 @@ pub mod agent_service;
 pub mod error;
 pub mod generated;
 pub mod parallax_agent;
+pub mod confidence;
 
 pub use client::{Client, ClientConfig};
 pub use types::*;
@@ -19,3 +20,13 @@ pub use error::{Error, Result};
 pub use patterns::PatternService;
 pub use agent_service::AgentService;
 pub use parallax_agent::{ParallaxAgent, AgentResult};
+
+// Re-export confidence utilities
+pub use confidence::{
+    ConfidenceConfig,
+    ConfidenceExtractor,
+    ExtractionStrategy,
+    ConfidenceAggregator,
+    with_confidence,
+    WithConfidence,
+};

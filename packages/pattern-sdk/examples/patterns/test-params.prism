@@ -1,0 +1,5 @@
+// Test different parameters
+
+export function test(data, config) {
+  return data ~> 0.9
+}

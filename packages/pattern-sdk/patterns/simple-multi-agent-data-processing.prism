@@ -1,0 +1,31 @@
+// Pattern: simple-multi-agent-data-processing
+// Version: 1.0.0
+// Description: Simple multi-agent data processing
+// Generated: 2025-07-25T20:12:49.157Z
+// Generator: @parallax/pattern-sdk
+// Primitives: parallel, threshold
+
+// Pattern: Simple multi-agent data processing
+// Uses primitives: parallel, threshold
+export const simpleMultiAgentDataProcessingPattern = (config) => {
+  input = config.input
+  agentList = config["agents"] || []
+  minConfidence = 0.8
+  // Main orchestration flow
+  
+  // Process data concurrently
+  step1 = {
+      type: "parallel",
+      tasks: agentList,
+      input: input
+    } ~> 1.0
+  
+  // Filter by confidence
+  step2 = step1
+  
+  // Store final result
+  result = step2
+  
+  // Return final result with confidence
+  return result ~> 0.8
+}

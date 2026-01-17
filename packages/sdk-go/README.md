@@ -218,12 +218,93 @@ go func() {
 stream, err := client.Patterns().StreamExecutions(ctx)
 ```
 
+## Confidence Extraction
+
+The SDK provides automatic confidence extraction utilities:
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/parallax/sdk-go/pkg/parallax"
+)
+
+// Create an agent with automatic confidence extraction
+func main() {
+    agent := parallax.NewParallaxAgent("my-agent", "My Agent", []string{"analysis"}, nil)
+    
+    // Create confidence extractor
+    extractor := parallax.NewConfidenceExtractor(0.7, "hybrid")
+    
+    // Wrap your analysis function with confidence extraction
+    agent.AnalyzeFunc = parallax.WithConfidence(
+        func(ctx context.Context, task string, data interface{}) (interface{}, error) {
+            // Your analysis logic - just return the result
+            result := map[string]interface{}{
+                "answer": "The sentiment is positive",
+                "details": "Based on keyword analysis...",
+            }
+            return result, nil
+        },
+        extractor,
+    )
+    
+    // Serve the agent
+    if err := agent.Serve(50051); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+### Confidence Aggregation
+
+```go
+// Aggregate confidence from multiple sources
+aggregator := &parallax.ConfidenceAggregator{}
+
+confidences := []float64{0.8, 0.85, 0.75, 0.9}
+
+// Different aggregation strategies
+minConf := aggregator.Combine(confidences, "min", nil)        // 0.75
+maxConf := aggregator.Combine(confidences, "max", nil)        // 0.9
+avgConf := aggregator.Combine(confidences, "avg", nil)        // 0.825
+consensusConf := aggregator.Combine(confidences, "consensus", nil) // Higher when values agree
+
+// Calculate confidence from result consistency
+results := []interface{}{
+    map[string]string{"answer": "positive"},
+    map[string]string{"answer": "positive"},
+    map[string]string{"answer": "neutral"},
+}
+consistencyConf := aggregator.FromConsistency(results) // ~0.8 (2 out of 3 agree)
+```
+
+### Require Minimum Confidence
+
+```go
+// Wrap function to enforce minimum confidence
+analyzeWithThreshold := parallax.RequireMinimumConfidence(0.8,
+    func(ctx context.Context, task string, data interface{}) (*parallax.AgentResult, error) {
+        // Your analysis that returns AgentResult
+        return &parallax.AgentResult{
+            Value: "Analysis result",
+            Confidence: 0.75, // This will fail the threshold
+        }, nil
+    },
+)
+
+// This will return an error because confidence is below 0.8
+result, err := analyzeWithThreshold(ctx, "analyze", data)
+```
+
 ## Examples
 
 See the [examples](examples/) directory for complete examples:
 
 - [Basic Usage](examples/basic/main.go) - Simple client usage
 - [Agent Implementation](examples/agent/main.go) - Implementing an agent
+- [Confidence Extraction](examples/confidence/main.go) - Using confidence utilities
 
 ## Development
 

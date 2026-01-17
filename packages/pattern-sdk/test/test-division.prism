@@ -1,0 +1,45 @@
+// Test division in Prism
+// This tests the exact issue we're having with reduce and division
+
+// Test 1: Basic division
+print("=== Test 1: Basic division ===")
+a = 10
+b = 2
+c = a / b
+print("10 / 2 = " + c)
+
+// Test 2: Division with reduce result
+print("\n=== Test 2: Division with reduce result ===")
+nums = [1, 2, 3, 4]
+sum = reduce(nums, (acc, n) => {
+  return acc + n
+}, 0)
+print("Sum: " + sum)
+count = 4
+avg = sum / count
+print("Average: " + avg)
+
+// Test 3: Our actual pattern case
+print("\n=== Test 3: Pattern case - confidence averaging ===")
+results = [
+  {task: "task1", confidence: 0.8},
+  {task: "task2", confidence: 0.9},
+  {task: "task3", confidence: 0.7}
+]
+
+totalConfidence = reduce(results, (sum, r) => {
+  return sum + r.confidence
+}, 0)
+print("Total confidence: " + totalConfidence)
+
+count = 3
+avgConfidence = totalConfidence / count
+print("Average confidence: " + avgConfidence)
+
+// Test 4: Does type annotation help?
+print("\n=== Test 4: With explicit number operations ===")
+// Force number type
+numericTotal = totalConfidence + 0
+numericCount = count + 0
+avgWithNumbers = numericTotal / numericCount
+print("Average with explicit numbers: " + avgWithNumbers)

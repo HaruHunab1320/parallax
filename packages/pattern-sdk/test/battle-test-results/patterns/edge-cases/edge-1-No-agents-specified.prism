@@ -1,0 +1,40 @@
+// Pattern Metadata
+// Name: ProcessData
+// Version: 1.0.0
+// Description: Process data
+// Minimum Agents: 1
+
+ProcessDataPattern = (input) => {
+  // Extract input data
+  data = input
+  task = "Process data"
+  minConfidence = 0.5
+
+  // Generic pattern - process input
+  // This is a simple pass-through with confidence
+
+  // Process the input
+  processedResult = {
+    task: task,
+    input: data,
+    processed: true
+  }
+
+  // Assign confidence based on goal
+  confidence = 0.7 // Default confidence
+  confidence = 0.5
+
+  // Build result
+  result = {
+    goal: "Process data",
+    status: "completed",
+    output: processedResult,
+    confidence: confidence
+  }
+
+  // Return with confidence
+  return result ~> confidence
+}
+
+// Export the pattern
+ProcessDataPattern

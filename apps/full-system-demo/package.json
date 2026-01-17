@@ -1,0 +1,20 @@
+{
+  "name": "@parallax/full-system-demo",
+  "version": "1.0.0",
+  "description": "Full system demonstration of Parallax capabilities",
+  "scripts": {
+    "dev": "tsx demo-agents.ts",
+    "demo": "tsx run-full-demo.ts",
+    "test-pattern": "tsx test-pattern-generation.ts"
+  },
+  "dependencies": {
+    "@parallax/sdk-typescript": "workspace:*",
+    "@parallax/meta-agents": "workspace:*",
+    "@parallax/primitives": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.0.0"
+  }
+}

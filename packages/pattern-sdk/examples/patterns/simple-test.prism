@@ -1,0 +1,6 @@
+// Simple test pattern
+
+export function testPattern(input) {
+  const result = input
+  return result ~> 0.9
+}

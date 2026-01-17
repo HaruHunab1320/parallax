@@ -1,0 +1,32 @@
+// Pattern: process-customer-feedback-in-parallel
+// Version: 1.0.0
+// Description: Process customer feedback in parallel
+// Generated: 2025-07-26T23:05:46.140Z
+// Generator: @parallax/pattern-sdk
+// Primitives: parallel, threshold
+
+// Pattern: Process customer feedback in parallel
+// Uses primitives: parallel, threshold
+export const processCustomerFeedbackInParallelPattern = (config) => {
+  input = config.input
+  agentList = config["agents"] || []
+  minConfidence = 0.7
+  // Main orchestration flow
+  
+  // To process customer feedback using sentiment analysis in parallel as required by the orchestration.
+  // Execute agents in parallel - confidence will be extracted from responses
+  step1 = map(agentList, a => a.execute(input))
+  
+  // To ensure the combined confidence level of sentiment analysis meets the minimum requirement.
+  // Apply confidence threshold
+  step2 = step1.confidence >= minConfidence ? step1 : null
+  
+  // Store final result
+  result = step2
+  
+  // Calculate final confidence from result
+  finalConfidence = result.confidence || 0.5
+  
+  // Return result with runtime confidence
+  return result ~> finalConfidence
+}

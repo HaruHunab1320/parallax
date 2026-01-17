@@ -1,0 +1,50 @@
+// Pattern: comprehensive-code-review-with-team-consensus
+// Version: 1.0.0
+// Description: Comprehensive code review with team consensus
+// Generated: 2025-07-26T22:54:11.550Z
+// Generator: @parallax/pattern-sdk
+// Primitives: parallel, consensus, threshold, retry, fallback
+
+// Pattern: Comprehensive code review with team consensus
+// Uses primitives: parallel, consensus, threshold, retry, fallback
+export const comprehensiveCodeReviewWithTeamConsensusPattern = (config) => {
+  input = config.input
+  agentList = config["agents"] || []
+  minConfidence = 0.9
+  // Main orchestration flow
+  
+  // Review by multiple agents concurrently
+  // Execute agents in parallel - confidence will be extracted from responses
+  step1 = map(agentList, a => a.execute(input))
+  
+  // Reach agreement on review findings
+  // Build consensus from results
+  totalConf = reduce(step1, (sum, r) => sum + (r.confidence || 0.5), 0)
+  avgConf = step1.length > 0 ? totalConf / step1.length : 0.5
+  step2 = {
+      type: "consensus",
+      results: step1,
+      confidence: avgConf
+    }
+  
+  // Ensure high confidence in results
+  // Apply confidence threshold
+  step3 = step2.confidence >= minConfidence ? step2 : null
+  
+  // Retry failed reviews
+  // Retry logic would go here
+  step4 = step3
+  
+  // Escalate to senior reviewer if needed
+  // Fallback logic would go here  
+  step5 = step4
+  
+  // Store final result
+  result = step5
+  
+  // Calculate final confidence from result
+  finalConfidence = result.confidence || 0.5
+  
+  // Return result with runtime confidence
+  return result ~> finalConfidence
+}
