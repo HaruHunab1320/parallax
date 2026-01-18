@@ -97,7 +97,7 @@ export class ParallaxHttpClient {
   async executePattern(name: string, input: any, options?: { timeout?: number }) {
     const response = await this.client.post(
       `/api/patterns/${name}/execute`,
-      input,
+      { input, options },
       {
         params: options,
         timeout: options?.timeout || 60000 // Default 60s for execution

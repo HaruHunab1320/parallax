@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"parallax/sdk-go/generated"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // patternService implements PatternService
@@ -17,49 +19,33 @@ type patternService struct {
 
 // List returns all available patterns
 func (s *patternService) List(ctx context.Context) ([]*Pattern, error) {
-	// TODO: Implement gRPC call
 	s.logger.Debug("Listing patterns")
-	
-	// Mock implementation
-	return []*Pattern{
-		{
-			Name:        "consensus-builder",
-			Description: "Builds consensus among multiple agents",
-			Enabled:     true,
-			RequiredCapabilities: []string{"analysis"},
-			Config: PatternConfig{
-				MinAgents:          3,
-				ConsensusThreshold: 0.7,
-			},
-		},
-		{
-			Name:        "map-reduce",
-			Description: "Distributes work across agents and aggregates results",
-			Enabled:     true,
-			RequiredCapabilities: []string{"processing"},
-			Config: PatternConfig{
-				MinAgents: 2,
-			},
-		},
-	}, nil
+
+	client := generated.NewPatternServiceClient(s.client.conn)
+	response, err := client.ListPatterns(ctx, &generated.ListPatternsRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	patterns := make([]*Pattern, 0, len(response.Patterns))
+	for _, pattern := range response.Patterns {
+		patterns = append(patterns, patternFromProto(pattern))
+	}
+
+	return patterns, nil
 }
 
 // Get returns a specific pattern by name
 func (s *patternService) Get(ctx context.Context, name string) (*Pattern, error) {
 	s.logger.Debug("Getting pattern", zap.String("name", name))
-	
-	patterns, err := s.List(ctx)
+
+	client := generated.NewPatternServiceClient(s.client.conn)
+	response, err := client.GetPattern(ctx, &generated.GetPatternRequest{Name: name})
 	if err != nil {
 		return nil, err
 	}
-	
-	for _, p := range patterns {
-		if p.Name == name {
-			return p, nil
-		}
-	}
-	
-	return nil, fmt.Errorf("pattern not found: %s", name)
+
+	return patternFromProto(response), nil
 }
 
 // Execute runs a pattern with the given input
@@ -73,128 +59,133 @@ func (s *patternService) Execute(ctx context.Context, pattern string, input inte
 	if opts == nil {
 		opts = &ExecuteOptions{}
 	}
-	
-	// Convert input to JSON for transport
-	inputJSON, err := json.Marshal(input)
+
+	inputStruct, err := toStruct(input)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal input: %w", err)
+		return nil, err
 	}
-	
-	// TODO: Implement gRPC call
-	
-	// Mock implementation
-	execution := &PatternExecution{
-		ID:        generateID(),
-		Pattern:   pattern,
-		Status:    ExecutionStatusRunning,
-		Input:     json.RawMessage(inputJSON),
-		Agents:    []string{"agent-1", "agent-2", "agent-3"},
-		StartTime: timeNow(),
-		Metadata:  opts.Metadata,
+
+	req := &generated.ExecutePatternRequest{
+		PatternName: pattern,
+		Input:       inputStruct,
+		Options: &generated.ExecutePatternRequest_Options{
+			TimeoutMs: int32(opts.Timeout.Milliseconds()),
+		},
 	}
-	
-	// Simulate async execution
-	if !opts.Async {
-		execution.Status = ExecutionStatusCompleted
-		execution.Output = map[string]interface{}{
-			"result": "consensus reached",
-			"confidence": 0.85,
-		}
-		endTime := timeNow()
-		execution.EndTime = &endTime
-		execution.Duration = endTime.Sub(execution.StartTime)
-		execution.Confidence = 0.85
+
+	client := generated.NewPatternServiceClient(s.client.conn)
+	response, err := client.ExecutePattern(ctx, req)
+	if err != nil {
+		return nil, err
 	}
-	
-	return execution, nil
+
+	return executionFromResponse(response, input), nil
 }
 
 // GetExecution returns the status of a pattern execution
 func (s *patternService) GetExecution(ctx context.Context, executionID string) (*PatternExecution, error) {
 	s.logger.Debug("Getting execution", zap.String("id", executionID))
-	
-	// TODO: Implement gRPC call
-	
-	// Mock implementation
-	return &PatternExecution{
-		ID:         executionID,
-		Pattern:    "consensus-builder",
-		Status:     ExecutionStatusCompleted,
-		Input:      map[string]interface{}{"task": "analyze sentiment"},
-		Output:     map[string]interface{}{"result": "positive", "confidence": 0.85},
-		Agents:     []string{"agent-1", "agent-2", "agent-3"},
-		StartTime:  timeNow().Add(-5 * timeMinute),
-		EndTime:    &[]time.Time{timeNow()}[0],
-		Duration:   5 * timeMinute,
-		Confidence: 0.85,
-	}, nil
+
+	return nil, fmt.Errorf("get execution is not supported by the gRPC API")
 }
 
 // ListExecutions returns recent pattern executions
 func (s *patternService) ListExecutions(ctx context.Context, limit int) ([]*PatternExecution, error) {
 	s.logger.Debug("Listing executions", zap.Int("limit", limit))
-	
-	// TODO: Implement gRPC call
-	
-	// Mock implementation
-	executions := make([]*PatternExecution, 0, limit)
-	for i := 0; i < limit && i < 10; i++ {
-		execution := &PatternExecution{
-			ID:         generateID(),
-			Pattern:    "consensus-builder",
-			Status:     ExecutionStatusCompleted,
-			Input:      map[string]interface{}{"task": fmt.Sprintf("task-%d", i)},
-			Output:     map[string]interface{}{"result": "success"},
-			Agents:     []string{"agent-1", "agent-2"},
-			StartTime:  timeNow().Add(-time.Duration(i) * timeHour),
-			EndTime:    &[]time.Time{timeNow().Add(-time.Duration(i) * timeHour).Add(5 * timeMinute)}[0],
-			Duration:   5 * timeMinute,
-			Confidence: 0.8 + float64(i)*0.01,
-		}
-		executions = append(executions, execution)
-	}
-	
-	return executions, nil
+
+	return nil, fmt.Errorf("list executions is not supported by the gRPC API")
 }
 
 // StreamExecutions streams pattern execution updates
 func (s *patternService) StreamExecutions(ctx context.Context) (<-chan *PatternExecution, error) {
 	s.logger.Debug("Streaming executions")
-	
-	// TODO: Implement gRPC streaming
-	
-	// Mock implementation
-	ch := make(chan *PatternExecution)
-	
-	go func() {
-		defer close(ch)
-		
-		ticker := timeTicker(5 * timeSecond)
-		defer ticker.Stop()
-		
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				execution := &PatternExecution{
-					ID:         generateID(),
-					Pattern:    "stream-test",
-					Status:     ExecutionStatusRunning,
-					Input:      map[string]interface{}{"streaming": true},
-					Agents:     []string{"agent-1"},
-					StartTime:  timeNow(),
-					Confidence: 0.75,
-				}
-				
-				select {
-				case ch <- execution:
-				case <-ctx.Done():
-					return
-				}
-			}
-		}
-	}()
-	
-	return ch, nil
+
+	return nil, fmt.Errorf("stream executions is not supported by the gRPC API")
+}
+
+func patternFromProto(pattern *generated.Pattern) *Pattern {
+	requirements := pattern.GetRequirements()
+	return &Pattern{
+		Name:                 pattern.GetName(),
+		Description:          pattern.GetDescription(),
+		Enabled:              true,
+		RequiredCapabilities: requirements.GetCapabilities(),
+		Config: PatternConfig{
+			MinAgents:           int(requirements.GetMinAgents()),
+			MaxAgents:           int(requirements.GetMaxAgents()),
+			ConfidenceThreshold: requirements.GetMinConfidence(),
+		},
+	}
+}
+
+func executionFromResponse(response *generated.ExecutePatternResponse, input interface{}) *PatternExecution {
+	metrics := response.GetMetrics()
+	var start time.Time
+	var end *time.Time
+	if metrics != nil && metrics.StartTime != nil {
+		start = metrics.StartTime.AsTime()
+	}
+	if metrics != nil && metrics.EndTime != nil {
+		endTime := metrics.EndTime.AsTime()
+		end = &endTime
+	}
+
+	var duration time.Duration
+	if end != nil && !start.IsZero() {
+		duration = end.Sub(start)
+	}
+
+	return &PatternExecution{
+		ID:         response.GetExecutionId(),
+		Pattern:    response.GetPatternName(),
+		Status:     statusFromProto(response.GetStatus()),
+		Input:      input,
+		Output:     structToMap(response.GetResult()),
+		Agents:     []string{},
+		StartTime:  start,
+		EndTime:    end,
+		Duration:   duration,
+		Confidence: response.GetConfidence(),
+		Error:      response.GetErrorMessage(),
+	}
+}
+
+func statusFromProto(status generated.ExecutePatternResponse_Status) ExecutionStatus {
+	switch status {
+	case generated.ExecutePatternResponse_SUCCESS:
+		return ExecutionStatusCompleted
+	case generated.ExecutePatternResponse_FAILURE:
+		return ExecutionStatusFailed
+	default:
+		return ExecutionStatusRunning
+	}
+}
+
+func toStruct(input interface{}) (*structpb.Struct, error) {
+	if input == nil {
+		return &structpb.Struct{Fields: map[string]*structpb.Value{}}, nil
+	}
+
+	if value, ok := input.(map[string]interface{}); ok {
+		return structpb.NewStruct(value)
+	}
+
+	raw, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal input: %w", err)
+	}
+
+	var value map[string]interface{}
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal input: %w", err)
+	}
+
+	return structpb.NewStruct(value)
+}
+
+func structToMap(value *structpb.Struct) map[string]interface{} {
+	if value == nil {
+		return nil
+	}
+	return value.AsMap()
 }

@@ -40,6 +40,15 @@ export abstract class ParallaxAgent {
    */
   abstract analyze(task: string, data?: any): Promise<AgentResponse>;
 
+  protected async streamAnalyze(
+    task: string,
+    data: any,
+    emit: (result: AgentResponse) => void
+  ): Promise<void> {
+    const result = await this.analyze(task, data);
+    emit(result);
+  }
+
   /**
    * Optional: Override to provide custom health checking
    */
@@ -99,8 +108,8 @@ export abstract class ParallaxAgent {
   async serve(port: number = 0): Promise<number> {
     // Add ConfidenceAgent service implementation
     this.server.addService(this.confidenceProto.ConfidenceAgent.service, {
-      execute: this.handleExecute.bind(this),
-      streamExecute: this.handleStreamExecute.bind(this),
+      analyze: this.handleAnalyze.bind(this),
+      streamAnalyze: this.handleStreamAnalyze.bind(this),
       getCapabilities: this.handleGetCapabilities.bind(this),
       healthCheck: this.handleHealthCheck.bind(this)
     });
@@ -149,11 +158,11 @@ export abstract class ParallaxAgent {
       agent: {
         id: this.id,
         name: this.name,
-        address: agentAddress,
+        endpoint: agentAddress,
         capabilities: this.capabilities,
-        metadata: this.metadata,
-        status: 'HEALTHY'
-      }
+        metadata: this.metadata
+      },
+      auto_renew: true
     };
 
     return new Promise((resolve, reject) => {
@@ -164,7 +173,7 @@ export abstract class ParallaxAgent {
         }
         
         console.log(`Agent ${this.name} registered with control plane`);
-        this.leaseId = response.registration?.lease_id;
+        this.leaseId = response.lease_id;
         
         // Start lease renewal
         this.startLeaseRenewal();
@@ -209,33 +218,32 @@ export abstract class ParallaxAgent {
   /**
    * Handle execute requests
    */
-  private async handleExecute(
+  private async handleAnalyze(
     call: grpc.ServerUnaryCall<any, any>,
     callback: grpc.sendUnaryData<any>
   ) {
     try {
       const request = call.request;
-      const task = request.task;
+      const taskDescription = request.task_description || request.task?.description || '';
+      const data = request.data || (request.task?.data ? JSON.parse(request.task.data) : undefined);
       
       // Call the agent's analyze method
       const result = await this.analyze(
-        task?.description || '',
-        task?.data ? JSON.parse(task.data) : undefined
+        taskDescription,
+        data
       );
       
       // Build response
       const response = {
-        result: {
-          value_json: JSON.stringify(result.value),
-          confidence: result.confidence,
-          agent_id: this.id,
-          timestamp: {
-            seconds: Math.floor(Date.now() / 1000),
-            nanos: 0
-          },
-          reasoning: result.reasoning || '',
-          metadata: result.metadata || {}
-        }
+        value_json: JSON.stringify(result.value),
+        confidence: result.confidence,
+        agent_id: this.id,
+        timestamp: {
+          seconds: Math.floor(Date.now() / 1000),
+          nanos: 0
+        },
+        reasoning: result.reasoning || '',
+        metadata: result.metadata || {}
       };
       
       callback(null, response);
@@ -250,21 +258,14 @@ export abstract class ParallaxAgent {
   /**
    * Handle streaming execute requests
    */
-  private async handleStreamExecute(call: grpc.ServerWritableStream<any, any>) {
+  private async handleStreamAnalyze(call: grpc.ServerWritableStream<any, any>) {
     try {
       const request = call.request;
-      const task = request.task;
-      
-      // For now, just execute once and return
-      // TODO: Implement proper streaming
-      const result = await this.analyze(
-        task?.description || '',
-        task?.data ? JSON.parse(task.data) : undefined
-      );
-      
-      // Send result
-      call.write({
-        result: {
+      const taskDescription = request.task_description || request.task?.description || '';
+      const data = request.data || (request.task?.data ? JSON.parse(request.task.data) : undefined);
+
+      await this.streamAnalyze(taskDescription, data, (result) => {
+        call.write({
           value_json: JSON.stringify(result.value),
           confidence: result.confidence,
           agent_id: this.id,
@@ -274,9 +275,9 @@ export abstract class ParallaxAgent {
           },
           reasoning: result.reasoning || '',
           metadata: result.metadata || {}
-        }
+        });
       });
-      
+
       call.end();
     } catch (error: any) {
       call.emit('error', {
@@ -294,6 +295,8 @@ export abstract class ParallaxAgent {
     callback: grpc.sendUnaryData<any>
   ) {
     callback(null, {
+      agent_id: this.id,
+      name: this.name,
       capabilities: this.capabilities,
       expertise_level: 'EXPERT',
       capability_scores: {}
@@ -310,7 +313,12 @@ export abstract class ParallaxAgent {
     const health = await this.checkHealth();
     callback(null, {
       status: health.status.toUpperCase(),
-      message: health.message
+      message: health.message,
+      last_check: {
+        seconds: Math.floor(Date.now() / 1000),
+        nanos: 0
+      },
+      details: {}
     });
   }
 
@@ -327,7 +335,7 @@ export abstract class ParallaxAgent {
     if (this.registryClient && this.id) {
       try {
         await new Promise<void>((resolve) => {
-          this.registryClient.unregister({ agent_id: this.id }, () => {
+          this.registryClient.unregister({ id: this.id }, () => {
             resolve();
           });
         });

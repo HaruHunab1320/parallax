@@ -3,6 +3,7 @@
  */
 
 import { AgentRegistry, GrpcAgentProxy } from '@parallax/runtime';
+import { ParallaxHttpClient } from './http-client';
 
 export interface ParallaxConfig {
   controlPlaneEndpoint?: string;
@@ -13,15 +14,19 @@ export interface ParallaxConfig {
 export class ParallaxClient {
   private config: ParallaxConfig;
   private agentRegistry: AgentRegistry;
+  private httpClient: ParallaxHttpClient;
   
   constructor(config: ParallaxConfig = {}) {
     this.config = {
-      controlPlaneEndpoint: config.controlPlaneEndpoint || process.env.PARALLAX_CONTROL_PLANE || 'localhost:50050',
+      controlPlaneEndpoint: config.controlPlaneEndpoint || process.env.PARALLAX_API_URL || process.env.PARALLAX_CONTROL_PLANE || 'http://localhost:3000',
       registryEndpoint: config.registryEndpoint || process.env.PARALLAX_REGISTRY || 'localhost:50051',
       localAgents: config.localAgents || process.env.PARALLAX_LOCAL_AGENTS
     };
     
     this.agentRegistry = new AgentRegistry();
+    this.httpClient = new ParallaxHttpClient({
+      baseURL: this.resolveControlPlaneUrl(this.config.controlPlaneEndpoint)
+    });
     this.initializeLocalAgents();
   }
   
@@ -86,38 +91,19 @@ export class ParallaxClient {
   
   // Pattern-related methods would connect to control plane
   async listPatterns(): Promise<string[]> {
-    // TODO: Connect to control plane
-    return [
-      'consensus-builder',
-      'epistemic-orchestrator', 
-      'uncertainty-router',
-      'confidence-cascade',
-      'load-balancer',
-      'cascading-refinement',
-      'parallel-exploration',
-      'multi-validator',
-      'uncertainty-mapreduce',
-      'robust-analysis'
-    ];
+    const patterns = await this.httpClient.listPatterns();
+    return patterns.map(pattern => pattern.name);
   }
   
-  async executePattern(patternName: string, input: any) {
-    // TODO: Connect to control plane via gRPC
-    console.log(`Would execute pattern ${patternName} with input:`, input);
-    
-    // Mock result
-    return {
-      pattern: patternName,
-      status: 'completed',
-      result: {
-        value: 'Mock result',
-        confidence: 0.85,
-        agents: [
-          { id: 'agent-1', name: 'Mock Agent 1', confidence: 0.9 },
-          { id: 'agent-2', name: 'Mock Agent 2', confidence: 0.8 }
-        ]
-      },
-      executionTime: 1234
-    };
+  async executePattern(patternName: string, input: any, options?: { timeout?: number }) {
+    return this.httpClient.executePattern(patternName, input, options);
+  }
+
+  private resolveControlPlaneUrl(endpoint?: string): string {
+    if (!endpoint) return 'http://localhost:3000';
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return endpoint;
+    }
+    return `http://${endpoint}`;
   }
 }

@@ -1,6 +1,6 @@
 use crate::{agent_service::AgentService, error::Result, patterns::PatternService};
 use std::time::Duration;
-use tonic::transport::{Channel, Endpoint};
+use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity};
 use tracing::info;
 
 /// Parallax client for interacting with the control plane
@@ -54,13 +54,20 @@ impl Client {
 
         // Configure TLS if provided
         if let Some(tls) = config.tls_config {
-            let mut tls_config = tonic::transport::ClientTlsConfig::new();
+            let mut tls_config = ClientTlsConfig::new();
             
             if let Some(domain) = tls.domain_name {
                 tls_config = tls_config.domain_name(domain);
             }
+
+            if !tls.ca_cert.is_empty() {
+                tls_config = tls_config.ca_certificate(Certificate::from_pem(tls.ca_cert));
+            }
+
+            if let (Some(cert), Some(key)) = (tls.client_cert, tls.client_key) {
+                tls_config = tls_config.identity(Identity::from_pem(cert, key));
+            }
             
-            // TODO: Add certificate configuration when tonic supports it better
             endpoint = endpoint.tls_config(tls_config)?;
         }
 
@@ -100,7 +107,8 @@ impl Client {
 
     /// Check if the control plane is healthy
     pub async fn health_check(&self) -> Result<bool> {
-        // TODO: Implement gRPC health check
-        Ok(true)
+        let mut patterns = PatternService::new(self.channel.clone());
+        let result = patterns.list().await;
+        Ok(result.is_ok())
     }
 }

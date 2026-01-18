@@ -6,6 +6,7 @@ import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
 import { Logger } from 'pino';
+import { v4 as uuidv4 } from 'uuid';
 
 const PROTO_DIR = path.join(__dirname, '../../../../proto');
 
@@ -72,16 +73,16 @@ export class AgentProxy {
       deadline.setSeconds(deadline.getSeconds() + Math.floor(timeout / 1000));
 
       const request = {
-        task: {
-          description: task.description,
-          data: task.data ? JSON.stringify(task.data) : undefined,
-          metadata: task.metadata || {}
-        }
+        task_id: uuidv4(),
+        task_description: task.description,
+        data: task.data || {},
+        context: task.metadata || {},
+        timeout_ms: timeout
       };
 
       this.logger.debug({ agentAddress, task }, 'Executing task on agent');
 
-      client.execute(request, { deadline }, (error: any, response: any) => {
+      client.analyze(request, { deadline }, (error: any, response: any) => {
         if (error) {
           this.logger.error({ error, agentAddress }, 'Failed to execute task on agent');
           resolve({
@@ -92,10 +93,10 @@ export class AgentProxy {
         }
 
         const result: AgentResult = {
-          value: response.result?.value_json ? JSON.parse(response.result.value_json) : undefined,
-          confidence: response.result?.confidence || 0,
-          reasoning: response.result?.reasoning,
-          metadata: response.result?.metadata || {},
+          value: response.value_json ? JSON.parse(response.value_json) : undefined,
+          confidence: response.confidence || 0,
+          reasoning: response.reasoning,
+          metadata: response.metadata || {},
           error: response.error
         };
 
@@ -121,21 +122,21 @@ export class AgentProxy {
       deadline.setSeconds(deadline.getSeconds() + Math.floor(timeout / 1000));
 
       const request = {
-        task: {
-          description: task.description,
-          data: task.data ? JSON.stringify(task.data) : undefined,
-          metadata: task.metadata || {}
-        }
+        task_id: uuidv4(),
+        task_description: task.description,
+        data: task.data || {},
+        context: task.metadata || {},
+        timeout_ms: timeout
       };
 
-      const stream = client.streamExecute(request, { deadline });
+      const stream = client.streamAnalyze(request, { deadline });
 
       stream.on('data', (response: any) => {
         const result: AgentResult = {
-          value: response.result?.value_json ? JSON.parse(response.result.value_json) : undefined,
-          confidence: response.result?.confidence || 0,
-          reasoning: response.result?.reasoning,
-          metadata: response.result?.metadata || {},
+          value: response.value_json ? JSON.parse(response.value_json) : undefined,
+          confidence: response.confidence || 0,
+          reasoning: response.reasoning,
+          metadata: response.metadata || {},
           error: response.error
         };
         

@@ -2,12 +2,15 @@ package parallax
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -72,8 +75,16 @@ func NewClient(config ClientConfig) (*Client, error) {
 
 	// Configure TLS if provided
 	if config.TLSConfig != nil {
-		// TODO: Implement TLS configuration
-		config.Logger.Warn("TLS configuration not yet implemented")
+		if config.TLSConfig.CAFile != "" {
+			creds, err := credentials.NewClientTLSFromFile(config.TLSConfig.CAFile, config.TLSConfig.ServerName)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load TLS config: %w", err)
+			}
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(creds))
+		} else {
+			tlsConfig := &tls.Config{ServerName: config.TLSConfig.ServerName}
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+		}
 	} else {
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
@@ -102,6 +113,7 @@ func NewClient(config ClientConfig) (*Client, error) {
 	client.agentSvc = &agentService{
 		client: client,
 		logger: config.Logger.With(zap.String("service", "agent")),
+		leases: make(map[string]string),
 	}
 
 	config.Logger.Info("Parallax client connected",
@@ -132,6 +144,17 @@ func (c *Client) Agents() AgentService {
 
 // HealthCheck checks if the control plane is healthy
 func (c *Client) HealthCheck(ctx context.Context) error {
-	// TODO: Implement health check using gRPC health protocol
+	if c.conn == nil {
+		return fmt.Errorf("client connection is not initialized")
+	}
+
+	client := grpc_health_v1.NewHealthClient(c.conn)
+	response, err := client.Check(ctx, &grpc_health_v1.HealthCheckRequest{})
+	if err != nil {
+		return err
+	}
+	if response.Status != grpc_health_v1.HealthCheckResponse_SERVING {
+		return fmt.Errorf("control plane health status: %s", response.Status.String())
+	}
 	return nil
 }

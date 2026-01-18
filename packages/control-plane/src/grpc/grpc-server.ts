@@ -90,7 +90,7 @@ export class GrpcServer {
       
       this.server.bindAsync(
         bindAddr,
-        grpc.ServerCredentials.createInsecure(), // TODO: Add mTLS for production
+        grpc.ServerCredentials.createInsecure(), // Insecure for local/dev; configure TLS in production.
         (error, actualPort) => {
           if (error) {
             this.logger.error({ error: error.message || error }, 'Failed to bind gRPC server');

@@ -1,10 +1,15 @@
 use crate::{
-    error::Result,
+    error::{Error, Result},
+    generated::parallax::patterns::{
+        pattern_service_client::PatternServiceClient, ExecutePatternRequest, GetPatternRequest,
+        ListPatternsRequest,
+    },
     types::{ExecuteOptions, Pattern, PatternExecution},
 };
 use futures::Stream;
+use prost_types::{value::Kind, ListValue, Struct, Value as ProtoValue};
 use serde_json::Value;
-use std::pin::Pin;
+use std::{collections::HashMap, pin::Pin};
 use tonic::transport::Channel;
 use tracing::{debug, info};
 
@@ -22,25 +27,21 @@ impl PatternService {
     /// List all available patterns
     pub async fn list(&self) -> Result<Vec<Pattern>> {
         debug!("Listing patterns");
-        
-        // TODO: Implement gRPC call
-        // Mock implementation
-        Ok(vec![
-            Pattern {
-                name: "consensus-builder".to_string(),
-                description: "Builds consensus among multiple agents".to_string(),
-                enabled: true,
-                required_capabilities: vec!["analysis".to_string()],
-                config: Default::default(),
-            },
-            Pattern {
-                name: "map-reduce".to_string(),
-                description: "Distributes work across agents and aggregates results".to_string(),
-                enabled: true,
-                required_capabilities: vec!["processing".to_string()],
-                config: Default::default(),
-            },
-        ])
+
+        let mut client = PatternServiceClient::new(self._channel.clone());
+        let response = client
+            .list_patterns(ListPatternsRequest {
+                tags: vec![],
+                include_scripts: false,
+            })
+            .await?
+            .into_inner();
+
+        Ok(response
+            .patterns
+            .into_iter()
+            .map(pattern_from_proto)
+            .collect())
     }
 
     /// Get a specific pattern by name
@@ -64,91 +65,45 @@ impl PatternService {
         info!("Executing pattern: {}", pattern);
         
         let options = options.unwrap_or_default();
-        
-        // TODO: Implement gRPC call
-        // Mock implementation
-        let execution = PatternExecution {
-            id: uuid::Uuid::new_v4().to_string(),
-            pattern: pattern.to_string(),
-            status: crate::types::ExecutionStatus::Running,
-            input: input.clone(),
-            output: None,
-            agents: vec!["agent-1".to_string(), "agent-2".to_string()],
-            start_time: chrono::Utc::now(),
-            end_time: None,
-            duration_ms: None,
-            confidence: None,
-            error: None,
-            metadata: options.metadata,
-        };
-        
-        // Simulate sync execution
-        if !options.async_execution.unwrap_or(false) {
-            let mut completed = execution.clone();
-            completed.status = crate::types::ExecutionStatus::Completed;
-            completed.output = Some(serde_json::json!({
-                "result": "consensus reached",
-                "confidence": 0.85
-            }));
-            completed.end_time = Some(chrono::Utc::now());
-            completed.duration_ms = Some(1500);
-            completed.confidence = Some(0.85);
-            return Ok(completed);
-        }
-        
-        Ok(execution)
+
+        let input_struct = json_to_struct(input.clone());
+        let mut client = PatternServiceClient::new(self._channel.clone());
+        let response = client
+            .execute_pattern(ExecutePatternRequest {
+                pattern_name: pattern.to_string(),
+                pattern_version: String::new(),
+                input: Some(input_struct),
+                options: Some(crate::generated::parallax::patterns::execute_pattern_request::Options {
+                    timeout_ms: options.timeout_ms.unwrap_or(30000) as i32,
+                    max_parallel: 0,
+                    cache_results: false,
+                    context: HashMap::new(),
+                }),
+            })
+            .await?
+            .into_inner();
+
+        Ok(execution_from_response(response, input, options.metadata))
     }
 
     /// Get execution status
     pub async fn get_execution(&self, execution_id: &str) -> Result<PatternExecution> {
         debug!("Getting execution: {}", execution_id);
-        
-        // TODO: Implement gRPC call
-        // Mock implementation
-        Ok(PatternExecution {
-            id: execution_id.to_string(),
-            pattern: "consensus-builder".to_string(),
-            status: crate::types::ExecutionStatus::Completed,
-            input: serde_json::json!({"task": "analyze sentiment"}),
-            output: Some(serde_json::json!({
-                "result": "positive",
-                "confidence": 0.85
-            })),
-            agents: vec!["agent-1".to_string(), "agent-2".to_string()],
-            start_time: chrono::Utc::now() - chrono::Duration::minutes(5),
-            end_time: Some(chrono::Utc::now()),
-            duration_ms: Some(300000),
-            confidence: Some(0.85),
-            error: None,
-            metadata: Default::default(),
-        })
+
+        Err(Error::InvalidArgument(format!(
+            "execution history is not supported via the gRPC API: {}",
+            execution_id
+        )))
     }
 
     /// List recent executions
     pub async fn list_executions(&self, limit: usize) -> Result<Vec<PatternExecution>> {
         debug!("Listing executions with limit: {}", limit);
-        
-        // TODO: Implement gRPC call
-        // Mock implementation
-        let mut executions = Vec::new();
-        for i in 0..limit.min(10) {
-            executions.push(PatternExecution {
-                id: uuid::Uuid::new_v4().to_string(),
-                pattern: "consensus-builder".to_string(),
-                status: crate::types::ExecutionStatus::Completed,
-                input: serde_json::json!({"task": format!("task-{}", i)}),
-                output: Some(serde_json::json!({"result": "success"})),
-                agents: vec!["agent-1".to_string(), "agent-2".to_string()],
-                start_time: chrono::Utc::now() - chrono::Duration::hours(i as i64),
-                end_time: Some(chrono::Utc::now() - chrono::Duration::hours(i as i64) + chrono::Duration::minutes(5)),
-                duration_ms: Some(300000),
-                confidence: Some(0.8 + (i as f64) * 0.01),
-                error: None,
-                metadata: Default::default(),
-            });
-        }
-        
-        Ok(executions)
+
+        Err(Error::InvalidArgument(format!(
+            "listing executions is not supported via the gRPC API (limit={})",
+            limit
+        )))
     }
 
     /// Stream execution updates
@@ -156,28 +111,144 @@ impl PatternService {
         &self,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<PatternExecution>> + Send>>> {
         debug!("Streaming executions");
-        
-        // TODO: Implement gRPC streaming
-        // Mock implementation using async-stream
-        use futures::stream;
-        
-        let stream = stream::iter((0..10).map(|_| {
-            Ok(PatternExecution {
-                id: uuid::Uuid::new_v4().to_string(),
-                pattern: "stream-test".to_string(),
-                status: crate::types::ExecutionStatus::Running,
-                input: serde_json::json!({"streaming": true}),
-                output: None,
-                agents: vec!["agent-1".to_string()],
-                start_time: chrono::Utc::now(),
-                end_time: None,
-                duration_ms: None,
-                confidence: Some(0.75),
-                error: None,
-                metadata: Default::default(),
-            })
-        }));
-        
-        Ok(Box::pin(stream))
+
+        Err(Error::InvalidArgument(
+            "streaming executions is not supported via the gRPC API".to_string(),
+        ))
     }
+}
+
+fn pattern_from_proto(pattern: crate::generated::parallax::patterns::Pattern) -> Pattern {
+    let requirements = pattern.requirements.unwrap_or_default();
+
+    Pattern {
+        name: pattern.name,
+        description: pattern.description,
+        enabled: true,
+        required_capabilities: requirements.capabilities,
+        config: crate::types::PatternConfig {
+            min_agents: Some(requirements.min_agents),
+            max_agents: Some(requirements.max_agents),
+            confidence_threshold: Some(requirements.min_confidence),
+            ..Default::default()
+        },
+    }
+}
+
+fn execution_from_response(
+    response: crate::generated::parallax::patterns::ExecutePatternResponse,
+    input: Value,
+    metadata: HashMap<String, Value>,
+) -> PatternExecution {
+    let metrics = response.metrics;
+    let (start_time, end_time, duration_ms) = if let Some(metrics) = metrics {
+        let start_time = timestamp_to_datetime(metrics.start_time);
+        let end_time = metrics.end_time.map(timestamp_to_datetime);
+        let duration_ms = end_time
+            .map(|end| (end - start_time).num_milliseconds().max(0) as u64);
+        (start_time, end_time, duration_ms)
+    } else {
+        (chrono::Utc::now(), None, None)
+    };
+
+    PatternExecution {
+        id: response.execution_id,
+        pattern: response.pattern_name,
+        status: status_from_proto(response.status),
+        input,
+        output: response.result.map(struct_to_json),
+        agents: Vec::new(),
+        start_time,
+        end_time,
+        duration_ms,
+        confidence: Some(response.confidence),
+        error: if response.error_message.is_empty() {
+            None
+        } else {
+            Some(response.error_message)
+        },
+        metadata,
+    }
+}
+
+fn status_from_proto(status: i32) -> crate::types::ExecutionStatus {
+    use crate::types::ExecutionStatus;
+    match status {
+        1 => ExecutionStatus::Completed,
+        2 => ExecutionStatus::Failed,
+        _ => ExecutionStatus::Running,
+    }
+}
+
+fn json_to_struct(value: Value) -> Struct {
+    match value {
+        Value::Object(map) => Struct {
+            fields: map
+                .into_iter()
+                .map(|(key, value)| (key, json_to_value(value)))
+                .collect(),
+        },
+        other => {
+            let mut fields = HashMap::new();
+            fields.insert("value".to_string(), json_to_value(other));
+            Struct { fields }
+        }
+    }
+}
+
+fn json_to_value(value: Value) -> ProtoValue {
+    let kind = match value {
+        Value::Null => Kind::NullValue(0),
+        Value::Bool(value) => Kind::BoolValue(value),
+        Value::Number(value) => Kind::NumberValue(value.as_f64().unwrap_or_default()),
+        Value::String(value) => Kind::StringValue(value),
+        Value::Array(values) => Kind::ListValue(ListValue {
+            values: values.into_iter().map(json_to_value).collect(),
+        }),
+        Value::Object(values) => Kind::StructValue(Struct {
+            fields: values
+                .into_iter()
+                .map(|(key, value)| (key, json_to_value(value)))
+                .collect(),
+        }),
+    };
+
+    ProtoValue { kind: Some(kind) }
+}
+
+fn struct_to_json(value: Struct) -> Value {
+    Value::Object(
+        value
+            .fields
+            .into_iter()
+            .map(|(key, value)| (key, value_to_json(value)))
+            .collect(),
+    )
+}
+
+fn value_to_json(value: ProtoValue) -> Value {
+    match value.kind {
+        Some(Kind::NullValue(_)) => Value::Null,
+        Some(Kind::BoolValue(value)) => Value::Bool(value),
+        Some(Kind::NumberValue(value)) => serde_json::Number::from_f64(value)
+            .map(Value::Number)
+            .unwrap_or(Value::Null),
+        Some(Kind::StringValue(value)) => Value::String(value),
+        Some(Kind::ListValue(list)) => Value::Array(
+            list.values
+                .into_iter()
+                .map(value_to_json)
+                .collect(),
+        ),
+        Some(Kind::StructValue(struct_value)) => struct_to_json(struct_value),
+        None => Value::Null,
+    }
+}
+
+fn timestamp_to_datetime(timestamp: prost_types::Timestamp) -> chrono::DateTime<chrono::Utc> {
+    let nanos = timestamp.nanos as u32;
+    let seconds = timestamp.seconds;
+    let naive = chrono::NaiveDateTime::from_timestamp_opt(seconds, nanos)
+        .unwrap_or_else(|| chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap());
+    chrono::DateTime::<chrono::Utc>::from_utc(naive, chrono::Utc)
 }

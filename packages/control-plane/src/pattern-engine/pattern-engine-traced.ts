@@ -13,6 +13,8 @@ import { DatabaseService } from '../db/database.service';
 import { IPatternEngine } from './interfaces';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 export class TracedPatternEngine implements IPatternEngine {
   private loader: PatternLoader;
@@ -26,7 +28,7 @@ export class TracedPatternEngine implements IPatternEngine {
   constructor(
     private runtimeManager: RuntimeManager,
     private agentRegistry: EtcdRegistry,
-    patternsDir: string,
+    private patternsDir: string,
     private logger: Logger,
     private database?: DatabaseService
   ) {
@@ -255,6 +257,43 @@ export class TracedPatternEngine implements IPatternEngine {
   async reloadPatterns(): Promise<void> {
     await this.loader.loadPatterns();
   }
+
+  async savePattern(
+    pattern: Pattern,
+    options?: { overwrite?: boolean }
+  ): Promise<Pattern> {
+    if (!pattern.name) {
+      throw new Error('Pattern name is required');
+    }
+    if (!pattern.script) {
+      throw new Error('Pattern script is required');
+    }
+
+    await fs.mkdir(this.patternsDir, { recursive: true });
+    const filePath = path.join(this.patternsDir, `${pattern.name}.prism`);
+
+    if (!options?.overwrite) {
+      try {
+        await fs.access(filePath);
+        throw new Error(`Pattern ${pattern.name} already exists`);
+      } catch (error: any) {
+        if (error?.code !== 'ENOENT') {
+          throw error;
+        }
+      }
+    }
+
+    const content = this.buildPatternFileContent(pattern);
+    await fs.writeFile(filePath, content, 'utf-8');
+    await this.loader.reloadPattern(pattern.name);
+
+    const saved = this.loader.getPattern(pattern.name);
+    if (!saved) {
+      throw new Error(`Failed to load saved pattern ${pattern.name}`);
+    }
+
+    return saved;
+  }
   
   // Additional methods for compatibility
   registerLocalAgents(agents: any[]): void {
@@ -263,5 +302,27 @@ export class TracedPatternEngine implements IPatternEngine {
 
   getCalibrationService(): ConfidenceCalibrationService {
     return this._calibrationService;
+  }
+
+  private buildPatternFileContent(pattern: Pattern): string {
+    const metadataLines: string[] = [];
+
+    if (pattern.name) metadataLines.push(`@name ${pattern.name}`);
+    if (pattern.version) metadataLines.push(`@version ${pattern.version}`);
+    if (pattern.description) metadataLines.push(`@description ${pattern.description}`);
+    if (pattern.input) metadataLines.push(`@input ${JSON.stringify(pattern.input)}`);
+    if (pattern.agents) metadataLines.push(`@agents ${JSON.stringify(pattern.agents)}`);
+    if (typeof pattern.minAgents === 'number') metadataLines.push(`@minAgents ${pattern.minAgents}`);
+    if (typeof pattern.maxAgents === 'number') metadataLines.push(`@maxAgents ${pattern.maxAgents}`);
+    if (pattern.metadata && Object.keys(pattern.metadata).length > 0) {
+      metadataLines.push(`@metadata ${JSON.stringify(pattern.metadata)}`);
+    }
+
+    if (metadataLines.length === 0) {
+      return pattern.script.trim();
+    }
+
+    const header = `/**\n${metadataLines.map(line => ` * ${line}`).join('\n')}\n */\n`;
+    return `${header}${pattern.script.trim()}`;
   }
 }

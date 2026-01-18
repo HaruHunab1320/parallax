@@ -14,7 +14,7 @@ from parallax import (
     serve_agent,
     AnalyzeResult
 )
-# from parallax.client import ParallaxClient  # TODO: Implement client
+# from parallax.client import ParallaxClient  # Client not yet available in Python SDK
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')

@@ -9,12 +9,19 @@ import { CircuitBreaker } from './circuit-breaker';
 import { LoadBalancer, LoadBalancingStrategy } from './load-balancer';
 import { Logger } from 'pino';
 import { EventEmitter } from 'events';
+import * as grpc from '@grpc/grpc-js';
+import * as protoLoader from '@grpc/proto-loader';
+import path from 'path';
+
+const PROTO_DIR = path.join(__dirname, '../../../proto');
 
 export class AgentProxy extends EventEmitter {
   private connections: Map<string, AgentConnection> = new Map();
   private circuitBreakers: Map<string, CircuitBreaker> = new Map();
   private loadBalancer: LoadBalancer;
   private requestTimestamps: Map<string, number[]> = new Map();
+  private grpcClients: Map<string, any> = new Map();
+  private confidenceProto: any;
 
   constructor(
     private config: ProxyConfig,
@@ -23,6 +30,22 @@ export class AgentProxy extends EventEmitter {
   ) {
     super();
     this.loadBalancer = new LoadBalancer(loadBalancingStrategy);
+    this.loadProto();
+  }
+
+  private loadProto(): void {
+    const protoPath = path.join(PROTO_DIR, 'confidence.proto');
+    const packageDefinition = protoLoader.loadSync(protoPath, {
+      keepCase: true,
+      longs: String,
+      enums: String,
+      defaults: true,
+      oneofs: true,
+      includeDirs: [PROTO_DIR]
+    });
+
+    const protoDescriptor = grpc.loadPackageDefinition(packageDefinition) as any;
+    this.confidenceProto = protoDescriptor.parallax.confidence;
   }
 
   async registerAgent(id: string, endpoint: string, protocol: 'grpc' | 'http' = 'grpc'): Promise<void> {
@@ -62,7 +85,25 @@ export class AgentProxy extends EventEmitter {
     if (!connection) return;
 
     try {
-      // TODO: Implement actual connection logic based on protocol
+      if (connection.protocol === 'http') {
+        const url = this.resolveHttpUrl(connection.endpoint, 'health');
+        const response = await fetch(url, { method: 'GET' });
+        if (!response.ok) {
+          throw new Error(`HTTP health check failed (${response.status})`);
+        }
+      } else {
+        const client = this.getGrpcClient(connection.endpoint);
+        await new Promise<void>((resolve, reject) => {
+          client.healthCheck({}, (error: any) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+            resolve();
+          });
+        });
+      }
+
       connection.status = 'connected';
       connection.lastSeen = new Date();
       
@@ -144,25 +185,95 @@ export class AgentProxy extends EventEmitter {
     agent: AgentConnection,
     request: ProxyRequest
   ): Promise<T> {
-    // TODO: Implement actual request execution based on protocol
-    // This is a placeholder implementation
-    
     if (agent.status !== 'connected') {
       throw new Error(`Agent ${agent.id} is not connected`);
     }
 
-    // Simulate request with timeout
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Request timeout'));
-      }, request.timeout ?? this.config.timeout);
+    if (agent.protocol === 'http') {
+      return this.executeHttpRequest<T>(agent, request);
+    }
 
-      // Simulate successful response
-      setTimeout(() => {
-        clearTimeout(timeout);
-        resolve({ success: true, method: request.method } as any);
-      }, 100);
+    return this.executeGrpcRequest<T>(agent, request);
+  }
+
+  private async executeHttpRequest<T>(
+    agent: AgentConnection,
+    request: ProxyRequest
+  ): Promise<T> {
+    const url = this.resolveHttpUrl(agent.endpoint, request.method);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      request.timeout ?? this.config.timeout
+    );
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(request.payload ?? {}),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} from agent ${agent.id}`);
+      }
+
+      return (await response.json()) as T;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private async executeGrpcRequest<T>(
+    agent: AgentConnection,
+    request: ProxyRequest
+  ): Promise<T> {
+    const client = this.getGrpcClient(agent.endpoint);
+    const taskDescription =
+      request.payload?.task || request.payload?.description || request.method;
+    const data = request.payload?.data ?? request.payload ?? {};
+
+    const grpcRequest = {
+      task_description: taskDescription,
+      data,
+      timeout_ms: request.timeout ?? this.config.timeout
+    };
+
+    return new Promise<T>((resolve, reject) => {
+      client.analyze(grpcRequest, (error: any, response: any) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        const parsed = response?.value_json ? JSON.parse(response.value_json) : response;
+        resolve({
+          value: parsed,
+          confidence: response?.confidence
+        } as T);
+      });
     });
+  }
+
+  private getGrpcClient(endpoint: string): any {
+    if (!this.grpcClients.has(endpoint)) {
+      const client = new this.confidenceProto.ConfidenceAgent(
+        endpoint,
+        grpc.credentials.createInsecure()
+      );
+      this.grpcClients.set(endpoint, client);
+    }
+
+    return this.grpcClients.get(endpoint);
+  }
+
+  private resolveHttpUrl(endpoint: string, pathSuffix: string): string {
+    const base = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
+    const suffix = pathSuffix.startsWith('/') ? pathSuffix : `/${pathSuffix}`;
+    return `${base}${suffix}`;
   }
 
   private checkRateLimit(agentId: string): boolean {

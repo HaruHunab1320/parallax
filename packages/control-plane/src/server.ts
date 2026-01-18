@@ -19,6 +19,8 @@ import { DatabaseService } from './db/database.service';
 import { GrpcServer } from './grpc';
 import path from 'path';
 import { createServer as createHttpServer } from 'http';
+import { WebSocketServer } from 'ws';
+import { URL } from 'url';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -146,10 +148,27 @@ export async function createServer(): Promise<express.Application> {
     
     // Set up WebSocket handler for execution streaming
     const wsHandler = createExecutionWebSocketHandler(executionsRouter);
+    const wsServer = new WebSocketServer({ noServer: true });
     
-    // TODO: Add WebSocket server setup here when needed
-    // This would typically involve using the 'ws' package to create a WebSocket server
-    // that uses the wsHandler for incoming connections
+    server.on('upgrade', (req, socket, head) => {
+      if (!req.url) {
+        socket.destroy();
+        return;
+      }
+
+      const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      const match = url.pathname.match(/^\/api\/executions\/([^/]+)\/stream$/);
+      if (!match) {
+        socket.destroy();
+        return;
+      }
+
+      const executionId = match[1];
+      wsServer.handleUpgrade(req, socket, head, (ws) => {
+        (req as any).params = { id: executionId };
+        wsHandler(ws, req);
+      });
+    });
     
     // Start gRPC server
     try {
@@ -166,7 +185,7 @@ export async function createServer(): Promise<express.Application> {
       logger.info(`Health check: http://localhost:${port}/health`);
       logger.info(`API: http://localhost:${port}/api`);
       logger.info(`gRPC: 0.0.0.0:${grpcPort}`);
-      logger.info(`WebSocket: ws://localhost:${port}/api/executions/stream`);
+      logger.info(`WebSocket: ws://localhost:${port}/api/executions/:id/stream`);
       logger.info(`Tracing: ${tracingConfig.exporterType === 'none' ? 'Disabled' : 'Enabled'}`);
     });
     

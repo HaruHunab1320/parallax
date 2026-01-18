@@ -14,4 +14,6 @@ export interface IPatternEngine {
   listPatterns(): Pattern[];
   getExecution(id: string): PatternExecution | undefined;
   getMetrics(): ExecutionMetrics[];
+  reloadPatterns(): Promise<void>;
+  savePattern(pattern: Pattern, options?: { overwrite?: boolean }): Promise<Pattern>;
 }

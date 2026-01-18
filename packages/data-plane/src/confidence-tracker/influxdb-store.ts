@@ -84,7 +84,12 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
             task: record.task,
             confidence: record._value,
             timestamp: new Date(record._time),
-            metadata: {} // TODO: Extract metadata fields
+            metadata: Object.entries(record).reduce((acc, [key, value]) => {
+              if (key.startsWith('meta_')) {
+                acc[key.slice(5)] = value;
+              }
+              return acc;
+            }, {} as Record<string, any>)
           });
         },
         error(error) {

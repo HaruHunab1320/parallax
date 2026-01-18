@@ -1,5 +1,9 @@
 use crate::{
-    error::Result,
+    error::{Error, Result},
+    generated::parallax::registry::{
+        registry_client::RegistryClient, AgentRegistration, GetAgentRequest, ListAgentsRequest,
+        RegisterRequest, RenewRequest, WatchRequest,
+    },
     types::{Agent, AgentStatus},
 };
 use futures::{Stream, StreamExt};
@@ -30,54 +34,51 @@ impl AgentService {
         // Update last seen
         agent.last_seen = chrono::Utc::now();
         
-        // TODO: Implement gRPC call
-        
+        let metadata = agent.metadata.clone();
+        let request = RegisterRequest {
+            agent: Some(AgentRegistration {
+                id: agent.id.clone(),
+                name: agent.name.clone(),
+                endpoint: agent.endpoint.clone(),
+                capabilities: agent.capabilities.clone(),
+                metadata: Some(crate::generated::parallax::registry::agent_registration::Metadata {
+                    version: metadata.get("version").cloned().unwrap_or_default(),
+                    region: metadata.get("region").cloned().unwrap_or_default(),
+                    labels: metadata,
+                    default_confidence: agent.confidence,
+                }),
+                registered_at: None,
+                ttl: None,
+            }),
+            auto_renew: true,
+        };
+
+        let mut client = RegistryClient::new(self._channel.clone());
+        client.register(request).await?;
+
         Ok(agent)
     }
 
     /// List all agents
     pub async fn list(&self) -> Result<Vec<Agent>> {
         debug!("Listing agents");
-        
-        // TODO: Implement gRPC call
-        // Mock implementation
-        Ok(vec![
-            Agent {
-                id: "agent-1".to_string(),
-                name: "Sentiment Analyzer".to_string(),
-                status: AgentStatus::Active,
-                capabilities: vec!["sentiment".to_string(), "analysis".to_string()],
-                endpoint: "localhost:50051".to_string(),
-                last_seen: chrono::Utc::now(),
-                confidence: 0.85,
-                metadata: [
-                    ("version".to_string(), "1.0.0".to_string()),
-                    ("region".to_string(), "us-east-1".to_string()),
-                ]
-                .into_iter()
-                .collect(),
-            },
-            Agent {
-                id: "agent-2".to_string(),
-                name: "Data Processor".to_string(),
-                status: AgentStatus::Active,
-                capabilities: vec!["processing".to_string(), "transform".to_string()],
-                endpoint: "localhost:50052".to_string(),
-                last_seen: chrono::Utc::now() - chrono::Duration::seconds(30),
-                confidence: 0.92,
-                metadata: Default::default(),
-            },
-            Agent {
-                id: "agent-3".to_string(),
-                name: "ML Predictor".to_string(),
-                status: AgentStatus::Inactive,
-                capabilities: vec!["prediction".to_string(), "ml".to_string()],
-                endpoint: "localhost:50053".to_string(),
-                last_seen: chrono::Utc::now() - chrono::Duration::minutes(5),
-                confidence: 0.78,
-                metadata: Default::default(),
-            },
-        ])
+
+        let mut client = RegistryClient::new(self._channel.clone());
+        let response = client
+            .list_agents(ListAgentsRequest {
+                capabilities: vec![],
+                labels: Default::default(),
+                limit: 0,
+                continuation_token: String::new(),
+            })
+            .await?
+            .into_inner();
+
+        Ok(response
+            .agents
+            .into_iter()
+            .map(agent_from_registration)
+            .collect())
     }
 
     /// Get a specific agent
@@ -94,10 +95,11 @@ impl AgentService {
     /// Update agent status
     pub async fn update_status(&self, id: &str, status: AgentStatus) -> Result<()> {
         info!("Updating agent status: {} -> {:?}", id, status);
-        
-        // TODO: Implement gRPC call
-        
-        Ok(())
+
+        Err(Error::InvalidArgument(format!(
+            "update status is not supported by the registry API: {}",
+            id
+        )))
     }
 
     /// Update agent confidence
@@ -110,56 +112,91 @@ impl AgentService {
             ));
         }
         
-        // TODO: Implement gRPC call
-        
-        Ok(())
+
+        Err(Error::InvalidArgument(format!(
+            "update confidence is not supported by the registry API: {}",
+            id
+        )))
     }
 
     /// Send heartbeat for an agent
     pub async fn heartbeat(&self, id: &str) -> Result<()> {
         debug!("Sending heartbeat for agent: {}", id);
-        
-        // TODO: Implement gRPC call
-        
+
+        let mut client = RegistryClient::new(self._channel.clone());
+        client
+            .renew(RenewRequest {
+                lease_id: format!("lease-{}", id),
+                ttl: None,
+            })
+            .await?;
         Ok(())
     }
 
     /// Unregister an agent
     pub async fn unregister(&self, id: &str) -> Result<()> {
         info!("Unregistering agent: {}", id);
-        
-        // TODO: Implement gRPC call
-        
+
+        let mut client = RegistryClient::new(self._channel.clone());
+        client
+            .unregister(AgentRegistration {
+                id: id.to_string(),
+                name: String::new(),
+                endpoint: String::new(),
+                capabilities: Vec::new(),
+                metadata: None,
+                registered_at: None,
+                ttl: None,
+            })
+            .await?;
+
         Ok(())
     }
 
     /// Stream agent updates
     pub async fn stream_agents(&self) -> Result<Pin<Box<dyn Stream<Item = Result<Agent>> + Send>>> {
         debug!("Streaming agents");
-        
-        // TODO: Implement gRPC streaming
-        // Mock implementation
-        use futures::stream;
-        
-        let agents = self.list().await?;
-        let initial_stream = stream::iter(agents.into_iter().map(Ok));
-        
-        // Simulate updates
-        let update_stream = stream::iter((0..5).map(|i| {
-            Ok(Agent {
-                id: format!("agent-{}", i),
-                name: "Dynamic Agent".to_string(),
-                status: AgentStatus::Active,
-                capabilities: vec!["dynamic".to_string()],
-                endpoint: "localhost:50099".to_string(),
-                last_seen: chrono::Utc::now(),
-                confidence: 0.5 + (i as f64) / 10.0,
-                metadata: Default::default(),
+
+        let mut client = RegistryClient::new(self._channel.clone());
+        let stream = client
+            .watch(WatchRequest {
+                capabilities: vec![],
+                include_initial: true,
             })
-        }));
-        
-        let combined = initial_stream.chain(update_stream);
-        
-        Ok(Box::pin(combined))
+            .await?
+            .into_inner();
+
+        let mapped = stream.filter_map(|event| async move {
+            match event {
+                Ok(event) => event.agent.map(|agent| Ok(agent_from_registration(agent))),
+                Err(error) => Some(Err(Error::from(error))),
+            }
+        });
+
+        Ok(Box::pin(mapped))
+    }
+}
+
+fn agent_from_registration(agent: AgentRegistration) -> Agent {
+    let metadata = agent
+        .metadata
+        .as_ref()
+        .map(|metadata| metadata.labels.clone())
+        .unwrap_or_default();
+    let confidence = agent
+        .metadata
+        .as_ref()
+        .map(|metadata| metadata.default_confidence)
+        .unwrap_or(0.0);
+
+    Agent {
+        id: agent.id,
+        name: agent.name,
+        status: AgentStatus::Active,
+        capabilities: agent.capabilities,
+        endpoint: agent.endpoint,
+        last_seen: chrono::Utc::now(),
+        confidence,
+        metadata,
     }
 }

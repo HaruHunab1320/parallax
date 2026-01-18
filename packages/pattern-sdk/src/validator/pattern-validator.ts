@@ -292,7 +292,7 @@ export class PatternValidator {
     });
     
     // Fix confidence operator format
-    fixedCode = fixedCode.replace(/(\w+)\s*~>\s*(?![\d.])/g, '$1 ~> 0.5 // TODO: Set appropriate confidence');
+    fixedCode = fixedCode.replace(/(\w+)\s*~>\s*(?![\d.])/g, '$1 ~> 0.5 // default confidence applied');
     
     // Fix missing export
     if (!fixedCode.includes('export')) {

@@ -27,6 +27,8 @@ export interface ListOptions {
 }
 
 export class TenantService {
+  private usageStore: Map<string, TenantUsage> = new Map();
+
   constructor(
     private store: TenantStore,
     private logger: Logger
@@ -179,33 +181,64 @@ export class TenantService {
     tenantId: string,
     period: UsagePeriod
   ): Promise<TenantUsage> {
-    // TODO: Implement actual usage tracking
     const tenant = await this.getTenant(tenantId);
     if (!tenant) {
       throw new Error(`Tenant not found: ${tenantId}`);
     }
 
-    return {
-      tenantId,
-      period,
-      agents: {
-        current: 0,
-        peak: 0,
-      },
-      executions: {
-        total: 0,
-        successful: 0,
-        failed: 0,
-      },
-      storage: {
-        usedGB: 0,
-        percentUsed: 0,
-      },
-      apiCalls: {
-        total: 0,
-        byEndpoint: {},
-      },
-    };
+    const usage = this.usageStore.get(tenantId) || this.createEmptyUsage(tenantId, period);
+    usage.period = period;
+    usage.storage.percentUsed = tenant.limits.maxStorageGB > 0
+      ? (usage.storage.usedGB / tenant.limits.maxStorageGB) * 100
+      : 0;
+
+    this.usageStore.set(tenantId, usage);
+    return usage;
+  }
+
+  recordUsage(
+    tenantId: string,
+    period: UsagePeriod,
+    update: {
+      agents?: { currentDelta?: number; peak?: number };
+      executions?: { totalDelta?: number; successfulDelta?: number; failedDelta?: number };
+      storage?: { usedGBDelta?: number };
+      apiCalls?: { endpoint?: string; count?: number };
+    }
+  ): void {
+    const usage = this.usageStore.get(tenantId) || this.createEmptyUsage(tenantId, period);
+    usage.period = period;
+
+    if (update.agents) {
+      usage.agents.current += update.agents.currentDelta || 0;
+      if (typeof update.agents.peak === 'number') {
+        usage.agents.peak = Math.max(usage.agents.peak, update.agents.peak);
+      } else {
+        usage.agents.peak = Math.max(usage.agents.peak, usage.agents.current);
+      }
+    }
+
+    if (update.executions) {
+      usage.executions.total += update.executions.totalDelta || 0;
+      usage.executions.successful += update.executions.successfulDelta || 0;
+      usage.executions.failed += update.executions.failedDelta || 0;
+    }
+
+    if (update.storage) {
+      usage.storage.usedGB += update.storage.usedGBDelta || 0;
+    }
+
+    if (update.apiCalls) {
+      const count = update.apiCalls.count || 0;
+      usage.apiCalls.total += count;
+      if (update.apiCalls.endpoint) {
+        const endpoint = update.apiCalls.endpoint;
+        usage.apiCalls.byEndpoint[endpoint] =
+          (usage.apiCalls.byEndpoint[endpoint] || 0) + count;
+      }
+    }
+
+    this.usageStore.set(tenantId, usage);
   }
 
   /**
@@ -246,6 +279,30 @@ export class TenantService {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .substring(0, 50);
+  }
+
+  private createEmptyUsage(tenantId: string, period: UsagePeriod): TenantUsage {
+    return {
+      tenantId,
+      period,
+      agents: {
+        current: 0,
+        peak: 0,
+      },
+      executions: {
+        total: 0,
+        successful: 0,
+        failed: 0,
+      },
+      storage: {
+        usedGB: 0,
+        percentUsed: 0,
+      },
+      apiCalls: {
+        total: 0,
+        byEndpoint: {},
+      },
+    };
   }
 }
 

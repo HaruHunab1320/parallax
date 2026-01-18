@@ -6,7 +6,7 @@ import * as grpc from '@grpc/grpc-js';
 import { IPatternEngine } from '../../pattern-engine/interfaces';
 import { DatabaseService } from '../../db/database.service';
 import { Logger } from 'pino';
-import { v4 as uuidv4 } from 'uuid';
+import { Pattern } from '../../pattern-engine/types';
 
 export class PatternServiceImpl {
   constructor(
@@ -30,56 +30,23 @@ export class PatternServiceImpl {
     callback: grpc.sendUnaryData<any>
   ) {
     try {
-      const { pattern_name, input_json, parameters } = call.request;
+      const { pattern_name, input, input_json, parameters, options } = call.request;
       
       this.logger.info({ pattern: pattern_name }, 'Executing pattern via gRPC');
       
-      // Parse input
-      const input = input_json ? JSON.parse(input_json) : {};
-      
-      // Create execution ID
-      const executionId = uuidv4();
+      const parsedInput = input_json ? JSON.parse(input_json) : (input || {});
       
       // Execute pattern
       const result = await this.patternEngine.executePattern(
         pattern_name,
         {
-          ...input,
-          ...parameters
+          ...parsedInput,
+          ...(parameters || {})
         },
-        { timeout: 30000 }
+        { timeout: options?.timeout_ms ?? 30000 }
       );
-      
-      // Create execution record
-      const execution = {
-        id: result.id,
-        pattern: pattern_name,
-        input: input_json,
-        status: result.status === 'failed' ? 'FAILED' : 'COMPLETED',
-        result: {
-          value_json: JSON.stringify(result.result || {}),
-          confidence: result.confidence || 0,
-          agent_id: result.result?.agentId || '',
-          timestamp: {
-            seconds: Math.floor(result.startTime.getTime() / 1000),
-            nanos: 0
-          },
-          reasoning: result.result?.reasoning || '',
-          metadata: result.result?.metadata || {}
-        },
-        created_at: {
-          seconds: Math.floor(result.startTime.getTime() / 1000),
-          nanos: 0
-        },
-        completed_at: result.endTime ? {
-          seconds: Math.floor(result.endTime.getTime() / 1000),
-          nanos: 0
-        } : undefined,
-        metadata: result.metrics || {},
-        error: result.error
-      };
-      
-      callback(null, { execution });
+
+      callback(null, this.toExecuteResponse(result, pattern_name));
     } catch (error) {
       this.logger.error({ error }, 'Failed to execute pattern');
       callback({
@@ -91,61 +58,23 @@ export class PatternServiceImpl {
 
   async streamExecutePattern(call: grpc.ServerWritableStream<any, any>) {
     try {
-      const { pattern_name, input_json, parameters } = call.request;
+      const { pattern_name, input, input_json, parameters, options } = call.request;
       
       this.logger.info({ pattern: pattern_name }, 'Stream executing pattern via gRPC');
       
-      // Parse input
-      const input = input_json ? JSON.parse(input_json) : {};
-      const executionId = uuidv4();
+      const parsedInput = input_json ? JSON.parse(input_json) : (input || {});
       
-      // Send initial status
-      call.write({
-        execution: {
-          id: executionId,
-          pattern: pattern_name,
-          status: 'RUNNING',
-          created_at: {
-            seconds: Math.floor(Date.now() / 1000),
-            nanos: 0
-          }
-        }
-      });
-      
-      // Execute pattern (TODO: Add streaming support to pattern engine)
+      // Execute pattern (best-effort streaming until engine supports progress events)
       const result = await this.patternEngine.executePattern(
         pattern_name,
         {
-          ...input,
-          ...parameters
+          ...parsedInput,
+          ...(parameters || {})
         },
-        { timeout: 30000 }
+        { timeout: options?.timeout_ms ?? 30000 }
       );
       
-      // Send final result
-      call.write({
-        execution: {
-          id: result.id,
-          pattern: pattern_name,
-          status: result.status === 'failed' ? 'FAILED' : 'COMPLETED',
-          result: {
-            value_json: JSON.stringify(result.result || {}),
-            confidence: result.confidence || 0,
-            agent_id: result.result?.agentId || '',
-            timestamp: {
-              seconds: Math.floor(result.startTime.getTime() / 1000),
-              nanos: 0
-            },
-            reasoning: result.result?.reasoning || '',
-            metadata: result.result?.metadata || {}
-          },
-          completed_at: result.endTime ? {
-            seconds: Math.floor(result.endTime.getTime() / 1000),
-            nanos: 0
-          } : undefined,
-          error: result.error
-        }
-      });
+      call.write(this.toExecuteResponse(result, pattern_name));
       
       call.end();
     } catch (error) {
@@ -162,22 +91,21 @@ export class PatternServiceImpl {
     callback: grpc.sendUnaryData<any>
   ) {
     try {
+      const includeScripts = Boolean(call.request?.include_scripts);
       const patterns = await this.patternEngine.listPatterns();
       
       // Convert to proto format
       const protoPatterns = patterns.map(pattern => ({
         name: pattern.name,
-        description: pattern.description || '',
         version: pattern.version || '1.0.0',
-        author: pattern.metadata?.author || 'unknown',
-        tags: pattern.metadata?.tags || [],
-        parameters: pattern.input || {},
-        capabilities_required: pattern.agents?.capabilities || [],
-        confidence_threshold: pattern.agents?.minConfidence || 0.7,
-        created_at: {
-          seconds: Math.floor(Date.now() / 1000),
-          nanos: 0
+        description: pattern.description || '',
+        requirements: {
+          capabilities: pattern.agents?.capabilities || [],
+          min_agents: pattern.minAgents || 0,
+          max_agents: pattern.maxAgents || 0,
+          min_confidence: pattern.agents?.minConfidence || 0
         },
+        prism_script: includeScripts ? pattern.script : '',
         metadata: pattern.metadata || {}
       }));
       
@@ -210,19 +138,16 @@ export class PatternServiceImpl {
       
       const protoPattern = {
         name: pattern.name,
-        description: pattern.description || '',
         version: pattern.version || '1.0.0',
-        author: pattern.metadata?.author || 'unknown',
-        tags: pattern.metadata?.tags || [],
-        parameters: pattern.input || {},
-        capabilities_required: pattern.agents?.capabilities || [],
-        confidence_threshold: pattern.agents?.minConfidence || 0.7,
-        created_at: {
-          seconds: Math.floor(Date.now() / 1000),
-          nanos: 0
+        description: pattern.description || '',
+        requirements: {
+          capabilities: pattern.agents?.capabilities || [],
+          min_agents: pattern.minAgents || 0,
+          max_agents: pattern.maxAgents || 0,
+          min_confidence: pattern.agents?.minConfidence || 0
         },
-        metadata: pattern.metadata || {},
-        source: pattern.script || ''
+        prism_script: pattern.script || '',
+        metadata: pattern.metadata || {}
       };
       
       callback(null, { pattern: protoPattern });
@@ -239,11 +164,93 @@ export class PatternServiceImpl {
     call: grpc.ServerUnaryCall<any, any>,
     callback: grpc.sendUnaryData<any>
   ) {
-    // For now, return UNIMPLEMENTED
-    // TODO: Implement pattern upload functionality
-    callback({
-      code: grpc.status.UNIMPLEMENTED,
-      details: 'Pattern upload not yet implemented'
-    });
+    try {
+      const requestPattern = call.request.pattern;
+      if (!requestPattern) {
+        callback({
+          code: grpc.status.INVALID_ARGUMENT,
+          details: 'Missing pattern payload'
+        });
+        return;
+      }
+
+      const name = requestPattern.name;
+      const script = requestPattern.prism_script;
+
+      if (!name || !script) {
+        callback({
+          code: grpc.status.INVALID_ARGUMENT,
+          details: 'Pattern name and prism_script are required'
+        });
+        return;
+      }
+
+      const pattern: Pattern = {
+        name,
+        version: requestPattern.version || '1.0.0',
+        description: requestPattern.description || '',
+        input: { type: 'any' },
+        agents: {
+          capabilities: requestPattern.requirements?.capabilities || [],
+          minConfidence: requestPattern.requirements?.min_confidence
+        },
+        minAgents: requestPattern.requirements?.min_agents,
+        maxAgents: requestPattern.requirements?.max_agents,
+        script,
+        metadata: requestPattern.metadata || {}
+      };
+
+      const saved = await this.patternEngine.savePattern(pattern, {
+        overwrite: Boolean(call.request.overwrite)
+      });
+
+      callback(null, {
+        success: true,
+        message: 'Pattern uploaded',
+        pattern_id: saved.name
+      });
+    } catch (error: any) {
+      if (error?.message?.includes('already exists')) {
+        callback({
+          code: grpc.status.ALREADY_EXISTS,
+          details: error.message
+        });
+        return;
+      }
+      this.logger.error({ error }, 'Failed to upload pattern');
+      callback({
+        code: grpc.status.INTERNAL,
+        details: error.message
+      });
+    }
+  }
+
+  private toExecuteResponse(result: any, patternName: string): any {
+    const status = result.status === 'failed' ? 'FAILURE' : result.status === 'completed' ? 'SUCCESS' : 'UNKNOWN';
+    const confidence = result.confidence ?? result.metrics?.averageConfidence ?? result.metrics?.confidence ?? 0;
+
+    return {
+      execution_id: result.id,
+      pattern_name: patternName,
+      status,
+      result: result.result || {},
+      confidence,
+      metrics: {
+        start_time: this.toTimestamp(result.startTime),
+        end_time: result.endTime ? this.toTimestamp(result.endTime) : undefined,
+        agents_used: result.metrics?.agentsUsed || result.metrics?.agentCount || 0,
+        parallel_paths: result.metrics?.parallelPaths || 0,
+        average_confidence: result.metrics?.averageConfidence || 0
+      },
+      agent_results: [],
+      error_message: result.error || ''
+    };
+  }
+
+  private toTimestamp(date: Date): { seconds: number; nanos: number } {
+    return {
+      seconds: Math.floor(date.getTime() / 1000),
+      nanos: 0
+    };
   }
 }
