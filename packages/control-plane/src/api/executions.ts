@@ -9,6 +9,7 @@ import {
   updateExecutionInDb, 
   convertExecutionFromDb 
 } from '../pattern-engine/pattern-engine-db';
+import { ExecutionEventBus } from '../execution-events';
 
 interface ExecutionRequest {
   patternName: string;
@@ -22,13 +23,43 @@ interface ExecutionRequest {
 export function createExecutionsRouter(
   patternEngine: PatternEngine,
   logger: Logger,
-  database?: DatabaseService
+  database?: DatabaseService,
+  executionEvents?: ExecutionEventBus
 ): Router {
   const router = Router();
   
   // In-memory storage for executions (fallback when no database)
   const executions = new Map<string, any>();
   const activeStreams = new Map<string, WebSocket[]>();
+
+  if (executionEvents) {
+    executionEvents.onExecution((event) => {
+      const streams = activeStreams.get(event.executionId);
+      if (!streams) return;
+
+      const message = JSON.stringify({
+        type: event.type,
+        executionId: event.executionId,
+        data: event.data,
+        timestamp: event.timestamp.toISOString()
+      });
+
+      streams.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+        }
+      });
+
+      if (['completed', 'failed', 'cancelled'].includes(event.type)) {
+        streams.forEach(ws => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.close();
+          }
+        });
+        activeStreams.delete(event.executionId);
+      }
+    });
+  }
 
   // List executions
   router.get('/', async (_req, res) => {
@@ -138,7 +169,8 @@ export function createExecutionsRouter(
         );
         
         // Start async execution
-        patternEngine.executePattern(patternName, input, options)
+        const executionOptions = { ...options, executionId: dbExecutionId };
+        patternEngine.executePattern(patternName, input, executionOptions)
           .then(async (result) => {
             await updateExecutionInDb(database, dbExecutionId, {
               status: 'completed',
@@ -148,44 +180,12 @@ export function createExecutionsRouter(
                 ? new Date(result.endTime).getTime() - new Date(result.startTime).getTime()
                 : undefined
             });
-            
-            // Notify WebSocket clients
-            const streams = activeStreams.get(dbExecutionId);
-            if (streams) {
-              const message = JSON.stringify({
-                type: 'completed',
-                execution: result
-              });
-              streams.forEach(ws => {
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(message);
-                  ws.close();
-                }
-              });
-              activeStreams.delete(dbExecutionId);
-            }
           })
           .catch(async (error) => {
             await updateExecutionInDb(database, dbExecutionId, {
               status: 'failed',
               error: error instanceof Error ? error.message : 'Unknown error'
             });
-            
-            // Notify WebSocket clients
-            const streams = activeStreams.get(dbExecutionId);
-            if (streams) {
-              const message = JSON.stringify({
-                type: 'failed',
-                error: error instanceof Error ? error.message : 'Unknown error'
-              });
-              streams.forEach(ws => {
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(message);
-                  ws.close();
-                }
-              });
-              activeStreams.delete(dbExecutionId);
-            }
           });
         
         return res.status(202).json({
@@ -207,7 +207,8 @@ export function createExecutionsRouter(
         executions.set(executionId, execution);
         
         // Start async execution
-        patternEngine.executePattern(patternName, input, options)
+        const executionOptions = { ...options, executionId };
+        patternEngine.executePattern(patternName, input, executionOptions)
           .then((result) => {
             executions.set(executionId, {
               ...execution,

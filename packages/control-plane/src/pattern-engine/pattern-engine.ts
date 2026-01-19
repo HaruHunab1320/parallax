@@ -9,9 +9,10 @@ import { LocalAgentManager } from './local-agents';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
 import { DatabaseService } from '../db/database.service';
-import { IPatternEngine } from './interfaces';
+import { IPatternEngine, PatternExecutionOptions } from './interfaces';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { ExecutionEventBus } from '../execution-events';
 
 export class PatternEngine implements IPatternEngine {
   private loader: PatternLoader;
@@ -28,7 +29,8 @@ export class PatternEngine implements IPatternEngine {
     private agentRegistry: EtcdRegistry,
     private patternsDir: string,
     private logger: Logger,
-    private database?: DatabaseService
+    private database?: DatabaseService,
+    private executionEvents?: ExecutionEventBus
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -44,15 +46,16 @@ export class PatternEngine implements IPatternEngine {
   async executePattern(
     patternName: string,
     input: any,
-    _options?: { timeout?: number }
+    options?: PatternExecutionOptions
   ): Promise<PatternExecution> {
     const pattern = this.loader.getPattern(patternName);
     if (!pattern) {
       throw new Error(`Pattern ${patternName} not found`);
     }
 
+    const executionId = options?.executionId || uuidv4();
     const execution: PatternExecution = {
-      id: uuidv4(),
+      id: executionId,
       patternName,
       startTime: new Date(),
       status: 'running',
@@ -62,9 +65,21 @@ export class PatternEngine implements IPatternEngine {
     this.executions.set(execution.id, execution);
     this.currentExecutionId = execution.id;
 
+    const emitEvent = (type: string, data?: any) => {
+      this.executionEvents?.emitEvent({
+        executionId,
+        type,
+        data,
+        timestamp: new Date()
+      });
+    };
+
+    emitEvent('started', { patternName });
+
     try {
       // Select agents based on pattern requirements
       const agents = await this.selectAgents(pattern);
+      emitEvent('agents_selected', { count: agents.length });
       
       // Pre-execute async agent operations based on pattern requirements
       const preProcessedData: any = {};
@@ -80,6 +95,11 @@ export class PatternEngine implements IPatternEngine {
         // Execute all agent analyses in parallel
         const agentResults = await Promise.all(
           agents.map(async (agent) => {
+            emitEvent('agent_started', {
+              agentId: agent.id,
+              agentName: agent.name,
+              capabilities: agent.capabilities
+            });
             try {
               const result = await this.agentProxy.executeTask(
                 agent.address || agent.endpoint,
@@ -89,6 +109,11 @@ export class PatternEngine implements IPatternEngine {
                 },
                 30000 // 30 second timeout
               );
+              emitEvent('agent_completed', {
+                agentId: agent.id,
+                agentName: agent.name,
+                confidence: result.confidence
+              });
               return {
                 agentId: agent.id,
                 agentName: agent.name,
@@ -101,6 +126,11 @@ export class PatternEngine implements IPatternEngine {
               };
             } catch (error) {
               this.logger.warn({ agentId: agent.id, error }, 'Agent analysis failed');
+              emitEvent('agent_failed', {
+                agentId: agent.id,
+                agentName: agent.name,
+                error: error instanceof Error ? error.message : 'Unknown error'
+              });
               return {
                 agentId: agent.id,
                 agentName: agent.name,
@@ -219,10 +249,12 @@ export class PatternEngine implements IPatternEngine {
         return execution;
       }
       
+      emitEvent('runtime_started', { patternName });
       const result = await this.runtimeManager.executePrismScript(
         enhancedScript,
         context
       );
+      emitEvent('runtime_completed', { patternName });
 
       // Update execution record
       execution.endTime = new Date();
@@ -235,6 +267,11 @@ export class PatternEngine implements IPatternEngine {
         'Pattern execution completed'
       );
 
+      emitEvent('completed', {
+        patternName,
+        confidence: execution.metrics?.averageConfidence ?? 0
+      });
+
       return execution;
     } catch (error) {
       execution.endTime = new Date();
@@ -245,6 +282,11 @@ export class PatternEngine implements IPatternEngine {
         { executionId: execution.id, pattern: patternName, error },
         'Pattern execution failed'
       );
+
+      emitEvent('failed', {
+        patternName,
+        error: execution.error
+      });
 
       throw error;
     }

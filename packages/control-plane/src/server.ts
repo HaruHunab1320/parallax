@@ -21,6 +21,7 @@ import path from 'path';
 import { createServer as createHttpServer } from 'http';
 import { WebSocketServer } from 'ws';
 import { URL } from 'url';
+import { ExecutionEventBus } from './execution-events';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -60,6 +61,7 @@ export async function createServer(): Promise<express.Application> {
   const runtimeManager = new RuntimeManager(runtimeConfig, logger);
   
   const patternsDir = process.env.PARALLAX_PATTERNS_DIR || path.join(process.cwd(), 'patterns');
+  const executionEvents = new ExecutionEventBus();
   
   // Use traced pattern engine if tracing is enabled
   const patternEngine: IPatternEngine = tracingConfig.exporterType !== 'none' 
@@ -68,14 +70,16 @@ export async function createServer(): Promise<express.Application> {
         registry,
         patternsDir,
         logger,
-        database
+        database,
+        executionEvents
       )
     : new PatternEngine(
         runtimeManager,
         registry,
         patternsDir,
         logger,
-        database
+        database,
+        executionEvents
       );
   await patternEngine.initialize();
   
@@ -98,7 +102,12 @@ export async function createServer(): Promise<express.Application> {
   // API Routes
   const patternsRouter = createPatternsRouter(patternEngine as PatternEngine, metrics, logger);
   const agentsRouter = createAgentsRouter(registry, metrics, logger, database);
-  const executionsRouter = createExecutionsRouter(patternEngine as PatternEngine, logger, database);
+  const executionsRouter = createExecutionsRouter(
+    patternEngine as PatternEngine,
+    logger,
+    database,
+    executionEvents
+  );
   
   app.use('/api/patterns', patternsRouter);
   app.use('/api/agents', agentsRouter);
@@ -139,7 +148,7 @@ export async function createServer(): Promise<express.Application> {
   process.on('SIGINT', shutdown);
   
   // Initialize gRPC server
-  const grpcServer = new GrpcServer(patternEngine, registry, database, logger);
+  const grpcServer = new GrpcServer(patternEngine, registry, database, logger, executionEvents);
   grpcServerInstance = grpcServer;
   const grpcPort = parseInt(process.env.GRPC_PORT || '50051');
   
@@ -157,13 +166,20 @@ export async function createServer(): Promise<express.Application> {
       }
 
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-      const match = url.pathname.match(/^\/api\/executions\/([^/]+)\/stream$/);
-      if (!match) {
+      let executionId: string | null = null;
+
+      const pathMatch = url.pathname.match(/^\/api\/executions\/([^/]+)\/stream$/);
+      if (pathMatch) {
+        executionId = pathMatch[1];
+      } else if (url.pathname === '/api/executions/stream') {
+        executionId = url.searchParams.get('executionId');
+      }
+
+      if (!executionId) {
         socket.destroy();
         return;
       }
 
-      const executionId = match[1];
       wsServer.handleUpgrade(req, socket, head, (ws) => {
         (req as any).params = { id: executionId };
         wsHandler(ws, req);

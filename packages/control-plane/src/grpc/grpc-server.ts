@@ -17,6 +17,7 @@ import { RegistryServiceImpl } from './services/registry-service';
 import { PatternServiceImpl } from './services/pattern-service';
 import { CoordinatorServiceImpl } from './services/coordinator-service';
 import { ExecutionServiceImpl } from './services/execution-service';
+import { ExecutionEventBus } from '../execution-events';
 
 // Proto paths (using generated files from sdk-typescript)
 const PROTO_DIR = path.join(__dirname, '../../../../proto');
@@ -32,7 +33,8 @@ export class GrpcServer {
     private patternEngine: IPatternEngine,
     private agentRegistry: IAgentRegistry,
     private database: DatabaseService,
-    private logger: Logger
+    private logger: Logger,
+    private executionEvents?: ExecutionEventBus
   ) {
     this.server = new grpc.Server();
     
@@ -40,7 +42,12 @@ export class GrpcServer {
     this.registryService = new RegistryServiceImpl(agentRegistry, logger);
     this.patternService = new PatternServiceImpl(patternEngine, database, logger);
     this.coordinatorService = new CoordinatorServiceImpl(patternEngine, agentRegistry, logger);
-    this.executionService = new ExecutionServiceImpl(patternEngine, database, logger);
+    this.executionService = new ExecutionServiceImpl(
+      patternEngine,
+      database,
+      logger,
+      executionEvents
+    );
   }
 
   private setupServices() {

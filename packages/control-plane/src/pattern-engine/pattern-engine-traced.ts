@@ -10,11 +10,12 @@ import {
   PatternTracer
 } from '@parallax/telemetry';
 import { DatabaseService } from '../db/database.service';
-import { IPatternEngine } from './interfaces';
+import { IPatternEngine, PatternExecutionOptions } from './interfaces';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { ExecutionEventBus } from '../execution-events';
 
 export class TracedPatternEngine implements IPatternEngine {
   private loader: PatternLoader;
@@ -30,7 +31,8 @@ export class TracedPatternEngine implements IPatternEngine {
     private agentRegistry: EtcdRegistry,
     private patternsDir: string,
     private logger: Logger,
-    private database?: DatabaseService
+    private database?: DatabaseService,
+    private executionEvents?: ExecutionEventBus
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -46,9 +48,9 @@ export class TracedPatternEngine implements IPatternEngine {
   async executePattern(
     patternName: string,
     input: any,
-    options?: { timeout?: number }
+    options?: PatternExecutionOptions
   ): Promise<PatternExecution> {
-    const executionId = uuidv4();
+    const executionId = options?.executionId || uuidv4();
     
     return this.tracer.tracePatternExecution(
       patternName,
@@ -69,6 +71,17 @@ export class TracedPatternEngine implements IPatternEngine {
 
         this.executions.set(execution.id, execution);
 
+        const emitEvent = (type: string, data?: any) => {
+          this.executionEvents?.emitEvent({
+            executionId,
+            type,
+            data,
+            timestamp: new Date()
+          });
+        };
+
+        emitEvent('started', { patternName });
+
         // Add pattern metadata to span
         this.tracer.addPatternMetadata({
           minAgents: pattern.minAgents,
@@ -80,6 +93,7 @@ export class TracedPatternEngine implements IPatternEngine {
         try {
           // Select agents based on pattern requirements
           const agents = await this.selectAgents(pattern);
+          emitEvent('agents_selected', { count: agents.length });
           
           // Create Prism context with agent proxies
           const prismContext: Record<string, any> = {
@@ -96,15 +110,22 @@ export class TracedPatternEngine implements IPatternEngine {
           };
 
           // Execute the pattern via Prism runtime
+          emitEvent('runtime_started', { patternName });
           const result = await this.runtimeManager.executePrismScript(
             pattern.script,
             prismContext
           );
+          emitEvent('runtime_completed', { patternName });
 
           execution.status = 'completed';
           execution.endTime = new Date();
           execution.result = result;
           execution.confidence = result?.confidence;
+
+          emitEvent('completed', {
+            patternName,
+            confidence: execution.confidence || 0
+          });
 
           return execution;
         } catch (error) {
@@ -113,6 +134,11 @@ export class TracedPatternEngine implements IPatternEngine {
           execution.status = 'failed';
           execution.endTime = new Date();
           execution.error = error instanceof Error ? error.message : String(error);
+
+          emitEvent('failed', {
+            patternName,
+            error: execution.error
+          });
           
           throw error;
         }

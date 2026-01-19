@@ -6,6 +6,7 @@ import * as grpc from '@grpc/grpc-js';
 import { IPatternEngine } from '../../pattern-engine/interfaces';
 import { DatabaseService } from '../../db/database.service';
 import { Logger } from 'pino';
+import { ExecutionEventBus } from '../../execution-events';
 
 type ExecutionRecord = {
   id: string;
@@ -24,7 +25,8 @@ export class ExecutionServiceImpl {
   constructor(
     private patternEngine: IPatternEngine,
     private database: DatabaseService | undefined,
-    private logger: Logger
+    private logger: Logger,
+    private executionEvents?: ExecutionEventBus
   ) {}
 
   getImplementation() {
@@ -98,9 +100,15 @@ export class ExecutionServiceImpl {
 
     let active = true;
     let lastStatus: string | null = null;
+    let unsubscribe: (() => void) | null = null;
+    let sentSnapshot = false;
 
     const stop = () => {
       active = false;
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
     };
 
     call.on('close', stop);
@@ -123,7 +131,9 @@ export class ExecutionServiceImpl {
       if (lastStatus === null) {
         call.write({
           event_type: 'started',
-          execution: this.toProtoExecution(execution)
+          execution: this.toProtoExecution(execution),
+          event_time: this.toTimestamp(new Date()),
+          event_data: { source: 'snapshot' }
         });
         lastStatus = execution.status;
         return;
@@ -138,7 +148,9 @@ export class ExecutionServiceImpl {
 
         call.write({
           event_type: eventType,
-          execution: this.toProtoExecution(execution)
+          execution: this.toProtoExecution(execution),
+          event_time: this.toTimestamp(new Date()),
+          event_data: {}
         });
         lastStatus = execution.status;
       }
@@ -149,16 +161,85 @@ export class ExecutionServiceImpl {
       }
     };
 
-    const interval = setInterval(poll, 500);
-    call.on('end', () => {
-      clearInterval(interval);
-      stop();
-    });
+    const startPolling = async () => {
+      const interval = setInterval(poll, 500);
+      call.on('end', () => {
+        clearInterval(interval);
+        stop();
+      });
+      await poll();
+    };
 
-    await poll();
+    const execution = await this.fetchExecution(execution_id);
+    if (!execution) {
+      call.emit('error', {
+        code: grpc.status.NOT_FOUND,
+        details: 'Execution not found'
+      });
+      stop();
+      return;
+    }
+
+    call.write({
+      event_type: 'started',
+      execution: this.toProtoExecution(execution),
+      event_time: this.toTimestamp(new Date()),
+      event_data: { source: 'snapshot' }
+    });
+    sentSnapshot = true;
+    lastStatus = execution.status;
+
+    if (this.executionEvents) {
+      unsubscribe = this.executionEvents.onExecutionId(execution_id, async (event) => {
+        if (!active) return;
+        if (sentSnapshot && event.type === 'started') {
+          return;
+        }
+        const latest = await this.fetchExecution(execution_id);
+        if (!latest) return;
+        call.write({
+          event_type: event.type,
+          execution: this.toProtoExecution(latest),
+          event_time: this.toTimestamp(event.timestamp),
+          event_data: event.data || {}
+        });
+
+        if (['completed', 'failed', 'cancelled'].includes(event.type)) {
+          call.end();
+          stop();
+        }
+      });
+      call.on('end', stop);
+    } else {
+      await startPolling();
+    }
+
+    if (unsubscribe) {
+      call.on('end', () => {
+        unsubscribe?.();
+      });
+    }
   }
 
   private async fetchExecution(executionId: string): Promise<ExecutionRecord | null> {
+    if (this.executionEvents) {
+      const execution = this.patternEngine.getExecution(executionId);
+      if (execution) {
+        return {
+          id: execution.id,
+          patternName: execution.patternName,
+          status: execution.status,
+          startTime: execution.startTime,
+          endTime: execution.endTime,
+          input: execution.input,
+          result: execution.result,
+          error: execution.error,
+          confidence: execution.confidence,
+          metrics: execution.metrics
+        };
+      }
+    }
+
     if (this.database) {
       const record = await this.database.executions.findById(executionId);
       if (!record) return null;

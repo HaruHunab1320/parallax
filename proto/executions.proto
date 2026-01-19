@@ -55,6 +55,8 @@ message StreamExecutionRequest {
 message StreamExecutionResponse {
   string event_type = 1;
   Execution execution = 2;
+  google.protobuf.Timestamp event_time = 3;
+  google.protobuf.Struct event_data = 4;
 }
 
 service ExecutionService {
