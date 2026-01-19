@@ -1,7 +1,7 @@
 use crate::{
     error::{Error, Result},
     generated::parallax::registry::{
-        registry_client::RegistryClient, AgentRegistration, GetAgentRequest, ListAgentsRequest,
+        registry_client::RegistryClient, AgentRegistration, ListAgentsRequest,
         RegisterRequest, RenewRequest, WatchRequest,
     },
     types::{Agent, AgentStatus},

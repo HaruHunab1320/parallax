@@ -256,11 +256,12 @@ where
     Fut: std::future::Future<Output = Result<Value, Box<dyn std::error::Error>>> + Send + 'static,
 {
     let config = config.unwrap_or_default();
-    let extractor = ConfidenceExtractor::new(config);
+    let extractor = std::sync::Arc::new(ConfidenceExtractor::new(config));
     
     move |task: &str, data: Option<Value>| {
         let task = task.to_string();
         let fut = analyze_fn(&task, data);
+        let extractor = extractor.clone();
         
         Box::pin(async move {
             let result_value = fut.await?;

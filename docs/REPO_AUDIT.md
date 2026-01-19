@@ -76,12 +76,12 @@ These are good for showcasing but create documentation sprawl; consider consolid
    - Recommendation: make `docs/STARTUP_GUIDE.md` the primary and fold the rest into one short “Quick Start” section.
 
 3. **Roadmaps**
-   - Root `ROADMAP.md` + `docs/IMPLEMENTATION_ROADMAP.md`
-   - Recommendation: keep `ROADMAP.md` as source of truth, summarize `IMPLEMENTATION_ROADMAP.md` or move it to `/docs/archive` if stale.
+   - Root `ROADMAP.md` + `docs/archive/IMPLEMENTATION_ROADMAP.md`
+   - Recommendation: keep `ROADMAP.md` as source of truth; legacy roadmap is archived.
 
 4. **Pattern generation docs**
-   - `docs/PATTERN_SDK_ARCHITECTURE.md` + `docs/PATTERN_GENERATION_ARCHITECTURE_GAP.md`
-   - Recommendation: merge into a single “Pattern SDK” design doc and move the gap analysis to a section inside it.
+   - `docs/PATTERN_SDK_ARCHITECTURE.md` + `docs/archive/PATTERN_GENERATION_ARCHITECTURE_GAP.md`
+   - Recommendation: keep gap analysis archived (merged into PATTERN_SDK_ARCHITECTURE.md).
 
 5. **Prism language docs**
    - `docs/PRISM_LANGUAGE_FEATURES.md` + `docs/prism-specs.md`

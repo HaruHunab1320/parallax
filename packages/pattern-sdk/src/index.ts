@@ -30,3 +30,6 @@ export { templates } from './templates';
 // Utilities
 export { formatPatternName } from './utils/naming';
 export { loadRequirements } from './utils/requirements-loader';
+
+// LLM providers
+export { GeminiProvider, createGeminiProvider } from './llm/providers/gemini';

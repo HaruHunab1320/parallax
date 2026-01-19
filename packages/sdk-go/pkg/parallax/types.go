@@ -158,4 +158,15 @@ type ExecutionService interface {
 
 	// Stream streams execution updates for a specific execution
 	Stream(ctx context.Context, id string) (<-chan *PatternExecution, error)
+
+	// StreamEvents streams execution events with payloads for a specific execution
+	StreamEvents(ctx context.Context, id string) (<-chan *ExecutionEvent, error)
+}
+
+// ExecutionEvent represents a streamed execution event payload
+type ExecutionEvent struct {
+	Type      string
+	Execution *PatternExecution
+	EventTime time.Time
+	EventData map[string]interface{}
 }

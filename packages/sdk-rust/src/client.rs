@@ -114,7 +114,7 @@ impl Client {
 
     /// Check if the control plane is healthy
     pub async fn health_check(&self) -> Result<bool> {
-        let mut patterns = PatternService::new(self.channel.clone());
+        let patterns = PatternService::new(self.channel.clone());
         let result = patterns.list().await;
         Ok(result.is_ok())
     }

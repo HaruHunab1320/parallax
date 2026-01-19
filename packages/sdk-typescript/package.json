@@ -14,6 +14,7 @@
     "generate": "./generate-proto.sh"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^1.10.0",
     "@grpc/grpc-js": "^1.12.4",
     "@grpc/proto-loader": "^0.7.13",
     "google-protobuf": "^3.21.4",

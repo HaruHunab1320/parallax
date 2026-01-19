@@ -81,6 +81,49 @@ func (s *executionService) Stream(ctx context.Context, id string) (<-chan *Patte
 	return ch, nil
 }
 
+// StreamEvents streams execution events with payloads for a specific execution
+func (s *executionService) StreamEvents(ctx context.Context, id string) (<-chan *ExecutionEvent, error) {
+	client := generated.NewExecutionServiceClient(s.client.conn)
+	stream, err := client.StreamExecution(ctx, &generated.StreamExecutionRequest{
+		ExecutionId: id,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan *ExecutionEvent)
+	go func() {
+		defer close(ch)
+
+		for {
+			event, err := stream.Recv()
+			if err != nil {
+				return
+			}
+
+			var eventTime time.Time
+			if event.EventTime != nil {
+				eventTime = event.EventTime.AsTime()
+			}
+
+			payload := &ExecutionEvent{
+				Type:      event.EventType,
+				Execution: executionFromProto(event.Execution),
+				EventTime: eventTime,
+				EventData: structToMapFromProto(event.EventData),
+			}
+
+			select {
+			case ch <- payload:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return ch, nil
+}
+
 func executionFromProto(execution *generated.Execution) *PatternExecution {
 	if execution == nil {
 		return nil
@@ -107,13 +150,13 @@ func executionFromProto(execution *generated.Execution) *PatternExecution {
 		Pattern:    execution.PatternName,
 		Status:     statusFromExecutionProto(execution.Status),
 		Input:      structToMap(execution.Input),
-		Output:     structToMap(execution.Result),
+		Output:     structToMapFromProto(execution.Result),
 		StartTime:  startTime,
 		EndTime:    endTime,
 		Duration:   duration,
 		Confidence: execution.Confidence,
 		Error:      execution.Error,
-		Metadata:   structToMap(execution.Metrics),
+		Metadata:   structToMapFromProto(execution.Metrics),
 	}
 }
 
@@ -132,7 +175,7 @@ func statusFromExecutionProto(status generated.ExecutionStatus) ExecutionStatus 
 	}
 }
 
-func structToMap(value *structpb.Struct) map[string]interface{} {
+func structToMapFromProto(value *structpb.Struct) map[string]interface{} {
 	if value == nil {
 		return nil
 	}

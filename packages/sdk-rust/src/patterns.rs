@@ -1,15 +1,14 @@
 use crate::{
     error::{Error, Result},
     generated::parallax::patterns::{
-        pattern_service_client::PatternServiceClient, ExecutePatternRequest, GetPatternRequest,
-        ListPatternsRequest,
+        pattern_service_client::PatternServiceClient, ExecutePatternRequest, ListPatternsRequest,
     },
     types::{ExecuteOptions, Pattern, PatternExecution},
 };
 use futures::Stream;
 use prost_types::{value::Kind, ListValue, Struct, Value as ProtoValue};
 use serde_json::Value;
-use std::{collections::HashMap, pin::Pin};
+use std::{collections::{BTreeMap, HashMap}, pin::Pin};
 use tonic::transport::Channel;
 use tracing::{debug, info};
 
@@ -127,8 +126,8 @@ fn pattern_from_proto(pattern: crate::generated::parallax::patterns::Pattern) ->
         enabled: true,
         required_capabilities: requirements.capabilities,
         config: crate::types::PatternConfig {
-            min_agents: Some(requirements.min_agents),
-            max_agents: Some(requirements.max_agents),
+            min_agents: Some(requirements.min_agents.max(0) as u32),
+            max_agents: Some(requirements.max_agents.max(0) as u32),
             confidence_threshold: Some(requirements.min_confidence),
             ..Default::default()
         },
@@ -142,7 +141,10 @@ fn execution_from_response(
 ) -> PatternExecution {
     let metrics = response.metrics;
     let (start_time, end_time, duration_ms) = if let Some(metrics) = metrics {
-        let start_time = timestamp_to_datetime(metrics.start_time);
+        let start_time = metrics
+            .start_time
+            .map(timestamp_to_datetime)
+            .unwrap_or_else(chrono::Utc::now);
         let end_time = metrics.end_time.map(timestamp_to_datetime);
         let duration_ms = end_time
             .map(|end| (end - start_time).num_milliseconds().max(0) as u64);
@@ -173,10 +175,12 @@ fn execution_from_response(
 
 fn status_from_proto(status: i32) -> crate::types::ExecutionStatus {
     use crate::types::ExecutionStatus;
-    match status {
-        1 => ExecutionStatus::Completed,
-        2 => ExecutionStatus::Failed,
-        _ => ExecutionStatus::Running,
+    use crate::generated::parallax::patterns::execute_pattern_response::Status;
+
+    match Status::try_from(status).unwrap_or(Status::Unknown) {
+        Status::Success => ExecutionStatus::Completed,
+        Status::Failure | Status::Timeout | Status::Cancelled => ExecutionStatus::Failed,
+        Status::Unknown => ExecutionStatus::Pending,
     }
 }
 
@@ -186,10 +190,10 @@ fn json_to_struct(value: Value) -> Struct {
             fields: map
                 .into_iter()
                 .map(|(key, value)| (key, json_to_value(value)))
-                .collect(),
+                .collect::<BTreeMap<_, _>>(),
         },
         other => {
-            let mut fields = HashMap::new();
+            let mut fields = BTreeMap::new();
             fields.insert("value".to_string(), json_to_value(other));
             Struct { fields }
         }
@@ -217,13 +221,12 @@ fn json_to_value(value: Value) -> ProtoValue {
 }
 
 fn struct_to_json(value: Struct) -> Value {
-    Value::Object(
-        value
-            .fields
-            .into_iter()
-            .map(|(key, value)| (key, value_to_json(value)))
-            .collect(),
-    )
+    let map: serde_json::Map<String, Value> = value
+        .fields
+        .into_iter()
+        .map(|(key, value)| (key, value_to_json(value)))
+        .collect();
+    Value::Object(map)
 }
 
 fn value_to_json(value: ProtoValue) -> Value {
@@ -246,9 +249,11 @@ fn value_to_json(value: ProtoValue) -> Value {
 }
 
 fn timestamp_to_datetime(timestamp: prost_types::Timestamp) -> chrono::DateTime<chrono::Utc> {
+    use chrono::TimeZone;
     let nanos = timestamp.nanos as u32;
     let seconds = timestamp.seconds;
-    let naive = chrono::NaiveDateTime::from_timestamp_opt(seconds, nanos)
-        .unwrap_or_else(|| chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap());
-    chrono::DateTime::<chrono::Utc>::from_utc(naive, chrono::Utc)
+    chrono::Utc
+        .timestamp_opt(seconds, nanos)
+        .single()
+        .unwrap_or_else(|| chrono::Utc.timestamp_opt(0, 0).single().unwrap())
 }

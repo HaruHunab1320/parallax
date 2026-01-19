@@ -1,0 +1,21 @@
+/**
+ * @name SwarmReviewConsensus
+ * @version 0.1.0
+ * @description Consolidate reviews from multiple agents
+ * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}}}
+ * @agents {"capabilities": ["review"], "minConfidence": 0.6}
+ * @minAgents 3
+ */
+
+results = agentResults
+highConfidence = results.filter(r => (r?.confidence ?? 0) > 0.7)
+notes = highConfidence.map(r => r?.result?.notes ?? r?.result ?? "")
+
+output = {
+  type: "swarm_review",
+  notes: notes,
+  confidence: average(highConfidence.map(r => r?.confidence ?? 0)),
+  reviewers: highConfidence.map(r => ({ agentId: r.agentId, confidence: r.confidence }))
+}
+
+output ~> output.confidence

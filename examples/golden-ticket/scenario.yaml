@@ -1,0 +1,28 @@
+id: golden-ticket-swarm
+title: Golden Ticket Swarm Demo
+description: Multi-agent swarm for planning, sharding, review, and test loop.
+structuredSpec:
+  goal: Orchestrate a swarm to plan, shard tasks, review outputs, and validate results.
+  inputs:
+    - name: repo_url
+      type: string
+      description: Repository to analyze
+    - name: objective
+      type: string
+      description: High-level goal for the swarm
+  decisionPoints:
+    - name: feasibility
+      outcomes:
+        high: proceed
+        medium: refine-plan
+        low: escalate
+    - name: quality_gate
+      pass: ship
+      fail: iterate
+  outputs:
+    - name: plan
+      description: Proposed plan and shards
+    - name: review
+      description: Consolidated review notes
+    - name: test_results
+      description: Validation results and next actions

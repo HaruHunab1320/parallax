@@ -17,12 +17,12 @@ interface GrpcProto {
 }
 
 export abstract class ParallaxAgent {
-  private server: grpc.Server;
-  private registryClient: any;
-  private confidenceProto: any;
-  private registryProto: any;
-  private leaseId?: string;
-  private renewInterval?: NodeJS.Timeout;
+  protected server: grpc.Server;
+  protected registryClient: any;
+  protected confidenceProto: any;
+  protected registryProto: any;
+  protected leaseId?: string;
+  protected renewInterval?: NodeJS.Timeout;
   
   constructor(
     public readonly id: string,
@@ -105,22 +105,62 @@ export abstract class ParallaxAgent {
   /**
    * Start the gRPC server and register with the control plane
    */
-  async serve(port: number = 0): Promise<number> {
+  async serve(
+    port: number = 0,
+    options?: {
+      serverCredentials?: grpc.ServerCredentials;
+      registryEndpoint?: string;
+      registryCredentials?: grpc.ChannelCredentials;
+      verifyRequest?: (call: grpc.ServerUnaryCall<any, any> | grpc.ServerWritableStream<any, any>) => Promise<{ verified: boolean; error?: string }>;
+    }
+  ): Promise<number> {
     // Add ConfidenceAgent service implementation
+    const verify = options?.verifyRequest;
+    const wrapUnary = (
+      handler: (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => Promise<void>
+    ) => async (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => {
+      if (verify) {
+        const result = await verify(call);
+        if (!result.verified) {
+          const error = new Error(result.error || 'Unauthorized');
+          (error as any).code = grpc.status.UNAUTHENTICATED;
+          callback(error);
+          return;
+        }
+      }
+      await handler(call, callback);
+    };
+    const wrapStream = (
+      handler: (call: grpc.ServerWritableStream<any, any>) => Promise<void>
+    ) => async (call: grpc.ServerWritableStream<any, any>) => {
+      if (verify) {
+        const result = await verify(call);
+        if (!result.verified) {
+          call.emit('error', {
+            code: grpc.status.UNAUTHENTICATED,
+            details: result.error || 'Unauthorized'
+          });
+          return;
+        }
+      }
+      await handler(call);
+    };
+
     this.server.addService(this.confidenceProto.ConfidenceAgent.service, {
-      analyze: this.handleAnalyze.bind(this),
-      streamAnalyze: this.handleStreamAnalyze.bind(this),
-      getCapabilities: this.handleGetCapabilities.bind(this),
-      healthCheck: this.handleHealthCheck.bind(this)
+      analyze: wrapUnary(this.handleAnalyze.bind(this)),
+      streamAnalyze: wrapStream(this.handleStreamAnalyze.bind(this)),
+      getCapabilities: wrapUnary(this.handleGetCapabilities.bind(this)),
+      healthCheck: wrapUnary(this.handleHealthCheck.bind(this))
     });
 
     // Start the server
     return new Promise((resolve, reject) => {
       const bindAddr = `0.0.0.0:${port}`;
+      const credentials = options?.serverCredentials || grpc.ServerCredentials.createInsecure();
       
       this.server.bindAsync(
         bindAddr,
-        grpc.ServerCredentials.createInsecure(),
+        credentials,
         async (error, actualPort) => {
           if (error) {
             reject(error);
@@ -131,7 +171,11 @@ export abstract class ParallaxAgent {
           
           // Register with control plane
           try {
-            await this.register(`localhost:${actualPort}`);
+            await this.register(
+              `localhost:${actualPort}`,
+              options?.registryEndpoint,
+              options?.registryCredentials
+            );
             resolve(actualPort);
           } catch (regError) {
             console.error('Failed to register with control plane:', regError);
@@ -146,12 +190,16 @@ export abstract class ParallaxAgent {
   /**
    * Register with the control plane
    */
-  private async register(agentAddress: string): Promise<void> {
-    const registryEndpoint = process.env.PARALLAX_REGISTRY || 'localhost:50051';
+  protected async register(
+    agentAddress: string,
+    registryEndpoint?: string,
+    registryCredentials?: grpc.ChannelCredentials
+  ): Promise<void> {
+    const endpoint = registryEndpoint || process.env.PARALLAX_REGISTRY || 'localhost:50051';
     
     this.registryClient = new this.registryProto.Registry(
-      registryEndpoint,
-      grpc.credentials.createInsecure()
+      endpoint,
+      registryCredentials || grpc.credentials.createInsecure()
     );
 
     const request = {
@@ -218,7 +266,7 @@ export abstract class ParallaxAgent {
   /**
    * Handle execute requests
    */
-  private async handleAnalyze(
+  protected async handleAnalyze(
     call: grpc.ServerUnaryCall<any, any>,
     callback: grpc.sendUnaryData<any>
   ) {
@@ -258,7 +306,7 @@ export abstract class ParallaxAgent {
   /**
    * Handle streaming execute requests
    */
-  private async handleStreamAnalyze(call: grpc.ServerWritableStream<any, any>) {
+  protected async handleStreamAnalyze(call: grpc.ServerWritableStream<any, any>) {
     try {
       const request = call.request;
       const taskDescription = request.task_description || request.task?.description || '';
@@ -290,7 +338,7 @@ export abstract class ParallaxAgent {
   /**
    * Handle get capabilities requests
    */
-  private async handleGetCapabilities(
+  protected async handleGetCapabilities(
     _call: grpc.ServerUnaryCall<any, any>,
     callback: grpc.sendUnaryData<any>
   ) {
@@ -306,7 +354,7 @@ export abstract class ParallaxAgent {
   /**
    * Handle health check requests
    */
-  private async handleHealthCheck(
+  protected async handleHealthCheck(
     _call: grpc.ServerUnaryCall<any, any>,
     callback: grpc.sendUnaryData<any>
   ) {

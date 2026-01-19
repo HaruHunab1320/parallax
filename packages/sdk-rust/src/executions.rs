@@ -4,10 +4,10 @@ use crate::{
         execution_service_client::ExecutionServiceClient, Execution, ExecutionStatus,
         GetExecutionRequest, ListExecutionsRequest, StreamExecutionRequest,
     },
-    types::{ExecutionStatus as LocalStatus, PatternExecution},
+    types::{ExecutionEvent, ExecutionStatus as LocalStatus, PatternExecution},
 };
 use futures::{Stream, StreamExt};
-use prost_types::{value::Kind, ListValue, Struct, Value as ProtoValue};
+use prost_types::{value::Kind, Struct, Value as ProtoValue};
 use serde_json::Value;
 use std::pin::Pin;
 use tonic::transport::Channel;
@@ -36,7 +36,7 @@ impl ExecutionService {
             .await?
             .into_inner();
 
-        Ok(execution_from_proto(response.execution))
+        Ok(execution_from_proto_opt(response.execution))
     }
 
     /// List executions
@@ -82,17 +82,43 @@ impl ExecutionService {
 
         let mapped = stream.filter_map(|event| async move {
             match event {
-                Ok(event) => event.execution.map(|execution| Ok(execution_from_proto(Some(execution)))),
+                Ok(event) => event.execution.map(|execution| Ok(execution_from_proto(execution))),
                 Err(error) => Some(Err(error.into())),
             }
         });
 
         Ok(Box::pin(mapped))
     }
+
+    /// Stream execution events with payloads
+    pub async fn stream_events(
+        &self,
+        execution_id: &str,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<ExecutionEvent>> + Send>>> {
+        debug!("Streaming execution events: {}", execution_id);
+
+        let mut client = ExecutionServiceClient::new(self.channel.clone());
+        let stream = client
+            .stream_execution(StreamExecutionRequest {
+                execution_id: execution_id.to_string(),
+            })
+            .await?
+            .into_inner();
+
+        let mapped = stream.map(|event| match event {
+            Ok(event) => Ok(event_from_proto(event)),
+            Err(error) => Err(error.into()),
+        });
+
+        Ok(Box::pin(mapped))
+    }
 }
 
-fn execution_from_proto(execution: Option<Execution>) -> PatternExecution {
-    let execution = execution.unwrap_or_default();
+fn execution_from_proto_opt(execution: Option<Execution>) -> PatternExecution {
+    execution_from_proto(execution.unwrap_or_default())
+}
+
+fn execution_from_proto(execution: Execution) -> PatternExecution {
     let start_time = execution
         .start_time
         .map(timestamp_to_datetime)
@@ -122,30 +148,42 @@ fn execution_from_proto(execution: Option<Execution>) -> PatternExecution {
             .map(struct_to_json)
             .unwrap_or(Value::Null)
             .as_object()
-            .cloned()
+            .map(|map| map.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
             .unwrap_or_default(),
     }
 }
 
+fn event_from_proto(event: crate::generated::parallax::executions::StreamExecutionResponse) -> ExecutionEvent {
+    let execution = event.execution.map(execution_from_proto);
+    let event_time = event.event_time.map(timestamp_to_datetime);
+    let event_data = event.event_data.map(struct_to_json);
+
+    ExecutionEvent {
+        event_type: event.event_type,
+        execution,
+        event_time,
+        event_data,
+    }
+}
+
 fn status_from_proto(status: i32) -> LocalStatus {
-    match ExecutionStatus::from_i32(status).unwrap_or(ExecutionStatus::ExecutionStatusUnknown) {
-        ExecutionStatus::ExecutionStatusCompleted => LocalStatus::Completed,
-        ExecutionStatus::ExecutionStatusFailed => LocalStatus::Failed,
-        ExecutionStatus::ExecutionStatusRunning => LocalStatus::Running,
-        ExecutionStatus::ExecutionStatusCancelled => LocalStatus::Failed,
-        ExecutionStatus::ExecutionStatusPending => LocalStatus::Pending,
-        ExecutionStatus::ExecutionStatusUnknown => LocalStatus::Pending,
+    match ExecutionStatus::try_from(status).unwrap_or(ExecutionStatus::Unknown) {
+        ExecutionStatus::Completed => LocalStatus::Completed,
+        ExecutionStatus::Failed => LocalStatus::Failed,
+        ExecutionStatus::Running => LocalStatus::Running,
+        ExecutionStatus::Cancelled => LocalStatus::Failed,
+        ExecutionStatus::Pending => LocalStatus::Pending,
+        ExecutionStatus::Unknown => LocalStatus::Pending,
     }
 }
 
 fn struct_to_json(value: Struct) -> Value {
-    Value::Object(
-        value
-            .fields
-            .into_iter()
-            .map(|(key, value)| (key, value_to_json(value)))
-            .collect(),
-    )
+    let map: serde_json::Map<String, Value> = value
+        .fields
+        .into_iter()
+        .map(|(key, value)| (key, value_to_json(value)))
+        .collect();
+    Value::Object(map)
 }
 
 fn value_to_json(value: ProtoValue) -> Value {
@@ -168,9 +206,11 @@ fn value_to_json(value: ProtoValue) -> Value {
 }
 
 fn timestamp_to_datetime(timestamp: prost_types::Timestamp) -> chrono::DateTime<chrono::Utc> {
+    use chrono::TimeZone;
     let nanos = timestamp.nanos as u32;
     let seconds = timestamp.seconds;
-    let naive = chrono::NaiveDateTime::from_timestamp_opt(seconds, nanos)
-        .unwrap_or_else(|| chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap());
-    chrono::DateTime::<chrono::Utc>::from_utc(naive, chrono::Utc)
+    chrono::Utc
+        .timestamp_opt(seconds, nanos)
+        .single()
+        .unwrap_or_else(|| chrono::Utc.timestamp_opt(0, 0).single().unwrap())
 }

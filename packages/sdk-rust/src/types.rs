@@ -76,6 +76,18 @@ pub struct PatternExecution {
     pub metadata: HashMap<String, serde_json::Value>,
 }
 
+/// Represents a streamed execution event
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionEvent {
+    pub event_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution: Option<PatternExecution>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event_time: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event_data: Option<serde_json::Value>,
+}
+
 /// Execution status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

@@ -72,6 +72,19 @@ export class PatternEngine implements IPatternEngine {
         data,
         timestamp: new Date()
       });
+
+      if (this.database) {
+        const agentId = data?.agentId;
+        this.database.executions
+          .addEvent(executionId, {
+            type,
+            agentId,
+            data
+          })
+          .catch(error => {
+            this.logger.warn({ error, executionId, type }, 'Failed to persist execution event');
+          });
+      }
     };
 
     emitEvent('started', { patternName });
@@ -93,6 +106,8 @@ export class PatternEngine implements IPatternEngine {
           patternNameLower.includes('exploration') || patternNameLower.includes('refinement')) {
         
         // Execute all agent analyses in parallel
+        let completedCount = 0;
+        let failedCount = 0;
         const agentResults = await Promise.all(
           agents.map(async (agent) => {
             emitEvent('agent_started', {
@@ -114,6 +129,12 @@ export class PatternEngine implements IPatternEngine {
                 agentName: agent.name,
                 confidence: result.confidence
               });
+              completedCount += 1;
+              emitEvent('progress', {
+                total: agents.length,
+                completed: completedCount,
+                failed: failedCount
+              });
               return {
                 agentId: agent.id,
                 agentName: agent.name,
@@ -130,6 +151,12 @@ export class PatternEngine implements IPatternEngine {
                 agentId: agent.id,
                 agentName: agent.name,
                 error: error instanceof Error ? error.message : 'Unknown error'
+              });
+              failedCount += 1;
+              emitEvent('progress', {
+                total: agents.length,
+                completed: completedCount,
+                failed: failedCount
               });
               return {
                 agentId: agent.id,
@@ -148,6 +175,11 @@ export class PatternEngine implements IPatternEngine {
         
         preProcessedData.agentResults = agentResults;
         preProcessedData.successfulResults = agentResults.filter(r => r.confidence > 0);
+        emitEvent('agents_completed', {
+          total: agents.length,
+          completed: completedCount,
+          failed: failedCount
+        });
       }
       
       // Prepare context with pre-processed results
@@ -269,7 +301,9 @@ export class PatternEngine implements IPatternEngine {
 
       emitEvent('completed', {
         patternName,
-        confidence: execution.metrics?.averageConfidence ?? 0
+        confidence: execution.metrics?.averageConfidence ?? 0,
+        durationMs: execution.metrics?.executionTime ?? 0,
+        agentCount: agents.length
       });
 
       return execution;

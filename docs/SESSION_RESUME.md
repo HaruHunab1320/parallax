@@ -58,7 +58,7 @@ Files:
 ## 4) Doc Cleanup / Archiving (Required)
 Filesystem did not allow deletion/moves in the previous session. After permissions:
 - Remove or move these stale docs into `docs/archive/`:
-  - `docs/PATTERN_GENERATION_ARCHITECTURE_GAP.md` (now contains a pointer).
+  - `docs/archive/PATTERN_GENERATION_ARCHITECTURE_GAP.md` (archived).
   - If desired: move or remove any other stale docs listed in `docs/REPO_AUDIT.md`.
 - Ensure `docs/DOC_README.md` and `docs/archive/README.md` list the final state.
 

@@ -78,6 +78,19 @@ export class TracedPatternEngine implements IPatternEngine {
             data,
             timestamp: new Date()
           });
+
+          if (this.database) {
+            const agentId = data?.agentId;
+            this.database.executions
+              .addEvent(executionId, {
+                type,
+                agentId,
+                data
+              })
+              .catch(error => {
+                this.logger.warn({ error, executionId, type }, 'Failed to persist execution event');
+              });
+          }
         };
 
         emitEvent('started', { patternName });

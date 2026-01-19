@@ -29,4 +29,10 @@ protoc \
   $PROTO_DIR/registry.proto \
   $PROTO_DIR/executions.proto
 
+# ts-proto emits @bufbuild/protobuf/wire which is not exported; rewrite to @bufbuild/protobuf
+rg -l "@bufbuild/protobuf/wire" $OUT_DIR | xargs sed -i '' 's@\\@bufbuild/protobuf/wire@\\@bufbuild/protobuf@g'
+
+# Suppress tsc checks in generated files (ts-proto output can conflict with strict settings)
+rg -L "@ts-nocheck" $OUT_DIR -g '*.ts' | xargs sed -i '' '1s@^@// @ts-nocheck\n@'
+
 echo "✅ Proto generation complete!"

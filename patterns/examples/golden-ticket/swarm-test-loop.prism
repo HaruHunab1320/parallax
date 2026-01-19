@@ -1,0 +1,22 @@
+/**
+ * @name SwarmTestLoop
+ * @version 0.1.0
+ * @description Validate outputs and recommend next action
+ * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}}}
+ * @agents {"capabilities": ["testing", "validation"], "minConfidence": 0.6}
+ * @minAgents 2
+ */
+
+results = agentResults
+passes = results.filter(r => (r?.result?.passed ?? false) === true)
+failures = results.filter(r => (r?.result?.passed ?? false) === false)
+
+output = {
+  type: "swarm_test_loop",
+  passed: passes.length,
+  failed: failures.length,
+  confidence: average(results.map(r => r?.confidence ?? 0)),
+  nextAction: failures.length > 0 ? "iterate" : "ship"
+}
+
+output ~> output.confidence

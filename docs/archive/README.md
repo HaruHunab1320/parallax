@@ -14,6 +14,8 @@ This directory contains archived documentation that has been superseded by newer
 - `prism-complete-assessment.md` - Prism language assessment
 - `prism-ecosystem-integration.md` - Prism integration details
 - `PATTERN_GENERATION_ARCHITECTURE_GAP.md` - Pattern generation gap analysis (merged into PATTERN_SDK_ARCHITECTURE.md)
+- `IMPLEMENTATION_ROADMAP.md` - Legacy roadmap (superseded by /ROADMAP.md)
+- `OPEN_SOURCE_LAUNCH_STRATEGY.md` - Legacy launch strategy (superseded by REVISED_OPENSOURCE_STRATEGY.md)
 
 ## Why These Were Archived
 

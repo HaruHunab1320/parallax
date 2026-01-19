@@ -1,0 +1,23 @@
+/**
+ * @name SwarmShardMapReduce
+ * @version 0.1.0
+ * @description Create task shards and merge summaries
+ * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}}}
+ * @agents {"capabilities": ["planning", "analysis"], "minConfidence": 0.5}
+ * @minAgents 3
+ */
+
+results = agentResults
+
+shards = results.reduce((all, r) => all.concat(r?.result?.shards ?? []), [])
+summary = results.map(r => r?.result?.summary ?? r?.result?.notes ?? "").filter(s => s)
+
+output = {
+  type: "swarm_shards",
+  shards: shards,
+  summary: summary,
+  agentCount: agentCount,
+  confidence: average(results.map(r => r?.confidence ?? 0))
+}
+
+output ~> output.confidence

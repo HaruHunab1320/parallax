@@ -52,8 +52,8 @@ function extractConfidence(result: any): number {
  * ```
  */
 export function withConfidence(
-  target: any,
-  propertyName: string,
+  _target: any,
+  _propertyName: string,
   descriptor: PropertyDescriptor
 ) {
   if (!descriptor || typeof descriptor.value !== 'function') {
@@ -98,12 +98,12 @@ export function withConfidenceWrapper<T extends (...args: any[]) => Promise<any>
     
     // Check if already has confidence
     if (Array.isArray(result) && result.length === 2 && typeof result[1] === 'number') {
-      return result;
+      return result as [any, number];
     }
     
     // Extract confidence
     const confidence = extractConfidence(result);
     
-    return [result, confidence];
+    return [result, confidence] as [any, number];
   };
 }
