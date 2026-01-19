@@ -323,6 +323,19 @@ parallax optimize ./patterns/slow-pattern.prism \
 - Drag-drop primitives
 - Visual debugging
 
+## Architecture Gap Analysis
+
+Key gaps for dynamic pattern generation:
+
+1. **Requirements intake API**: define how `OrchestrationRequirements` enter the system.
+2. **Composer invocation**: the Pattern Composer must be callable without a pattern (bootstrap).
+3. **Pattern injection**: decide how generated patterns are stored and loaded (disk, DB, cache).
+4. **Execution lifecycle**: define cleanup and reuse rules for generated patterns.
+
+Recommended approaches:
+- Provide a dedicated orchestration API that runs composer → saves pattern → executes.
+- Keep one static bootstrap pattern if a fully dynamic flow is required.
+
 ## Conclusion
 
 The Pattern SDK approach transforms Parallax from requiring runtime AI to being a pure orchestration platform where patterns are first-class development artifacts. This is revolutionary because it:

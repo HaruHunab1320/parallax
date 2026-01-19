@@ -8,6 +8,7 @@ This directory contains the Protocol Buffer (protobuf) definitions for the Paral
 - **coordinator.proto** - Multi-agent coordination patterns and strategies  
 - **patterns.proto** - Pattern execution and management services
 - **registry.proto** - Agent registration and discovery services
+- **executions.proto** - Execution listing, detail, and streaming services
 
 ## Generating Language-Specific Code
 
@@ -16,7 +17,7 @@ Each SDK has a standardized `generate-proto.sh` script that generates language-s
 - Script name: `generate-proto.sh`
 - Input directory: `../../proto/` (this directory)
 - Output directory: `generated/`
-- All 4 proto files are generated
+- All proto files in this directory are generated
 
 ### TypeScript SDK
 ```bash

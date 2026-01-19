@@ -16,6 +16,7 @@ import type { IAgentRegistry } from '../registry';
 import { RegistryServiceImpl } from './services/registry-service';
 import { PatternServiceImpl } from './services/pattern-service';
 import { CoordinatorServiceImpl } from './services/coordinator-service';
+import { ExecutionServiceImpl } from './services/execution-service';
 
 // Proto paths (using generated files from sdk-typescript)
 const PROTO_DIR = path.join(__dirname, '../../../../proto');
@@ -25,6 +26,7 @@ export class GrpcServer {
   private registryService: RegistryServiceImpl;
   private patternService: PatternServiceImpl;
   private coordinatorService: CoordinatorServiceImpl;
+  private executionService: ExecutionServiceImpl;
 
   constructor(
     private patternEngine: IPatternEngine,
@@ -38,6 +40,7 @@ export class GrpcServer {
     this.registryService = new RegistryServiceImpl(agentRegistry, logger);
     this.patternService = new PatternServiceImpl(patternEngine, database, logger);
     this.coordinatorService = new CoordinatorServiceImpl(patternEngine, agentRegistry, logger);
+    this.executionService = new ExecutionServiceImpl(patternEngine, database, logger);
   }
 
   private setupServices() {
@@ -45,6 +48,7 @@ export class GrpcServer {
     const registryProto = this.loadProto('registry.proto');
     const patternsProto = this.loadProto('patterns.proto');
     const coordinatorProto = this.loadProto('coordinator.proto');
+    const executionsProto = this.loadProto('executions.proto');
 
     // Add Registry Service
     this.server.addService(
@@ -62,6 +66,12 @@ export class GrpcServer {
     this.server.addService(
       coordinatorProto.parallax.coordinator.Coordinator.service,
       this.coordinatorService.getImplementation()
+    );
+
+    // Add Execution Service
+    this.server.addService(
+      executionsProto.parallax.executions.ExecutionService.service,
+      this.executionService.getImplementation()
     );
 
     this.logger.info('gRPC services registered');

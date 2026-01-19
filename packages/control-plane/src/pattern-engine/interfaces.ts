@@ -13,6 +13,7 @@ export interface IPatternEngine {
   getPattern(name: string): Pattern | null;
   listPatterns(): Pattern[];
   getExecution(id: string): PatternExecution | undefined;
+  listExecutions(options?: { limit?: number; status?: string }): PatternExecution[];
   getMetrics(): ExecutionMetrics[];
   reloadPatterns(): Promise<void>;
   savePattern(pattern: Pattern, options?: { overwrite?: boolean }): Promise<Pattern>;

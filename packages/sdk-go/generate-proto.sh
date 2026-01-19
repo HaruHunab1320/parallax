@@ -42,6 +42,7 @@ protoc \
     --go_opt=Mcoordinator.proto=. \
     --go_opt=Mpatterns.proto=. \
     --go_opt=Mregistry.proto=. \
+    --go_opt=Mexecutions.proto=. \
     --go-grpc_out=$OUT_DIR \
     --go-grpc_opt=paths=source_relative \
     --go-grpc_opt=require_unimplemented_servers=false \
@@ -49,10 +50,12 @@ protoc \
     --go-grpc_opt=Mcoordinator.proto=. \
     --go-grpc_opt=Mpatterns.proto=. \
     --go-grpc_opt=Mregistry.proto=. \
+    --go-grpc_opt=Mexecutions.proto=. \
     $PROTO_DIR/confidence.proto \
     $PROTO_DIR/coordinator.proto \
     $PROTO_DIR/patterns.proto \
-    $PROTO_DIR/registry.proto
+    $PROTO_DIR/registry.proto \
+    $PROTO_DIR/executions.proto
 
 # The M flag with "." creates package "__", so we need to fix that
 echo "Updating package declarations to 'generated'..."

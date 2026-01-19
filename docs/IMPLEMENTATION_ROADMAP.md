@@ -1,5 +1,7 @@
 # Parallax Implementation Roadmap
 
+> **Archived**: Superseded by `/ROADMAP.md`. Kept for historical context.
+
 > **Last Updated**: July 2025
 > **Status**: Phase 2 Complete, Phase 3 Ready to Begin
 

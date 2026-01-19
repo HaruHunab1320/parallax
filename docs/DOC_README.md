@@ -8,8 +8,9 @@
 - **[/README.md](/README.md)** - Getting started guide
 
 ### Implementation
-- **[IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)** - Detailed 6-phase implementation plan with current sprint
+- **[IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)** - Archived; superseded by `/ROADMAP.md`
 - **[REVISED_OPENSOURCE_STRATEGY.md](REVISED_OPENSOURCE_STRATEGY.md)** - Current business model (no agent limits)
+- **[OPEN_SOURCE_LAUNCH_STRATEGY.md](OPEN_SOURCE_LAUNCH_STRATEGY.md)** - Archived; superseded by REVISED_OPENSOURCE_STRATEGY.md
 
 ## Archived Documents
 
@@ -18,6 +19,7 @@ Historical documents are preserved in [/docs/archive/](archive/) for reference:
 - Package architecture (superseded by /ARCHITECTURE.md)
 - Old business strategy with agent limits
 - Completed reorganization plans
+- Pattern generation gap analysis (merged into PATTERN_SDK_ARCHITECTURE.md)
 
 ## Document Organization
 
@@ -28,7 +30,7 @@ parallax/
 ├── README.md               # Getting started
 └── docs/
     ├── DOC_README.md       # This file
-    ├── IMPLEMENTATION_ROADMAP.md    # Detailed implementation plan
+    ├── IMPLEMENTATION_ROADMAP.md    # Archived; see /ROADMAP.md
     ├── REVISED_OPENSOURCE_STRATEGY.md # Current business model
     └── archive/            # Historical documents
 ```

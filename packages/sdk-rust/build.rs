@@ -4,6 +4,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=../../proto/coordinator.proto");
     println!("cargo:rerun-if-changed=../../proto/patterns.proto");
     println!("cargo:rerun-if-changed=../../proto/registry.proto");
+    println!("cargo:rerun-if-changed=../../proto/executions.proto");
 
     tonic_build::configure()
         .out_dir("generated")
@@ -13,6 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "../../proto/coordinator.proto",
                 "../../proto/patterns.proto",
                 "../../proto/registry.proto",
+                "../../proto/executions.proto",
             ],
             &["../../proto"],
         )?;

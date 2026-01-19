@@ -13,6 +13,7 @@ This directory contains archived documentation that has been superseded by newer
 - `multi-tenancy.md` - Multi-tenancy design (now in ARCHITECTURE.md)
 - `prism-complete-assessment.md` - Prism language assessment
 - `prism-ecosystem-integration.md` - Prism integration details
+- `PATTERN_GENERATION_ARCHITECTURE_GAP.md` - Pattern generation gap analysis (merged into PATTERN_SDK_ARCHITECTURE.md)
 
 ## Why These Were Archived
 

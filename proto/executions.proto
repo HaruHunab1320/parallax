@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package parallax.executions;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Execution status
+enum ExecutionStatus {
+  EXECUTION_STATUS_UNKNOWN = 0;
+  EXECUTION_STATUS_PENDING = 1;
+  EXECUTION_STATUS_RUNNING = 2;
+  EXECUTION_STATUS_COMPLETED = 3;
+  EXECUTION_STATUS_FAILED = 4;
+  EXECUTION_STATUS_CANCELLED = 5;
+}
+
+// Execution record
+message Execution {
+  string id = 1;
+  string pattern_name = 2;
+  ExecutionStatus status = 3;
+  google.protobuf.Timestamp start_time = 4;
+  google.protobuf.Timestamp end_time = 5;
+  google.protobuf.Struct input = 6;
+  google.protobuf.Struct result = 7;
+  string error = 8;
+  double confidence = 9;
+  google.protobuf.Struct metrics = 10;
+}
+
+message GetExecutionRequest {
+  string execution_id = 1;
+}
+
+message GetExecutionResponse {
+  Execution execution = 1;
+}
+
+message ListExecutionsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  string status = 3;
+}
+
+message ListExecutionsResponse {
+  repeated Execution executions = 1;
+  int32 total = 2;
+}
+
+message StreamExecutionRequest {
+  string execution_id = 1;
+}
+
+message StreamExecutionResponse {
+  string event_type = 1;
+  Execution execution = 2;
+}
+
+service ExecutionService {
+  rpc GetExecution(GetExecutionRequest) returns (GetExecutionResponse);
+  rpc ListExecutions(ListExecutionsRequest) returns (ListExecutionsResponse);
+  rpc StreamExecution(StreamExecutionRequest) returns (stream StreamExecutionResponse);
+}

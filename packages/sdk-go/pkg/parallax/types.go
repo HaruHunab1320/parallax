@@ -147,3 +147,15 @@ type AgentService interface {
 	// StreamAgents streams agent updates
 	StreamAgents(ctx context.Context) (<-chan *AgentInfo, error)
 }
+
+// ExecutionService defines operations on executions
+type ExecutionService interface {
+	// Get returns a specific execution by ID
+	Get(ctx context.Context, id string) (*PatternExecution, error)
+
+	// List returns recent executions
+	List(ctx context.Context, limit int, offset int, status string) ([]*PatternExecution, error)
+
+	// Stream streams execution updates for a specific execution
+	Stream(ctx context.Context, id string) (<-chan *PatternExecution, error)
+}

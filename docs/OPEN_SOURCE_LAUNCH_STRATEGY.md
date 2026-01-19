@@ -1,5 +1,7 @@
 # Parallax Open Source Launch Strategy
 
+> **Archived**: Superseded by `docs/REVISED_OPENSOURCE_STRATEGY.md`. Kept for historical context.
+
 > **Status**: Future Planning Document  
 > **Current State**: Private monorepo in development  
 > **Target**: Execute when ready for public launch

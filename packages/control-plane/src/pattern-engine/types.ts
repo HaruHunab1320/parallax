@@ -28,6 +28,7 @@ export interface PatternExecution {
   startTime: Date;
   endTime?: Date;
   status: 'running' | 'completed' | 'failed';
+  input?: any;
   result?: any;
   error?: string;
   metrics?: ExecutionMetrics;

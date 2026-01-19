@@ -21,6 +21,7 @@ type Client struct {
 	logger     *zap.Logger
 	patternSvc PatternService
 	agentSvc   AgentService
+	execSvc    ExecutionService
 }
 
 // ClientConfig holds configuration for the Parallax client
@@ -116,6 +117,11 @@ func NewClient(config ClientConfig) (*Client, error) {
 		leases: make(map[string]string),
 	}
 
+	client.execSvc = &executionService{
+		client: client,
+		logger: config.Logger.With(zap.String("service", "execution")),
+	}
+
 	config.Logger.Info("Parallax client connected",
 		zap.String("endpoint", config.Endpoint),
 	)
@@ -140,6 +146,11 @@ func (c *Client) Patterns() PatternService {
 // Agents returns the agent service
 func (c *Client) Agents() AgentService {
 	return c.agentSvc
+}
+
+// Executions returns the execution service
+func (c *Client) Executions() ExecutionService {
+	return c.execSvc
 }
 
 // HealthCheck checks if the control plane is healthy

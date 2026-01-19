@@ -56,6 +56,7 @@ export class PatternEngine implements IPatternEngine {
       patternName,
       startTime: new Date(),
       status: 'running',
+      input,
     };
 
     this.executions.set(execution.id, execution);
@@ -330,6 +331,23 @@ export class PatternEngine implements IPatternEngine {
 
   getExecution(id: string): PatternExecution | undefined {
     return this.executions.get(id);
+  }
+
+  listExecutions(options?: { limit?: number; status?: string }): PatternExecution[] {
+    const entries = Array.from(this.executions.values());
+    const filtered = options?.status
+      ? entries.filter(entry => entry.status === options.status)
+      : entries;
+
+    const sorted = filtered.sort(
+      (a, b) => b.startTime.getTime() - a.startTime.getTime()
+    );
+
+    if (options?.limit && options.limit > 0) {
+      return sorted.slice(0, options.limit);
+    }
+
+    return sorted;
   }
 
   getPattern(name: string): Pattern | null {

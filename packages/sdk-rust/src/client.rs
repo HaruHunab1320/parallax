@@ -1,4 +1,6 @@
-use crate::{agent_service::AgentService, error::Result, patterns::PatternService};
+use crate::{
+    agent_service::AgentService, error::Result, executions::ExecutionService, patterns::PatternService,
+};
 use std::time::Duration;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity};
 use tracing::info;
@@ -98,6 +100,11 @@ impl Client {
     /// Get the agent service
     pub fn agents(&self) -> AgentService {
         AgentService::new(self.channel.clone())
+    }
+
+    /// Get the execution service
+    pub fn executions(&self) -> ExecutionService {
+        ExecutionService::new(self.channel.clone())
     }
 
     /// Get the endpoint this client is connected to

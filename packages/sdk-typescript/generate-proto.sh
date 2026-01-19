@@ -26,6 +26,7 @@ protoc \
   $PROTO_DIR/confidence.proto \
   $PROTO_DIR/coordinator.proto \
   $PROTO_DIR/patterns.proto \
-  $PROTO_DIR/registry.proto
+  $PROTO_DIR/registry.proto \
+  $PROTO_DIR/executions.proto
 
 echo "✅ Proto generation complete!"

@@ -12,6 +12,9 @@ pub mod parallax {
     pub mod coordinator {
         include!("../generated/parallax.coordinator.rs");
     }
+    pub mod executions {
+        include!("../generated/parallax.executions.rs");
+    }
 }
 
 // Re-export for convenience
