@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc && chmod +x dist/index.js",
     "dev": "tsx watch src/index.ts",
+    "parallax-dev": "tsx bin/parallax-dev.ts",
     "clean": "rm -rf dist",
     "lint": "eslint src/**/*.ts",
     "type-check": "tsc --noEmit"

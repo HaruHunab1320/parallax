@@ -83,6 +83,7 @@ demoCommand
   .option('--name <name>', 'Demo folder name', 'doom-lite')
   .option('--port <port>', 'Control plane HTTP port', '3000')
   .option('--grpc-port <port>', 'Control plane gRPC port', '50051')
+  .option('--clean', 'Delete existing demo directory before generating')
   .option('--no-mtls', 'Disable mTLS for agent gRPC')
   .action(async (options) => {
     const spinner = ora('Preparing golden ticket demo...').start();
@@ -99,6 +100,9 @@ demoCommand
     const useMtls = options.mtls !== false;
 
     try {
+      if (options.clean) {
+        await safeRemoveDemoDir(demoDir, rootDir);
+      }
       await fs.mkdir(demoDir, { recursive: true });
       await fs.mkdir(patternsDir, { recursive: true });
       await fs.mkdir(agentsDir, { recursive: true });
@@ -589,6 +593,30 @@ async function waitForAgents(client: ParallaxHttpClient, expected: number, maxRe
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
   throw new Error('Agents failed to register');
+}
+
+async function safeRemoveDemoDir(demoDir: string, rootDir: string) {
+  const resolvedDemo = path.resolve(demoDir);
+  const resolvedRoot = path.resolve(rootDir);
+  const demosRoot = path.join(resolvedRoot, 'demos');
+
+  if (resolvedDemo === resolvedRoot || resolvedDemo === demosRoot) {
+    throw new Error(`Refusing to delete unsafe path: ${resolvedDemo}`);
+  }
+  if (!resolvedDemo.startsWith(demosRoot + path.sep)) {
+    throw new Error(`Refusing to delete path outside demos directory: ${resolvedDemo}`);
+  }
+
+  try {
+    const stat = await fs.stat(resolvedDemo);
+    if (stat.isDirectory()) {
+      await fs.rm(resolvedDemo, { recursive: true, force: true });
+    }
+  } catch (error: any) {
+    if (error?.code !== 'ENOENT') {
+      throw error;
+    }
+  }
 }
 
 function updateStatus(status: Map<string, string>, event: ExecutionEvent) {

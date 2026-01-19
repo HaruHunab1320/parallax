@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - parallax-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -44,7 +44,7 @@ services:
     image: redis:7-alpine
     container_name: parallax-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     command: redis-server --appendonly yes
     volumes:
       - parallax-redis-data:/data
@@ -60,7 +60,7 @@ services:
       - "3001:3000"
     volumes:
       - parallax-grafana-data:/var/lib/grafana
-      - ./packages/monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - timescaledb
 
@@ -71,7 +71,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./packages/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - parallax-prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'

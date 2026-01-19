@@ -36,7 +36,7 @@
     "demo:python": "cd apps/demo-python && poetry run python demo_agent.py",
     "demo:go": "cd apps/demo-go && go run main.go",
     "demo:rust": "cd apps/demo-rust && cargo run",
-    "parallax:dev": "pnpm --filter @parallax/cli exec parallax-dev",
+    "parallax:dev": "pnpm --filter @parallax/cli run parallax-dev --",
     "infra:etcd": "docker-compose up -d etcd",
     "infra:postgres": "cd packages/control-plane && docker-compose -f docker-compose.dev.yml up -d postgres",
     "infra:all": "cd packages/control-plane && docker-compose -f docker-compose.dev.yml up -d",
