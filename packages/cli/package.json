@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "description": "Command-line interface for Parallax platform",
   "bin": {
-    "parallax": "./dist/index.js"
+    "parallax": "./dist/index.js",
+    "parallax-dev": "./bin/parallax-dev.ts"
   },
   "scripts": {
     "build": "tsc && chmod +x dist/index.js",
