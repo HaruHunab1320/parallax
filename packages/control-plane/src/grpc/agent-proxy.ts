@@ -7,6 +7,7 @@ import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
 import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
 
 const PROTO_DIR = path.join(__dirname, '../../../../proto');
 
@@ -27,6 +28,7 @@ export interface AgentResult {
 export class AgentProxy {
   private clients: Map<string, any> = new Map();
   private confidenceProto: any;
+  private agentCredentials?: grpc.ChannelCredentials;
 
   constructor(private logger: Logger) {
     this.loadProto();
@@ -49,13 +51,44 @@ export class AgentProxy {
 
   private getClient(address: string): any {
     if (!this.clients.has(address)) {
+      if (!this.agentCredentials) {
+        this.agentCredentials = this.buildCredentials();
+      }
       const client = new this.confidenceProto.ConfidenceAgent(
         address,
-        grpc.credentials.createInsecure()
+        this.agentCredentials || grpc.credentials.createInsecure()
       );
       this.clients.set(address, client);
     }
     return this.clients.get(address);
+  }
+
+  private buildCredentials(): grpc.ChannelCredentials | undefined {
+    const enabled = process.env.PARALLAX_AGENT_MTLS_ENABLED === 'true';
+    if (!enabled) return grpc.credentials.createInsecure();
+
+    const caPath = process.env.PARALLAX_AGENT_MTLS_CA;
+    const certPath = process.env.PARALLAX_AGENT_MTLS_CERT;
+    const keyPath = process.env.PARALLAX_AGENT_MTLS_KEY;
+
+    try {
+      if (!caPath) {
+        this.logger.warn('PARALLAX_AGENT_MTLS_CA not set; falling back to insecure agent credentials');
+        return grpc.credentials.createInsecure();
+      }
+
+      const ca = fs.readFileSync(caPath);
+      const cert = certPath ? fs.readFileSync(certPath) : undefined;
+      const key = keyPath ? fs.readFileSync(keyPath) : undefined;
+
+      if (cert && key) {
+        return grpc.credentials.createSsl(ca, key, cert);
+      }
+      return grpc.credentials.createSsl(ca);
+    } catch (error) {
+      this.logger.warn({ error }, 'Failed to load agent mTLS credentials; falling back to insecure');
+      return grpc.credentials.createInsecure();
+    }
   }
 
   /**

@@ -8,6 +8,7 @@ import path from 'path';
 import { IPatternEngine } from '../pattern-engine/interfaces';
 import { DatabaseService } from '../db/database.service';
 import { Logger } from 'pino';
+import fs from 'fs';
 
 // Use interface from registry module
 import type { IAgentRegistry } from '../registry';
@@ -104,10 +105,11 @@ export class GrpcServer {
     
     return new Promise((resolve, reject) => {
       const bindAddr = `0.0.0.0:${port}`;
-      
+
+      const credentials = this.buildServerCredentials();
       this.server.bindAsync(
         bindAddr,
-        grpc.ServerCredentials.createInsecure(), // Insecure for local/dev; configure TLS in production.
+        credentials,
         (error, actualPort) => {
           if (error) {
             this.logger.error({ error: error.message || error }, 'Failed to bind gRPC server');
@@ -120,6 +122,38 @@ export class GrpcServer {
         }
       );
     });
+  }
+
+  private buildServerCredentials(): grpc.ServerCredentials {
+    const enabled = process.env.PARALLAX_GRPC_TLS_ENABLED === 'true';
+    if (!enabled) {
+      return grpc.ServerCredentials.createInsecure();
+    }
+
+    const caPath = process.env.PARALLAX_GRPC_TLS_CA;
+    const certPath = process.env.PARALLAX_GRPC_TLS_CERT;
+    const keyPath = process.env.PARALLAX_GRPC_TLS_KEY;
+    const requireClientCert = process.env.PARALLAX_GRPC_TLS_REQUIRE_CLIENT_CERT === 'true';
+
+    try {
+      if (!caPath || !certPath || !keyPath) {
+        this.logger.warn('gRPC TLS env vars missing; falling back to insecure credentials');
+        return grpc.ServerCredentials.createInsecure();
+      }
+
+      const ca = fs.readFileSync(caPath);
+      const cert = fs.readFileSync(certPath);
+      const key = fs.readFileSync(keyPath);
+
+      return grpc.ServerCredentials.createSsl(
+        ca,
+        [{ private_key: key, cert_chain: cert }],
+        requireClientCert
+      );
+    } catch (error) {
+      this.logger.warn({ error }, 'Failed to load gRPC TLS credentials; falling back to insecure');
+      return grpc.ServerCredentials.createInsecure();
+    }
   }
 
   async stop(): Promise<void> {

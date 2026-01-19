@@ -19,6 +19,7 @@ export interface Pattern {
   maxAgents?: number;
   input?: any;
   metadata?: Record<string, any>;
+  script?: string;
 }
 
 export interface Agent {

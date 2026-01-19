@@ -28,8 +28,10 @@ type ScenarioSpec = {
 };
 
 type ScenarioFile = ScenarioSpec | Record<string, ScenarioSpec>;
+type ScenarioStructuredSpec = NonNullable<ScenarioSpec['structuredSpec']>;
+type ScenarioDecisionPoint = NonNullable<ScenarioStructuredSpec['decisionPoints']>[number];
 
-function formatInputs(inputs: ScenarioSpec['structuredSpec']['inputs']) {
+function formatInputs(inputs?: ScenarioStructuredSpec['inputs']) {
   if (!inputs || !inputs.length) return 'None';
   return inputs.map((item) => `${item.name}: ${item.type}`).join(', ');
 }
@@ -54,7 +56,7 @@ function resolveScenario(data: ScenarioFile, scenarioId?: string): ScenarioSpec 
   return { id: scenarioId, ...scenario };
 }
 
-function buildDecisionBlock(name: string, decisionPoint: ScenarioSpec['structuredSpec']['decisionPoints'][number]) {
+function buildDecisionBlock(name: string, decisionPoint: ScenarioDecisionPoint) {
   const blockName = sanitizeId(name);
   const base = `decision_${blockName}`;
   if (decisionPoint.outcomes) {

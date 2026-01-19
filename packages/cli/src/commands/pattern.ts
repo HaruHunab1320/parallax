@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import { table } from 'table';
 import ora from 'ora';
 import * as fs from 'fs/promises';
-import * as path from 'path';
 import { ParallaxHttpClient } from '../utils/http-client';
 
 export const patternCommand = new Command('pattern')
@@ -191,7 +190,7 @@ patternCommand
         // Show first 15 lines of actual code
         const lines = pattern.script.split('\n');
         const preview = lines.slice(0, 15);
-        preview.forEach(line => console.log(chalk.gray(line)));
+        preview.forEach((line: string) => console.log(chalk.gray(line)));
         
         if (lines.length > 15) {
           console.log(chalk.gray('... (truncated)'));

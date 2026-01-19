@@ -163,7 +163,7 @@ agentCommand
     const spinner = ora('Analyzing capabilities...').start();
     
     try {
-      const client = new ParallaxClient();
+      const client = new ParallaxHttpClient();
       const agents = await client.listAgents() as AgentInfo[];
       
       spinner.stop();
@@ -171,7 +171,7 @@ agentCommand
       // Extract unique capabilities
       const capabilityMap = new Map<string, number>();
       agents.forEach((agent: AgentInfo) => {
-        agent.capabilities.forEach((cap: string) => {
+        (agent.capabilities || []).forEach((cap: string) => {
           capabilityMap.set(cap, (capabilityMap.get(cap) || 0) + 1);
         });
       });
