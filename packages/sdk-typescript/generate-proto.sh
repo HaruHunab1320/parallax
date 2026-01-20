@@ -30,9 +30,20 @@ protoc \
   $PROTO_DIR/executions.proto
 
 # ts-proto emits @bufbuild/protobuf/wire which is not exported; rewrite to @bufbuild/protobuf
-rg -l "@bufbuild/protobuf/wire" $OUT_DIR | xargs sed -i '' 's@\\@bufbuild/protobuf/wire@\\@bufbuild/protobuf@g'
+rg -l "@bufbuild/protobuf/wire" $OUT_DIR | while read -r file; do
+  sed -i '' 's#@bufbuild/protobuf/wire#@bufbuild/protobuf#g' "$file"
+done
 
 # Suppress tsc checks in generated files (ts-proto output can conflict with strict settings)
-rg -L "@ts-nocheck" $OUT_DIR -g '*.ts' | xargs sed -i '' '1s@^@// @ts-nocheck\n@'
+python - <<PY
+from pathlib import Path
+
+out_dir = Path("$OUT_DIR")
+for path in out_dir.rglob("*.ts"):
+    text = path.read_text()
+    if "@ts-nocheck" in text.splitlines()[0:2]:
+        continue
+    path.write_text("// @ts-nocheck\\n" + text)
+PY
 
 echo "✅ Proto generation complete!"

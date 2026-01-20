@@ -3,7 +3,7 @@ import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
 import { AgentResponse, ensureConfidence } from './types/agent-response';
 
-const PROTO_DIR = path.join(__dirname, '../../../proto');
+const PROTO_DIR = process.env.PARALLAX_PROTO_DIR || path.join(__dirname, '../../../proto');
 
 /**
  * Base class for Parallax agents in TypeScript.
@@ -213,16 +213,33 @@ export abstract class ParallaxAgent {
       auto_renew: true
     };
 
-    return new Promise((resolve, reject) => {
-      this.registryClient.register(request, (error: any, response: any) => {
+    await new Promise<void>((resolve, reject) => {
+      this.registryClient.waitForReady(Date.now() + 5000, (error: any) => {
         if (error) {
           reject(error);
           return;
         }
-        
+        resolve();
+      });
+    });
+
+    return new Promise((resolve, reject) => {
+      this.registryClient.register(request, (error: any, response: any) => {
+        if (error) {
+          console.error('Agent registration failed:', {
+            agentId: this.id,
+            endpoint,
+            message: error.message,
+            code: error.code,
+            details: error.details
+          });
+          reject(error);
+          return;
+        }
+
         console.log(`Agent ${this.name} registered with control plane`);
         this.leaseId = response.lease_id;
-        
+
         // Start lease renewal
         this.startLeaseRenewal();
         resolve();

@@ -16,9 +16,11 @@ primary = results.reduce((best, current) =>
 plan = primary?.result?.plan ?? primary?.result ?? { summary: "No plan generated" }
 shards = primary?.result?.shards ?? []
 
+confidenceScore = primary?.confidence ?? 0.5
+
 output = {
   type: "swarm_plan",
-  confidence: primary?.confidence ?? 0.5,
+  confidence: confidenceScore,
   plan: plan,
   shards: shards,
   contributors: results.map(r => ({
@@ -28,4 +30,4 @@ output = {
   }))
 }
 
-output ~> (primary?.confidence ?? 0.5)
+output ~> confidenceScore

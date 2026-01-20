@@ -9,15 +9,23 @@
 
 results = agentResults
 
-shards = results.reduce((all, r) => all.concat(r?.result?.shards ?? []), [])
-summary = results.map(r => r?.result?.summary ?? r?.result?.notes ?? "").filter(s => s)
+shards = results.reduce((all, r) => {
+  items = r?.result?.shards ?? []
+  return items.length > 0 ? all.push(...items) : all
+}, [])
+summary = results
+  .map(r => r?.result?.summary ?? r?.result?.notes ?? "")
+  .filter(s => s)
+
+totalConfidence = results.reduce((sum, r) => sum + (r?.confidence ?? 0), 0)
+confidenceScore = results.length > 0 ? (totalConfidence / results.length) : 0
 
 output = {
   type: "swarm_shards",
   shards: shards,
   summary: summary,
   agentCount: agentCount,
-  confidence: average(results.map(r => r?.confidence ?? 0))
+  confidence: confidenceScore
 }
 
-output ~> output.confidence
+output ~> confidenceScore

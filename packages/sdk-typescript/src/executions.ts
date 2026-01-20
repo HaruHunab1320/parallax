@@ -4,6 +4,7 @@ import {
   StreamExecutionRequest,
   StreamExecutionResponse,
   GetExecutionRequest,
+  GetExecutionResponse,
   ListExecutionsRequest,
   ListExecutionsResponse,
 } from "../generated/executions";
@@ -42,7 +43,10 @@ export class ExecutionClient {
   get(executionId: string, metadata?: Metadata): Promise<Execution | undefined> {
     return new Promise((resolve, reject) => {
       const request: GetExecutionRequest = { executionId };
-      this.client.getExecution(request, metadata || new Metadata(), (error, response) => {
+      this.client.getExecution(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: GetExecutionResponse) => {
         if (error) {
           reject(error);
           return;
@@ -55,7 +59,10 @@ export class ExecutionClient {
   list(limit = 100, offset = 0, status = "", metadata?: Metadata): Promise<ListExecutionsResponse> {
     return new Promise((resolve, reject) => {
       const request: ListExecutionsRequest = { limit, offset, status };
-      this.client.listExecutions(request, metadata || new Metadata(), (error, response) => {
+      this.client.listExecutions(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: ListExecutionsResponse) => {
         if (error) {
           reject(error);
           return;

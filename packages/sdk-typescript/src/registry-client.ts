@@ -38,7 +38,10 @@ export class RegistryServiceClient {
   register(agent: AgentRegistration, autoRenew = true, metadata?: Metadata): Promise<RegisterResponse> {
     const request: RegisterRequest = { agent, autoRenew };
     return new Promise((resolve, reject) => {
-      this.client.register(request, metadata || new Metadata(), (error, response) => {
+      this.client.register(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: RegisterResponse) => {
         if (error) {
           reject(error);
           return;
@@ -50,7 +53,10 @@ export class RegistryServiceClient {
 
   unregister(agent: AgentRegistration, metadata?: Metadata): Promise<RegisterResponse> {
     return new Promise((resolve, reject) => {
-      this.client.unregister(agent, metadata || new Metadata(), (error, response) => {
+      this.client.unregister(
+        agent,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: RegisterResponse) => {
         if (error) {
           reject(error);
           return;
@@ -66,7 +72,10 @@ export class RegistryServiceClient {
       ttl: { seconds: ttlSeconds, nanos: 0 },
     };
     return new Promise((resolve, reject) => {
-      this.client.renew(request, metadata || new Metadata(), (error, response) => {
+      this.client.renew(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: RegisterResponse) => {
         if (error) {
           reject(error);
           return;
@@ -90,7 +99,10 @@ export class RegistryServiceClient {
       continuationToken,
     };
     return new Promise((resolve, reject) => {
-      this.client.listAgents(request, metadata || new Metadata(), (error, response) => {
+      this.client.listAgents(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: ListAgentsResponse) => {
         if (error) {
           reject(error);
           return;
@@ -103,7 +115,10 @@ export class RegistryServiceClient {
   get(agentId: string, metadata?: Metadata): Promise<AgentRegistration> {
     const request: GetAgentRequest = { agentId };
     return new Promise((resolve, reject) => {
-      this.client.getAgent(request, metadata || new Metadata(), (error, response) => {
+      this.client.getAgent(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: AgentRegistration) => {
         if (error) {
           reject(error);
           return;
@@ -121,8 +136,8 @@ export class RegistryServiceClient {
   ): ClientReadableStream<WatchEvent> {
     const request: WatchRequest = { capabilities, includeInitial };
     const stream = this.client.watch(request, metadata || new Metadata());
-    stream.on("data", (event) => handlers.onEvent?.(event));
-    stream.on("error", (error) => handlers.onError?.(error));
+    stream.on("data", (event: WatchEvent) => handlers.onEvent?.(event));
+    stream.on("error", (error: ServiceError) => handlers.onError?.(error));
     stream.on("end", () => handlers.onEnd?.());
     return stream;
   }

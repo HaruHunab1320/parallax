@@ -11,12 +11,15 @@ results = agentResults
 passes = results.filter(r => (r?.result?.passed ?? false) === true)
 failures = results.filter(r => (r?.result?.passed ?? false) === false)
 
+totalConfidence = results.reduce((sum, r) => sum + (r?.confidence ?? 0), 0)
+confidenceScore = results.length > 0 ? (totalConfidence / results.length) : 0
+
 output = {
   type: "swarm_test_loop",
   passed: passes.length,
   failed: failures.length,
-  confidence: average(results.map(r => r?.confidence ?? 0)),
+  confidence: confidenceScore,
   nextAction: failures.length > 0 ? "iterate" : "ship"
 }
 
-output ~> output.confidence
+output ~> confidenceScore

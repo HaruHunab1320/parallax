@@ -60,7 +60,10 @@ export class PatternClient {
     };
 
     return new Promise((resolve, reject) => {
-      this.client.executePattern(request, metadata || new Metadata(), (error, response) => {
+      this.client.executePattern(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: ExecutePatternResponse) => {
         if (error) {
           reject(error);
           return;
@@ -97,8 +100,8 @@ export class PatternClient {
     };
 
     const stream = this.client.streamExecutePattern(request, metadata || new Metadata());
-    stream.on("data", (message) => handlers.onMessage?.(message));
-    stream.on("error", (error) => handlers.onError?.(error));
+    stream.on("data", (message: ExecutePatternResponse) => handlers.onMessage?.(message));
+    stream.on("error", (error: ServiceError) => handlers.onError?.(error));
     stream.on("end", () => handlers.onEnd?.());
     return stream;
   }
@@ -106,7 +109,10 @@ export class PatternClient {
   list(tags: string[] = [], includeScripts = false, metadata?: Metadata): Promise<ListPatternsResponse> {
     const request: ListPatternsRequest = { tags, includeScripts };
     return new Promise((resolve, reject) => {
-      this.client.listPatterns(request, metadata || new Metadata(), (error, response) => {
+      this.client.listPatterns(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: ListPatternsResponse) => {
         if (error) {
           reject(error);
           return;
@@ -119,7 +125,10 @@ export class PatternClient {
   get(name: string, version = "", metadata?: Metadata): Promise<Pattern> {
     const request: GetPatternRequest = { name, version };
     return new Promise((resolve, reject) => {
-      this.client.getPattern(request, metadata || new Metadata(), (error, response) => {
+      this.client.getPattern(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: Pattern) => {
         if (error) {
           reject(error);
           return;
@@ -132,7 +141,10 @@ export class PatternClient {
   upload(pattern: Pattern, overwrite = false, metadata?: Metadata): Promise<UploadPatternResponse> {
     const request: UploadPatternRequest = { pattern, overwrite };
     return new Promise((resolve, reject) => {
-      this.client.uploadPattern(request, metadata || new Metadata(), (error, response) => {
+      this.client.uploadPattern(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: UploadPatternResponse) => {
         if (error) {
           reject(error);
           return;

@@ -99,3 +99,4 @@ etcd-data/
 default.etcd/
 
 packages/cli/demos
+demos/

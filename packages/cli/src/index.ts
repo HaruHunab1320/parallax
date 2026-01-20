@@ -21,7 +21,7 @@ const banner = chalk.cyan(`
 ║     |  __/ (_| | | | (_| | | | (_| |>  <        ║
 ║     |_|   \\__,_|_|  \\__,_|_|_|\\__,_/_/\\_\\       ║
 ║                                                 ║
-║   AI Orchestration with Uncertainty             ║
+║        AI Orchestration with Uncertainty        ║
 ╚═════════════════════════════════════════════════╝
 `);
 

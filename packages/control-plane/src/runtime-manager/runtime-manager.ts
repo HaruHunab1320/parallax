@@ -83,11 +83,15 @@ export class RuntimeManager {
         return `[${elements}]`;
       }
       if (typeof value === 'object') {
+        const isValidIdentifier = (key: string) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key);
         const props = Object.entries(value)
           .map(([k, v]) => {
             // Rename 'agents' key to 'agentList' in nested objects too
-            const key = k === 'agents' ? 'agentList' : k;
-            return `${key}: ${toPrismValue(v, depth + 1)}`;
+            const rawKey = k === 'agents' ? 'agentList' : k;
+            const prismKey = isValidIdentifier(rawKey)
+              ? rawKey
+              : `"${rawKey.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+            return `${prismKey}: ${toPrismValue(v, depth + 1)}`;
           })
           .join(', ');
         return `{${props}}`;

@@ -32,7 +32,10 @@ export class CoordinatorServiceClient {
 
   coordinate(request: CoordinateRequest, metadata?: Metadata): Promise<CoordinateResponse> {
     return new Promise((resolve, reject) => {
-      this.client.coordinate(request, metadata || new Metadata(), (error, response) => {
+      this.client.coordinate(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: CoordinateResponse) => {
         if (error) {
           reject(error);
           return;
@@ -48,8 +51,8 @@ export class CoordinatorServiceClient {
     metadata?: Metadata
   ): ClientReadableStream<CoordinateResponse> {
     const stream = this.client.streamCoordinate(request, metadata || new Metadata());
-    stream.on("data", (message) => handlers.onMessage?.(message));
-    stream.on("error", (error) => handlers.onError?.(error));
+    stream.on("data", (message: CoordinateResponse) => handlers.onMessage?.(message));
+    stream.on("error", (error: ServiceError) => handlers.onError?.(error));
     stream.on("end", () => handlers.onEnd?.());
     return stream;
   }
@@ -62,7 +65,10 @@ export class CoordinatorServiceClient {
   ): Promise<GetHistoryResponse> {
     const request: GetHistoryRequest = { taskId, limit, sinceTimestamp };
     return new Promise((resolve, reject) => {
-      this.client.getHistory(request, metadata || new Metadata(), (error, response) => {
+      this.client.getHistory(
+        request,
+        metadata || new Metadata(),
+        (error: ServiceError | null, response: GetHistoryResponse) => {
         if (error) {
           reject(error);
           return;

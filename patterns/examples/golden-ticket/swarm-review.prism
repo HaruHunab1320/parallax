@@ -11,11 +11,14 @@ results = agentResults
 highConfidence = results.filter(r => (r?.confidence ?? 0) > 0.7)
 notes = highConfidence.map(r => r?.result?.notes ?? r?.result ?? "")
 
+totalConfidence = highConfidence.reduce((sum, r) => sum + (r?.confidence ?? 0), 0)
+confidenceScore = highConfidence.length > 0 ? (totalConfidence / highConfidence.length) : 0
+
 output = {
   type: "swarm_review",
   notes: notes,
-  confidence: average(highConfidence.map(r => r?.confidence ?? 0)),
+  confidence: confidenceScore,
   reviewers: highConfidence.map(r => ({ agentId: r.agentId, confidence: r.confidence }))
 }
 
-output ~> output.confidence
+output ~> confidenceScore

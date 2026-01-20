@@ -5,6 +5,7 @@ import { EtcdRegistry } from '../registry';
 import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import { GrpcAgentProxy } from '@parallax/runtime';
+import { AgentProxy } from '../grpc/agent-proxy';
 import { LocalAgentManager } from './local-agents';
 import { 
   PatternTracer
@@ -25,6 +26,7 @@ export class TracedPatternEngine implements IPatternEngine {
   private localAgents: any[] = [];
   private _calibrationService: ConfidenceCalibrationService;
   private licenseEnforcer: LicenseEnforcer;
+  private agentProxy: AgentProxy;
   
   constructor(
     private runtimeManager: RuntimeManager,
@@ -39,6 +41,7 @@ export class TracedPatternEngine implements IPatternEngine {
     this.tracer = new PatternTracer('control-plane', '0.1.0');
     this._calibrationService = new ConfidenceCalibrationService(logger);
     this.licenseEnforcer = new LicenseEnforcer(logger);
+    this.agentProxy = new AgentProxy(logger);
   }
 
   async initialize(): Promise<void> {
@@ -108,6 +111,115 @@ export class TracedPatternEngine implements IPatternEngine {
           const agents = await this.selectAgents(pattern);
           emitEvent('agents_selected', { count: agents.length });
           
+          const preProcessedData: any = {
+            agentResults: [],
+            successfulResults: []
+          };
+
+          const patternNameLower = pattern.name.toLowerCase();
+          if (
+            patternNameLower.includes('consensus') ||
+            patternNameLower.includes('cascade') ||
+            patternNameLower.includes('orchestrator') ||
+            patternNameLower.includes('router') ||
+            patternNameLower.includes('robust') ||
+            patternNameLower.includes('validator') ||
+            patternNameLower.includes('balancer') ||
+            patternNameLower.includes('mapreduce') ||
+            patternNameLower.includes('exploration') ||
+            patternNameLower.includes('refinement')
+          ) {
+            let completedCount = 0;
+            let failedCount = 0;
+            const waitForAgentHealthy = async (address: string): Promise<boolean> => {
+              const attempts = 5;
+              for (let attempt = 0; attempt < attempts; attempt += 1) {
+                const healthy = await this.agentProxy.healthCheck(address, 2000);
+                if (healthy) return true;
+                await new Promise(resolve => setTimeout(resolve, 300));
+              }
+              return false;
+            };
+
+            const agentResults = await Promise.all(
+              agents.map(async (agent) => {
+                emitEvent('agent_started', {
+                  agentId: agent.id,
+                  agentName: agent.name,
+                  capabilities: agent.capabilities,
+                  task: input.task || input?.data?.task
+                });
+                try {
+                  const healthy = await waitForAgentHealthy(agent.endpoint);
+                  if (!healthy) {
+                    throw new Error('Agent failed health check');
+                  }
+                  const result = await this.agentProxy.executeTask(
+                    agent.endpoint,
+                    {
+                      description: input.task || 'analyze',
+                      data: input.data || input
+                    },
+                    30000
+                  );
+                  emitEvent('agent_completed', {
+                    agentId: agent.id,
+                    agentName: agent.name,
+                    confidence: result.confidence
+                  });
+                  completedCount += 1;
+                  emitEvent('progress', {
+                    total: agents.length,
+                    completed: completedCount,
+                    failed: failedCount
+                  });
+                  return {
+                    agentId: agent.id,
+                    agentName: agent.name,
+                    capabilities: agent.capabilities,
+                    expertise: agent.expertise || 0.7,
+                    result: result.value,
+                    confidence: result.confidence,
+                    reasoning: result.reasoning,
+                    timestamp: Date.now()
+                  };
+                } catch (error) {
+                  this.logger.warn({ agentId: agent.id, error }, 'Agent analysis failed');
+                  emitEvent('agent_failed', {
+                    agentId: agent.id,
+                    agentName: agent.name,
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                  });
+                  failedCount += 1;
+                  emitEvent('progress', {
+                    total: agents.length,
+                    completed: completedCount,
+                    failed: failedCount
+                  });
+                  return {
+                    agentId: agent.id,
+                    agentName: agent.name,
+                    capabilities: agent.capabilities,
+                    expertise: agent.expertise || 0.7,
+                    result: null,
+                    confidence: 0,
+                    reasoning: 'Agent failed to respond',
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    timestamp: Date.now()
+                  };
+                }
+              })
+            );
+
+            preProcessedData.agentResults = agentResults;
+            preProcessedData.successfulResults = agentResults.filter(r => r.confidence > 0);
+            emitEvent('agents_completed', {
+              total: agents.length,
+              completed: completedCount,
+              failed: failedCount
+            });
+          }
+
           // Create Prism context with agent proxies
           const prismContext: Record<string, any> = {
             agents: agents.reduce((acc, agent) => {
@@ -116,6 +228,8 @@ export class TracedPatternEngine implements IPatternEngine {
             }, {} as Record<string, GrpcAgentProxy>),
             input,
             logger: this.logger,
+            ...preProcessedData,
+            agentCount: agents.length,
             confidence: {
               threshold: pattern.metadata?.defaultThreshold || 0.7,
               aggregation: pattern.metadata?.aggregationMethod || 'weighted_average',

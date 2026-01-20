@@ -95,7 +95,10 @@ export class PatternEngine implements IPatternEngine {
       emitEvent('agents_selected', { count: agents.length });
       
       // Pre-execute async agent operations based on pattern requirements
-      const preProcessedData: any = {};
+      const preProcessedData: any = {
+        agentResults: [],
+        successfulResults: []
+      };
       
       // Check if pattern needs agent analysis results
       const patternNameLower = pattern.name.toLowerCase();
@@ -108,14 +111,29 @@ export class PatternEngine implements IPatternEngine {
         // Execute all agent analyses in parallel
         let completedCount = 0;
         let failedCount = 0;
+        const waitForAgentHealthy = async (address: string): Promise<boolean> => {
+          const attempts = 5;
+          for (let attempt = 0; attempt < attempts; attempt += 1) {
+            const healthy = await this.agentProxy.healthCheck(address, 2000);
+            if (healthy) return true;
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+          return false;
+        };
+
         const agentResults = await Promise.all(
           agents.map(async (agent) => {
             emitEvent('agent_started', {
               agentId: agent.id,
               agentName: agent.name,
-              capabilities: agent.capabilities
+              capabilities: agent.capabilities,
+              task: input.task || input?.data?.task
             });
             try {
+              const healthy = await waitForAgentHealthy(agent.address || agent.endpoint);
+              if (!healthy) {
+                throw new Error('Agent failed health check');
+              }
               const result = await this.agentProxy.executeTask(
                 agent.address || agent.endpoint,
                 {
