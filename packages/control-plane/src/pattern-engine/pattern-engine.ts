@@ -132,7 +132,10 @@ export class PatternEngine implements IPatternEngine {
             try {
               const healthy = await waitForAgentHealthy(agent.address || agent.endpoint);
               if (!healthy) {
-                throw new Error('Agent failed health check');
+                this.logger.warn(
+                  { agentId: agent.id, agentAddress: agent.address || agent.endpoint },
+                  'Agent health check failed; continuing'
+                );
               }
               const result = await this.agentProxy.executeTask(
                 agent.address || agent.endpoint,
@@ -400,6 +403,11 @@ export class PatternEngine implements IPatternEngine {
 
     if (pattern.maxAgents && agents.length > pattern.maxAgents) {
       agents = agents.slice(0, pattern.maxAgents);
+    }
+
+    const runId = process.env.PARALLAX_RUN_ID;
+    if (runId) {
+      agents = agents.filter(agent => agent.metadata?.labels?.runId === runId || agent.metadata?.runId === runId);
     }
 
     // No agent limits - all agents are available in open source

@@ -97,6 +97,3 @@ agent-logs/
 # etcd data (if running locally)
 etcd-data/
 default.etcd/
-
-packages/cli/demos
-demos/

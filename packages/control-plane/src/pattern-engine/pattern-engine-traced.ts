@@ -152,7 +152,10 @@ export class TracedPatternEngine implements IPatternEngine {
                 try {
                   const healthy = await waitForAgentHealthy(agent.endpoint);
                   if (!healthy) {
-                    throw new Error('Agent failed health check');
+                    this.logger.warn(
+                      { agentId: agent.id, agentAddress: agent.endpoint },
+                      'Agent health check failed; continuing'
+                    );
                   }
                   const result = await this.agentProxy.executeTask(
                     agent.endpoint,

@@ -34,6 +34,32 @@ export class AgentProxy {
     this.loadProto();
   }
 
+  private toStructValue(value: any): any {
+    if (value === null || value === undefined) {
+      return { nullValue: 0 };
+    }
+    if (Array.isArray(value)) {
+      return { listValue: { values: value.map((item) => this.toStructValue(item)) } };
+    }
+    if (typeof value === 'object') {
+      const fields: Record<string, any> = {};
+      for (const [key, entry] of Object.entries(value)) {
+        fields[key] = this.toStructValue(entry);
+      }
+      return { structValue: { fields } };
+    }
+    if (typeof value === 'string') return { stringValue: value };
+    if (typeof value === 'number') return { numberValue: value };
+    if (typeof value === 'boolean') return { boolValue: value };
+    return { stringValue: String(value) };
+  }
+
+  private toStruct(value: any): any {
+    if (value && typeof value === 'object' && 'fields' in value) return value;
+    const structValue = this.toStructValue(value)?.structValue;
+    return { fields: structValue?.fields || {} };
+  }
+
   private loadProto() {
     const protoPath = path.join(PROTO_DIR, 'confidence.proto');
     const packageDefinition = protoLoader.loadSync(protoPath, {
@@ -108,7 +134,7 @@ export class AgentProxy {
       const request = {
         task_id: uuidv4(),
         task_description: task.description,
-        data: task.data || {},
+        data: this.toStruct(task.data || {}),
         context: task.metadata || {},
         timeout_ms: timeout
       };

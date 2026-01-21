@@ -16,6 +16,52 @@ interface GrpcProto {
   };
 }
 
+function normalizeStructList(value: any): any[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map(normalizeStructValue);
+  if (Array.isArray(value.values)) return value.values.map(normalizeStructValue);
+  return [];
+}
+
+function normalizeStructValue(value: any): any {
+  if (value == null) return null;
+  if (typeof value !== 'object') return value;
+  if ('nullValue' in value) return null;
+  if ('stringValue' in value) return value.stringValue;
+  if ('numberValue' in value) return value.numberValue;
+  if ('boolValue' in value) return value.boolValue;
+  if ('structValue' in value) return normalizeStruct(value.structValue);
+  if ('listValue' in value) return normalizeStructList(value.listValue);
+  if ('fields' in value) return normalizeStruct(value);
+  if ('values' in value && Array.isArray(value.values)) {
+    return value.values.map(normalizeStructValue);
+  }
+  if ('kind' in value && value.kind && typeof value.kind === 'object') {
+    const kindValue = (value.kind as any);
+    if ('structValue' in kindValue) return normalizeStruct(kindValue.structValue);
+    if ('listValue' in kindValue) return normalizeStructList(kindValue.listValue);
+    if ('stringValue' in kindValue) return kindValue.stringValue;
+    if ('numberValue' in kindValue) return kindValue.numberValue;
+    if ('boolValue' in kindValue) return kindValue.boolValue;
+    if ('nullValue' in kindValue) return null;
+  }
+  return value;
+}
+
+function normalizeStruct(input: any): any {
+  if (input == null) return input;
+  if (Array.isArray(input)) return input.map(normalizeStructValue);
+  if (typeof input !== 'object') return input;
+  if ('fields' in input && input.fields && typeof input.fields === 'object') {
+    const out: Record<string, any> = {};
+    for (const [key, value] of Object.entries(input.fields)) {
+      out[key] = normalizeStructValue(value);
+    }
+    return out;
+  }
+  return input;
+}
+
 export abstract class ParallaxAgent {
   protected server: grpc.Server;
   protected registryClient: any;
@@ -156,6 +202,7 @@ export abstract class ParallaxAgent {
     // Start the server
     return new Promise((resolve, reject) => {
       const bindAddr = `0.0.0.0:${port}`;
+      const advertisedHost = process.env.PARALLAX_AGENT_HOST || '127.0.0.1';
       const credentials = options?.serverCredentials || grpc.ServerCredentials.createInsecure();
       
       this.server.bindAsync(
@@ -172,7 +219,7 @@ export abstract class ParallaxAgent {
           // Register with control plane
           try {
             await this.register(
-              `localhost:${actualPort}`,
+              `${advertisedHost}:${actualPort}`,
               options?.registryEndpoint,
               options?.registryCredentials
             );
@@ -290,7 +337,7 @@ export abstract class ParallaxAgent {
     try {
       const request = call.request;
       const taskDescription = request.task_description || request.task?.description || '';
-      const data = request.data || (request.task?.data ? JSON.parse(request.task.data) : undefined);
+      const data = normalizeStruct(request.data || (request.task?.data ? JSON.parse(request.task.data) : undefined));
       
       // Call the agent's analyze method
       const result = await this.analyze(
@@ -327,7 +374,7 @@ export abstract class ParallaxAgent {
     try {
       const request = call.request;
       const taskDescription = request.task_description || request.task?.description || '';
-      const data = request.data || (request.task?.data ? JSON.parse(request.task.data) : undefined);
+      const data = normalizeStruct(request.data || (request.task?.data ? JSON.parse(request.task.data) : undefined));
 
       await this.streamAnalyze(taskDescription, data, (result) => {
         call.write({
