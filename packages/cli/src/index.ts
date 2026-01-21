@@ -8,7 +8,6 @@ import { runCommand } from './commands/run';
 import { patternCommand } from './commands/pattern';
 import { statusCommand } from './commands/status';
 import { scenarioCommand } from './commands/scenario';
-import { demoCommand } from './commands/demo';
 
 const program = new Command();
 
@@ -40,7 +39,6 @@ program.addCommand(runCommand);
 program.addCommand(patternCommand);
 program.addCommand(statusCommand);
 program.addCommand(scenarioCommand);
-program.addCommand(demoCommand);
 
 // Parse command line arguments
 program.parse();
