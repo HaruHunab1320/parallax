@@ -1,0 +1,21 @@
+{
+  "name": "@parallax/prompt-testing-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A/B testing for prompts - compare different prompt styles and pick the best",
+  "scripts": {
+    "agent:concise": "tsx agents/concise-agent/agent.ts",
+    "agent:detailed": "tsx agents/detailed-agent/agent.ts",
+    "agent:creative": "tsx agents/creative-agent/agent.ts",
+    "agent:judge": "tsx agents/judge-agent/agent.ts",
+    "test-prompts": "tsx test-prompts.ts"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@parallax/sdk-typescript": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

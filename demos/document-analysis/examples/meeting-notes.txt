@@ -1,0 +1,35 @@
+Q4 Product Planning Meeting - Notes
+Date: January 15, 2026
+Attendees: Sarah (PM), Mike (Engineering Lead), Lisa (Design), Tom (QA)
+
+AGENDA ITEMS DISCUSSED:
+
+1. Feature Roadmap Review
+Sarah presented the Q4 roadmap priorities. The team agreed that the new analytics dashboard should be our top priority, as customer feedback has been overwhelmingly positive about needing better data visualization tools.
+
+Mike raised concerns about the timeline - we only have 10 weeks to deliver, and the current estimate is 12 weeks. After discussion, we agreed to cut the advanced filtering feature from v1 and move it to Q1 next year.
+
+2. Technical Debt
+Mike emphasized that we MUST address the authentication refactoring before adding new features. The current system is causing 15% of our support tickets. He proposed dedicating 2 developers for 3 weeks to fix this.
+
+Decision needed: Should we delay the dashboard launch by 3 weeks to fix auth first, or run both in parallel with a smaller team?
+
+3. Design Review
+Lisa showed mockups for the new dashboard. The team loved the clean layout but had concerns about accessibility - some color contrasts don't meet WCAG standards. Lisa will revise the color palette by Friday.
+
+4. QA Capacity
+Tom mentioned his team is stretched thin. With the holiday season, he'll only have 2 testers available in December. He strongly recommends we DON'T launch anything in the last 2 weeks of December.
+
+ACTION ITEMS:
+- Sarah: Schedule follow-up meeting with stakeholders to discuss auth delay (by Jan 20)
+- Mike: Create detailed estimate for parallel development approach (by Jan 22)
+- Lisa: Update mockups with accessible color palette (by Jan 17)
+- Tom: Document test coverage requirements for dashboard (by Jan 24)
+- All: Review revised roadmap and provide feedback by end of week
+
+RISKS IDENTIFIED:
+- Timeline is aggressive with current resources
+- December testing capacity is limited
+- Auth issues could impact new feature stability
+
+NEXT MEETING: January 22, 2026 at 2pm

@@ -1,0 +1,102 @@
+/**
+ * @name PromptTesting
+ * @version 1.0.0
+ * @description A/B test different prompt styles and evaluate which performs best
+ * @input {"type": "object", "properties": {"query": {"type": "string"}}}
+ * @agents {"capabilities": ["prompt", "testing"]}
+ * @minAgents 2
+ */
+
+// Collect results from all prompt variant agents
+results = agentResults
+
+// Filter to only successful results
+validResults = results.filter(r => r.confidence > 0 && r.result)
+
+// Separate variant responses from judge evaluation
+variantResults = validResults.filter(r => r.result.variantType != "judge")
+judgeResults = validResults.filter(r => r.result.variantType == "judge")
+
+// Get judge evaluation
+judgeCheck = judgeResults.length > 0 ? judgeResults.reduce((acc, r) => r, null) : null
+
+// Extract variant data
+conciseResults = variantResults.filter(r => r.result.variantType == "concise")
+detailedResults = variantResults.filter(r => r.result.variantType == "detailed")
+creativeResults = variantResults.filter(r => r.result.variantType == "creative")
+
+conciseCheck = conciseResults.length > 0 ? conciseResults.reduce((acc, r) => r, null) : null
+detailedCheck = detailedResults.length > 0 ? detailedResults.reduce((acc, r) => r, null) : null
+creativeCheck = creativeResults.length > 0 ? creativeResults.reduce((acc, r) => r, null) : null
+
+// Build responses array
+conciseResponse = conciseCheck ? conciseCheck.result.response : ""
+detailedResponse = detailedCheck ? detailedCheck.result.response : ""
+creativeResponse = creativeCheck ? creativeCheck.result.response : ""
+
+conciseLatency = conciseCheck ? conciseCheck.result.latencyMs : 0
+detailedLatency = detailedCheck ? detailedCheck.result.latencyMs : 0
+creativeLatency = creativeCheck ? creativeCheck.result.latencyMs : 0
+
+conciseLength = conciseCheck ? conciseCheck.result.responseLength : 0
+detailedLength = detailedCheck ? detailedCheck.result.responseLength : 0
+creativeLength = creativeCheck ? creativeCheck.result.responseLength : 0
+
+// Get judge data
+evaluations = judgeCheck ? judgeCheck.result.evaluations : []
+winner = judgeCheck ? judgeCheck.result.winner : "unknown"
+winnerReason = judgeCheck ? judgeCheck.result.winnerReason : ""
+recommendation = judgeCheck ? judgeCheck.result.recommendation : ""
+
+// Count variants tested
+totalVariants = variantResults.length
+
+// Calculate average confidence
+confidenceSum = validResults.reduce((sum, r) => sum + r.confidence, 0)
+avgConfidence = validResults.length > 0 ? confidenceSum / validResults.length : 0
+
+// Build variant details
+variantDetails = variantResults.map(r => ({
+  style: r.result.variantType,
+  agent: r.agentName,
+  responseLength: r.result.responseLength,
+  latencyMs: r.result.latencyMs,
+  confidence: r.confidence
+}))
+
+// Compile output
+output = {
+  query: input.data.query,
+  variants: {
+    concise: {
+      response: conciseResponse,
+      latencyMs: conciseLatency,
+      length: conciseLength
+    },
+    detailed: {
+      response: detailedResponse,
+      latencyMs: detailedLatency,
+      length: detailedLength
+    },
+    creative: {
+      response: creativeResponse,
+      latencyMs: creativeLatency,
+      length: creativeLength
+    }
+  },
+  evaluation: {
+    evaluations: evaluations,
+    winner: winner,
+    winnerReason: winnerReason,
+    recommendation: recommendation
+  },
+  metadata: {
+    variantsTested: totalVariants,
+    averageConfidence: avgConfidence,
+    variantDetails: variantDetails,
+    patternVersion: "1.0.0"
+  }
+}
+
+// Return with average confidence
+output ~> avgConfidence

@@ -152,6 +152,22 @@ importers:
         specifier: ^5.7.2
         version: 5.8.3
 
+  demos/document-analysis:
+    dependencies:
+      '@google/generative-ai':
+        specifier: ^0.21.0
+        version: 0.21.0
+      '@parallax/sdk-typescript':
+        specifier: workspace:*
+        version: link:../../packages/sdk-typescript
+    devDependencies:
+      tsx:
+        specifier: ^4.7.0
+        version: 4.20.3
+      typescript:
+        specifier: ^5.3.3
+        version: 5.8.3
+
   demos/multi-model-voting:
     dependencies:
       '@google/generative-ai':
@@ -180,6 +196,22 @@ importers:
       npm-run-all:
         specifier: ^4.1.5
         version: 4.1.5
+      tsx:
+        specifier: ^4.7.0
+        version: 4.20.3
+      typescript:
+        specifier: ^5.3.3
+        version: 5.8.3
+
+  demos/prompt-testing:
+    dependencies:
+      '@google/generative-ai':
+        specifier: ^0.21.0
+        version: 0.21.0
+      '@parallax/sdk-typescript':
+        specifier: workspace:*
+        version: link:../../packages/sdk-typescript
+    devDependencies:
       tsx:
         specifier: ^4.7.0
         version: 4.20.3

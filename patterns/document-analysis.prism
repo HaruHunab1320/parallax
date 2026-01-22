@@ -1,0 +1,114 @@
+/**
+ * @name DocumentAnalysis
+ * @version 1.0.0
+ * @description Multi-perspective document analysis with parallel specialized agents
+ * @input {"type": "object", "properties": {"document": {"type": "string"}, "title": {"type": "string"}}}
+ * @agents {"capabilities": ["document", "analysis"]}
+ * @minAgents 2
+ */
+
+// Collect results from all analysis agents
+results = agentResults
+
+// Filter to only successful results
+validResults = results.filter(r => r.confidence > 0 && r.result)
+
+// Extract results by analysis type
+summaryResults = validResults.filter(r => r.result.analysisType == "summary")
+keypointsResults = validResults.filter(r => r.result.analysisType == "keypoints")
+actionsResults = validResults.filter(r => r.result.analysisType == "actions")
+sentimentResults = validResults.filter(r => r.result.analysisType == "sentiment")
+
+// Get individual results (take first of each type)
+summaryCheck = summaryResults.length > 0 ? summaryResults.reduce((acc, r) => r, null) : null
+keypointsCheck = keypointsResults.length > 0 ? keypointsResults.reduce((acc, r) => r, null) : null
+actionsCheck = actionsResults.length > 0 ? actionsResults.reduce((acc, r) => r, null) : null
+sentimentCheck = sentimentResults.length > 0 ? sentimentResults.reduce((acc, r) => r, null) : null
+
+// Extract summary data
+docTitle = summaryCheck ? summaryCheck.result.title : "Unknown"
+mainTopic = summaryCheck ? summaryCheck.result.mainTopic : ""
+summaryText = summaryCheck ? summaryCheck.result.summary : ""
+conclusion = summaryCheck ? summaryCheck.result.conclusion : ""
+documentType = summaryCheck ? summaryCheck.result.documentType : "unknown"
+wordCount = summaryCheck ? summaryCheck.result.wordCount : 0
+
+// Extract key points data
+criticalPoints = keypointsCheck ? keypointsCheck.result.criticalPoints : []
+supportingPoints = keypointsCheck ? keypointsCheck.result.supportingPoints : []
+factsAndData = keypointsCheck ? keypointsCheck.result.factsAndData : []
+totalKeyPoints = keypointsCheck ? keypointsCheck.result.totalPoints : 0
+
+// Extract action items data
+actionItems = actionsCheck ? actionsCheck.result.actionItems : []
+decisions = actionsCheck ? actionsCheck.result.decisions : []
+followUps = actionsCheck ? actionsCheck.result.followUps : []
+hasUrgentItems = actionsCheck ? actionsCheck.result.hasUrgentItems : false
+totalActions = actionsCheck ? actionsCheck.result.totalActions : 0
+
+// Extract sentiment data
+overallSentiment = sentimentCheck ? sentimentCheck.result.overallSentiment : "unknown"
+sentimentScore = sentimentCheck ? sentimentCheck.result.sentimentScore : 0
+tone = sentimentCheck ? sentimentCheck.result.tone : {}
+emotionalIndicators = sentimentCheck ? sentimentCheck.result.emotionalIndicators : []
+concerns = sentimentCheck ? sentimentCheck.result.concerns : []
+professionalism = sentimentCheck ? sentimentCheck.result.professionalism : {}
+
+// Count successful analyses
+totalAnalyses = validResults.length
+
+// Calculate average confidence
+confidenceSum = validResults.reduce((sum, r) => sum + r.confidence, 0)
+avgConfidence = totalAnalyses > 0 ? confidenceSum / totalAnalyses : 0
+
+// Build analysis details
+analysisDetails = validResults.map(r => ({
+  analysisType: r.result.analysisType,
+  agent: r.agentName,
+  confidence: r.confidence,
+  reasoning: r.reasoning
+}))
+
+// Compile comprehensive output
+output = {
+  document: {
+    title: docTitle,
+    type: documentType,
+    wordCount: wordCount
+  },
+  summary: {
+    mainTopic: mainTopic,
+    overview: summaryText,
+    conclusion: conclusion
+  },
+  keyPoints: {
+    critical: criticalPoints,
+    supporting: supportingPoints,
+    factsAndData: factsAndData,
+    totalCount: totalKeyPoints
+  },
+  actionItems: {
+    items: actionItems,
+    decisions: decisions,
+    followUps: followUps,
+    hasUrgentItems: hasUrgentItems,
+    totalCount: totalActions
+  },
+  sentiment: {
+    overall: overallSentiment,
+    score: sentimentScore,
+    tone: tone,
+    emotionalIndicators: emotionalIndicators,
+    concerns: concerns,
+    professionalism: professionalism
+  },
+  metadata: {
+    analysesCompleted: totalAnalyses,
+    averageConfidence: avgConfidence,
+    details: analysisDetails,
+    patternVersion: "1.0.0"
+  }
+}
+
+// Return with average confidence
+output ~> avgConfidence
