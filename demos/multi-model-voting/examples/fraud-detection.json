@@ -1,0 +1,5 @@
+{
+  "question": "Does this transaction appear fraudulent?",
+  "options": ["legitimate", "suspicious", "fraudulent"],
+  "context": "Transaction details: $2,500 purchase at electronics store in Miami, FL. Cardholder's home address is Seattle, WA. Card was used 3 hours ago for a $15 coffee purchase in Seattle. No travel notifications on file."
+}

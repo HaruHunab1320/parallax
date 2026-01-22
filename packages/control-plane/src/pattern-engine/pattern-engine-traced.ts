@@ -127,7 +127,8 @@ export class TracedPatternEngine implements IPatternEngine {
             patternNameLower.includes('balancer') ||
             patternNameLower.includes('mapreduce') ||
             patternNameLower.includes('exploration') ||
-            patternNameLower.includes('refinement')
+            patternNameLower.includes('refinement') ||
+            patternNameLower.includes('voting')
           ) {
             let completedCount = 0;
             let failedCount = 0;
@@ -312,7 +313,7 @@ export class TracedPatternEngine implements IPatternEngine {
     
     // Filter by capabilities
     const eligibleAgents = services.filter(service => {
-      const capabilities = service.metadata?.capabilities || [];
+      const capabilities = service.capabilities || service.metadata?.capabilities || [];
       return requiredCapabilities.every((req: string) => capabilities.includes(req));
     });
     

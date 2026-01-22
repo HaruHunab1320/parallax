@@ -1,0 +1,5 @@
+{
+  "question": "Is this content appropriate for a general audience?",
+  "options": ["appropriate", "inappropriate", "needs_review"],
+  "context": "User posted: 'Just finished an amazing hike up Mount Rainier! The views were breathtaking and I can't wait to go back. Here's a photo of the sunset from the summit.'"
+}

@@ -1,0 +1,138 @@
+/**
+ * @name CodeReviewOrchestrator
+ * @version 1.0.0
+ * @description Orchestrates multi-agent code review with confidence-aware decision making
+ * @input {"type": "object", "properties": {"code": {"type": "string"}, "context": {"type": "object"}}}
+ * @agents {"capabilities": ["security", "style", "documentation", "testing"]}
+ * @minAgents 2
+ */
+
+// Collect results from all agents (injected by pattern engine)
+results = agentResults
+
+// Filter to only successful results
+validResults = results.filter(r => r.confidence > 0)
+
+// Calculate consensus confidence - how much do agents agree?
+confidenceValues = validResults.map(r => r.confidence)
+avgConfidence = confidenceValues.length > 0
+  ? confidenceValues.reduce((sum, c) => sum + c, 0) / confidenceValues.length
+  : 0
+
+// Count findings by severity across all agents using reduce
+// Each agent's findings need to be counted individually
+criticalCount = validResults.reduce((sum, r) => {
+  findings = r.result && r.result.findings ? r.result.findings : []
+  count = findings.filter(f => f.severity == "critical").length
+  sum + count
+}, 0)
+
+highCount = validResults.reduce((sum, r) => {
+  findings = r.result && r.result.findings ? r.result.findings : []
+  count = findings.filter(f => f.severity == "high").length
+  sum + count
+}, 0)
+
+mediumCount = validResults.reduce((sum, r) => {
+  findings = r.result && r.result.findings ? r.result.findings : []
+  count = findings.filter(f => f.severity == "medium").length
+  sum + count
+}, 0)
+
+lowCount = validResults.reduce((sum, r) => {
+  findings = r.result && r.result.findings ? r.result.findings : []
+  count = findings.filter(f => f.severity == "low").length
+  sum + count
+}, 0)
+
+// Total finding count
+findingCount = criticalCount + highCount + mediumCount + lowCount
+
+// Determine overall severity
+hasCritical = criticalCount > 0
+hasHigh = highCount > 0
+hasMedium = mediumCount > 0
+
+overallSeverity = hasCritical ? "critical"
+  : hasHigh ? "high"
+  : hasMedium ? "medium"
+  : findingCount > 0 ? "low"
+  : "none"
+
+// Decision logic based on findings and confidence
+recommendation = "approve"
+
+// Critical issues with high confidence = block
+if (hasCritical && avgConfidence > 0.7) {
+  recommendation = "block"
+}
+// High severity issues = request changes
+else if (hasHigh) {
+  recommendation = "request_changes"
+}
+// Multiple medium issues = request changes
+else if (mediumCount >= 3) {
+  recommendation = "request_changes"
+}
+// Low confidence overall = needs human review
+else if (avgConfidence < 0.6 && findingCount > 0) {
+  recommendation = "discuss"
+}
+// Some findings but nothing critical
+else if (findingCount > 0) {
+  recommendation = "approve_with_comments"
+}
+
+// Calculate consensus level
+consensusLevel = avgConfidence > 0.85 ? "strong"
+  : avgConfidence > 0.7 ? "moderate"
+  : avgConfidence > 0.5 ? "weak"
+  : "uncertain"
+
+// Build summary
+agentCount = validResults.length
+summary = findingCount > 0
+  ? agentCount + " agents found " + findingCount + " issue(s). " +
+    "Critical: " + criticalCount + ", " +
+    "High: " + highCount + ", " +
+    "Medium: " + mediumCount + ", " +
+    "Low: " + lowCount
+  : agentCount + " agents reviewed the code. No significant issues found."
+
+// Build agent results with findings included per-agent (not flattened)
+agentSummaries = validResults.map(r => {
+  agentFindings = r.result && r.result.findings ? r.result.findings : []
+  {
+    agent: r.agentName,
+    agentId: r.agentId,
+    confidence: r.confidence,
+    summary: r.result && r.result.summary ? r.result.summary : "Analysis complete",
+    findingCount: agentFindings.length,
+    findings: agentFindings
+  }
+})
+
+// Compile final output
+output = {
+  summary: summary,
+  recommendation: recommendation,
+  overallSeverity: overallSeverity,
+  consensus: {
+    level: consensusLevel,
+    confidence: avgConfidence,
+    agentCount: agentCount
+  },
+  severityCounts: {
+    "critical": criticalCount,
+    "high": highCount,
+    "medium": mediumCount,
+    "low": lowCount
+  },
+  agentResults: agentSummaries,
+  metadata: {
+    patternVersion: "1.0.0"
+  }
+}
+
+// Return with confidence annotation
+output ~> avgConfidence

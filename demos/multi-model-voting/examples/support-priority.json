@@ -1,0 +1,5 @@
+{
+  "question": "What priority level should this support ticket be assigned?",
+  "options": ["low", "medium", "high", "critical"],
+  "context": "Customer message: 'Our entire team of 50 people cannot access the dashboard. We have a major client presentation in 2 hours and need the analytics data. This is costing us real money every minute it's down. Please help ASAP!'"
+}

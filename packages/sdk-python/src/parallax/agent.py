@@ -90,7 +90,7 @@ class ParallaxAgent(ABC):
         return HealthStatus(
             status='healthy',
             message='Agent is operational',
-            last_check=datetime.utcnow().isoformat()
+            last_check=datetime.utcnow()
         )
     
     def get_capabilities(self) -> Capabilities:
@@ -166,7 +166,7 @@ class ParallaxAgent(ABC):
         if self._registry_stub and self.id:
             try:
                 request = registry_pb2.UnregisterRequest(agent_id=self.id)
-                await self._registry_stub.unregister(request)
+                await self._registry_stub.Unregister(request)
                 logger.info(f"Agent {self.id} unregistered from control plane")
             except Exception as e:
                 logger.error(f"Failed to unregister: {e}")
@@ -190,7 +190,7 @@ class ParallaxAgent(ABC):
                 
                 # Renew lease
                 request = registry_pb2.RenewRequest(lease_id=self._lease_id)
-                response = await self._registry_stub.renew(request)
+                response = await self._registry_stub.Renew(request)
                 
                 if response.success:
                     logger.debug(f"Lease renewed for agent {self.id}")
@@ -232,7 +232,7 @@ class ParallaxAgent(ABC):
             request = registry_pb2.RegisterRequest(agent=agent_reg)
             
             # Register agent
-            response = await self._registry_stub.register(request)
+            response = await self._registry_stub.Register(request)
             if response.success:
                 self._lease_id = response.lease_id
                 logger.info(
@@ -275,7 +275,7 @@ if confidence_pb2_grpc is not None:
                 response.value_json = json.dumps(result)
                 response.confidence = confidence
                 response.agent_id = self.agent.id
-                response.timestamp = datetime.utcnow().isoformat()
+                response.timestamp.FromDatetime(datetime.utcnow())
                 
                 # Add optional fields
                 if isinstance(result, dict):
@@ -290,7 +290,7 @@ if confidence_pb2_grpc is not None:
                 
             except Exception as e:
                 logger.error(f"Error in Analyze: {e}", exc_info=True)
-                context.abort(grpc.StatusCode.INTERNAL, str(e))
+                await context.abort(grpc.StatusCode.INTERNAL, str(e))
     
         async def GetCapabilities(self, request, context):
             """Handle capabilities requests."""
@@ -311,7 +311,7 @@ if confidence_pb2_grpc is not None:
                 
             except Exception as e:
                 logger.error(f"Error in GetCapabilities: {e}", exc_info=True)
-                context.abort(grpc.StatusCode.INTERNAL, str(e))
+                await context.abort(grpc.StatusCode.INTERNAL, str(e))
     
         async def HealthCheck(self, request, context):
             """Handle health check requests."""
@@ -334,13 +334,13 @@ if confidence_pb2_grpc is not None:
                 if health.message:
                     response.message = health.message
                 if health.last_check:
-                    response.last_check = health.last_check
+                    response.last_check.FromDatetime(health.last_check)
                 
                 return response
                 
             except Exception as e:
                 logger.error(f"Error in HealthCheck: {e}", exc_info=True)
-                context.abort(grpc.StatusCode.INTERNAL, str(e))
+                await context.abort(grpc.StatusCode.INTERNAL, str(e))
         
         async def StreamAnalyze(self, request, context):
             """Handle streaming analysis requests."""
@@ -350,11 +350,9 @@ if confidence_pb2_grpc is not None:
                 yield result
             except Exception as e:
                 logger.error(f"Error in StreamAnalyze: {e}", exc_info=True)
-                context.abort(grpc.StatusCode.INTERNAL, str(e))
+                await context.abort(grpc.StatusCode.INTERNAL, str(e))
         
         def _struct_to_dict(self, struct):
             """Convert protobuf Struct to Python dict."""
-            # Simple conversion - may need enhancement
-            return json.loads(
-                json.dumps(dict(struct.fields))
-            )
+            from google.protobuf.json_format import MessageToDict
+            return MessageToDict(struct)

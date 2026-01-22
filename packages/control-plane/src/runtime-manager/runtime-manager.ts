@@ -71,8 +71,8 @@ export class RuntimeManager {
       if (value === null) return 'null'; // Prism 1.0.11 supports null
       if (value === undefined) return 'null'; // Convert undefined to null
       if (typeof value === 'string') {
-        // Escape quotes and newlines
-        return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`;
+        // Escape quotes, newlines, and template literal interpolations (${})
+        return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\$\{/g, '\\${')}"`;
       }
       if (typeof value === 'number') return value.toString();
       if (typeof value === 'boolean') return value.toString();
@@ -83,14 +83,12 @@ export class RuntimeManager {
         return `[${elements}]`;
       }
       if (typeof value === 'object') {
-        const isValidIdentifier = (key: string) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key);
         const props = Object.entries(value)
           .map(([k, v]) => {
             // Rename 'agents' key to 'agentList' in nested objects too
             const rawKey = k === 'agents' ? 'agentList' : k;
-            const prismKey = isValidIdentifier(rawKey)
-              ? rawKey
-              : `"${rawKey.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+            // Always quote keys to avoid Prism interpreting them as variable references
+            const prismKey = `"${rawKey.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
             return `${prismKey}: ${toPrismValue(v, depth + 1)}`;
           })
           .join(', ');
@@ -173,24 +171,57 @@ export class RuntimeManager {
       // Use the simplified runPrism API for simple cases
       const result = await runPrism(script);
 
-      // Extract confidence if available
+      // Debug: Log the raw result structure
+      this.logger.info({
+        resultType: typeof result,
+        resultConstructor: result?.constructor?.name,
+        resultKeys: result && typeof result === 'object' ? Object.keys(result) : [],
+        hasValue: result && typeof result === 'object' ? '_value' in result : false,
+        hasConfidence: result && typeof result === 'object' ? '_confidence' in result : false,
+      }, 'Raw Prism result');
+
+      // Extract confidence and unwrap ConfidenceValue if needed
       let confidence = 0.5;
+      let unwrappedValue = result;
+
       if (result && typeof result === 'object') {
-        if ('confidence' in result) {
-          confidence = result.confidence;
-        } else if ('_confidence' in result) {
-          confidence = result._confidence;
-        } else if (
+        // Check if this is a ConfidenceValue wrapper
+        if (
           result.constructor &&
           result.constructor.name === 'ConfidenceValue'
         ) {
-          // Handle Prism's ConfidenceValue type
-          confidence = result._confidence || 0.5;
+          // Extract confidence from ConfidenceValue
+          confidence = result.confidence ?? result._confidence ?? 0.5;
+          // Unwrap the inner value
+          unwrappedValue = result.value ?? result._value ?? result;
+        } else if ('confidence' in result) {
+          confidence = result.confidence;
+        } else if ('_confidence' in result) {
+          confidence = result._confidence;
+        }
+
+        // If the unwrapped value is a Prism ObjectValue, extract its properties
+        if (
+          unwrappedValue &&
+          typeof unwrappedValue === 'object' &&
+          unwrappedValue.constructor &&
+          unwrappedValue.constructor.name === 'ObjectValue' &&
+          'properties' in unwrappedValue
+        ) {
+          // Convert Prism ObjectValue to plain JS object
+          unwrappedValue = this.prismValueToJS(unwrappedValue);
         }
       }
 
+      // Debug: Log what we're returning
+      this.logger.info({
+        unwrappedValueType: typeof unwrappedValue,
+        unwrappedValueKeys: unwrappedValue && typeof unwrappedValue === 'object' ? Object.keys(unwrappedValue) : [],
+        confidence,
+      }, 'Returning from executePrismScript');
+
       return {
-        value: result,
+        value: unwrappedValue,
         confidence,
         instanceId: instance.id,
         executedAt: new Date(),
@@ -225,6 +256,74 @@ export class RuntimeManager {
 
   async shutdown(): Promise<void> {
     await this.pool.shutdown();
+  }
+
+  /**
+   * Convert Prism runtime values to plain JavaScript values
+   */
+  private prismValueToJS(value: any): any {
+    if (value === null || value === undefined) {
+      return value;
+    }
+
+    const typeName = value.constructor?.name;
+
+    switch (typeName) {
+      case 'ObjectValue':
+        // Convert Prism ObjectValue to plain object
+        if (value.properties instanceof Map) {
+          const obj: Record<string, any> = {};
+          for (const [key, val] of value.properties) {
+            obj[key] = this.prismValueToJS(val);
+          }
+          return obj;
+        }
+        // If properties is already an object
+        if (value.properties && typeof value.properties === 'object') {
+          const obj: Record<string, any> = {};
+          for (const [key, val] of Object.entries(value.properties)) {
+            obj[key] = this.prismValueToJS(val);
+          }
+          return obj;
+        }
+        return value.value ?? value;
+
+      case 'ArrayValue':
+        // Convert Prism ArrayValue to plain array
+        if (Array.isArray(value.elements)) {
+          return value.elements.map((el: any) => this.prismValueToJS(el));
+        }
+        if (Array.isArray(value.value)) {
+          return value.value.map((el: any) => this.prismValueToJS(el));
+        }
+        return value;
+
+      case 'StringValue':
+      case 'NumberValue':
+      case 'BooleanValue':
+        return value.value;
+
+      case 'NullValue':
+        return null;
+
+      case 'UndefinedValue':
+        return undefined;
+
+      case 'ConfidenceValue':
+        // Recursively unwrap confidence values
+        return this.prismValueToJS(value.value ?? value._value);
+
+      default:
+        // For primitive types or unknown types, return as-is
+        if (typeof value !== 'object') {
+          return value;
+        }
+        // If it has a value property, try to extract it
+        if ('value' in value && value.value !== value) {
+          return this.prismValueToJS(value.value);
+        }
+        return value;
+    }
   }
 
   private needsEnhancedRuntime(script: string): boolean {

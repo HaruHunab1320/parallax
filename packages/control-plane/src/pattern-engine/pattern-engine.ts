@@ -102,11 +102,12 @@ export class PatternEngine implements IPatternEngine {
       
       // Check if pattern needs agent analysis results
       const patternNameLower = pattern.name.toLowerCase();
-      if (patternNameLower.includes('consensus') || patternNameLower.includes('cascade') || 
+      if (patternNameLower.includes('consensus') || patternNameLower.includes('cascade') ||
           patternNameLower.includes('orchestrator') || patternNameLower.includes('router') ||
           patternNameLower.includes('robust') || patternNameLower.includes('validator') ||
           patternNameLower.includes('balancer') || patternNameLower.includes('mapreduce') ||
-          patternNameLower.includes('exploration') || patternNameLower.includes('refinement')) {
+          patternNameLower.includes('exploration') || patternNameLower.includes('refinement') ||
+          patternNameLower.includes('voting')) {
         
         // Execute all agent analyses in parallel
         let completedCount = 0;
@@ -371,14 +372,14 @@ export class PatternEngine implements IPatternEngine {
       } else {
         // Get all agent services from registry
         const agentServices = await this.agentRegistry.listServices('agent');
-        
+
         // Map agent services to agent info objects
         agents = agentServices.map(service => ({
           id: service.id,
           name: service.name,
           address: service.endpoint,
           endpoint: service.endpoint,
-          capabilities: service.metadata?.capabilities || [],
+          capabilities: service.capabilities || service.metadata?.capabilities || [],
           expertise: service.metadata?.expertise || 0.7,
           historicalConfidence: service.metadata?.historicalConfidence || 0.75
         }));

@@ -1,0 +1,5 @@
+# Python dependencies for PR Review Bot agents
+google-generativeai>=0.3.0
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
+protobuf>=4.25.0

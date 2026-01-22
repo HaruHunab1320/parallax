@@ -1,11 +1,26 @@
 services:
   # etcd for service discovery
   etcd:
-    image: bitnami/etcd:3.5
+    image: quay.io/coreos/etcd:v3.5.9
     ports:
       - "2379:2379"
       - "2380:2380"
+    command:
+      - etcd
+      - --advertise-client-urls=http://0.0.0.0:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+
+  # PostgreSQL for Prisma
+  postgres:
+    image: postgres:16
+    ports:
+      - "5435:5432"
     environment:
-      - ALLOW_NONE_AUTHENTICATION=yes
-      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
-      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - POSTGRES_USER=parallax
+      - POSTGRES_PASSWORD=parallax123
+      - POSTGRES_DB=parallax
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

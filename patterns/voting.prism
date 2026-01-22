@@ -1,0 +1,102 @@
+/**
+ * @name MultiModelVoting
+ * @version 1.0.0
+ * @description Aggregates votes from multiple AI models and determines consensus
+ * @input {"type": "object", "properties": {"question": {"type": "string"}, "options": {"type": "array"}, "context": {"type": "string"}}}
+ * @agents {"capabilities": ["voting", "decision"]}
+ * @minAgents 2
+ */
+
+// Collect results from all voting agents
+results = agentResults
+
+// Filter to only successful results with valid decisions
+validResults = results.filter(r => r.confidence > 0 && r.result && r.result.decision)
+
+// Extract decisions for counting
+decisions = validResults.map(r => r.result.decision)
+
+// Get the first vote using reduce (returns first element's decision or "")
+firstVote = validResults.reduce((first, r) => first == "" ? r.result.decision : first, "")
+
+// Count how many match the first decision
+matchFirst = validResults.filter(r => r.result.decision == firstVote).length
+
+// Check if unanimous (all match first)
+isUnanimous = matchFirst == validResults.length && validResults.length > 0
+
+// Calculate average confidence
+confidenceSum = validResults.reduce((sum, r) => sum + r.confidence, 0)
+avgConfidence = validResults.length > 0 ? confidenceSum / validResults.length : 0
+
+// For majority detection, we need to find the most common vote
+// Since Prism doesn't have complex grouping, we'll check each unique decision
+// This is a simplified approach - check if any decision has majority
+
+totalVotes = validResults.length
+majorityThreshold = totalVotes > 0 ? (totalVotes / 2) : 0
+
+// The winner is the first decision if unanimous, otherwise we need to determine
+// For simplicity, if not unanimous, we'll use the first vote and check if it's majority
+hasMajority = matchFirst > majorityThreshold
+
+// Determine consensus level
+consensusType = isUnanimous ? "unanimous"
+  : hasMajority ? "majority"
+  : "split"
+
+// Determine confidence level based on consensus
+consensusConfidence = isUnanimous ? avgConfidence
+  : hasMajority ? avgConfidence * 0.8
+  : avgConfidence * 0.5
+
+// Determine if human review is needed
+needsHumanReview = consensusType == "split" || consensusConfidence < 0.6
+
+// Build the final decision
+finalDecision = isUnanimous || hasMajority ? firstVote : null
+
+// Build vote breakdown
+voteDetails = validResults.map(r => ({
+  agent: r.agentName,
+  agentId: r.agentId,
+  model: r.result.model,
+  decision: r.result.decision,
+  confidence: r.confidence,
+  reasoning: r.reasoning
+}))
+
+// Build agent count
+agentCount = validResults.length
+
+// Build summary message
+summary = isUnanimous
+  ? agentCount + " models voted unanimously for: " + firstVote
+  : hasMajority
+    ? agentCount + " models reached majority for: " + firstVote + " (" + matchFirst + "/" + totalVotes + " votes)"
+    : agentCount + " models could not reach consensus - human review recommended"
+
+// Compile output
+output = {
+  decision: finalDecision,
+  consensus: {
+    "type": consensusType,
+    confidence: consensusConfidence,
+    isUnanimous: isUnanimous,
+    hasMajority: hasMajority,
+    needsHumanReview: needsHumanReview
+  },
+  summary: summary,
+  votes: {
+    total: totalVotes,
+    forWinner: matchFirst,
+    breakdown: voteDetails
+  },
+  metadata: {
+    patternVersion: "1.0.0",
+    agentCount: agentCount
+  }
+}
+
+// Return with confidence
+output ~> consensusConfidence

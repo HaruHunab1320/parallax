@@ -1,0 +1,130 @@
+/**
+ * @name CodeReviewOrchestrator
+ * @version 1.0.0
+ * @description Orchestrates multi-agent code review with confidence-aware decision making
+ * @input {"type": "object", "properties": {"code": {"type": "string"}, "context": {"type": "object"}}}
+ * @agents {"capabilities": ["security", "style", "documentation", "testing"]}
+ * @minAgents 2
+ */
+
+// Collect results from all agents (injected by pattern engine)
+results = agentResults
+
+// Filter to only successful results
+validResults = results.filter(r => r.confidence > 0)
+
+// Calculate consensus confidence - how much do agents agree?
+confidenceValues = validResults.map(r => r.confidence)
+avgConfidence = confidenceValues.length > 0
+  ? confidenceValues.reduce((sum, c) => sum + c, 0) / confidenceValues.length
+  : 0
+
+// Check for high-confidence disagreements (valuable signal!)
+// An agent strongly believes something is wrong while others don't
+criticalFindings = validResults.filter(r =>
+  r.result &&
+  r.result.findings &&
+  r.result.findings.some(f => f.severity == "critical" || f.severity == "high")
+)
+
+// Gather all findings from all agents
+allFindings = []
+validResults.forEach(r => {
+  agentFindings = r.result && r.result.findings ? r.result.findings : []
+  agentFindings.forEach(f => {
+    allFindings.push({
+      agent: r.agentName,
+      agentId: r.agentId,
+      severity: f.severity,
+      issue: f.issue,
+      suggestion: f.suggestion,
+      line_hint: f.line_hint,
+      confidence: r.confidence
+    })
+  })
+})
+
+// Sort findings by severity
+severityOrder = { "critical": 0, "high": 1, "medium": 2, "low": 3 }
+sortedFindings = allFindings.sort((a, b) =>
+  (severityOrder[a.severity] || 4) - (severityOrder[b.severity] || 4)
+)
+
+// Determine overall severity
+hasCritical = sortedFindings.some(f => f.severity == "critical")
+hasHigh = sortedFindings.some(f => f.severity == "high")
+hasMedium = sortedFindings.some(f => f.severity == "medium")
+
+overallSeverity = hasCritical ? "critical"
+  : hasHigh ? "high"
+  : hasMedium ? "medium"
+  : sortedFindings.length > 0 ? "low"
+  : "none"
+
+// Decision logic based on findings and confidence
+recommendation = "approve"
+
+// Critical issues with high confidence = block
+if (hasCritical && avgConfidence > 0.7) {
+  recommendation = "block"
+}
+// High severity issues = request changes
+else if (hasHigh) {
+  recommendation = "request_changes"
+}
+// Multiple medium issues = request changes
+else if (sortedFindings.filter(f => f.severity == "medium").length >= 3) {
+  recommendation = "request_changes"
+}
+// Low confidence overall = needs human review
+else if (avgConfidence < 0.6 && sortedFindings.length > 0) {
+  recommendation = "discuss"
+}
+// Some findings but nothing critical
+else if (sortedFindings.length > 0) {
+  recommendation = "approve_with_comments"
+}
+
+// Calculate consensus level
+consensusLevel = avgConfidence > 0.85 ? "strong"
+  : avgConfidence > 0.7 ? "moderate"
+  : avgConfidence > 0.5 ? "weak"
+  : "uncertain"
+
+// Build summary
+agentCount = validResults.length
+findingCount = sortedFindings.length
+summary = findingCount > 0
+  ? agentCount + " agents found " + findingCount + " issue(s). " +
+    "Critical: " + sortedFindings.filter(f => f.severity == "critical").length + ", " +
+    "High: " + sortedFindings.filter(f => f.severity == "high").length + ", " +
+    "Medium: " + sortedFindings.filter(f => f.severity == "medium").length + ", " +
+    "Low: " + sortedFindings.filter(f => f.severity == "low").length
+  : agentCount + " agents reviewed the code. No significant issues found."
+
+// Compile final output
+output = {
+  summary: summary,
+  recommendation: recommendation,
+  overallSeverity: overallSeverity,
+  consensus: {
+    level: consensusLevel,
+    confidence: avgConfidence,
+    agentCount: agentCount
+  },
+  findings: sortedFindings,
+  agentResults: validResults.map(r => ({
+    agent: r.agentName,
+    agentId: r.agentId,
+    confidence: r.confidence,
+    summary: r.result && r.result.summary ? r.result.summary : "Analysis complete",
+    findingCount: r.result && r.result.findings ? r.result.findings.length : 0
+  })),
+  metadata: {
+    reviewedAt: Date.now(),
+    patternVersion: "1.0.0"
+  }
+}
+
+// Return with confidence annotation
+output ~> avgConfidence

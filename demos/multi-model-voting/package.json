@@ -1,0 +1,21 @@
+{
+  "name": "@parallax/multi-model-voting-demo",
+  "version": "0.1.0",
+  "description": "Multi-model voting demo using different Gemini models",
+  "private": true,
+  "scripts": {
+    "vote": "tsx vote.ts",
+    "vote:sample": "tsx vote.ts examples/content-moderation.json",
+    "agent:flash2": "tsx agents/flash-2-agent/agent.ts",
+    "agent:pro": "tsx agents/pro-agent/agent.ts",
+    "agent:flash": "tsx agents/flash-agent/agent.ts"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@parallax/sdk-typescript": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
