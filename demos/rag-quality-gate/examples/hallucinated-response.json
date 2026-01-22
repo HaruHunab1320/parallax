@@ -1,0 +1,9 @@
+{
+  "question": "What are the main features of the Parallax agent orchestration platform?",
+  "answer": "Parallax is an agent orchestration platform with several key features:\n\n1. **Multi-agent coordination**: Parallax allows multiple AI agents to work together on complex tasks.\n\n2. **Built-in machine learning models**: Parallax comes with pre-trained GPT-4 and Claude models that can be used directly without API keys.\n\n3. **Kubernetes auto-scaling**: The platform automatically scales to thousands of agents using Kubernetes HPA and can handle millions of requests per second.\n\n4. **GraphQL API**: All communication happens through a GraphQL API that supports real-time subscriptions.\n\n5. **Free enterprise tier**: Parallax offers unlimited enterprise features at no cost, including 24/7 support and SLA guarantees.\n\n6. **Pattern-based orchestration**: Complex workflows are defined using Prism patterns.",
+  "sources": [
+    "Parallax Documentation - Overview: Parallax is an open-source agent orchestration platform designed for building multi-agent AI systems. It features a control plane that coordinates multiple specialized agents using patterns written in Prism, a confidence-aware DSL.",
+    "Parallax Architecture Guide: The platform uses etcd for service discovery, allowing agents to register their capabilities and endpoints. The control plane maintains a registry of available agents and routes tasks based on their declared capabilities and historical confidence scores.",
+    "Parallax Communication Protocol: All agent-to-control-plane communication happens over gRPC. Agents implement a standard interface that includes methods for registration, health checks, and task analysis."
+  ]
+}

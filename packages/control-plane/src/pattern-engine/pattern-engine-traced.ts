@@ -151,7 +151,9 @@ export class TracedPatternEngine implements IPatternEngine {
             patternNameLower.includes('exploration') ||
             patternNameLower.includes('refinement') ||
             patternNameLower.includes('voting') ||
-            patternNameLower.includes('extraction')
+            patternNameLower.includes('extraction') ||
+            patternNameLower.includes('qualitygate') ||
+            patternNameLower.includes('translation')
           ) {
             let completedCount = 0;
             let failedCount = 0;

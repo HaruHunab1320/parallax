@@ -1,0 +1,10 @@
+{
+  "question": "What are the main features of the Parallax agent orchestration platform?",
+  "answer": "Parallax is an agent orchestration platform that provides several key features:\n\n1. **Multi-agent coordination**: Parallax allows multiple AI agents to work together on complex tasks, with each agent specializing in a particular capability.\n\n2. **Confidence-aware routing**: The platform uses a Prism DSL (Domain Specific Language) that supports confidence tracking, allowing the system to route tasks based on agent confidence levels.\n\n3. **Service discovery via etcd**: Agents register themselves with an etcd-based registry, enabling automatic discovery and load balancing.\n\n4. **gRPC communication**: Agents communicate with the control plane using gRPC, providing efficient and type-safe inter-process communication.\n\n5. **Pattern-based orchestration**: Complex workflows are defined using Prism patterns that specify how agents should collaborate and how their outputs should be combined.",
+  "sources": [
+    "Parallax Documentation - Overview: Parallax is an open-source agent orchestration platform designed for building multi-agent AI systems. It features a control plane that coordinates multiple specialized agents using patterns written in Prism, a confidence-aware DSL.",
+    "Parallax Architecture Guide: The platform uses etcd for service discovery, allowing agents to register their capabilities and endpoints. The control plane maintains a registry of available agents and routes tasks based on their declared capabilities and historical confidence scores.",
+    "Parallax Communication Protocol: All agent-to-control-plane communication happens over gRPC. Agents implement a standard interface that includes methods for registration, health checks, and task analysis. The gRPC protocol ensures efficient, strongly-typed communication between components.",
+    "Prism Language Reference: Prism is a domain-specific language for writing orchestration patterns. It supports confidence tracking through a special syntax (value ~> confidence) and provides array operations like map, filter, and reduce for processing agent results."
+  ]
+}

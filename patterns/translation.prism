@@ -1,0 +1,126 @@
+/**
+ * @name TranslationVerification
+ * @version 1.0.0
+ * @description Translates text and verifies quality via round-trip verification
+ * @input {"type": "object", "properties": {"text": {"type": "string"}, "sourceLanguage": {"type": "string"}, "targetLanguage": {"type": "string"}}}
+ * @agents {"capabilities": ["translation", "verification"]}
+ * @minAgents 2
+ */
+
+// Collect results from all translation agents
+results = agentResults
+
+// Filter to only successful results
+validResults = results.filter(r => r.confidence > 0 && r.result)
+
+// Extract results by check type
+translationResults = validResults.filter(r => r.result.checkType == "translation")
+roundtripResults = validResults.filter(r => r.result.checkType == "roundtrip")
+qualityResults = validResults.filter(r => r.result.checkType == "quality")
+
+// Get individual results (take first of each type)
+translationCheck = translationResults.length > 0 ? translationResults.reduce((acc, r) => r, null) : null
+roundtripCheck = roundtripResults.length > 0 ? roundtripResults.reduce((acc, r) => r, null) : null
+qualityCheck = qualityResults.length > 0 ? qualityResults.reduce((acc, r) => r, null) : null
+
+// Get primary translation from translator agent
+primaryTranslation = translationCheck ? translationCheck.result.translation : ""
+translatorNotes = translationCheck ? translationCheck.result.notes : ""
+
+// Get round-trip verification results
+roundtripPassed = roundtripCheck ? roundtripCheck.result.passed : false
+roundtripSimilarity = roundtripCheck ? roundtripCheck.result.similarity : 0
+backTranslation = roundtripCheck ? roundtripCheck.result.backTranslation : ""
+meaningPreserved = roundtripCheck ? roundtripCheck.result.meaningPreserved : false
+meaningDifferences = roundtripCheck ? roundtripCheck.result.differences : []
+lostNuances = roundtripCheck ? roundtripCheck.result.lostNuances : []
+
+// Get quality check results
+qualityPassed = qualityCheck ? qualityCheck.result.passed : false
+qualityScore = qualityCheck ? qualityCheck.result.overallScore : 0
+qualityScores = qualityCheck ? qualityCheck.result.scores : {}
+qualityIssues = qualityCheck ? qualityCheck.result.issues : []
+qualityStrengths = qualityCheck ? qualityCheck.result.strengths : []
+
+// Calculate overall pass (round-trip AND quality must pass)
+allPassed = roundtripPassed && qualityPassed
+
+// Count verification checks only (not translator - it doesn't have pass/fail)
+verificationResults = validResults.filter(r => r.result.checkType == "roundtrip" || r.result.checkType == "quality")
+totalChecks = verificationResults.length
+passedCount = (roundtripPassed ? 1 : 0) + (qualityPassed ? 1 : 0)
+failedChecks = totalChecks - passedCount
+
+// Calculate average score (combining round-trip similarity and quality score)
+avgScore = (roundtripSimilarity + qualityScore) / 2
+
+// Determine overall status
+status = allPassed ? "approved"
+  : failedChecks == totalChecks ? "rejected"
+  : "needs_review"
+
+// Build summary message
+summary = allPassed
+  ? "Translation verified - round-trip similarity and quality checks passed"
+  : roundtripPassed == false && qualityPassed == false
+    ? "Translation has significant issues - both round-trip and quality checks failed"
+  : roundtripPassed == false
+    ? "Translation may lose meaning - round-trip verification failed"
+  : "Translation has quality issues - flagging for human review"
+
+// Build check details (only for verification agents that have pass/fail)
+checkDetails = verificationResults.map(r => ({
+  checkType: r.result.checkType,
+  agent: r.agentName,
+  passed: r.result.passed,
+  confidence: r.confidence,
+  reasoning: r.reasoning
+}))
+
+// Compile output
+output = {
+  status: status,
+  approved: allPassed,
+  translation: primaryTranslation,
+  sourceLanguage: input.data.sourceLanguage,
+  targetLanguage: input.data.targetLanguage,
+  scores: {
+    overall: avgScore,
+    roundtripSimilarity: roundtripSimilarity,
+    qualityScore: qualityScore,
+    qualityBreakdown: qualityScores
+  },
+  verification: {
+    roundtrip: {
+      passed: roundtripPassed,
+      similarity: roundtripSimilarity,
+      backTranslation: backTranslation,
+      meaningPreserved: meaningPreserved,
+      differences: meaningDifferences,
+      lostNuances: lostNuances
+    },
+    quality: {
+      passed: qualityPassed,
+      score: qualityScore,
+      issues: qualityIssues,
+      strengths: qualityStrengths
+    }
+  },
+  checks: {
+    total: totalChecks,
+    passed: passedCount,
+    failed: failedChecks
+  },
+  summary: summary,
+  details: checkDetails,
+  translatorNotes: translatorNotes,
+  recommendation: allPassed ? "Use translation - quality verified"
+    : status == "needs_review" ? "Flag for human translator review"
+    : "Reject translation - significant quality issues",
+  metadata: {
+    patternVersion: "1.0.0"
+  }
+}
+
+// Return with average score as confidence
+output ~> avgScore

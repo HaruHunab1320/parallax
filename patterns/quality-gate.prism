@@ -1,0 +1,113 @@
+/**
+ * @name RAGQualityGate
+ * @version 1.0.0
+ * @description Validates RAG responses for groundedness, relevance, and completeness
+ * @input {"type": "object", "properties": {"question": {"type": "string"}, "answer": {"type": "string"}, "sources": {"type": "array"}}}
+ * @agents {"capabilities": ["quality-gate", "verification"]}
+ * @minAgents 2
+ */
+
+// Collect results from all quality check agents
+results = agentResults
+
+// Filter to only successful results
+validResults = results.filter(r => r.confidence > 0 && r.result)
+
+// Extract results by check type
+groundednessResults = validResults.filter(r => r.result.checkType == "groundedness")
+relevanceResults = validResults.filter(r => r.result.checkType == "relevance")
+completenessResults = validResults.filter(r => r.result.checkType == "completeness")
+
+// Get individual check results (take first of each type)
+groundednessCheck = groundednessResults.length > 0 ? groundednessResults.reduce((acc, r) => r, null) : null
+relevanceCheck = relevanceResults.length > 0 ? relevanceResults.reduce((acc, r) => r, null) : null
+completenessCheck = completenessResults.length > 0 ? completenessResults.reduce((acc, r) => r, null) : null
+
+// Determine pass/fail for each check
+groundednessPassed = groundednessCheck ? groundednessCheck.result.passed : false
+relevancePassed = relevanceCheck ? relevanceCheck.result.passed : false
+completenessPassed = completenessCheck ? completenessCheck.result.passed : false
+
+// Get scores
+groundednessScore = groundednessCheck ? groundednessCheck.result.score : 0
+relevanceScore = relevanceCheck ? relevanceCheck.result.score : 0
+completenessScore = completenessCheck ? completenessCheck.result.score : 0
+
+// Calculate overall pass (all must pass)
+allPassed = groundednessPassed && relevancePassed && completenessPassed
+
+// Count checks
+totalChecks = validResults.length
+passedChecks = validResults.filter(r => r.result.passed).length
+failedChecks = totalChecks - passedChecks
+
+// Calculate average score
+scoreSum = groundednessScore + relevanceScore + completenessScore
+avgScore = totalChecks > 0 ? scoreSum / 3 : 0
+
+// Determine overall status
+status = allPassed ? "approved"
+  : failedChecks == totalChecks ? "rejected"
+  : "needs_review"
+
+// Build list of issues
+groundednessIssues = groundednessCheck ? groundednessCheck.result.hallucinations : []
+relevanceIssues = relevanceCheck ? relevanceCheck.result.offTopicContent : []
+completenessIssues = completenessCheck ? completenessCheck.result.missingParts : []
+
+// Build summary message
+summary = allPassed
+  ? "All quality checks passed - answer is grounded, relevant, and complete"
+  : failedChecks + " of " + totalChecks + " checks failed - " + status
+
+// Build check details
+checkDetails = validResults.map(r => ({
+  checkType: r.result.checkType,
+  agent: r.agentName,
+  passed: r.result.passed,
+  score: r.result.score,
+  reasoning: r.reasoning
+}))
+
+// Compile output
+output = {
+  status: status,
+  approved: allPassed,
+  scores: {
+    overall: avgScore,
+    groundedness: groundednessScore,
+    relevance: relevanceScore,
+    completeness: completenessScore
+  },
+  checks: {
+    total: totalChecks,
+    passed: passedChecks,
+    failed: failedChecks,
+    groundedness: {
+      passed: groundednessPassed,
+      score: groundednessScore,
+      hallucinations: groundednessIssues
+    },
+    relevance: {
+      passed: relevancePassed,
+      score: relevanceScore,
+      offTopicContent: relevanceIssues
+    },
+    completeness: {
+      passed: completenessPassed,
+      score: completenessScore,
+      missingParts: completenessIssues
+    }
+  },
+  summary: summary,
+  details: checkDetails,
+  recommendation: allPassed ? "Return answer to user"
+    : status == "needs_review" ? "Flag for human review"
+    : "Regenerate answer with improved retrieval",
+  metadata: {
+    patternVersion: "1.0.0"
+  }
+}
+
+// Return with average score as confidence
+output ~> avgScore

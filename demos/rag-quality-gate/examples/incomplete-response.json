@@ -1,0 +1,9 @@
+{
+  "question": "What are the main features of Parallax, how do I install it, and what programming languages are supported?",
+  "answer": "Parallax is an agent orchestration platform with several key features:\n\n1. **Multi-agent coordination**: Parallax allows multiple AI agents to work together on complex tasks, with each agent specializing in a particular capability.\n\n2. **Confidence-aware routing**: The platform uses a Prism DSL that supports confidence tracking.\n\n3. **Service discovery via etcd**: Agents register themselves with an etcd-based registry.",
+  "sources": [
+    "Parallax Documentation - Overview: Parallax is an open-source agent orchestration platform designed for building multi-agent AI systems. It features a control plane that coordinates multiple specialized agents using patterns written in Prism, a confidence-aware DSL.",
+    "Parallax Installation Guide: To install Parallax, first ensure you have Docker and Node.js 18+ installed. Then run: git clone https://github.com/parallax/parallax && cd parallax && pnpm install && docker-compose up -d",
+    "Parallax SDK Reference: Parallax provides official SDKs for TypeScript and Python. The TypeScript SDK (@parallax/sdk-typescript) is the primary SDK, while the Python SDK (parallax-sdk) provides equivalent functionality for Python developers."
+  ]
+}

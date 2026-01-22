@@ -1,0 +1,5 @@
+{
+  "text": "The API endpoint accepts POST requests with a JSON payload containing the user credentials. Authentication is handled via OAuth 2.0 bearer tokens. Rate limiting is set to 100 requests per minute per API key. All responses are returned in UTF-8 encoded JSON format.",
+  "sourceLanguage": "English",
+  "targetLanguage": "Spanish"
+}

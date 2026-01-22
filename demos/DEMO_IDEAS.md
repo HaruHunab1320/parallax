@@ -223,27 +223,32 @@ Extracted 21 items: 3 dates, 11 amounts, 5 entities, 2 addresses
 
 ---
 
-## Demo 4: RAG Quality Gate
+## Demo 4: RAG Quality Gate ✅ COMPLETE
 
-**Status:** Not started
+**Status:** Fully tested and working (January 2026)
 
-**Priority:** MEDIUM - Solves real hallucination problem
+**Location:** `demos/rag-quality-gate/`
 
 **What it does:**
 ```
-RAG Pipeline:
-  Query → Retrieve → Generate
-                        ↓
-         ┌──────────────┼──────────────┐
-         ▼              ▼              ▼
-   ┌───────────┐  ┌───────────┐  ┌───────────┐
-   │Groundedness│  │ Relevance │  │Completeness│
-   │  Checker  │  │  Checker  │  │  Checker  │
-   └─────┬─────┘  └─────┬─────┘  └─────┬─────┘
-         └──────────────┼──────────────┘
-                        ▼
-              Pass → Return to user
-              Fail → Retry or escalate
+RAG Pipeline Output:
+  Question + Answer + Sources
+              ↓
++-------------------------------------------------------------+
+|                      Control Plane                           |
+|                (Prism Quality Gate Pattern)                  |
++-------------------------------------------------------------+
+              ↓
+    +---------+---------+---------+
+    ↓         ↓         ↓
+┌─────────┐ ┌─────────┐ ┌─────────┐
+│Grounded-│ │Relevance│ │Complete-│
+│  ness   │ │ Checker │ │  ness   │
+│ Checker │ │         │ │ Checker │
+└────┬────┘ └────┬────┘ └────┬────┘
+     └───────────┼───────────┘
+                 ↓
+         Quality Gate Result
 ```
 
 **Value prop:** "Catch hallucinations before users see them"
@@ -254,51 +259,143 @@ RAG Pipeline:
 - Legal research assistants
 - Medical information systems
 
-**Agents needed:**
-- Groundedness Agent - Is the answer supported by the retrieved docs?
-- Relevance Agent - Does the answer address the question?
-- Completeness Agent - Are all parts of the question answered?
+**Agents:**
+- Groundedness Checker (TypeScript, port 50400) - Is the answer supported by the source docs?
+- Relevance Checker (TypeScript, port 50401) - Does the answer address the question?
+- Completeness Checker (TypeScript, port 50402) - Are all parts of the question answered?
+
+**Sample Output - Good Response (APPROVED):**
+```
+══════════════════════════════════════════════════════════════════════
+                    RAG QUALITY GATE RESULTS
+══════════════════════════════════════════════════════════════════════
+
+Question: "What are the main features of the Parallax agent orchestrati..."
+
+Status: ✅ APPROVED
+Overall Score: 100%
+Checks: 3/3 passed
+
+All quality checks passed - answer is grounded, relevant, and complete
+
+  ✅ GROUNDEDNESS: 100%
+     All claims are grounded in sources
+
+  ✅ RELEVANCE: 100%
+     Answer is on-topic and relevant
+
+  ✅ COMPLETENESS: 100%
+     All parts of the question are addressed
+
+  RECOMMENDATION
+  Return answer to user
+══════════════════════════════════════════════════════════════════════
+```
+
+**Sample Output - Hallucinated Response (NEEDS_REVIEW):**
+```
+Status: ⚠️ NEEDS_REVIEW
+Overall Score: 67%
+Checks: 1/3 passed
+
+  ❌ GROUNDEDNESS: 50%
+     Hallucinations found:
+       - Built-in machine learning models: Parallax comes with pre-trained GPT-4
+         and Claude models that can be used directly without API keys.
+       - Kubernetes auto-scaling: The platform automatically scales to thousands
+         of agents using Kubernetes HPA and can handle millions of requests per second.
+       - GraphQL API: All communication happens through a GraphQL API that supports
+         real-time subscriptions.
+       - Free enterprise tier: Parallax offers unlimited enterprise features at no cost.
+
+  ✅ RELEVANCE: 100%
+     Answer is on-topic and relevant
+
+  ❌ COMPLETENESS: 50%
+     Missing parts:
+       - Agent registration and discovery mechanism
+       - Communication protocol
+       - Role of Prism and confidence-aware DSL
+
+  RECOMMENDATION
+  Flag for human review
+```
+
+**Sample Output - Incomplete Response (NEEDS_REVIEW):**
+```
+Status: ⚠️ NEEDS_REVIEW
+Overall Score: 50%
+Checks: 1/3 passed
+
+  ❌ GROUNDEDNESS: 67%
+  ✅ RELEVANCE: 100%
+  ❌ COMPLETENESS: 33%
+     Missing parts:
+       - Installation instructions
+       - Supported programming languages
+
+  RECOMMENDATION
+  Flag for human review
+```
+
+**Lessons Learned:**
+- Pattern names must include keywords like "qualitygate" to trigger agent invocation
+- All 3 quality check agents run in parallel for fast validation
+- The completeness checker catches both missing answers AND detects when fabricated content replaced real information
+- ConfidenceValue wrapper needs to be unwrapped via `.value` in CLI
 
 **Pattern logic:**
 ```prism
-checks = agentResults
-allPassed = checks.every(c => c.result.passed)
-failedChecks = checks.filter(c => !c.result.passed)
+// Collect results from all quality check agents
+results = agentResults
 
-if (allPassed) {
-  output = { status: "approved", answer: input.generatedAnswer }
-} else {
-  output = {
-    status: "rejected",
-    reasons: failedChecks.map(c => c.result.reason),
-    action: "retry_with_different_retrieval"
-  }
-}
+// Get individual check results
+groundednessPassed = groundednessCheck ? groundednessCheck.result.passed : false
+relevancePassed = relevanceCheck ? relevanceCheck.result.passed : false
+completenessPassed = completenessCheck ? completenessCheck.result.passed : false
+
+// Calculate overall pass (all must pass)
+allPassed = groundednessPassed && relevancePassed && completenessPassed
+
+// Determine status
+status = allPassed ? "approved"
+  : failedChecks == totalChecks ? "rejected"
+  : "needs_review"
+
+output ~> avgScore
 ```
 
 ---
 
-## Demo 5: Translation Verification Loop
+## Demo 5: Translation Verification Loop ✅ COMPLETE
 
-**Status:** Not started
+**Status:** Fully tested and working (January 2026)
 
-**Priority:** MEDIUM - Clear value for localization
+**Location:** `demos/translation-verification/`
 
 **What it does:**
 ```
-English text
-     ↓
-[Translator Agent] → Spanish
-                        ↓
-              [Back-Translator Agent] → English'
-                                          ↓
-                              [Comparator Agent]
-                                          ↓
-                              Similarity score
-                              If < 0.85 → flag for human
+Input: Text + Target Language
+              |
++-------------------------------------------------------------+
+|                      Control Plane                           |
+|             (Prism Translation Pattern)                      |
++-------------------------------------------------------------+
+              |
+    +---------+---------+---------+
+    |         |         |
+    v         v         v
++---------+ +---------+ +---------+
+|Translator| |Round-Trip| |Quality |
+|         | |Verifier | |Checker |
++---------+ +---------+ +---------+
+    |         |         |
+    v         v         v
+Translation  Similarity  Fluency
+             Score      Score
 ```
 
-**Value prop:** "Automatic QA for translations"
+**Value prop:** "Automatic QA for translations via round-trip verification"
 
 **Use cases:**
 - Product localization
@@ -306,28 +403,101 @@ English text
 - Marketing content
 - Legal document translation
 
-**Agents needed:**
-- Forward Translator (Python) - translates to target language
-- Back Translator (TypeScript) - translates back to source
-- Semantic Comparator (Python) - compares original vs back-translated
+**Agents:**
+- Translator (TypeScript, port 50500) - Produces the primary translation
+- Round-Trip Verifier (TypeScript, port 50501) - Translates forward+back, computes similarity
+- Quality Checker (TypeScript, port 50502) - Evaluates fluency, grammar, style, cultural fit
+
+**Sample Output - Simple Text (Approved, 98%):**
+```
+======================================================================
+                    TRANSLATION RESULTS
+======================================================================
+
+Original: "Hello! Welcome to our company. We are very happy to have you..."
+Direction: English -> Spanish
+
+Status: ✅ APPROVED
+Overall Score: 98%
+Checks: 2/2 passed
+
+Translation verified - round-trip similarity and quality checks passed
+
+  TRANSLATION
+  ¡Hola! Bienvenidos a nuestra empresa. Estamos muy contentos de
+  tenerlos aquí...
+
+  ROUND-TRIP VERIFICATION
+  ✅ SIMILARITY: 100%
+     Meaning fully preserved through round-trip
+
+  QUALITY CHECK
+  ✅ QUALITY SCORE: 95%
+     Breakdown:
+       Fluency:      100%
+       Grammar:      100%
+       Style:        100%
+       Cultural Fit: 75%
+     Issues: [minor] formality level suggestion
+
+  RECOMMENDATION
+  Use translation - quality verified
+======================================================================
+```
+
+**Sample Output - Idiom-Heavy Text (Approved with nuance notes, 95%):**
+```
+Original: "When it rains, it pours! We've been burning the midnight oil..."
+
+Status: ✅ APPROVED
+Overall Score: 95%
+Checks: 2/2 passed
+
+  TRANSLATION
+  ¡Cuando llueve, diluvia! Hemos estado trabajando hasta altas horas
+  de la noche para terminar este proyecto...
+
+  Notes: Several idioms were adapted:
+    - 'When it rains, it pours' → 'Cuando llueve, diluvia'
+    - 'Burning the midnight oil' → 'trabajando hasta altas horas'
+    - 'Hit it out of the park' → 'se lució' (shone/excelled)
+    - 'Rest on our laurels' → 'dormirnos en los laureles'
+
+  ROUND-TRIP VERIFICATION
+  ✅ SIMILARITY: 95%
+     Meaning differences:
+       - "hit it out of the park" vs "outdid themselves" - slightly
+         different emphasis
+     Lost nuances:
+       - "pushing the envelope" (innovation) vs "keep outdoing
+         ourselves" (improvement)
+
+  QUALITY CHECK
+  ✅ QUALITY SCORE: 95%
+     Cultural Fit: 100% - proper Spanish idiom adaptations
+```
+
+**Lessons Learned:**
+- Pattern names must include "translation" keyword to trigger agent invocation
+- Translator agent doesn't have pass/fail - only verification agents do
+- Input data is nested: `input.data.sourceLanguage` not `input.sourceLanguage`
+- Round-trip verification catches subtle nuance shifts that quality checks miss
+- Idioms need adaptation, not literal translation
 
 **Pattern logic:**
 ```prism
-original = input.text
-translated = translatorResult.result.text
-backTranslated = backTranslatorResult.result.text
-similarity = comparatorResult.result.score
+// Verification results (roundtrip and quality agents)
+verificationResults = validResults.filter(r =>
+  r.result.checkType == "roundtrip" || r.result.checkType == "quality")
 
-if (similarity > 0.85) {
-  output = { status: "approved", translation: translated }
-} else {
-  output = {
-    status: "needs_review",
-    translation: translated,
-    similarity: similarity,
-    backTranslation: backTranslated
-  }
-}
+// Both must pass for approval
+allPassed = roundtripPassed && qualityPassed
+
+status = allPassed ? "approved"
+  : failedChecks == totalChecks ? "rejected"
+  : "needs_review"
+
+output ~> avgScore
 ```
 
 ---
@@ -391,9 +561,8 @@ Same input →
 1. **PR Review Bot** ✅ COMPLETE - Fully tested and working
 2. **Multi-Model Voting** ✅ COMPLETE - 3 Gemini models, unanimous consensus
 3. **Specialized Extractors** ✅ COMPLETE - 4 parallel agents, 21 extractions from invoice
-4. **RAG Quality Gate** - Next priority, solves real hallucination problem
-4. **RAG Quality Gate** - Solves real problem, good for AI safety angle
-5. **Translation Verification** - Clear value, niche audience
+4. **RAG Quality Gate** ✅ COMPLETE - 3 parallel checkers, catches hallucinations
+5. **Translation Verification** ✅ COMPLETE - Round-trip verification, idiom adaptation
 6. **Doc Processing** - Defer, less differentiated
 7. **Prompt Testing** - Defer, could be CLI feature
 
@@ -439,5 +608,25 @@ For each demo to be "complete":
 - [x] Extract CLI script (`extract.ts`)
 - [x] Sample input data (`examples/invoice.txt`, `contract.txt`, `email.txt`)
 - [x] Expected output documented
+- [x] Real LLM integration with Gemini API
+- [x] Can be demoed in < 5 minutes
+
+### RAG Quality Gate Checklist: ✅ COMPLETE
+- [x] README with clear explanation
+- [x] All agents implemented and working (3 TypeScript agents: groundedness, relevance, completeness)
+- [x] Prism pattern written (`patterns/quality-gate.prism`)
+- [x] Check CLI script (`check.ts`)
+- [x] Sample input data (`examples/good-response.json`, `hallucinated-response.json`, `incomplete-response.json`)
+- [x] Expected output documented (all 3 scenarios: approved, needs_review for hallucinations, needs_review for incomplete)
+- [x] Real LLM integration with Gemini API
+- [x] Can be demoed in < 5 minutes
+
+### Translation Verification Checklist: ✅ COMPLETE
+- [x] README with clear explanation
+- [x] All agents implemented and working (3 TypeScript agents: translator, roundtrip-verifier, quality-checker)
+- [x] Prism pattern written (`patterns/translation.prism`)
+- [x] Translate CLI script (`translate.ts`)
+- [x] Sample input data (`examples/simple.json`, `technical.json`, `marketing.json`, `idioms.json`)
+- [x] Expected output documented (simple text 98%, idiom-heavy text 95% with nuance notes)
 - [x] Real LLM integration with Gemini API
 - [x] Can be demoed in < 5 minutes

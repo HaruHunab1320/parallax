@@ -187,7 +187,39 @@ importers:
         specifier: ^5.3.3
         version: 5.8.3
 
+  demos/rag-quality-gate:
+    dependencies:
+      '@google/generative-ai':
+        specifier: ^0.21.0
+        version: 0.21.0
+      '@parallax/sdk-typescript':
+        specifier: workspace:*
+        version: link:../../packages/sdk-typescript
+    devDependencies:
+      tsx:
+        specifier: ^4.7.0
+        version: 4.20.3
+      typescript:
+        specifier: ^5.3.3
+        version: 5.8.3
+
   demos/specialized-extractors:
+    dependencies:
+      '@google/generative-ai':
+        specifier: ^0.21.0
+        version: 0.21.0
+      '@parallax/sdk-typescript':
+        specifier: workspace:*
+        version: link:../../packages/sdk-typescript
+    devDependencies:
+      tsx:
+        specifier: ^4.7.0
+        version: 4.20.3
+      typescript:
+        specifier: ^5.3.3
+        version: 5.8.3
+
+  demos/translation-verification:
     dependencies:
       '@google/generative-ai':
         specifier: ^0.21.0
