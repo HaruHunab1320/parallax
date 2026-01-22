@@ -74,6 +74,27 @@ export class TracedPatternEngine implements IPatternEngine {
 
         this.executions.set(execution.id, execution);
 
+        // Create database record for the execution before emitting events
+        // Note: This requires the Pattern to exist in the database first
+        let dbExecutionCreated = false;
+        if (this.database) {
+          try {
+            // First check if the pattern exists in the database
+            const dbPattern = await this.database.patterns.findByName(pattern.name);
+            if (dbPattern) {
+              await this.database.executions.create({
+                id: executionId,
+                patternId: dbPattern.id,
+                input: input as any,
+                status: 'running',
+              });
+              dbExecutionCreated = true;
+            }
+          } catch (dbError) {
+            this.logger.warn({ error: dbError, executionId }, 'Failed to persist execution to database - events will not be persisted');
+          }
+        }
+
         const emitEvent = (type: string, data?: any) => {
           this.executionEvents?.emitEvent({
             executionId,
@@ -82,7 +103,8 @@ export class TracedPatternEngine implements IPatternEngine {
             timestamp: new Date()
           });
 
-          if (this.database) {
+          // Only persist events if the execution was created in the database
+          if (this.database && dbExecutionCreated) {
             const agentId = data?.agentId;
             this.database.executions
               .addEvent(executionId, {
@@ -128,7 +150,8 @@ export class TracedPatternEngine implements IPatternEngine {
             patternNameLower.includes('mapreduce') ||
             patternNameLower.includes('exploration') ||
             patternNameLower.includes('refinement') ||
-            patternNameLower.includes('voting')
+            patternNameLower.includes('voting') ||
+            patternNameLower.includes('extraction')
           ) {
             let completedCount = 0;
             let failedCount = 0;

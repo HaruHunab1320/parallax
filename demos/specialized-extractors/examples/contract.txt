@@ -1,0 +1,59 @@
+SERVICE AGREEMENT
+
+This Service Agreement ("Agreement") is entered into as of March 1, 2024 ("Effective Date") by and between:
+
+PROVIDER:
+GlobalTech Solutions LLC
+789 Enterprise Boulevard
+Seattle, WA 98101
+United States
+("Provider")
+
+AND
+
+CLIENT:
+Riverside Medical Center
+321 Healthcare Avenue
+Portland, OR 97205
+United States
+("Client")
+
+WHEREAS, the Client wishes to engage the Provider to deliver certain technology services;
+
+NOW, THEREFORE, in consideration of the mutual covenants contained herein, the parties agree as follows:
+
+1. TERM
+   This Agreement shall commence on March 1, 2024 and continue until February 28, 2025 ("Initial Term"),
+   unless earlier terminated in accordance with this Agreement.
+
+2. SERVICES AND COMPENSATION
+   Provider shall deliver the following services:
+
+   a) System Integration Services: $45,000.00 (one-time fee)
+   b) Monthly Maintenance: $3,500.00 per month
+   c) Training Sessions: $1,200.00 per session (estimated 4 sessions)
+
+   Total estimated contract value: $95,800.00
+
+3. PAYMENT TERMS
+   - Initial payment of $22,500.00 due upon signing (March 1, 2024)
+   - Second payment of $22,500.00 due April 15, 2024
+   - Monthly maintenance invoiced on the 1st of each month
+   - Training sessions invoiced upon completion
+
+4. CONTACTS
+   Provider Contact: Michael Chen, Project Director
+   Email: mchen@globaltech.com
+   Phone: (206) 555-0199
+
+   Client Contact: Dr. Emily Rodriguez, Chief Information Officer
+   Email: erodriguez@riversidemedical.org
+   Phone: (503) 555-0234
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
+
+GLOBALTECH SOLUTIONS LLC          RIVERSIDE MEDICAL CENTER
+
+_________________________         _________________________
+Robert Williams, CEO              Dr. James Patterson, CEO
+Date: March 1, 2024              Date: March 1, 2024

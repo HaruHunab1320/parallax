@@ -1,0 +1,20 @@
+{
+  "name": "@parallax/rag-quality-gate-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Quality gate for RAG responses - checks groundedness, relevance, and completeness",
+  "scripts": {
+    "agent:groundedness": "tsx agents/groundedness-agent/agent.ts",
+    "agent:relevance": "tsx agents/relevance-agent/agent.ts",
+    "agent:completeness": "tsx agents/completeness-agent/agent.ts",
+    "check": "tsx check.ts"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@parallax/sdk-typescript": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

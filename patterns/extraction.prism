@@ -1,0 +1,92 @@
+/**
+ * @name DocumentExtraction
+ * @version 1.0.0
+ * @description Merges extraction results from specialized agents into a unified structured output
+ * @input {"type": "object", "properties": {"text": {"type": "string"}, "document": {"type": "string"}}}
+ * @agents {"capabilities": ["extraction"]}
+ * @minAgents 2
+ */
+
+// Collect results from all extraction agents
+results = agentResults
+
+// Filter to only successful results
+validResults = results.filter(r => r.confidence > 0 && r.result)
+
+// Extract dates from date extractor results
+dateResults = validResults.filter(r => r.agentId == "date-extractor")
+dates = dateResults.length > 0 ? dateResults.reduce((acc, r) => r.result.dates, []) : []
+
+// Extract amounts from amount extractor results
+amountResults = validResults.filter(r => r.agentId == "amount-extractor")
+amounts = amountResults.length > 0 ? amountResults.reduce((acc, r) => r.result.amounts, []) : []
+
+// Extract entities from entity extractor results
+entityResults = validResults.filter(r => r.agentId == "entity-extractor")
+entities = entityResults.length > 0 ? entityResults.reduce((acc, r) => r.result.entities, []) : []
+people = entityResults.length > 0 ? entityResults.reduce((acc, r) => r.result.people, []) : []
+organizations = entityResults.length > 0 ? entityResults.reduce((acc, r) => r.result.organizations, []) : []
+
+// Extract addresses from address extractor results
+addressResults = validResults.filter(r => r.agentId == "address-extractor")
+addresses = addressResults.length > 0 ? addressResults.reduce((acc, r) => r.result.addresses, []) : []
+
+// Count totals
+dateCount = dates.length
+amountCount = amounts.length
+entityCount = entities.length
+addressCount = addresses.length
+totalExtractions = dateCount + amountCount + entityCount + addressCount
+
+// Calculate average confidence across all agents
+confidenceSum = validResults.reduce((sum, r) => sum + r.confidence, 0)
+avgConfidence = validResults.length > 0 ? confidenceSum / validResults.length : 0
+
+// Build extraction details for each agent
+extractionDetails = validResults.map(r => ({
+  agent: r.agentName,
+  agentId: r.agentId,
+  confidence: r.confidence,
+  itemsExtracted: r.result.count,
+  reasoning: r.reasoning
+}))
+
+// Build summary message
+summary = totalExtractions > 0
+  ? "Extracted " + totalExtractions + " items: " + dateCount + " dates, " + amountCount + " amounts, " + entityCount + " entities, " + addressCount + " addresses"
+  : "No extractions found in document"
+
+// Compile output
+output = {
+  extractions: {
+    dates: dates,
+    amounts: amounts,
+    entities: {
+      all: entities,
+      people: people,
+      organizations: organizations
+    },
+    addresses: addresses
+  },
+  summary: {
+    totalItems: totalExtractions,
+    breakdown: {
+      dates: dateCount,
+      amounts: amountCount,
+      entities: entityCount,
+      addresses: addressCount
+    },
+    message: summary
+  },
+  confidence: avgConfidence,
+  "agents": {
+    total: validResults.length,
+    details: extractionDetails
+  },
+  metadata: {
+    patternVersion: "1.0.0"
+  }
+}
+
+// Return with average confidence
+output ~> avgConfidence

@@ -1,0 +1,40 @@
+INVOICE #INV-2024-0042
+
+From:
+Acme Corporation
+123 Business Park Drive, Suite 500
+San Francisco, CA 94107
+United States
+
+Bill To:
+John Smith
+TechStart Inc.
+456 Innovation Way
+Austin, TX 78701
+United States
+
+Invoice Date: January 15, 2024
+Due Date: February 15, 2024
+Payment Terms: Net 30
+
+Description                              Quantity    Unit Price    Amount
+------------------------------------------------------------------------
+Software Development Services                 40      $150.00     $6,000.00
+Cloud Infrastructure Setup                     1    $2,500.00     $2,500.00
+Technical Consultation                         8      $200.00     $1,600.00
+Project Management                            20      $125.00     $2,500.00
+
+                                           Subtotal:              $12,600.00
+                                           Tax (8.25%):              $1,039.50
+                                           ================================
+                                           TOTAL DUE:             $13,639.50
+
+Payment Instructions:
+Please remit payment to Acme Corporation by February 15, 2024.
+Wire transfer to: First National Bank, Account #****4521
+
+Thank you for your business!
+
+Contact: Sarah Johnson, Accounts Receivable
+Email: billing@acmecorp.com
+Phone: (415) 555-0123

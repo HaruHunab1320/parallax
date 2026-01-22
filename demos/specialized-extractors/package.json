@@ -1,0 +1,21 @@
+{
+  "name": "@parallax/specialized-extractors-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Document extraction with specialized agents for dates, amounts, names, and addresses",
+  "scripts": {
+    "agent:date": "tsx agents/date-agent/agent.ts",
+    "agent:amount": "tsx agents/amount-agent/agent.ts",
+    "agent:entity": "tsx agents/entity-agent/agent.ts",
+    "agent:address": "tsx agents/address-agent/agent.ts",
+    "extract": "tsx extract.ts"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@parallax/sdk-typescript": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

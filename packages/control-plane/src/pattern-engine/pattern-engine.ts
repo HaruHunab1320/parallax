@@ -107,7 +107,8 @@ export class PatternEngine implements IPatternEngine {
           patternNameLower.includes('robust') || patternNameLower.includes('validator') ||
           patternNameLower.includes('balancer') || patternNameLower.includes('mapreduce') ||
           patternNameLower.includes('exploration') || patternNameLower.includes('refinement') ||
-          patternNameLower.includes('voting')) {
+          patternNameLower.includes('voting') ||
+          patternNameLower.includes('extraction')) {
         
         // Execute all agent analyses in parallel
         let completedCount = 0;

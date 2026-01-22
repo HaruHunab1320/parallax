@@ -37,25 +37,25 @@ A prioritized list of real-world demos that showcase Parallax's value as an agen
 
 ---
 
-## Demo 2: Multi-Model Voting
+## Demo 2: Multi-Model Voting ✅ COMPLETE
 
-**Status:** Not started
+**Status:** Fully tested and working (January 2026)
 
-**Priority:** HIGH - Simple, obviously useful
+**Location:** `demos/multi-model-voting/`
 
 **What it does:**
 ```
 Input: A question or decision that needs high confidence
 
-┌─────────┐  ┌─────────┐  ┌─────────┐
-│  GPT-4  │  │ Claude  │  │ Gemini  │
-└────┬────┘  └────┬────┘  └────┬────┘
-     └───────────┼───────────┘
-                 ▼
-         Voting pattern:
-         - Unanimous agreement → high confidence
-         - 2/3 agreement → moderate confidence
-         - All different → flag for human
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│ Gemini 2.0 Flash│  │ Gemini 3 Pro    │  │ Gemini 3 Flash  │
+└────────┬────────┘  └────────┬────────┘  └────────┬────────┘
+         └───────────────────┼───────────────────┘
+                             ▼
+                   Voting pattern:
+                   - Unanimous agreement → high confidence
+                   - 2/3 agreement → moderate confidence
+                   - All different → flag for human
 ```
 
 **Value prop:** "Critical decisions through multiple models, automatic consensus"
@@ -66,32 +66,77 @@ Input: A question or decision that needs high confidence
 - Medical triage (how urgent is this?)
 - Legal review (is this compliant?)
 
-**Agents needed:**
-- GPT-4 Agent (TypeScript) - calls OpenAI
-- Claude Agent (Python) - calls Anthropic
-- Gemini Agent (TypeScript) - calls Google
+**Agents:**
+- Gemini 2.0 Flash Voter (TypeScript, port 50200) - fast, balanced reasoning
+- Gemini 3 Pro Voter (TypeScript, port 50201) - most capable, detailed reasoning
+- Gemini 3 Flash Voter (TypeScript, port 50202) - fast, efficient
+
+**Sample Output:**
+```
+════════════════════════════════════════════════════════════
+                    VOTING RESULTS
+════════════════════════════════════════════════════════════
+
+Question: Is this content appropriate for a general audience?
+
+Decision: APPROPRIATE
+Consensus: ✅ UNANIMOUS
+Confidence: 98%
+Votes: 3/3 for winner
+
+3 models voted unanimously for: appropriate
+
+Individual Votes:
+────────────────────────────────────────────────────────────
+
+  Gemini Flash Lite Voter (gemini-2.0-flash-lite)
+    Vote: appropriate
+    Confidence: 95%
+    The content describes a positive experience of a hike...
+
+  Gemini 2.0 Flash Voter (gemini-2.0-flash)
+    Vote: appropriate
+    Confidence: 100%
+    The content describes a scenic hike and shares a positive experience...
+
+  Gemini 3 Pro Voter (gemini-3-pro-preview)
+    Vote: appropriate
+    Confidence: 100%
+    The content describes a safe, recreational activity (hiking)...
+
+════════════════════════════════════════════════════════════
+```
+
+**Lessons Learned:**
+- Prism filter/map lambdas only receive 1 argument (use `reduce` for index-based logic)
+- Pattern names must include keywords like "voting" to trigger agent invocation
+- TracedPatternEngine is used by default (not PatternEngine) - changes must be made to both
+- Agent capabilities lookup: `service.capabilities || service.metadata?.capabilities`
+- Gemini model names change frequently - use latest stable names (gemini-3-pro-preview, gemini-3-flash-preview)
 
 **Pattern logic:**
 ```prism
-results = agentResults
-votes = results.map(r => r.result.decision)
-unanimous = votes.every(v => v === votes[0])
-majority = mostCommon(votes)
+// Get first vote using reduce
+firstVote = validResults.reduce((first, r) => first == "" ? r.result.decision : first, "")
 
-if (unanimous) {
-  output = { decision: votes[0], confidence: "high", consensus: "unanimous" }
-} else if (countOf(majority) >= 2) {
-  output = { decision: majority, confidence: "moderate", consensus: "majority" }
-} else {
-  output = { decision: null, confidence: "low", consensus: "none", needsHuman: true }
-}
+// Check consensus
+isUnanimous = matchFirst == validResults.length
+hasMajority = matchFirst > majorityThreshold
+
+consensusType = isUnanimous ? "unanimous"
+  : hasMajority ? "majority"
+  : "split"
+
+needsHumanReview = consensusType == "split" || consensusConfidence < 0.6
 ```
 
 ---
 
-## Demo 3: Specialized Extractors Pipeline
+## Demo 3: Specialized Extractors Pipeline ✅ COMPLETE
 
-**Status:** Not started
+**Status:** Fully tested and working (January 2026)
+
+**Location:** `demos/specialized-extractors/`
 
 **Priority:** HIGH - Very practical for document processing
 
@@ -121,16 +166,60 @@ Input: Unstructured text (invoice, contract, email)
 - Resume parsing
 - Email triage
 
-**Agents needed:**
-- Date Extractor (Python) - finds and normalizes dates
-- Amount Extractor (Python) - finds currency amounts
-- Entity Extractor (TypeScript) - names, organizations
-- Address Extractor (TypeScript) - physical addresses
+**Agents:**
+- Date Extractor (TypeScript, port 50300) - finds and normalizes dates to ISO 8601
+- Amount Extractor (TypeScript, port 50301) - finds currency amounts with type classification
+- Entity Extractor (TypeScript, port 50302) - names, organizations with roles
+- Address Extractor (TypeScript, port 50303) - physical addresses parsed into components
+
+**Sample Output:**
+```
+══════════════════════════════════════════════════════════════════════
+                    EXTRACTION RESULTS
+══════════════════════════════════════════════════════════════════════
+
+Document: "INVOICE #INV-2024-0042..."
+
+Total Extractions: 21
+Overall Confidence: 100%
+
+Extracted 21 items: 3 dates, 11 amounts, 5 entities, 2 addresses
+
+  DATES (3 found)
+    "January 15, 2024" → 2024-01-15
+      Type: invoice date, Confidence: 100%
+    "February 15, 2024" → 2024-02-15
+      Type: due date, Confidence: 100%
+
+  AMOUNTS (11 found)
+    "$13,639.50" → USD 13,639.5
+      Type: total, Confidence: 100%
+    ...
+
+  ENTITIES (5 found)
+    People: John Smith, Sarah Johnson
+    Organizations: Acme Corporation, TechStart Inc., First National Bank
+
+  ADDRESSES (2 found)
+    123 Business Park Drive, Suite 500
+    San Francisco, CA 94107
+    United States
+      Type: business address, Confidence: 100%
+
+══════════════════════════════════════════════════════════════════════
+```
+
+**Lessons Learned:**
+- Pattern names must include keywords like "extraction" to trigger agent invocation
+- "agents" is a reserved word in Prism - must be quoted in object literals
+- ConfidenceValue wrapper needs to be unwrapped via `.value` in CLI
+- All 4 agents run in parallel for fast extraction
 
 **Why Parallax helps:**
 - Each agent can be a small, fast, cheap model
 - Easy to add new extractors without changing others
 - Pattern handles merging and deduplication
+- Parallel execution = faster than sequential
 
 ---
 
@@ -300,8 +389,9 @@ Same input →
 ## Build Order
 
 1. **PR Review Bot** ✅ COMPLETE - Fully tested and working
-2. **Multi-Model Voting** - Next priority, simple and compelling
-3. **Specialized Extractors** - Very practical, good for enterprise story
+2. **Multi-Model Voting** ✅ COMPLETE - 3 Gemini models, unanimous consensus
+3. **Specialized Extractors** ✅ COMPLETE - 4 parallel agents, 21 extractions from invoice
+4. **RAG Quality Gate** - Next priority, solves real hallucination problem
 4. **RAG Quality Gate** - Solves real problem, good for AI safety angle
 5. **Translation Verification** - Clear value, niche audience
 6. **Doc Processing** - Defer, less differentiated
@@ -330,4 +420,24 @@ For each demo to be "complete":
 - [x] Sample input data (`examples/sample-code.ts`)
 - [x] Expected output documented
 - [x] Works with and without LLM API keys (pattern-based fallback)
+- [x] Can be demoed in < 5 minutes
+
+### Multi-Model Voting Checklist: ✅ COMPLETE
+- [x] README with clear explanation
+- [x] All agents implemented and working (3 TypeScript agents using Gemini)
+- [x] Prism pattern written (`patterns/voting.prism`)
+- [x] Vote CLI script (`vote.ts`)
+- [x] Sample input data (`examples/content-moderation.json`, `fraud-detection.json`, `support-priority.json`)
+- [x] Expected output documented
+- [x] Real LLM integration with Gemini API
+- [x] Can be demoed in < 5 minutes
+
+### Specialized Extractors Checklist: ✅ COMPLETE
+- [x] README with clear explanation
+- [x] All agents implemented and working (4 TypeScript agents: date, amount, entity, address)
+- [x] Prism pattern written (`patterns/extraction.prism`)
+- [x] Extract CLI script (`extract.ts`)
+- [x] Sample input data (`examples/invoice.txt`, `contract.txt`, `email.txt`)
+- [x] Expected output documented
+- [x] Real LLM integration with Gemini API
 - [x] Can be demoed in < 5 minutes
