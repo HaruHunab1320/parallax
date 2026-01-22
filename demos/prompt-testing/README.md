@@ -85,7 +85,7 @@ pnpm dev
 
 Wait for: `Control Plane HTTP listening on port 8080`
 
-### 3. Start Prompt Testing Agents (4 terminals)
+### 3. Start Prompt Testing Agents (3 terminals)
 
 ```bash
 # Terminal 2 - Concise Agent
@@ -96,15 +96,16 @@ cd demos/prompt-testing && pnpm agent:detailed
 
 # Terminal 4 - Creative Agent
 cd demos/prompt-testing && pnpm agent:creative
-
-# Terminal 5 - Judge Agent
-cd demos/prompt-testing && pnpm agent:judge
 ```
+
+Note: The judge agent is optional - the CLI handles evaluation inline using a two-phase approach:
+1. Phase 1: Runs the 3 variant agents in parallel via the control plane
+2. Phase 2: Calls Gemini directly to judge the responses
 
 ### 4. Run Tests
 
 ```bash
-# Terminal 6
+# Terminal 5
 cd demos/prompt-testing
 
 # Explain a concept (detailed usually wins)
@@ -198,6 +199,89 @@ Variants tested: 3
   for in-depth learning and a thorough understanding. Use the creative
   style for introductory explanations or to engage a broader audience
   with a simplified analogy.
+
+======================================================================
+```
+
+### Product Description (Creative Scores High on Engagement)
+```
+======================================================================
+                    PROMPT A/B TEST RESULTS
+======================================================================
+
+Query: "Describe a smart water bottle that tracks hydration and syncs with your phone."
+Variants tested: 3
+
+----------------------------------------------------------------------
+  🏆 WINNER: DETAILED
+----------------------------------------------------------------------
+
+  The detailed response provides the most complete and well-organized
+  overview of a smart water bottle, balancing accuracy, clarity, and
+  appropriateness for a user seeking information. While the creative
+  response is more engaging, the detailed response offers more practical
+  and useful information.
+
+----------------------------------------------------------------------
+  VARIANT COMPARISON
+----------------------------------------------------------------------
+
+   CONCISE
+   Response length: 158 chars
+   Latency: 906ms
+   Scores:
+     Accuracy:       90%
+     Clarity:        90%
+     Engagement:     60%
+     Appropriateness: 85%
+     OVERALL:        81%
+   Strengths:
+     + Direct
+     + Easy to understand
+   Weaknesses:
+     - Lacks detail
+     - Not very engaging
+
+🏆 DETAILED
+   Response length: 5291 chars
+   Latency: 8646ms
+   Scores:
+     Accuracy:       95%
+     Clarity:        85%
+     Engagement:     75%
+     Appropriateness: 90%
+     OVERALL:        86%
+   Strengths:
+     + Comprehensive
+     + Provides a lot of information
+   Weaknesses:
+     - Can be overwhelming
+     - Less engaging than the creative response
+
+   CREATIVE
+   Response length: 1485 chars
+   Latency: 3378ms
+   Scores:
+     Accuracy:       80%
+     Clarity:        80%
+     Engagement:     95%
+     Appropriateness: 70%
+     OVERALL:        81%
+   Strengths:
+     + Highly engaging
+     + Imaginative
+   Weaknesses:
+     - Less focus on specific details
+     - Not as factual
+
+----------------------------------------------------------------------
+  RECOMMENDATION
+----------------------------------------------------------------------
+
+  Use the concise style for quick summaries or elevator pitches. Use the
+  detailed style for comprehensive guides or product descriptions. Use
+  the creative style for marketing materials or presentations where
+  engagement is key, but be mindful of accuracy and clarity.
 
 ======================================================================
 ```
