@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* React Flow base styles are imported by the pattern-builder */
+
+/* Override React Flow's default node styling */
+.react-flow__node {
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Override selected state */
+.react-flow__node.selected,
+.react-flow__node:focus,
+.react-flow__node:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* Ensure our custom nodes don't get extra wrapper styling */
+.react-flow__node-input,
+.react-flow__node-output,
+.react-flow__node-agents,
+.react-flow__node-parallel,
+.react-flow__node-sequential,
+.react-flow__node-consensus,
+.react-flow__node-voting,
+.react-flow__node-merge,
+.react-flow__node-threshold,
+.react-flow__node-race,
+.react-flow__node-retry,
+.react-flow__node-fallback,
+.react-flow__node-delegate,
+.react-flow__node-condition {
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Selected state for all custom node types */
+.react-flow__node-input.selected,
+.react-flow__node-output.selected,
+.react-flow__node-agents.selected,
+.react-flow__node-parallel.selected,
+.react-flow__node-sequential.selected,
+.react-flow__node-consensus.selected,
+.react-flow__node-voting.selected,
+.react-flow__node-merge.selected,
+.react-flow__node-threshold.selected,
+.react-flow__node-race.selected,
+.react-flow__node-retry.selected,
+.react-flow__node-fallback.selected,
+.react-flow__node-delegate.selected,
+.react-flow__node-condition.selected {
+  outline: none !important;
+  box-shadow: none !important;
+}
