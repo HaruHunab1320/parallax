@@ -5,7 +5,12 @@
 import { OrchestrationRequirements, PrimitiveDefinition } from '../types';
 
 export class PatternAssembler {
-  constructor(private primitives: Map<string, PrimitiveDefinition>) {}
+  // Primitives available for pattern generation (reserved for future use)
+  protected primitives: Map<string, PrimitiveDefinition>;
+
+  constructor(primitives: Map<string, PrimitiveDefinition>) {
+    this.primitives = primitives;
+  }
 
   /**
    * Assemble pattern code from selected primitives
@@ -102,7 +107,7 @@ export class PatternAssembler {
   private generatePatternLogic(
     requirements: OrchestrationRequirements,
     selectedPrimitives: any[],
-    order: string[]
+    _order: string[]
   ): string {
     const lines: string[] = [];
     
@@ -188,7 +193,7 @@ export class PatternAssembler {
   /**
    * Generate parallel pattern
    */
-  private generateParallelPattern(requirements: OrchestrationRequirements): string[] {
+  private generateParallelPattern(_requirements: OrchestrationRequirements): string[] {
     const lines: string[] = [];
     
     lines.push('// Execute tasks in parallel');
@@ -237,7 +242,7 @@ export class PatternAssembler {
   /**
    * Generate robust pattern (retry/fallback)
    */
-  private generateRobustPattern(requirements: OrchestrationRequirements, primitives: any[]): string[] {
+  private generateRobustPattern(_requirements: OrchestrationRequirements, primitives: any[]): string[] {
     const lines: string[] = [];
     
     lines.push('// Simulate initial attempt');

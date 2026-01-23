@@ -34,7 +34,7 @@ export class GeminiProvider implements LLMProvider {
   }): Promise<{ object: T }> {
     try {
       const result = await generateObject({
-        model: this.client(this.model),
+        model: this.client(this.model) as any,
         schema,
         prompt,
         system,
@@ -44,8 +44,7 @@ export class GeminiProvider implements LLMProvider {
 
       return { object: result.object };
     } catch (error) {
-      console.error('Gemini generation error:', error);
-      throw new Error(`Failed to generate object: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Gemini generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

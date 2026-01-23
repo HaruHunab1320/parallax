@@ -6,7 +6,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { compileYamlToPrism, compileYamlFile, CompileOptions } from '../../yaml';
+import { compileYamlFile, CompileOptions } from '../../yaml';
 
 export const compileCommand = new Command('compile')
   .description('Compile YAML patterns to Prism DSL')

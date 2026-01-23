@@ -493,9 +493,7 @@ export function createExecutionWebSocketHandler(
       }
     });
     
-    // Handle errors
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
-    });
+    // Handle errors silently - connection errors are expected when clients disconnect
+    ws.on('error', () => {});
   };
 }

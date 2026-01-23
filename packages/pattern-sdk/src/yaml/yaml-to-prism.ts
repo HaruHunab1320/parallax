@@ -7,7 +7,7 @@
  */
 
 import * as yaml from 'js-yaml';
-import { YamlPattern, YamlPatternSchema, ResultGroup, Aggregation, Step } from './types';
+import { YamlPattern, YamlPatternSchema, ResultGroup, Aggregation } from './types';
 
 export interface CompileOptions {
   /** Add comments explaining the generated code */
@@ -141,7 +141,7 @@ function generateInputSchema(input: Record<string, any>): any {
 function generateSimplePattern(
   pattern: YamlPattern,
   comments: boolean,
-  warnings: string[]
+  _warnings: string[]
 ): string {
   const lines: string[] = [];
 
@@ -413,7 +413,7 @@ function convertReference(ref: string, groupNames: string[]): string {
  */
 function generateConfidenceCalculation(
   confidence: any,
-  groups?: Record<string, ResultGroup>,
+  _groups?: Record<string, ResultGroup>,
   comments?: boolean
 ): string {
   const lines: string[] = [];
