@@ -1,10 +1,52 @@
 # Parallax Pattern SDK
 
-Generate orchestration patterns for Parallax using your own LLM at development time.
+Generate orchestration patterns for Parallax using YAML or AI-assisted generation.
 
 ## Overview
 
-The Pattern SDK allows you to generate Parallax orchestration patterns (.prism files) from high-level requirements using AI. These patterns are generated during development and committed to your repository, eliminating the need for runtime AI dependencies.
+The Pattern SDK provides two ways to create Parallax orchestration patterns:
+
+1. **YAML to Prism** - Write patterns in familiar YAML, compile to Prism DSL
+2. **AI Generation** - Generate patterns from natural language requirements
+
+Both approaches produce `.prism` files that run on the Parallax control plane.
+
+## YAML to Prism (Recommended)
+
+Write orchestration logic in YAML without learning Prism DSL:
+
+```yaml
+name: DocumentAnalysis
+description: Analyze documents from multiple perspectives
+
+input:
+  document: string
+
+agents:
+  capabilities: [analysis]
+  min: 4
+
+groups:
+  summary:
+    match: result.type == "summary"
+  sentiment:
+    match: result.type == "sentiment"
+
+output:
+  summary: $summary.result.text
+  sentiment: $sentiment.result.score
+
+confidence: average
+```
+
+Compile to Prism:
+```bash
+npx parallax-generate compile pattern.yaml
+```
+
+See [docs/YAML_FORMAT.md](./docs/YAML_FORMAT.md) for the full YAML schema reference.
+
+## AI-Assisted Generation
 
 ## Installation
 

@@ -1,0 +1,61 @@
+# RAG Quality Gate Pattern
+# Validates RAG responses for hallucinations, relevance, and completeness
+
+name: RAGQualityGate
+version: 1.0.0
+description: Quality assurance pipeline for RAG responses
+
+input:
+  question: string
+  answer: string
+  sources:
+    type: array
+    description: Source documents used to generate the answer
+
+agents:
+  capabilities: [quality, validation]
+  min: 3
+
+# Group results by quality check type
+groups:
+  groundedness:
+    match: result.checkType == "groundedness"
+  relevance:
+    match: result.checkType == "relevance"
+  completeness:
+    match: result.checkType == "completeness"
+
+# Output quality gate results
+output:
+  question: $input.question
+  status: $aggregation.status
+  overallScore: $avgConfidence
+  checks:
+    groundedness:
+      passed: $groundedness.result.passed
+      score: $groundedness.result.score
+      issues: $groundedness.result.issues
+    relevance:
+      passed: $relevance.result.passed
+      score: $relevance.result.score
+      issues: $relevance.result.issues
+    completeness:
+      passed: $completeness.result.passed
+      score: $completeness.result.score
+      missingTopics: $completeness.result.missingTopics
+  recommendation: $aggregation.recommendation
+  metadata:
+    checksCompleted: $totalCount
+    averageConfidence: $avgConfidence
+    patternVersion: "1.0.0"
+
+# All checks must pass - use minimum confidence
+confidence: min
+
+# Reject if any check fails badly
+fallback:
+  condition: confidence < 0.5
+  action: default
+  value:
+    status: rejected
+    recommendation: Regenerate answer with improved retrieval

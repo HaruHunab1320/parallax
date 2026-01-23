@@ -1,0 +1,60 @@
+# Document Analysis Pattern
+# Demonstrates multi-perspective parallel analysis with 4 specialized agents
+
+name: DocumentAnalysis
+version: 1.0.0
+description: Multi-perspective document analysis with parallel specialized agents
+
+input:
+  document: string
+  title: string
+
+agents:
+  capabilities: [document, analysis]
+  min: 2
+
+# Group agent results by analysis type
+groups:
+  summary:
+    match: result.analysisType == "summary"
+  keypoints:
+    match: result.analysisType == "keypoints"
+  actions:
+    match: result.analysisType == "actions"
+  sentiment:
+    match: result.analysisType == "sentiment"
+
+# Output structure using $references to group results
+output:
+  document:
+    title: $summary.result.title
+    type: $summary.result.documentType
+    wordCount: $summary.result.wordCount
+  summary:
+    mainTopic: $summary.result.mainTopic
+    overview: $summary.result.summary
+    conclusion: $summary.result.conclusion
+  keyPoints:
+    critical: $keypoints.result.criticalPoints
+    supporting: $keypoints.result.supportingPoints
+    factsAndData: $keypoints.result.factsAndData
+    totalCount: $keypoints.result.totalPoints
+  actionItems:
+    items: $actions.result.actionItems
+    decisions: $actions.result.decisions
+    followUps: $actions.result.followUps
+    hasUrgentItems: $actions.result.hasUrgentItems
+    totalCount: $actions.result.totalActions
+  sentiment:
+    overall: $sentiment.result.overallSentiment
+    score: $sentiment.result.sentimentScore
+    tone: $sentiment.result.tone
+    emotionalIndicators: $sentiment.result.emotionalIndicators
+    concerns: $sentiment.result.concerns
+    professionalism: $sentiment.result.professionalism
+  metadata:
+    analysesCompleted: $totalCount
+    averageConfidence: $avgConfidence
+    patternVersion: "1.0.0"
+
+confidence: average

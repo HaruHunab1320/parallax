@@ -1,0 +1,46 @@
+# Multi-Model Voting Pattern
+# Demonstrates consensus-based decision making with multiple AI models
+
+name: MultiModelVoting
+version: 1.0.0
+description: Consensus-based decision system using multiple AI models to vote
+
+input:
+  question: string
+  options:
+    type: array
+    description: Available choices for voting
+  content:
+    type: string
+    description: Optional content to evaluate
+
+agents:
+  capabilities: [voting, decision]
+  min: 3
+
+# Aggregation strategy - voting with majority wins
+aggregation:
+  strategy: voting
+  method: majority
+
+# Output the voting results
+output:
+  question: $input.question
+  decision: $aggregation.winner
+  consensus:
+    type: $aggregation.consensusType
+    confidence: $avgConfidence
+  needsHumanReview: $aggregation.isSplit
+  votes: $validResults
+  metadata:
+    totalVoters: $totalCount
+    unanimousAgreement: $aggregation.isUnanimous
+    patternVersion: "1.0.0"
+
+confidence: average
+
+# Escalate to human if no consensus
+fallback:
+  condition: confidence < 0.6
+  action: escalate
+  target: human-reviewer

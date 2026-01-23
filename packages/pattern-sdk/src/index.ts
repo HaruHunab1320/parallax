@@ -33,3 +33,7 @@ export { loadRequirements } from './utils/requirements-loader';
 
 // LLM providers
 export { GeminiProvider, createGeminiProvider } from './llm/providers/gemini';
+
+// YAML to Prism compiler
+export { compileYamlToPrism, compileYamlFile, type CompileOptions, type CompileResult } from './yaml';
+export type { YamlPattern, AgentSelection, ResultGroup, Aggregation, Step } from './yaml';

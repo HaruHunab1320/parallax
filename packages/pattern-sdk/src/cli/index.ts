@@ -10,6 +10,7 @@ import chalk from 'chalk';
 import { patternCommand } from './commands/pattern';
 import { templateCommand } from './commands/template';
 import { validateCommand } from './commands/validate';
+import { compileCommand } from './commands/compile';
 
 const program = new Command();
 
@@ -22,12 +23,15 @@ ${chalk.gray('Examples:')}
   ${chalk.green('$')} parallax-generate pattern "Multi-stage review with consensus"
   ${chalk.green('$')} parallax-generate pattern --interactive
   ${chalk.green('$')} parallax-generate pattern -f requirements.yaml
+  ${chalk.green('$')} parallax-generate compile patterns/analysis.yaml
+  ${chalk.green('$')} parallax-generate compile patterns/ -o dist/
   ${chalk.green('$')} parallax-generate template list
   ${chalk.green('$')} parallax-generate validate ./patterns/review.prism
   `);
 
 // Add commands
 program.addCommand(patternCommand);
+program.addCommand(compileCommand);
 program.addCommand(templateCommand);
 program.addCommand(validateCommand);
 
