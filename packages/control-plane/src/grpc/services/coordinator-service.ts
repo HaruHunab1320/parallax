@@ -12,7 +12,7 @@ export class CoordinatorServiceImpl {
 
   constructor(
     private patternEngine: IPatternEngine,
-    private agentRegistry: IAgentRegistry,
+    _agentRegistry: IAgentRegistry,
     private logger: Logger
   ) {}
 
@@ -78,7 +78,7 @@ export class CoordinatorServiceImpl {
       this.logger.error({ error }, 'Failed to coordinate');
       callback({
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -137,7 +137,7 @@ export class CoordinatorServiceImpl {
       this.logger.error({ error }, 'Failed to stream coordinate');
       call.emit('error', {
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }

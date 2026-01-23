@@ -197,7 +197,8 @@ export class LicenseEnforcer {
     };
   }
 
-  private getUpgradePrompt(): string {
+  /** @internal Reserved for future upgrade prompts */
+  protected getUpgradePrompt(): string {
     return `┌─────────────────────────────────────────────────────────┐
 │  🚀 Ready for production?                               │
 │                                                         │

@@ -71,7 +71,7 @@ export class AgentProxy {
       includeDirs: [PROTO_DIR]
     });
     
-    const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
+    const protoDescriptor = grpc.loadPackageDefinition(packageDefinition) as any;
     this.confidenceProto = protoDescriptor.parallax.confidence;
   }
 
@@ -127,7 +127,7 @@ export class AgentProxy {
   ): Promise<AgentResult> {
     const client = this.getClient(agentAddress);
     
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const deadline = new Date();
       deadline.setSeconds(deadline.getSeconds() + Math.floor(timeout / 1000));
 
@@ -220,7 +220,7 @@ export class AgentProxy {
   async getCapabilities(agentAddress: string, timeout: number = 5000): Promise<string[]> {
     const client = this.getClient(agentAddress);
     
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const deadline = new Date();
       deadline.setSeconds(deadline.getSeconds() + Math.floor(timeout / 1000));
 
@@ -262,7 +262,7 @@ export class AgentProxy {
    * Close all client connections
    */
   close() {
-    for (const [address, client] of this.clients) {
+    for (const [_address, client] of this.clients) {
       client.close();
     }
     this.clients.clear();

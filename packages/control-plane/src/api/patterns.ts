@@ -11,7 +11,7 @@ export function createPatternsRouter(
   const router = Router();
 
   // List all patterns
-  router.get('/', (_req, res) => {
+  router.get('/', (_req: any, res: any) => {
     try {
       const patterns = patternEngine.listPatterns();
       
@@ -32,7 +32,7 @@ export function createPatternsRouter(
   });
 
   // Get pattern details
-  router.get('/:name', (req, res) => {
+  router.get('/:name', (req: any, res: any) => {
     const { name } = req.params;
     
     try {
@@ -55,7 +55,7 @@ export function createPatternsRouter(
   });
 
   // Validate pattern
-  router.post('/:name/validate', async (req, res) => {
+  router.post('/:name/validate', async (req: any, res: any) => {
     const { name } = req.params;
     const { input } = req.body;
     
@@ -101,7 +101,7 @@ export function createPatternsRouter(
   });
 
   // Execute pattern (sync endpoint)
-  router.post('/:name/execute', async (req, res) => {
+  router.post('/:name/execute', async (req: any, res: any) => {
     const { name } = req.params;
     const { input, options } = req.body;
     
@@ -144,7 +144,7 @@ export function createPatternsRouter(
   });
 
   // Get pattern metrics
-  router.get('/:name/metrics', async (_req, res) => {
+  router.get('/:name/metrics', async (_req: any, res: any) => {
     const { name } = _req.params;
     
     try {

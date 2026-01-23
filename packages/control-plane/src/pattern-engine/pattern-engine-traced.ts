@@ -23,9 +23,9 @@ export class TracedPatternEngine implements IPatternEngine {
   private executions: Map<string, PatternExecution> = new Map();
   private localAgentManager: LocalAgentManager;
   private tracer: PatternTracer;
-  private localAgents: any[] = [];
+  protected localAgentsStore: any[] = [];
   private _calibrationService: ConfidenceCalibrationService;
-  private licenseEnforcer: LicenseEnforcer;
+  protected licenseEnforcer: LicenseEnforcer;
   private agentProxy: AgentProxy;
   
   constructor(
@@ -84,7 +84,7 @@ export class TracedPatternEngine implements IPatternEngine {
             if (dbPattern) {
               await this.database.executions.create({
                 id: executionId,
-                patternId: dbPattern.id,
+                pattern: { connect: { id: dbPattern.id } },
                 input: input as any,
                 status: 'running',
               });
@@ -340,7 +340,7 @@ export class TracedPatternEngine implements IPatternEngine {
     
     // Filter by capabilities
     const eligibleAgents = services.filter(service => {
-      const capabilities = service.capabilities || service.metadata?.capabilities || [];
+      const capabilities = service.metadata?.capabilities || [];
       return requiredCapabilities.every((req: string) => capabilities.includes(req));
     });
     
@@ -499,7 +499,7 @@ export class TracedPatternEngine implements IPatternEngine {
   
   // Additional methods for compatibility
   registerLocalAgents(agents: any[]): void {
-    this.localAgents = agents;
+    this.localAgentsStore = agents;
   }
 
   getCalibrationService(): ConfidenceCalibrationService {

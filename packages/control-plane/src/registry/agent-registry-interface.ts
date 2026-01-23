@@ -2,22 +2,21 @@
  * Interface for agent registry operations
  */
 
+import { ServiceRegistration } from './types';
+
 export interface IAgentRegistry {
-  register(agent: {
-    id: string;
-    name: string;
-    address: string;
-    capabilities: string[];
-    metadata?: Record<string, any>;
-    lastSeen: Date;
-  }): Promise<void>;
-  
-  unregister(agentId: string): Promise<void>;
-  
-  get(agentId: string): Promise<any | null>;
-  
-  list(): Promise<any[]>;
-  
+  register(service: ServiceRegistration): Promise<void>;
+
+  unregister(type: string, id: string): Promise<void>;
+
+  get(agentId: string): Promise<ServiceRegistration | null>;
+
+  list(): Promise<ServiceRegistration[]>;
+
+  listServices(type?: string): Promise<ServiceRegistration[]>;
+
+  getService(type: string, id: string): Promise<ServiceRegistration | null>;
+
   // Additional methods as needed
   updateLastSeen?(agentId: string): Promise<void>;
 }

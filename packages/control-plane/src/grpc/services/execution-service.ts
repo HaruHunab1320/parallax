@@ -284,7 +284,7 @@ export class ExecutionServiceImpl {
 
       return records.map(record => ({
         id: record.id,
-        patternName: record.pattern?.name || record.patternId,
+        patternName: (record as any).pattern?.name || record.patternId,
         status: record.status,
         startTime: record.time,
         endTime: record.durationMs ? new Date(record.time.getTime() + record.durationMs) : undefined,

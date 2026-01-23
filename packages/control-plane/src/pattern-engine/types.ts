@@ -59,4 +59,5 @@ export interface ExecutionMetrics {
   confidence?: number;
   success?: boolean;
   agentCount?: number;
+  warnings?: string[];
 }

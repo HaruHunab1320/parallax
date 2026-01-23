@@ -69,7 +69,7 @@ export class RegistryServiceImpl {
       this.logger.error({ error }, 'Failed to register agent');
       callback({
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -98,7 +98,7 @@ export class RegistryServiceImpl {
       this.logger.error({ error }, 'Failed to unregister agent');
       callback({
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -143,7 +143,7 @@ export class RegistryServiceImpl {
       this.logger.error({ error }, 'Failed to renew lease');
       callback({
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -165,7 +165,7 @@ export class RegistryServiceImpl {
       this.logger.error({ error }, 'Failed to list agents');
       callback({
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -193,7 +193,7 @@ export class RegistryServiceImpl {
       this.logger.error({ error }, 'Failed to get agent');
       callback({
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }

@@ -31,14 +31,14 @@ export class GrpcServer {
   private executionService: ExecutionServiceImpl;
 
   constructor(
-    private patternEngine: IPatternEngine,
-    private agentRegistry: IAgentRegistry,
-    private database: DatabaseService,
+    patternEngine: IPatternEngine,
+    agentRegistry: IAgentRegistry,
+    database: DatabaseService,
     private logger: Logger,
-    private executionEvents?: ExecutionEventBus
+    executionEvents?: ExecutionEventBus
   ) {
     this.server = new grpc.Server();
-    
+
     // Initialize service implementations
     this.registryService = new RegistryServiceImpl(agentRegistry, logger);
     this.patternService = new PatternServiceImpl(patternEngine, database, logger);

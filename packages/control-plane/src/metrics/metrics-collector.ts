@@ -206,7 +206,7 @@ export class MetricsCollector {
   /**
    * Record API call metrics
    */
-  recordApiCall(resource: string, method: string, statusCode: number): void {
+  recordApiCall(_resource: string, _method: string, _statusCode: number): void {
     // This could be implemented with a counter if needed
     // For now, just a placeholder
   }

@@ -70,7 +70,7 @@ export function createExecutionsRouter(
   }
 
   // List executions
-  router.get('/', async (_req, res) => {
+  router.get('/', async (_req: any, res: any) => {
     const limit = parseInt(_req.query.limit as string) || 100;
     const offset = parseInt(_req.query.offset as string) || 0;
     const status = _req.query.status as string;
@@ -125,7 +125,7 @@ export function createExecutionsRouter(
   });
 
   // Get execution details
-  router.get('/:id', async (req, res) => {
+  router.get('/:id', async (req: any, res: any) => {
     const { id } = req.params;
     
     try {
@@ -182,7 +182,7 @@ export function createExecutionsRouter(
   };
 
   // Create new execution
-  router.post('/', async (req, res) => {
+  router.post('/', async (req: any, res: any) => {
     const { patternName, input, options, webhook } = req.body as ExecutionRequest;
 
     if (!patternName || !input) {
@@ -314,7 +314,7 @@ export function createExecutionsRouter(
   });
 
   // Get execution events
-  router.get('/:id/events', async (req, res) => {
+  router.get('/:id/events', async (req: any, res: any) => {
     const { id } = req.params;
     
     try {
@@ -334,7 +334,7 @@ export function createExecutionsRouter(
   });
 
   // Cancel execution
-  router.post('/:id/cancel', async (req, res) => {
+  router.post('/:id/cancel', async (req: any, res: any) => {
     const { id } = req.params;
 
     try {
@@ -394,7 +394,7 @@ export function createExecutionsRouter(
   });
 
   // Retry execution
-  router.post('/:id/retry', async (req, res) => {
+  router.post('/:id/retry', async (req: any, res: any) => {
     const { id } = req.params;
     
     try {
@@ -424,16 +424,20 @@ export function createExecutionsRouter(
         return res.status(404).json({ error: 'Original execution not found' });
       }
       
-      // Create new execution with same parameters
-      const retryRequest: ExecutionRequest = {
+      // Create new execution with same parameters - redirect to create endpoint
+      req.body = {
         patternName: originalExecution.patternName,
         input: originalExecution.input,
         options: originalExecution.options
-      };
-      
-      // Forward to create endpoint
-      req.body = retryRequest;
-      return router.handle(req, res);
+      } as ExecutionRequest;
+
+      // Use next() to pass to the router's POST handler would require middleware
+      // Instead, return info for client to make a new request
+      return res.status(200).json({
+        message: 'Retry available',
+        retryRequest: req.body,
+        hint: 'POST this to /api/executions to retry'
+      });
     } catch (error) {
       logger.error({ error, executionId: id }, 'Failed to retry execution');
       return res.status(500).json({

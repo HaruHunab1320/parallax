@@ -11,7 +11,7 @@ import { Pattern } from '../../pattern-engine/types';
 export class PatternServiceImpl {
   constructor(
     private patternEngine: IPatternEngine,
-    private database: DatabaseService,
+    _database: DatabaseService,
     private logger: Logger
   ) {}
 
@@ -51,7 +51,7 @@ export class PatternServiceImpl {
       this.logger.error({ error }, 'Failed to execute pattern');
       callback({
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -81,7 +81,7 @@ export class PatternServiceImpl {
       this.logger.error({ error }, 'Failed to stream execute pattern');
       call.emit('error', {
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -114,7 +114,7 @@ export class PatternServiceImpl {
       this.logger.error({ error }, 'Failed to list patterns');
       callback({
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -155,7 +155,7 @@ export class PatternServiceImpl {
       this.logger.error({ error }, 'Failed to get pattern');
       callback({
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }

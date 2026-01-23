@@ -211,7 +211,7 @@ export function createAgentsRouter(
   });
 
   // Test agent capabilities
-  router.post('/:id/test', async (req, res) => {
+  router.post('/:id/test', async (req: any, res: any) => {
     const { id } = req.params;
     const { task, data } = req.body;
     
@@ -254,7 +254,7 @@ export function createAgentsRouter(
   });
 
   // Get capability statistics
-  router.get('/stats/capabilities', async (_req, res) => {
+  router.get('/stats/capabilities', async (_req: any, res: any) => {
     try {
       if (database) {
         const stats = await database.agents.getCapabilitiesStats();

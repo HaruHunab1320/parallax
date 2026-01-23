@@ -20,8 +20,8 @@ export class PatternEngine implements IPatternEngine {
   private localAgentManager: LocalAgentManager;
   private localAgents: any[] = []; // Direct agent instances for demo
   private _calibrationService: ConfidenceCalibrationService;
-  private licenseEnforcer: LicenseEnforcer;
-  private currentExecutionId?: string;
+  protected licenseEnforcer: LicenseEnforcer;
+  protected currentExecutionId?: string;
   private agentProxy: AgentProxy;
   
   constructor(
@@ -384,7 +384,7 @@ export class PatternEngine implements IPatternEngine {
           name: service.name,
           address: service.endpoint,
           endpoint: service.endpoint,
-          capabilities: service.capabilities || service.metadata?.capabilities || [],
+          capabilities: service.metadata?.capabilities || [],
           expertise: service.metadata?.expertise || 0.7,
           historicalConfidence: service.metadata?.historicalConfidence || 0.75
         }));

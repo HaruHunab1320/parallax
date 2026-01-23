@@ -61,7 +61,7 @@ export class EtcdRegistry extends EventEmitter {
 
   async getService(type: string, id: string): Promise<ServiceRegistration | null> {
     const key = this.getServiceKey(type, id);
-    
+
     try {
       const response = await this.client.get(key);
       if (response) {
@@ -72,6 +72,20 @@ export class EtcdRegistry extends EventEmitter {
       this.logger.error({ type, id, error }, 'Failed to get service');
       throw error;
     }
+  }
+
+  /**
+   * Get an agent by ID (IAgentRegistry interface)
+   */
+  async get(agentId: string): Promise<ServiceRegistration | null> {
+    return this.getService('agent', agentId);
+  }
+
+  /**
+   * List all agents (IAgentRegistry interface)
+   */
+  async list(): Promise<ServiceRegistration[]> {
+    return this.listServices('agent');
   }
 
   async listServices(type?: string): Promise<ServiceRegistration[]> {
