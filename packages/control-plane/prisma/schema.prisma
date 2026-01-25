@@ -135,7 +135,139 @@ model Session {
   data        Json?
   expiresAt   DateTime
   createdAt   DateTime @default(now())
-  
+
   @@index([token])
   @@index([expiresAt])
+}
+
+// Scheduled pattern execution
+model Schedule {
+  id              String    @id @default(uuid())
+  name            String
+  patternName     String
+  description     String?
+  cronExpression  String?   // Cron expression: "0 9 * * *"
+  intervalMs      Int?      // Interval in milliseconds
+  timezone        String    @default("UTC")
+  status          String    @default("active") // active, paused, completed
+  input           Json?     // Input to pass to pattern
+  nextRunAt       DateTime? @db.Timestamptz
+  lastRunAt       DateTime? @db.Timestamptz
+  lastRunStatus   String?   // success, failure
+  runCount        Int       @default(0)
+  maxRuns         Int?      // Optional limit on total runs
+  startAt         DateTime? @db.Timestamptz // Delayed start
+  endAt           DateTime? @db.Timestamptz // Auto-expire
+  retryPolicy     Json?     // Retry configuration
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String?
+
+  runs            ScheduleRun[]
+
+  @@index([status])
+  @@index([nextRunAt])
+  @@index([patternName])
+}
+
+// Schedule execution history
+model ScheduleRun {
+  id           String    @id @default(uuid())
+  scheduleId   String
+  schedule     Schedule  @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  executionId  String?   // Links to Execution if pattern was run
+  scheduledFor DateTime  @db.Timestamptz
+  startedAt    DateTime? @db.Timestamptz
+  completedAt  DateTime? @db.Timestamptz
+  status       String    @default("pending") // pending, running, success, failure, skipped
+  error        String?   @db.Text
+  durationMs   Int?
+
+  @@index([scheduleId, scheduledFor])
+  @@index([status])
+}
+
+// Webhook and event triggers
+model Trigger {
+  id            String    @id @default(uuid())
+  name          String
+  type          String    // webhook, event
+  patternName   String
+  description   String?
+  webhookPath   String?   @unique // Unique path for webhook URL
+  webhookSecret String?   // Optional secret for webhook validation
+  eventType     String?   // Event type to listen for
+  eventFilter   Json?     // Filter conditions for events
+  inputMapping  Json?     // Transform incoming data to pattern input
+  status        String    @default("active") // active, paused
+  metadata      Json?
+  lastTriggered DateTime? @db.Timestamptz
+  triggerCount  Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdBy     String?
+
+  @@index([type, status])
+  @@index([webhookPath])
+  @@index([eventType])
+}
+
+// Audit logging
+model AuditLog {
+  id          String   @id @default(uuid())
+  timestamp   DateTime @default(now()) @db.Timestamptz
+  userId      String?
+  userEmail   String?
+  action      String   // create, update, delete, execute, login, logout
+  resource    String   // pattern, schedule, trigger, user, etc.
+  resourceId  String?
+  ipAddress   String?
+  userAgent   String?
+  status      String   @default("success") // success, failure
+  details     Json?
+
+  @@index([timestamp])
+  @@index([userId, timestamp])
+  @@index([resource, resourceId])
+  @@index([action])
+}
+
+// User management
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?   // Null for SSO-only users
+  role          String    @default("viewer") // admin, operator, developer, viewer
+  status        String    @default("active") // active, inactive, pending
+  ssoProvider   String?   // google, okta, azure, saml
+  ssoSubject    String?   // External ID from SSO provider
+  lastLoginAt   DateTime?
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  apiKeys       ApiKey[]
+
+  @@index([email])
+  @@index([status])
+  @@unique([ssoProvider, ssoSubject])
+}
+
+// API Keys for programmatic access
+model ApiKey {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  keyHash     String    @unique // Hashed API key
+  keyPrefix   String    // First 8 chars for identification
+  permissions Json?     // Optional permission restrictions
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([keyHash])
+  @@index([userId])
 }

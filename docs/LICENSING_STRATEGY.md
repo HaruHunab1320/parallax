@@ -384,33 +384,55 @@ A: Major contributors may qualify for free Enterprise licenses. Contact us.
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| License detection | ✅ Built | `packages/control-plane/src/licensing/` |
-| Feature gating | 🔄 Partial | Needs alignment with this strategy |
-| Persistence toggle | ✅ Built | PostgreSQL/Prisma integration exists |
-| Dashboard | ✅ Built | Needs license check added |
-| Scheduling | ❌ Not built | Future feature |
-| Multi-user/RBAC | ❌ Not built | Future feature |
-| SSO | ❌ Not built | Future feature |
+| License detection | ✅ Complete | `packages/control-plane/src/licensing/` |
+| Feature gating | ✅ Complete | All enterprise features license-gated |
+| Persistence | ✅ Complete | PostgreSQL/TimescaleDB with Prisma |
+| Dashboard | ✅ Complete | Full monitoring, patterns, executions, settings |
+| High Availability | ✅ Complete | Leader election, distributed locks, state sync |
+| Scheduling | ✅ Complete | Cron-based scheduling with HA support |
+| Triggers | ✅ Complete | Webhooks and event-based triggers |
+| Multi-user/RBAC | ✅ Complete | Users, roles, API keys, audit logs |
+| SSO/OIDC | 🔄 Partial | OIDC ready, SAML integration pending |
+| Kubernetes | ✅ Complete | Helm charts for production deployment |
 
 ---
 
-## TODO: Implementation Tasks
+## What's NOT Included (Future Roadmap)
 
-### Phase 1: Align Existing Code
-- [ ] Update `license-enforcer.ts` to match this strategy
-- [ ] Remove `packages/tenant/` (not needed for self-hosted model)
-- [ ] Add license check to dashboard routes
-- [ ] Update CLI messaging for upgrade prompts
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Agent Hosting | ❌ Not built | See `AGENT_HOSTING_STRATEGY.md` |
+| SAML SSO | 🔄 Partial | OIDC complete, SAML pending |
+| Pattern Marketplace | ❌ Not built | Enterprise Plus future feature |
+| Advanced Analytics | ❌ Not built | Enterprise Plus future feature |
 
-### Phase 2: Documentation
+---
+
+## Deployment Options
+
+### Self-Hosted (Current)
+
+All editions are self-hosted. Customers run Parallax on their own infrastructure:
+- Local development (Docker Compose)
+- Kubernetes (Helm charts provided)
+- VM/bare metal
+
+### Managed Cloud (Future)
+
+Not currently offered. May be considered post-launch based on customer demand.
+
+---
+
+## TODO: Remaining Tasks
+
+### Documentation
 - [ ] Update `sites/docs/docs/enterprise/overview.md`
-- [ ] Update main README
+- [ ] Update main README with enterprise features
 - [ ] Create pricing page content
 
-### Phase 3: Future Features
-- [ ] Implement scheduled patterns
-- [ ] Implement multi-user / RBAC
-- [ ] Implement SSO integration
+### Polish
+- [ ] SAML SSO integration
+- [ ] CLI upgrade prompts refinement
 
 ---
 

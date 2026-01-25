@@ -89,4 +89,9 @@ export class DatabaseService {
   get client(): PrismaClient {
     return this.prisma;
   }
+
+  // Get Prisma client (alias for compatibility)
+  getPrismaClient(): PrismaClient {
+    return this.prisma;
+  }
 }

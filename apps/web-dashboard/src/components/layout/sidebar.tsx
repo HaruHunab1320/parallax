@@ -12,7 +12,8 @@ import {
   Settings,
   BarChart3,
   Zap,
-  Shield,
+  Clock,
+  Users,
 } from 'lucide-react';
 
 const navItems = [
@@ -37,6 +38,11 @@ const navItems = [
     icon: Zap,
   },
   {
+    title: 'Schedules',
+    href: '/schedules',
+    icon: Clock,
+  },
+  {
     title: 'Metrics',
     href: '/metrics',
     icon: BarChart3,
@@ -47,9 +53,9 @@ const navItems = [
     icon: Activity,
   },
   {
-    title: 'Security',
-    href: '/security',
-    icon: Shield,
+    title: 'Users',
+    href: '/users',
+    icon: Users,
   },
   {
     title: 'Settings',
