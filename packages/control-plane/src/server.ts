@@ -14,7 +14,8 @@ import { EtcdRegistry } from './registry';
 import { HealthCheckService, createHealthRouter } from './health/health-check';
 import { MetricsCollector } from './metrics/metrics-collector';
 import { initializeTracing, getTracingConfig } from '@parallax/telemetry';
-import { createPatternsRouter, createAgentsRouter, createExecutionsRouter, createExecutionWebSocketHandler } from './api';
+import { createPatternsRouter, createAgentsRouter, createExecutionsRouter, createExecutionWebSocketHandler, createLicenseRouter } from './api';
+import { LicenseEnforcer } from './licensing/license-enforcer';
 import { DatabaseService } from './db/database.service';
 import { GrpcServer } from './grpc';
 import path from 'path';
@@ -85,6 +86,9 @@ export async function createServer(): Promise<express.Application> {
   
   // Initialize metrics
   const metrics = new MetricsCollector();
+
+  // Initialize license enforcer
+  const licenseEnforcer = new LicenseEnforcer(logger);
   
   // Health checks
   const healthService = new HealthCheckService(
@@ -109,6 +113,10 @@ export async function createServer(): Promise<express.Application> {
     executionEvents
   );
   
+  // License router
+  const licenseRouter = createLicenseRouter(licenseEnforcer, logger);
+  app.use('/api/license', licenseRouter);
+
   app.use('/api/patterns', patternsRouter);
   app.use('/api/agents', agentsRouter);
   app.use('/api/executions', executionsRouter);
@@ -118,9 +126,11 @@ export async function createServer(): Promise<express.Application> {
     res.json({
       service: 'Parallax Control Plane',
       version: process.env.npm_package_version || '0.1.0',
+      license: licenseEnforcer.getLicenseType(),
       endpoints: {
         health: '/health',
         metrics: '/metrics',
+        license: '/api/license',
         patterns: '/api/patterns',
         agents: '/api/agents',
         executions: '/api/executions'

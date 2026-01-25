@@ -43,6 +43,11 @@ export interface Metrics {
   executionsPerMinute: number;
 }
 
+export interface LicenseInfo {
+  type: 'opensource' | 'enterprise' | 'enterprise-plus';
+  features: string[];
+}
+
 export interface TimeSeriesData {
   time: string;
   value: number;
@@ -128,6 +133,21 @@ class ApiClient {
   async getMetrics(): Promise<Metrics> {
     const response = await this.controlPlane.get('/metrics');
     return response.data;
+  }
+
+  // License endpoint
+  async getLicense(): Promise<LicenseInfo> {
+    try {
+      const response = await this.controlPlane.get('/license');
+      return response.data;
+    } catch (error) {
+      // If endpoint doesn't exist or errors, assume open source
+      return { type: 'opensource', features: [] };
+    }
+  }
+
+  hasEnterpriseFeature(license: LicenseInfo, feature: string): boolean {
+    return license.type !== 'opensource' && license.features.includes(feature);
   }
 
   async getConfidenceHistory(

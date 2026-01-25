@@ -5,42 +5,144 @@ title: Overview
 
 # Enterprise Features
 
-Parallax Enterprise adds production-grade capabilities for teams and organizations running multi-agent orchestration at scale.
-
-## What's Included
-
-| Feature | Description |
-|---------|-------------|
-| **High Availability** | Multi-node clustering with automatic failover |
-| **Persistence** | Durable storage for patterns and execution history |
-| **Multi-Region** | Distribute agents across geographic regions |
-| **Security** | mTLS, RBAC, SSO integration, audit logging |
-| **Kubernetes Operator** | Native K8s deployment and scaling |
-| **Priority Support** | Dedicated support channel and SLAs |
+Parallax Enterprise adds production-grade capabilities for teams and organizations running multi-agent orchestration in production.
 
 ## Open Source vs Enterprise
 
-| Feature | Open Source | Enterprise |
-|---------|-------------|------------|
-| Core orchestration | ✓ | ✓ |
-| Voting/Consensus patterns | ✓ | ✓ |
-| TypeScript SDK | ✓ | ✓ |
-| REST/WebSocket API | ✓ | ✓ |
-| Pattern Builder | ✓ | ✓ |
-| Single-node deployment | ✓ | ✓ |
-| Basic authentication | ✓ | ✓ |
-| Multi-node clustering | - | ✓ |
-| Automatic failover | - | ✓ |
-| Persistent storage | - | ✓ |
-| Multi-region support | - | ✓ |
-| mTLS encryption | - | ✓ |
-| RBAC | - | ✓ |
-| SSO integration | - | ✓ |
-| Audit logging | - | ✓ |
-| Kubernetes Operator | - | ✓ |
-| Priority support | - | ✓ |
+Parallax Open Source is **fully featured for local development** — unlimited agents, all patterns, complete CLI. Enterprise adds what you need for **production deployments**.
 
-## Architecture Overview
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│   Open Source (Free Forever)                                        │
+│   ├── ✅ Unlimited agents                                           │
+│   ├── ✅ All pattern types (voting, consensus, merge, etc.)         │
+│   ├── ✅ Pattern Builder (visual + YAML)                            │
+│   ├── ✅ Full Prism DSL support                                     │
+│   ├── ✅ Complete CLI                                               │
+│   └── ❌ In-memory only (state lost on restart)                     │
+│                                                                     │
+│   Enterprise                                                        │
+│   ├── ✅ Everything in Open Source, plus:                           │
+│   ├── ✅ Persistence (PostgreSQL/TimescaleDB)                       │
+│   ├── ✅ Execution history & audit logs                             │
+│   ├── ✅ Web Dashboard                                              │
+│   ├── ✅ Scheduled patterns (cron, triggers)                        │
+│   ├── ✅ High Availability (clustering, failover)                   │
+│   ├── ✅ Multi-user / RBAC                                          │
+│   ├── ✅ SSO Integration (SAML, OIDC)                               │
+│   └── ✅ Priority Support                                           │
+│                                                                     │
+│   Enterprise Plus                                                   │
+│   ├── ✅ Everything in Enterprise, plus:                            │
+│   ├── ✅ Multi-region deployment                                    │
+│   ├── ✅ Advanced analytics                                         │
+│   ├── ✅ 24/7 Support                                               │
+│   └── ✅ Custom feature development                                 │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Feature Comparison
+
+| Feature | Open Source | Enterprise | Enterprise Plus |
+|---------|:-----------:|:----------:|:---------------:|
+| **Core Features** | | | |
+| Unlimited agents | ✅ | ✅ | ✅ |
+| All pattern types | ✅ | ✅ | ✅ |
+| Pattern Builder | ✅ | ✅ | ✅ |
+| Prism DSL | ✅ | ✅ | ✅ |
+| CLI | ✅ | ✅ | ✅ |
+| REST & WebSocket API | ✅ | ✅ | ✅ |
+| **Production Features** | | | |
+| Persistence (PostgreSQL) | ❌ | ✅ | ✅ |
+| Execution history | ❌ | ✅ | ✅ |
+| Web Dashboard | ❌ | ✅ | ✅ |
+| Scheduled patterns | ❌ | ✅ | ✅ |
+| Metrics & analytics | ❌ | ✅ | ✅ |
+| Backup & restore | ❌ | ✅ | ✅ |
+| **Reliability** | | | |
+| High Availability | ❌ | ✅ | ✅ |
+| Distributed execution | ❌ | ✅ | ✅ |
+| Multi-region | ❌ | ❌ | ✅ |
+| **Team Features** | | | |
+| Multi-user | ❌ | ✅ | ✅ |
+| RBAC | ❌ | ✅ | ✅ |
+| SSO (SAML/OIDC) | ❌ | ✅ | ✅ |
+| API keys | ❌ | ✅ | ✅ |
+| Audit logging | ❌ | ✅ | ✅ |
+| **Support** | | | |
+| Community support | ✅ | ✅ | ✅ |
+| Priority support | ❌ | ✅ | ✅ |
+| 24/7 support | ❌ | ❌ | ✅ |
+| SLA guarantee | ❌ | ✅ | ✅ |
+
+## Why Upgrade?
+
+### Open Source is Great For:
+
+- Learning and experimentation
+- Development and testing
+- Small projects and prototypes
+- CI/CD pipeline integration (stateless)
+- Individual developers
+
+### Enterprise is Essential For:
+
+- **Production deployments** — You need persistence so data survives restarts
+- **Debugging & compliance** — Execution history and audit logs
+- **Monitoring** — Web dashboard with real-time metrics
+- **Automation** — Scheduled patterns and event triggers
+- **Teams** — Multi-user access with proper permissions
+- **Reliability** — HA clustering for zero downtime
+
+## Pricing
+
+| Edition | Price | Best For |
+|---------|-------|----------|
+| **Open Source** | Free forever | Development, testing, learning |
+| **Enterprise** | $500/month per node | Production deployments |
+| **Enterprise Plus** | $2,000/month per node | Multi-region, 24/7 support |
+
+- Minimum 3 nodes for Enterprise
+- Annual discount: 20% off
+- 30-day free trial available
+
+## Quick Start
+
+### 1. Start Free Trial
+
+```bash
+# Start a 30-day Enterprise trial
+parallax deploy --trial
+
+# Or set your license key
+export PARALLAX_LICENSE_KEY=PARALLAX-ENT-xxxx-xxxx-xxxx
+```
+
+### 2. Enable Persistence
+
+```bash
+# Configure PostgreSQL
+parallax config set persistence.enabled true
+parallax config set persistence.url postgresql://user:pass@localhost:5432/parallax
+
+# Restart to apply
+parallax restart
+```
+
+### 3. Access Dashboard
+
+Open http://localhost:3000 to access the web dashboard.
+
+### 4. Invite Team Members
+
+```bash
+parallax users add alice@company.com --role operator
+parallax users add bob@company.com --role viewer
+```
+
+## Architecture
 
 ```
                           ┌─────────────────────────────────────────────┐
@@ -52,188 +154,60 @@ Parallax Enterprise adds production-grade capabilities for teams and organizatio
               ▼                                 ▼                                 ▼
 ┌─────────────────────────┐   ┌─────────────────────────┐   ┌─────────────────────────┐
 │    Control Plane 1      │   │    Control Plane 2      │   │    Control Plane 3      │
-│    (Primary)            │   │    (Replica)            │   │    (Replica)            │
+│    (Leader)             │   │    (Follower)           │   │    (Follower)           │
 └───────────┬─────────────┘   └───────────┬─────────────┘   └───────────┬─────────────┘
             │                             │                             │
             └─────────────────────────────┼─────────────────────────────┘
                                           │
-                                          ▼
-                          ┌─────────────────────────────────┐
-                          │         Redis Cluster           │
-                          │   (State synchronization)       │
-                          └─────────────────────────────────┘
-                                          │
-                                          ▼
-                          ┌─────────────────────────────────┐
-                          │       PostgreSQL Cluster        │
-                          │   (Persistent storage)          │
-                          └─────────────────────────────────┘
+                          ┌───────────────┴───────────────┐
+                          │                               │
+                          ▼                               ▼
+              ┌─────────────────────┐       ┌─────────────────────┐
+              │    Redis Cluster    │       │   PostgreSQL/       │
+              │    (State sync)     │       │   TimescaleDB       │
+              └─────────────────────┘       └─────────────────────┘
 ```
-
-## Getting Started
-
-### 1. Contact Sales
-
-Request an enterprise license:
-
-- Email: enterprise@parallax.dev
-- Web: [parallax.dev/enterprise](https://parallax.dev/enterprise)
-
-### 2. Install Enterprise Components
-
-```bash
-# Add enterprise Helm repository
-helm repo add parallax-enterprise https://enterprise.charts.parallax.dev
-helm repo update
-
-# Install with enterprise license
-helm install parallax parallax-enterprise/parallax \
-  --namespace parallax \
-  --create-namespace \
-  --set license.key=$PARALLAX_LICENSE_KEY
-```
-
-### 3. Configure High Availability
-
-```yaml
-# values.yaml
-controlPlane:
-  replicas: 3
-
-redis:
-  enabled: true
-  cluster:
-    enabled: true
-    replicas: 6
-
-postgresql:
-  enabled: true
-  replication:
-    enabled: true
-    readReplicas: 2
-```
-
-### 4. Enable Security Features
-
-```yaml
-security:
-  mtls:
-    enabled: true
-
-  rbac:
-    enabled: true
-
-  sso:
-    enabled: true
-    provider: okta
-    issuer: https://your-org.okta.com
-    clientId: ${OKTA_CLIENT_ID}
-    clientSecret: ${OKTA_CLIENT_SECRET}
-
-  audit:
-    enabled: true
-    destination: elasticsearch
-```
-
-## Feature Details
-
-### High Availability
-
-Run multiple control plane instances with automatic failover:
-
-- **Leader election**: Automatic primary selection
-- **State replication**: Via Redis Cluster
-- **Session affinity**: WebSocket connections maintained during failover
-- **Zero downtime**: Rolling updates without service interruption
-
-[Learn more →](/enterprise/high-availability)
-
-### Persistence
-
-Store patterns, executions, and audit logs durably:
-
-- **PostgreSQL**: ACID-compliant storage
-- **Execution history**: Full replay capability
-- **Pattern versioning**: Complete version history
-- **Backup/restore**: Point-in-time recovery
-
-[Learn more →](/enterprise/persistence)
-
-### Multi-Region
-
-Deploy agents across geographic regions:
-
-- **Region-aware routing**: Route to nearest agents
-- **Latency optimization**: Minimize cross-region calls
-- **Compliance**: Data residency requirements
-- **Disaster recovery**: Region failover
-
-[Learn more →](/enterprise/multi-region)
-
-### Security
-
-Enterprise-grade security features:
-
-- **mTLS**: Mutual TLS for all connections
-- **RBAC**: Role-based access control
-- **SSO**: SAML/OIDC integration
-- **Audit logging**: Compliance-ready logging
-
-[Learn more →](/enterprise/security)
 
 ## Deployment Options
 
 ### Kubernetes (Recommended)
 
-Full-featured deployment with the Parallax Operator:
-
 ```bash
-# Install the operator
-helm install parallax-operator parallax-enterprise/operator \
-  --namespace parallax-system \
-  --create-namespace
+# Add Helm repository
+helm repo add parallax https://charts.parallax.ai
+helm repo update
 
-# Create a Parallax cluster
-kubectl apply -f - <<EOF
-apiVersion: parallax.dev/v1
-kind: ParallaxCluster
-metadata:
-  name: production
-spec:
-  replicas: 3
-  enterprise:
-    license:
-      secretRef:
-        name: parallax-license
-    highAvailability: true
-    persistence:
-      enabled: true
-    security:
-      mtls: true
-      rbac: true
-EOF
+# Install with Enterprise license
+helm install parallax parallax/parallax \
+  --namespace parallax \
+  --create-namespace \
+  --set license.key=$PARALLAX_LICENSE_KEY \
+  --set controlPlane.replicas=3 \
+  --set persistence.enabled=true \
+  --set dashboard.enabled=true
 ```
 
-### Docker Compose (Development)
-
-Simplified setup for development/testing:
+### Docker Compose
 
 ```yaml
 version: '3.8'
 
 services:
   control-plane:
-    image: parallax/control-plane-enterprise:latest
+    image: parallax/control-plane:latest
     environment:
       - PARALLAX_LICENSE_KEY=${LICENSE_KEY}
-      - PARALLAX_HA_ENABLED=true
-      - PARALLAX_REDIS_URL=redis://redis:6379
-      - PARALLAX_DATABASE_URL=postgres://parallax:pass@postgres:5432/parallax
-    deploy:
-      replicas: 3
+      - DATABASE_URL=postgres://parallax:pass@postgres:5432/parallax
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "8080:8080"
 
-  redis:
-    image: redis:7-alpine
+  dashboard:
+    image: parallax/dashboard:latest
+    environment:
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    ports:
+      - "3000:3000"
 
   postgres:
     image: postgres:15-alpine
@@ -241,108 +215,88 @@ services:
       - POSTGRES_USER=parallax
       - POSTGRES_PASSWORD=pass
       - POSTGRES_DB=parallax
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+
+volumes:
+  postgres_data:
 ```
 
-## Monitoring & Observability
+## Feature Deep Dives
 
-### Built-in Metrics
+### Persistence
 
-Prometheus-compatible metrics endpoint:
+Store all execution data in PostgreSQL:
 
-```bash
-curl http://localhost:8080/metrics
-```
+- **Execution history** — Every pattern run with inputs, outputs, and timing
+- **Agent activity** — Which agents responded, their confidence scores
+- **Audit trail** — Who ran what, when, for compliance
+- **Metrics** — Historical performance data in TimescaleDB
 
-Key metrics:
-- `parallax_executions_total` - Total executions
-- `parallax_execution_duration_seconds` - Execution latency
-- `parallax_agents_connected` - Connected agents
-- `parallax_ha_leader` - Current leader status
-- `parallax_storage_operations_total` - Storage operations
+[Learn more →](/enterprise/persistence)
 
-### Grafana Dashboards
+### High Availability
 
-Pre-built dashboards included:
+Zero-downtime operation with clustering:
 
-- **Overview**: System health and throughput
-- **Executions**: Pattern execution metrics
-- **Agents**: Agent pool status
-- **HA Status**: Cluster health
-- **Security**: Auth and audit events
+- **Leader election** — Automatic primary selection
+- **State sync** — Redis-based state replication
+- **Failover** — Automatic recovery from failures
+- **Rolling updates** — Update without service interruption
 
-### Alerting
+[Learn more →](/enterprise/high-availability)
 
-Pre-configured alert rules:
+### Web Dashboard
 
-- High error rate
-- No agents connected
-- Leader election issues
-- Storage connection failures
-- Certificate expiration
+Real-time monitoring and management:
 
-## Migration Guide
+- **Metrics** — Execution counts, success rates, confidence trends
+- **Agent management** — View and manage connected agents
+- **Execution browser** — Search and replay past executions
+- **Alerts** — Configure notifications for issues
 
-### From Open Source
+### Security
 
-Migrate existing deployments to Enterprise:
+Enterprise-grade security features:
 
-1. **Backup data** (if using file storage):
-   ```bash
-   parallax backup create --output backup.tar.gz
-   ```
+- **mTLS** — Mutual TLS for all connections
+- **RBAC** — Role-based access (admin, operator, viewer)
+- **SSO** — SAML/OIDC integration (Okta, Azure AD, Google)
+- **Audit logs** — Compliance-ready event logging
 
-2. **Update Helm repository**:
-   ```bash
-   helm repo add parallax-enterprise https://enterprise.charts.parallax.dev
-   ```
+[Learn more →](/enterprise/security)
 
-3. **Upgrade with enterprise values**:
-   ```bash
-   helm upgrade parallax parallax-enterprise/parallax \
-     --set license.key=$LICENSE_KEY \
-     --set migration.importBackup=backup.tar.gz
-   ```
+### Multi-Region (Enterprise Plus)
 
-4. **Verify migration**:
-   ```bash
-   parallax status --enterprise
-   ```
+Geographic distribution for global deployments:
+
+- **Regional routing** — Route to nearest agents
+- **Data residency** — Keep data in specific regions
+- **Disaster recovery** — Failover between regions
+
+[Learn more →](/enterprise/multi-region)
 
 ## Support
 
-### Documentation
-
-- Technical documentation: docs.parallax.dev
-- API reference: api.parallax.dev
-- Knowledge base: support.parallax.dev
-
-### Support Channels
-
 | Tier | Response Time | Channels |
 |------|---------------|----------|
-| Standard | 24 hours | Email, Portal |
-| Premium | 4 hours | Email, Portal, Slack |
-| Critical | 1 hour | Phone, Slack, 24/7 |
+| Community | Best effort | GitHub, Discord |
+| Enterprise | 8 business hours | Email, Portal |
+| Enterprise Plus | 4 hours (24/7) | Email, Slack, Phone |
 
-### Contact
+## Contact
 
-- Enterprise sales: enterprise@parallax.dev
-- Technical support: support@parallax.dev
-- Security issues: security@parallax.dev
-
-## Pricing
-
-Contact us for enterprise pricing tailored to your needs:
-
-- **By usage**: Based on execution volume
-- **By agents**: Based on connected agents
-- **Unlimited**: Flat rate for unlimited usage
-
-Email: enterprise@parallax.dev
+- **Sales**: enterprise@parallax.ai
+- **Support**: support@parallax.ai
+- **Security**: security@parallax.ai
+- **Website**: [parallax.ai/enterprise](https://parallax.ai/enterprise)
 
 ## Next Steps
 
-- [High Availability](/enterprise/high-availability) - Set up clustering
-- [Persistence](/enterprise/persistence) - Configure storage
-- [Multi-Region](/enterprise/multi-region) - Geographic distribution
-- [Security](/enterprise/security) - Enable security features
+- [High Availability](/enterprise/high-availability) — Set up clustering
+- [Persistence](/enterprise/persistence) — Configure storage
+- [Security](/enterprise/security) — Enable security features
+- [Multi-Region](/enterprise/multi-region) — Geographic distribution
