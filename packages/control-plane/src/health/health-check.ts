@@ -63,7 +63,7 @@ export class HealthCheckService {
   }
   
   private async checkPatternEngine(): Promise<void> {
-    const patterns = this.patternEngine.getPatterns();
+    const patterns = this.patternEngine.listPatterns();
     if (patterns.length === 0) {
       throw new Error('No patterns loaded');
     }

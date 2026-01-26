@@ -47,7 +47,7 @@ export class StateSyncService extends EventEmitter {
   private instanceId: string;
   private channelPrefix: string;
   private keyPrefix: string;
-  private isConnected = false;
+  private _isConnected = false;
   private subscriptions: Set<string> = new Set();
 
   constructor(config: StateSyncConfig, logger: Logger) {
@@ -71,7 +71,7 @@ export class StateSyncService extends EventEmitter {
     // Subscribe to the main state channel
     await this.subscribe('state');
 
-    this.isConnected = true;
+    this._isConnected = true;
     this.emit('connected');
   }
 
@@ -80,7 +80,7 @@ export class StateSyncService extends EventEmitter {
    */
   async stop(): Promise<void> {
     this.logger.info('Stopping state sync service');
-    this.isConnected = false;
+    this._isConnected = false;
 
     // Unsubscribe from all channels
     for (const channel of this.subscriptions) {
@@ -272,7 +272,7 @@ export class StateSyncService extends EventEmitter {
 
   private setupEventHandlers(): void {
     // Handle incoming messages
-    this.subscriber.on('message', (channel: string, message: string) => {
+    this.subscriber.on('message', (_channel: string, message: string) => {
       try {
         const event = JSON.parse(message) as StateChangeEvent;
 

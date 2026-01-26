@@ -1,5 +1,16 @@
 # Raven Docs Integration
 
+This integration now assumes agents are launched via an Agent Runtime that can host interactive CLI sessions and register them with Parallax.
+
+## Agent Runtime Flow (Summary)
+1) Raven Docs issues a spawn request with agent config + MCP API key.
+2) Agent Runtime launches a PTY session and starts the CLI.
+3) If login is required, runtime emits `login_required`.
+4) Raven Docs surfaces a terminal link so the user can authenticate.
+5) Runtime registers the agent with the Parallax registry.
+
+For implementation details see `docs/AGENT_RUNTIME_SUPPORT_DEVELOPMENT.md`.
+
 ## Overview
 
 This document describes what Parallax needs to add for Raven Docs integration.

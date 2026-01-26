@@ -6,6 +6,7 @@
 - [Orchestra Philosophy](./concepts/orchestra-philosophy.md) 🎼
 - [Coordination Patterns](./patterns/README.md)
 - [API Reference](./api/README.md)
+- [Agent Runtime Plan](./AGENT_RUNTIME_SUPPORT_DEVELOPMENT.md)
 
 ## Overview
 

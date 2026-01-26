@@ -1,0 +1,156 @@
+{{- if .Values.etcd.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "parallax.fullname" . }}-etcd
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: etcd
+spec:
+  type: ClusterIP
+  ports:
+    - name: client
+      port: 2379
+      targetPort: 2379
+    - name: peer
+      port: 2380
+      targetPort: 2380
+  selector:
+    {{- include "parallax.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: etcd
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "parallax.fullname" . }}-etcd-headless
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: etcd
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: client
+      port: 2379
+      targetPort: 2379
+    - name: peer
+      port: 2380
+      targetPort: 2380
+  selector:
+    {{- include "parallax.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: etcd
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "parallax.fullname" . }}-etcd
+  namespace: {{ include "parallax.namespace" . }}
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: etcd
+spec:
+  serviceName: {{ include "parallax.fullname" . }}-etcd-headless
+  replicas: {{ .Values.etcd.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "parallax.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: etcd
+  template:
+    metadata:
+      labels:
+        {{- include "parallax.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: etcd
+    spec:
+      containers:
+        - name: etcd
+          image: "{{ .Values.etcd.image.repository }}:{{ .Values.etcd.image.tag }}"
+          imagePullPolicy: {{ .Values.etcd.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: client
+              containerPort: 2379
+            - name: peer
+              containerPort: 2380
+          env:
+            - name: ETCD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: ETCD_DATA_DIR
+              value: /var/lib/etcd
+            - name: ETCD_LISTEN_CLIENT_URLS
+              value: http://0.0.0.0:2379
+            - name: ETCD_ADVERTISE_CLIENT_URLS
+              value: http://$(ETCD_NAME).{{ include "parallax.fullname" . }}-etcd-headless.{{ include "parallax.namespace" . }}.svc.cluster.local:2379
+            - name: ETCD_LISTEN_PEER_URLS
+              value: http://0.0.0.0:2380
+            - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
+              value: http://$(ETCD_NAME).{{ include "parallax.fullname" . }}-etcd-headless.{{ include "parallax.namespace" . }}.svc.cluster.local:2380
+            - name: ETCD_INITIAL_CLUSTER
+              value: "{{ include "parallax.fullname" . }}-etcd-0=http://{{ include "parallax.fullname" . }}-etcd-0.{{ include "parallax.fullname" . }}-etcd-headless.{{ include "parallax.namespace" . }}.svc.cluster.local:2380"
+            - name: ETCD_INITIAL_CLUSTER_STATE
+              value: new
+            - name: ETCD_INITIAL_CLUSTER_TOKEN
+              value: parallax-etcd-cluster
+            {{- if .Values.etcd.auth.rbac.create }}
+            - name: ETCD_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "parallax.fullname" . }}-etcd
+                  key: root-password
+            {{- end }}
+          {{- with .Values.etcd.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/etcd
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 2379
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 2379
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      {{- with .Values.etcd.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.etcd.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.etcd.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.etcd.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.etcd.persistence.storageClass }}
+        storageClassName: {{ .Values.etcd.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.etcd.persistence.size | default "8Gi" }}
+  {{- else }}
+      volumes:
+        - name: data
+          emptyDir: {}
+  {{- end }}
+{{- end }}

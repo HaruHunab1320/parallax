@@ -1,5 +1,25 @@
 # Agent Hosting Strategy
 
+This document describes how Parallax hosts and manages agent runtimes. Parallax now supports interactive CLI agent sessions via a dedicated Agent Runtime layer.
+
+## Agent Runtime Layer
+The Agent Runtime is responsible for:
+- Spawning PTY-backed CLI sessions (claude, codex, gemini, aider).
+- Handling interactive login prompts and "human-in-the-loop" approvals.
+- Registering agents with the Parallax registry.
+
+See `docs/AGENT_RUNTIME_SUPPORT_DEVELOPMENT.md` for the full roadmap.
+
+## Hosting Modes
+1) Local Runtime (MVP)
+   - A runtime daemon on a developer machine or VM.
+   - Best for fast iteration and auth flows.
+2) Parallax Cloud (Managed K8s)
+   - Parallax provisions per-agent containers.
+   - Best for enterprise scale, isolation, and reliability.
+3) Customer VPC / Self-Hosted
+   - Runtime deployed to a customer-controlled cluster.
+
 > **Status:** Future Development (Post-Launch)
 > **Priority:** Low - Build only if customer demand validates
 > **Last Updated:** January 2025

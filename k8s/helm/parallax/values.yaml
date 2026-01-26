@@ -15,12 +15,13 @@ controlPlane:
     repository: parallax/control-plane
     tag: latest
     pullPolicy: IfNotPresent
-  
+
   service:
     type: ClusterIP
     port: 3000
     metricsPort: 3001
-  
+    grpcPort: 8081
+
   resources:
     limits:
       cpu: 1000m
@@ -28,22 +29,100 @@ controlPlane:
     requests:
       cpu: 200m
       memory: 256Mi
-  
+
   env:
     LOG_LEVEL: info
     PARALLAX_PATTERNS_DIR: /patterns
-  
+
+  etcd:
+    endpoints: []
+    prefix: /parallax
+
+  database:
+    url: ""
+    maxConnections: 20
+    migrations:
+      autoRun: true
+
   patterns:
-    # Mount patterns from ConfigMap
     configMap: parallax-patterns
-  
+    cache:
+      enabled: true
+      ttl: 3600
+    defaultPatterns:
+      hello-world.prism: |
+        pattern HelloWorld {
+          description: "A simple hello world pattern"
+          confidence_threshold: 0.7
+
+          input {
+            name: string
+          }
+
+          output {
+            greeting: string
+          }
+
+          steps {
+            greet {
+              greeting = "Hello, " + input.name + "!"
+              greeting ~> 1.0
+            }
+          }
+        }
+
+  persistence:
+    enabled: false
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    storageClass: ""
+    annotations: {}
+
+  agents:
+    heartbeatInterval: 30000
+    heartbeatTimeout: 90000
+    maxPerPattern: 100
+
+  metrics:
+    enabled: true
+    interval: 60000
+
+  tracing:
+    enabled: false
+    endpoint: "http://localhost:4317"
+    serviceName: "parallax-control-plane"
+
+  auth:
+    enabled: false
+    jwt:
+      secret: ""
+      expiry: "24h"
+    rbac:
+      enabled: false
+
+  serviceAccount:
+    annotations: {}
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+    # maxUnavailable: 1
+
   nodeSelector: {}
   tolerations: []
   affinity: {}
 
-# Operator configuration
+# Operator configuration (disabled - no operator code yet)
 operator:
-  enabled: true
+  enabled: false
   replicaCount: 1
   image:
     repository: parallax/parallax-operator
@@ -65,15 +144,21 @@ operator:
   tolerations: []
   affinity: {}
 
-# etcd configuration
+# etcd configuration (uses official etcd image)
 etcd:
   enabled: true
+  replicaCount: 1
+  image:
+    repository: quay.io/coreos/etcd
+    tag: v3.5.9
+    pullPolicy: IfNotPresent
   auth:
     rbac:
       create: false
   persistence:
     enabled: true
     size: 8Gi
+    storageClass: ""
   resources:
     limits:
       cpu: 500m
@@ -81,6 +166,9 @@ etcd:
     requests:
       cpu: 100m
       memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
 
 # InfluxDB configuration
 influxdb:
@@ -124,7 +212,7 @@ grafana:
         - name: InfluxDB
           type: influxdb
           access: proxy
-          url: http://{{ .Release.Name }}-influxdb:8086
+          url: http://parallax-influxdb:8086
           isDefault: true
           jsonData:
             version: Flux
@@ -136,7 +224,7 @@ grafana:
         - name: Prometheus
           type: prometheus
           access: proxy
-          url: http://{{ .Release.Name }}-prometheus:9090
+          url: http://parallax-prometheus:9090
   
   dashboardProviders:
     dashboardproviders.yaml:
@@ -168,12 +256,12 @@ prometheus:
         - job_name: 'control-plane'
           static_configs:
             - targets:
-              - {{ .Release.Name }}-control-plane:3001
-        
+                - parallax-control-plane:3001
+
         - job_name: 'operator'
           static_configs:
             - targets:
-              - {{ .Release.Name }}-operator:8080
+                - parallax-operator:8080
   
   persistence:
     enabled: true
@@ -264,12 +352,18 @@ ingress:
 
 # Monitoring and Alerting
 monitoring:
-  enabled: true
-  serviceMonitor:
+  prometheus:
     enabled: true
-    interval: 30s
-    scrapeTimeout: 10s
-  
+    serviceMonitor:
+      enabled: true
+      namespace: ""
+      interval: 30s
+      scrapeTimeout: 10s
+      path: /metrics
+      labels: {}
+      metricRelabelings: []
+      relabelings: []
+
   alerts:
     enabled: true
     rules:
@@ -281,7 +375,7 @@ monitoring:
         annotations:
           summary: High error rate detected
           description: "Error rate is {{ $value }} errors per second"
-      
+
       - alert: LowAverageConfidence
         expr: avg(parallax_pattern_confidence) < 0.5
         for: 10m
@@ -299,78 +393,6 @@ autoscaling:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
-# RBAC Configuration
-rbac:
-  create: true
-
-# Service Account Configuration
-controlPlane:
-  serviceAccount:
-    annotations: {}
-  
-  # Database configuration
-  database:
-    url: ""  # Override if not using built-in PostgreSQL
-    maxConnections: 20
-    migrations:
-      autoRun: true
-  
-  # Pattern configuration
-  patterns:
-    defaultPatterns: {}  # Add default patterns here
-    cache:
-      enabled: true
-      ttl: 3600
-  
-  # Agent configuration
-  agents:
-    heartbeatInterval: 30000
-    heartbeatTimeout: 90000
-    maxPerPattern: 100
-  
-  # Metrics configuration
-  metrics:
-    enabled: true
-    interval: 60000
-  
-  # Tracing configuration
-  tracing:
-    enabled: false
-    endpoint: "http://jaeger-collector:4317"
-    serviceName: "parallax-control-plane"
-  
-  # Authentication
-  auth:
-    enabled: false
-    jwt:
-      secret: ""  # Required if auth enabled
-      expiry: "24h"
-    rbac:
-      enabled: false
-  
-  # Autoscaling
-  autoscaling:
-    enabled: false
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 70
-    targetMemoryUtilizationPercentage: 80
-    behavior: {}
-  
-  # Pod Disruption Budget
-  podDisruptionBudget:
-    enabled: false
-    minAvailable: 1
-    # maxUnavailable: 1
-  
-  # Persistence
-  persistence:
-    enabled: false
-    accessModes:
-      - ReadWriteOnce
-    size: 10Gi
-    # storageClass: ""
-    annotations: {}
 
 # PostgreSQL Configuration
 postgresql:
@@ -382,75 +404,7 @@ postgresql:
   persistence:
     enabled: true
     size: 10Gi
-
-# Operator environment variables
-operator:
-  env: {}
-
-# Security Context
-security:
-  podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 1000
-    fsGroup: 1000
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    runAsNonRoot: true
-    runAsUser: 1000
-    capabilities:
-      drop:
-        - ALL
-
-# Network Policy
-networkPolicy:
-  enabled: false
-  ingress:
-    namespaceSelector: {}
-    podSelector: {}
-  egress:
-    additional: []
-
-# Monitoring
-monitoring:
-  prometheus:
-    enabled: true
-    namespace: monitoring
-    serviceMonitor:
-      enabled: true
-      namespace: ""  # Use release namespace if empty
-      interval: 30s
-      scrapeTimeout: 10s
-      path: /metrics
-      labels: {}
-      metricRelabelings: []
-      relabelings: []
-
-# Ingress for gRPC
-ingress:
-  grpc:
-    enabled: false
-    annotations:
-      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
-      nginx.ingress.kubernetes.io/grpc-backend: "true"
-    hosts:
-      - host: grpc.parallax.example.com
-    tls: []
-EOF < /dev/null
-# Web Dashboard Configuration
-webDashboard:
-  enabled: false
-  replicaCount: 1
-  
-  image:
-    repository: parallax/web-dashboard
-    tag: latest
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 80
-  
+    storageClass: ""
   resources:
     limits:
       cpu: 500m
@@ -458,26 +412,45 @@ webDashboard:
     requests:
       cpu: 100m
       memory: 128Mi
-  
+
+# Web Dashboard Configuration
+webDashboard:
+  enabled: false
+  replicaCount: 1
+
+  image:
+    repository: parallax/web-dashboard
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
   env:
     NODE_ENV: production
-  
+
   config:
     refreshInterval: 5000
-    # apiUrl: ""  # Defaults to control plane service
-    # wsUrl: ""   # Defaults to control plane service
-  
+
   features:
     agentManagement: true
     patternExecution: true
     confidenceTracking: true
     analytics: true
-  
+
   auth:
     enabled: false
     nextAuthUrl: "http://localhost:3000"
-  
+
   nodeSelector: {}
   tolerations: []
   affinity: {}
-EOF < /dev/null

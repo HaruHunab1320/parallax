@@ -338,7 +338,7 @@ export class TriggerService extends EventEmitter {
         'Executing webhook trigger'
       );
 
-      const result = await this.patternEngine.execute(trigger.patternName, input);
+      const result = await this.patternEngine.executePattern(trigger.patternName, input);
 
       // Update trigger stats
       await this.prisma.trigger.update({
@@ -349,9 +349,9 @@ export class TriggerService extends EventEmitter {
         },
       });
 
-      this.emit('trigger-fired', trigger, result.executionId);
+      this.emit('trigger-fired', trigger, result.id);
 
-      return { triggered: true, executionId: result.executionId };
+      return { triggered: true, executionId: result.id };
     } catch (error) {
       this.logger.error({ error, triggerId: trigger.id }, 'Webhook trigger failed');
       this.emit('trigger-failed', trigger, error as Error);
@@ -386,7 +386,7 @@ export class TriggerService extends EventEmitter {
           'Executing event trigger'
         );
 
-        const result = await this.patternEngine.execute(trigger.patternName, input);
+        const result = await this.patternEngine.executePattern(trigger.patternName, input);
 
         // Update trigger stats
         await this.prisma.trigger.update({
@@ -397,7 +397,7 @@ export class TriggerService extends EventEmitter {
           },
         });
 
-        this.emit('trigger-fired', trigger, result.executionId);
+        this.emit('trigger-fired', trigger, result.id);
       } catch (error) {
         this.logger.error({ error, triggerId: trigger.id, eventType }, 'Event trigger failed');
         this.emit('trigger-failed', trigger, error as Error);

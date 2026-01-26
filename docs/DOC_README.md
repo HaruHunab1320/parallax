@@ -6,6 +6,7 @@
 - **[/ARCHITECTURE.md](/ARCHITECTURE.md)** - Complete system architecture (single source of truth)
 - **[/ROADMAP.md](/ROADMAP.md)** - Feature checklist and completion status
 - **[/README.md](/README.md)** - Getting started guide
+- **[AGENT_RUNTIME_SUPPORT_DEVELOPMENT.md](AGENT_RUNTIME_SUPPORT_DEVELOPMENT.md)** - Agent runtime roadmap (local + managed)
 
 ### Implementation
 - **[archive/IMPLEMENTATION_ROADMAP.md](archive/IMPLEMENTATION_ROADMAP.md)** - Archived; superseded by `/ROADMAP.md`

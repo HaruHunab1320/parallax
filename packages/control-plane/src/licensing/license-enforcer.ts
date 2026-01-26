@@ -132,7 +132,7 @@ export class LicenseEnforcer {
     };
   }
 
-  private extractExpiry(key: string): Date | undefined {
+  private extractExpiry(_key: string): Date | undefined {
     // In production, decode from key or check license server
     return undefined;
   }

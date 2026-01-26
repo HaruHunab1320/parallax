@@ -199,7 +199,7 @@ export class ClusterHealthService {
 
     try {
       // Store with TTL slightly longer than timeout
-      await this.stateSync.set(nodeInfo, key, this.config.nodeTimeout * 2);
+      await this.stateSync.set(key, nodeInfo, this.config.nodeTimeout * 2);
       this.logger.debug('Heartbeat sent');
     } catch (error) {
       this.logger.error({ error }, 'Failed to send heartbeat');

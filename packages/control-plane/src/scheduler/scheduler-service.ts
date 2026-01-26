@@ -129,7 +129,7 @@ export class SchedulerService extends EventEmitter {
         startAt: config.startAt,
         endAt: config.endAt,
         maxRuns: config.maxRuns,
-        retryPolicy: config.retryPolicy,
+        retryPolicy: config.retryPolicy ? { ...config.retryPolicy } : undefined,
         metadata: config.metadata,
         nextRunAt: config.startAt && config.startAt > new Date() ? config.startAt : nextRunAt,
         status: 'active',
@@ -401,7 +401,7 @@ export class SchedulerService extends EventEmitter {
       );
 
       // Execute the pattern
-      const result = await this.patternEngine.execute(
+      const result = await this.patternEngine.executePattern(
         schedule.patternName,
         (schedule.input as Record<string, any>) || {}
       );
@@ -413,7 +413,7 @@ export class SchedulerService extends EventEmitter {
       run = await this.prisma.scheduleRun.update({
         where: { id: run.id },
         data: {
-          executionId: result.executionId,
+          executionId: result.id,
           completedAt,
           durationMs,
           status: 'success',

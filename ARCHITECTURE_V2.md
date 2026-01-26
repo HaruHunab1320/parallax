@@ -77,6 +77,13 @@ final = threshold(decision, 0.9)
 
 ## System Architecture
 
+Agent Runtime Layer:
+- Manages PTY-backed CLI sessions for agents.
+- Handles interactive auth / login flows.
+- Registers agents with Parallax registry.
+
+See `docs/AGENT_RUNTIME_SUPPORT_DEVELOPMENT.md`.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Development Time                         │

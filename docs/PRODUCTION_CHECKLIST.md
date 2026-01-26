@@ -92,6 +92,9 @@ pnpm run dev:prod
 - [ ] etcd authentication configured
 - [ ] TLS enabled for production
 - [ ] Secrets management configured
+- [ ] Agent runtime isolates sessions (PTY or container)
+- [ ] MCP API keys stored per agent and rotated
+- [ ] Web terminal access gated by auth + audit logging
 
 ## ✅ High Availability
 

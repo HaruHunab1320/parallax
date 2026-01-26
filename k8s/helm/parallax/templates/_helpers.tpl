@@ -74,3 +74,10 @@ Operator labels
 {{ include "parallax.labels" . }}
 app.kubernetes.io/component: operator
 {{- end }}
+
+{{/*
+Namespace
+*/}}
+{{- define "parallax.namespace" -}}
+{{- default .Release.Namespace .Values.namespaceOverride }}
+{{- end }}

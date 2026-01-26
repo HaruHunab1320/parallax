@@ -44,7 +44,7 @@
     "monitor:stop": "cd packages/monitoring && pnpm run stop:local",
     "monitor:logs": "cd packages/monitoring && pnpm run logs",
     "control-plane": "cd packages/control-plane && pnpm run dev",
-    "web": "cd packages/web-dashboard && pnpm run dev",
+    "web": "cd apps/web-dashboard && pnpm run dev",
     "pattern:list": "cd packages/cli && pnpm run cli pattern list",
     "pattern:execute": "cd packages/cli && pnpm run cli pattern execute",
     "agent:list": "cd packages/cli && pnpm run cli agent list",

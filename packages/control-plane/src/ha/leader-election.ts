@@ -6,7 +6,7 @@
  * cleanup tasks, and other singleton operations.
  */
 
-import { Etcd3, Lease, Election, Campaign } from 'etcd3';
+import { Etcd3, Election, Campaign } from 'etcd3';
 import { EventEmitter } from 'events';
 import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
@@ -50,7 +50,7 @@ export class LeaderElectionService extends EventEmitter {
   private instanceId: string;
   private metadata: Record<string, any>;
   private electionName: string;
-  private leaseTTL: number;
+  private _leaseTTL: number;
   private isRunning = false;
   private _isLeader = false;
   private currentLeaderId: string | null = null;
@@ -60,7 +60,7 @@ export class LeaderElectionService extends EventEmitter {
     super();
     this.client = new Etcd3({ hosts: config.endpoints });
     this.electionName = config.electionName || '/parallax/leader';
-    this.leaseTTL = config.leaseTTL || 10; // 10 second lease
+    this._leaseTTL = config.leaseTTL || 10; // 10 second lease
     this.instanceId = config.instanceId || `cp-${uuidv4().slice(0, 8)}`;
     this.metadata = config.metadata || {};
     this.logger = logger.child({ component: 'LeaderElection', instanceId: this.instanceId });
