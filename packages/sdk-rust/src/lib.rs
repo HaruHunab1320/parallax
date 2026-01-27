@@ -1,6 +1,6 @@
 //! Parallax SDK for Rust
 //! 
-//! Official Rust SDK for the Parallax AI Coordination Platform.
+//! Official Rust SDK for the Parallax AI Orchestration Platform.
 
 pub mod client;
 pub mod types;

@@ -9,6 +9,23 @@ export interface PatternExecutionOptions {
   executionId?: string;
 }
 
+export interface PatternWithSource extends Pattern {
+  id?: string;
+  source?: 'file' | 'database';
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface PatternVersion {
+  id: string;
+  patternId: string;
+  version: string;
+  script: string;
+  metadata?: any;
+  createdAt: Date;
+  createdBy?: string | null;
+}
+
 export interface IPatternEngine {
   initialize(): Promise<void>;
   executePattern(
@@ -17,10 +34,13 @@ export interface IPatternEngine {
     options?: PatternExecutionOptions
   ): Promise<PatternExecution>;
   getPattern(name: string): Pattern | null;
-  listPatterns(): Pattern[];
+  listPatterns(): PatternWithSource[];
   getExecution(id: string): PatternExecution | undefined;
   listExecutions(options?: { limit?: number; status?: string }): PatternExecution[];
   getMetrics(): ExecutionMetrics[];
   reloadPatterns(): Promise<void>;
   savePattern(pattern: Pattern, options?: { overwrite?: boolean }): Promise<Pattern>;
+  deletePattern(name: string): Promise<void>;
+  getPatternVersions(name: string): Promise<PatternVersion[]>;
+  hasDatabasePatterns(): boolean;
 }

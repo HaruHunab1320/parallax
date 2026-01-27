@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatRelativeTime } from '@/lib/utils';
+import { apiClient } from '@/lib/api-client';
 import {
   Users,
   RefreshCw,
@@ -51,9 +52,10 @@ export default function UsersPage() {
   });
 
   const fetchUsers = async () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       setLoading(true);
-      const response = await fetch('/api/users');
+      const response = await fetch(`${apiUrl}/api/users`);
       if (response.status === 403) {
         // Feature not available
         setUsers([]);
@@ -70,8 +72,7 @@ export default function UsersPage() {
 
   const fetchLicense = async () => {
     try {
-      const response = await fetch('/api/license');
-      const data = await response.json();
+      const data = await apiClient.getLicense();
       setLicenseType(data.type || 'opensource');
     } catch (error) {
       setLicenseType('opensource');
@@ -84,9 +85,10 @@ export default function UsersPage() {
   }, []);
 
   const handleCreate = async () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       setActionLoading('create');
-      const response = await fetch('/api/users', {
+      const response = await fetch(`${apiUrl}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -107,9 +109,10 @@ export default function UsersPage() {
   };
 
   const handleUpdateRole = async (userId: string, role: User['role']) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       setActionLoading(userId);
-      await fetch(`/api/users/${userId}`, {
+      await fetch(`${apiUrl}/api/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role }),
@@ -123,10 +126,11 @@ export default function UsersPage() {
   };
 
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       setActionLoading(userId);
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-      await fetch(`/api/users/${userId}`, {
+      await fetch(`${apiUrl}/api/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -142,9 +146,10 @@ export default function UsersPage() {
   const handleDelete = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       setActionLoading(userId);
-      await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      await fetch(`${apiUrl}/api/users/${userId}`, { method: 'DELETE' });
       setSelectedUser(null);
       fetchUsers();
     } catch (error) {

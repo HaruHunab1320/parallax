@@ -8,6 +8,7 @@ import pino from 'pino';
 import { PatternEngine } from './pattern-engine';
 import { TracedPatternEngine } from './pattern-engine/pattern-engine-traced';
 import { IPatternEngine } from './pattern-engine/interfaces';
+import { DatabasePatternService } from './pattern-engine/database-pattern-service';
 import { RuntimeManager } from './runtime-manager';
 import { RuntimeConfig } from './runtime-manager/types';
 import { EtcdRegistry } from './registry';
@@ -92,6 +93,13 @@ export async function createServer(): Promise<express.Application> {
   const patternsDir = process.env.PARALLAX_PATTERNS_DIR || path.join(process.cwd(), 'patterns');
   const executionEvents = new ExecutionEventBus();
 
+  // Initialize database pattern service (Enterprise feature)
+  let databasePatterns: DatabasePatternService | undefined;
+  if (licenseEnforcer.hasFeature('pattern_management')) {
+    databasePatterns = new DatabasePatternService(database.patterns, logger);
+    logger.info('Database pattern management enabled (Enterprise)');
+  }
+
   // Use traced pattern engine if tracing is enabled
   const patternEngine: IPatternEngine = tracingConfig.exporterType !== 'none'
     ? new TracedPatternEngine(
@@ -100,7 +108,8 @@ export async function createServer(): Promise<express.Application> {
         patternsDir,
         logger,
         database,
-        executionEvents
+        executionEvents,
+        databasePatterns
       )
     : new PatternEngine(
         runtimeManager,
@@ -108,7 +117,8 @@ export async function createServer(): Promise<express.Application> {
         patternsDir,
         logger,
         database,
-        executionEvents
+        executionEvents,
+        databasePatterns
       );
   await patternEngine.initialize();
 
@@ -200,7 +210,7 @@ export async function createServer(): Promise<express.Application> {
   app.get('/metrics', metrics.metricsHandler());
 
   // API Routes
-  const patternsRouter = createPatternsRouter(patternEngine as PatternEngine, metrics, logger);
+  const patternsRouter = createPatternsRouter(patternEngine as PatternEngine, metrics, logger, licenseEnforcer);
   const agentsRouter = createAgentsRouter(registry, metrics, logger, database);
   const executionsRouter = createExecutionsRouter(
     patternEngine as PatternEngine,

@@ -37,10 +37,23 @@ export function LicenseProvider({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Dev mode bypass - skip license check entirely
+  const devBypass = process.env.NEXT_PUBLIC_DEV_BYPASS_LICENSE === 'true';
+
   useEffect(() => {
     async function checkLicense() {
+      // If dev bypass is enabled, assume enterprise
+      if (devBypass) {
+        console.log('[LicenseProvider] Dev bypass enabled, assuming enterprise');
+        setLicense({ type: 'enterprise', features: ['web_dashboard', 'all_features'] });
+        setIsLoading(false);
+        return;
+      }
+
       try {
+        console.log('[LicenseProvider] Fetching license from API...');
         const licenseInfo = await apiClient.getLicense();
+        console.log('[LicenseProvider] License response:', licenseInfo);
         setLicense(licenseInfo);
       } catch (err) {
         console.error('Failed to check license:', err);
@@ -53,7 +66,7 @@ export function LicenseProvider({
     }
 
     checkLicense();
-  }, []);
+  }, [devBypass]);
 
   const isEnterprise = license?.type === 'enterprise' || license?.type === 'enterprise-plus';
 
@@ -84,7 +97,7 @@ export function LicenseProvider({
           <p className="text-parallax-gray mb-4">
             Unable to connect to the Parallax control plane at{' '}
             <code className="bg-parallax-card px-2 py-1 rounded text-xs">
-              {process.env.NEXT_PUBLIC_CONTROL_PLANE_URL || 'http://localhost:8080'}
+              {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}
             </code>
           </p>
           <p className="text-parallax-gray text-sm">

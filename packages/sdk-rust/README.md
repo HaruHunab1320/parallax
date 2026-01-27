@@ -1,6 +1,6 @@
 # Parallax Rust SDK
 
-Official Rust SDK for the Parallax AI Coordination Platform.
+Official Rust SDK for the Parallax AI Orchestration Platform.
 
 ## Installation
 

@@ -74,7 +74,7 @@ export function Sidebar() {
           <span className="text-parallax-accent">⚡</span>
           Parallax
         </h1>
-        <p className="text-sm text-gray-400 mt-1">AI Coordination Platform</p>
+        <p className="text-sm text-gray-400 mt-1">AI Orchestration Platform</p>
       </div>
 
       <nav className="px-4 pb-4">

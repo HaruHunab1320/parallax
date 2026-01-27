@@ -11,7 +11,9 @@ const config: Config = {
       colors: {
         'parallax-blue': '#0066CC',
         'parallax-dark': '#1A1A2E',
-        'parallax-gray': '#16213E',
+        'parallax-gray': '#9CA3AF',
+        'parallax-card': '#16213E',
+        'parallax-border': '#2D3748',
         'parallax-light': '#E5E5E5',
         'parallax-accent': '#3B82F6',
       },

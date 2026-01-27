@@ -7,13 +7,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { GrpcAgentProxy } from '@parallax/runtime';
 import { AgentProxy } from '../grpc/agent-proxy';
 import { LocalAgentManager } from './local-agents';
-import { 
+import {
   PatternTracer
 } from '@parallax/telemetry';
 import { DatabaseService } from '../db/database.service';
-import { IPatternEngine, PatternExecutionOptions } from './interfaces';
+import { IPatternEngine, PatternExecutionOptions, PatternWithSource, PatternVersion } from './interfaces';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
+import { DatabasePatternService } from './database-pattern-service';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
@@ -27,14 +28,16 @@ export class TracedPatternEngine implements IPatternEngine {
   private _calibrationService: ConfidenceCalibrationService;
   protected licenseEnforcer: LicenseEnforcer;
   private agentProxy: AgentProxy;
-  
+  private databasePatterns?: DatabasePatternService;
+
   constructor(
     private runtimeManager: RuntimeManager,
     private agentRegistry: EtcdRegistry,
     private patternsDir: string,
     private logger: Logger,
     private database?: DatabaseService,
-    private executionEvents?: ExecutionEventBus
+    private executionEvents?: ExecutionEventBus,
+    databasePatterns?: DatabasePatternService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -42,10 +45,16 @@ export class TracedPatternEngine implements IPatternEngine {
     this._calibrationService = new ConfidenceCalibrationService(logger);
     this.licenseEnforcer = new LicenseEnforcer(logger);
     this.agentProxy = new AgentProxy(logger);
+    this.databasePatterns = databasePatterns;
   }
 
   async initialize(): Promise<void> {
     await this.loader.loadPatterns();
+
+    // Initialize database patterns if available
+    if (this.databasePatterns) {
+      await this.databasePatterns.initialize();
+    }
   }
 
   async executePattern(
@@ -392,11 +401,38 @@ export class TracedPatternEngine implements IPatternEngine {
   }
 
   getPattern(name: string): Pattern | null {
+    // Check database patterns first (they override file-based)
+    if (this.databasePatterns) {
+      const cached = (this.databasePatterns as any).cache?.get(name);
+      if (cached) return cached;
+    }
     return this.loader.getPattern(name) || null;
   }
 
-  listPatterns(): Pattern[] {
-    return this.loader.getAllPatterns();
+  listPatterns(): PatternWithSource[] {
+    const filePatterns = this.loader.getAllPatterns();
+
+    // If no database patterns, return file patterns with source annotation
+    if (!this.databasePatterns) {
+      return filePatterns.map(p => ({ ...p, source: 'file' as const }));
+    }
+
+    // Merge file and database patterns (database overrides)
+    const merged = new Map<string, PatternWithSource>();
+
+    for (const p of filePatterns) {
+      merged.set(p.name, { ...p, source: 'file' as const });
+    }
+
+    // Database patterns cache is populated during initialize()
+    const dbCache = (this.databasePatterns as any).cache as Map<string, PatternWithSource> | undefined;
+    if (dbCache) {
+      for (const p of dbCache.values()) {
+        merged.set(p.name, p);
+      }
+    }
+
+    return Array.from(merged.values());
   }
 
   getExecutionMetrics(): ExecutionMetrics {
@@ -458,6 +494,42 @@ export class TracedPatternEngine implements IPatternEngine {
 
   async reloadPatterns(): Promise<void> {
     await this.loader.loadPatterns();
+
+    // Also reload database patterns if available
+    if (this.databasePatterns) {
+      await this.databasePatterns.reload();
+    }
+  }
+
+  async deletePattern(name: string): Promise<void> {
+    if (!this.databasePatterns) {
+      throw new Error('Cannot delete file-based patterns. Edit the .prism file directly or enable database storage.');
+    }
+
+    const pattern = await this.databasePatterns.getByName(name);
+    if (!pattern) {
+      // Check if it's a file-based pattern
+      const filePattern = this.loader.getPattern(name);
+      if (filePattern) {
+        throw new Error('Cannot delete file-based patterns. Edit the .prism file directly.');
+      }
+      throw new Error(`Pattern '${name}' not found`);
+    }
+
+    await this.databasePatterns.delete(name);
+  }
+
+  async getPatternVersions(name: string): Promise<PatternVersion[]> {
+    if (!this.databasePatterns) {
+      // File-based patterns don't have versions
+      return [];
+    }
+
+    return this.databasePatterns.getVersions(name);
+  }
+
+  hasDatabasePatterns(): boolean {
+    return !!this.databasePatterns;
   }
 
   async savePattern(
@@ -471,6 +543,15 @@ export class TracedPatternEngine implements IPatternEngine {
       throw new Error('Pattern script is required');
     }
 
+    // If database patterns are available, use them
+    if (this.databasePatterns) {
+      return this.databasePatterns.save(pattern, {
+        overwrite: options?.overwrite,
+        createVersion: options?.overwrite, // Create version on update
+      });
+    }
+
+    // Fall back to file-based storage
     await fs.mkdir(this.patternsDir, { recursive: true });
     const filePath = path.join(this.patternsDir, `${pattern.name}.prism`);
 

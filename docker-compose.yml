@@ -3,16 +3,16 @@ services:
   etcd:
     image: quay.io/coreos/etcd:v3.5.9
     ports:
-      - "2379:2379"
-      - "2380:2380"
+      - "2389:2379"
+      - "2390:2380"
     command:
       - etcd
       - --advertise-client-urls=http://0.0.0.0:2379
       - --listen-client-urls=http://0.0.0.0:2379
 
-  # PostgreSQL for Prisma
+  # PostgreSQL with TimescaleDB for time-series features
   postgres:
-    image: postgres:16
+    image: timescale/timescaledb:latest-pg16
     ports:
       - "5435:5432"
     environment:
@@ -21,6 +21,17 @@ services:
       - POSTGRES_DB=parallax
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parallax"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for HA features
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
 
 volumes:
   postgres_data:

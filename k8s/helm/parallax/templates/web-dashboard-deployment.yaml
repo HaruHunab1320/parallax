@@ -3,7 +3,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "parallax.fullname" . }}-web-dashboard
-  namespace: {{ include "parallax.namespace" . }}
   labels:
     {{- include "parallax.labels" . | nindent 4 }}
     app.kubernetes.io/component: web-dashboard
@@ -15,8 +14,6 @@ spec:
       app.kubernetes.io/component: web-dashboard
   template:
     metadata:
-      annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/web-dashboard-configmap.yaml") . | sha256sum }}
       labels:
         {{- include "parallax.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: web-dashboard
@@ -35,50 +32,29 @@ spec:
           imagePullPolicy: {{ .Values.webDashboard.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 3000
+              containerPort: 3002
               protocol: TCP
           env:
             - name: NEXT_PUBLIC_API_URL
               value: "http://{{ include "parallax.fullname" . }}-control-plane:{{ .Values.controlPlane.service.port }}"
-            - name: NEXT_PUBLIC_WS_URL
-              value: "ws://{{ include "parallax.fullname" . }}-control-plane:{{ .Values.controlPlane.service.port }}"
-            {{- if .Values.webDashboard.auth.enabled }}
-            - name: NEXT_PUBLIC_AUTH_ENABLED
-              value: "true"
-            - name: NEXTAUTH_URL
-              value: "{{ .Values.webDashboard.auth.nextAuthUrl }}"
-            - name: NEXTAUTH_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "parallax.fullname" . }}-web-dashboard
-                  key: nextauth-secret
-            {{- end }}
             {{- range $key, $value := .Values.webDashboard.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
           livenessProbe:
             httpGet:
-              path: /api/health
+              path: /
               port: http
-            initialDelaySeconds: 30
+            initialDelaySeconds: 10
             periodSeconds: 30
           readinessProbe:
             httpGet:
-              path: /api/health
+              path: /
               port: http
-            initialDelaySeconds: 10
+            initialDelaySeconds: 5
             periodSeconds: 10
           resources:
             {{- toYaml .Values.webDashboard.resources | nindent 12 }}
-          volumeMounts:
-            - name: config
-              mountPath: /app/.next/config
-              readOnly: true
-      volumes:
-        - name: config
-          configMap:
-            name: {{ include "parallax.fullname" . }}-web-dashboard
       {{- with .Values.webDashboard.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -91,4 +67,22 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "parallax.fullname" . }}-web-dashboard
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web-dashboard
+spec:
+  type: {{ .Values.webDashboard.service.type }}
+  ports:
+    - port: {{ .Values.webDashboard.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "parallax.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web-dashboard
 {{- end }}

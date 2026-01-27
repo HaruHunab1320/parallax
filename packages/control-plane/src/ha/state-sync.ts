@@ -53,7 +53,8 @@ export class StateSyncService extends EventEmitter {
   constructor(config: StateSyncConfig, logger: Logger) {
     super();
     this.redis = new Redis(config.redisUrl);
-    this.subscriber = new Redis(config.redisUrl);
+    // Subscriber needs enableReadyCheck: false to avoid INFO command after subscribe
+    this.subscriber = new Redis(config.redisUrl, { enableReadyCheck: false });
     this.instanceId = config.instanceId;
     this.channelPrefix = config.channelPrefix || 'parallax:sync:';
     this.keyPrefix = config.keyPrefix || 'parallax:state:';

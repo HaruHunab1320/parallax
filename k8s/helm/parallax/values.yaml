@@ -34,6 +34,10 @@ controlPlane:
     LOG_LEVEL: info
     PARALLAX_PATTERNS_DIR: /patterns
 
+  # Enterprise license key (optional - enables enterprise features)
+  # Format: PARALLAX-ENT-xxxx or PARALLAX-PLUS-xxxx
+  licenseKey: ""
+
   etcd:
     endpoints: []
     prefix: /parallax
@@ -169,6 +173,28 @@ etcd:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+
+# Redis configuration (for HA features)
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  auth:
+    enabled: false
+    password: ""
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
 
 # InfluxDB configuration
 influxdb:

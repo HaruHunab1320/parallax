@@ -3,10 +3,10 @@ name = "parallax-sdk"
 version = "0.1.0"
 edition = "2021"
 authors = ["Parallax Team"]
-description = "Rust SDK for Parallax AI Coordination Platform"
+description = "Rust SDK for Parallax AI Orchestration Platform"
 license = "MIT"
 repository = "https://github.com/parallax/sdk-rust"
-keywords = ["ai", "coordination", "distributed", "agents"]
+keywords = ["ai", "orchestration", "distributed", "agents"]
 categories = ["api-bindings", "asynchronous"]
 
 [dependencies]

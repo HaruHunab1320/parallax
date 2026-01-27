@@ -1,6 +1,6 @@
 # Parallax Go SDK
 
-Official Go SDK for the Parallax AI Coordination Platform.
+Official Go SDK for the Parallax AI Orchestration Platform.
 
 ## Installation
 

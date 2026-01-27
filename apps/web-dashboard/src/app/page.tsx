@@ -75,7 +75,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-400 mt-1">Overview of your AI coordination platform</p>
+        <p className="text-gray-400 mt-1">Overview of your AI orchestration platform</p>
       </div>
 
       {/* Metrics Grid */}

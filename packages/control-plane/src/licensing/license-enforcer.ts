@@ -23,6 +23,7 @@ const ENTERPRISE_ONLY_FEATURES = [
   'high_availability',        // Clustering, failover
   'distributed_execution',    // Multi-node execution
   'backup_restore',           // Data backup
+  'pattern_management',       // Database-backed pattern CRUD
 
   // Team & Security
   'multi_user',               // Multiple accounts

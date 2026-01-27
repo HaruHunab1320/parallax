@@ -1,0 +1,116 @@
+{{- if .Values.redis.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "parallax.fullname" . }}-redis
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: redis
+      protocol: TCP
+      name: redis
+  selector:
+    {{- include "parallax.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "parallax.fullname" . }}-redis
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  serviceName: {{ include "parallax.fullname" . }}-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "parallax.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "parallax.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          {{- if .Values.redis.auth.enabled }}
+          args:
+            - --requirepass
+            - $(REDIS_PASSWORD)
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "parallax.fullname" . }}-redis
+                  key: redis-password
+          {{- end }}
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                {{- if .Values.redis.auth.enabled }}
+                - -a
+                - $(REDIS_PASSWORD)
+                {{- end }}
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                {{- if .Values.redis.auth.enabled }}
+                - -a
+                - $(REDIS_PASSWORD)
+                {{- end }}
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  {{- if .Values.redis.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.redis.persistence.storageClass }}
+        storageClassName: {{ .Values.redis.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.redis.persistence.size }}
+  {{- else }}
+      volumes:
+        - name: data
+          emptyDir: {}
+  {{- end }}
+---
+{{- if .Values.redis.auth.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "parallax.fullname" . }}-redis
+  labels:
+    {{- include "parallax.labels" . | nindent 4 }}
+type: Opaque
+data:
+  redis-password: {{ .Values.redis.auth.password | b64enc | quote }}
+{{- end }}
+{{- end }}

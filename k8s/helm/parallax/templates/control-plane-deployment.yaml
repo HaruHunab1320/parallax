@@ -69,6 +69,16 @@ spec:
             - name: INFLUXDB_BUCKET
               value: "{{ .Values.influxdb.auth.bucket }}"
             {{- end }}
+            {{- if .Values.redis.enabled }}
+            - name: PARALLAX_HA_ENABLED
+              value: "true"
+            - name: PARALLAX_REDIS_URL
+              value: "redis://{{ include "parallax.fullname" . }}-redis:6379"
+            {{- end }}
+            {{- if .Values.controlPlane.licenseKey }}
+            - name: PARALLAX_LICENSE_KEY
+              value: {{ .Values.controlPlane.licenseKey | quote }}
+            {{- end }}
             {{- range $key, $value := .Values.controlPlane.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

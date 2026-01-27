@@ -13,6 +13,7 @@ import {
   XCircle,
   AlertTriangle,
 } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
 
 interface LicenseInfo {
   type: 'opensource' | 'enterprise' | 'enterprise-plus';
@@ -21,9 +22,9 @@ interface LicenseInfo {
 }
 
 interface SystemHealth {
-  database: 'healthy' | 'unhealthy' | 'unknown';
-  redis: 'healthy' | 'unhealthy' | 'unknown';
-  etcd: 'healthy' | 'unhealthy' | 'unknown';
+  patternEngine: 'up' | 'down' | 'unknown';
+  runtime: 'up' | 'down' | 'unknown';
+  registry: 'up' | 'down' | 'unknown';
 }
 
 interface ClusterInfo {
@@ -40,13 +41,14 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = async () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
     try {
       setLoading(true);
 
       // Fetch license info
       try {
-        const licenseResponse = await fetch('/api/license');
-        const license = await licenseResponse.json();
+        const license = await apiClient.getLicense();
         setLicenseInfo(license);
       } catch (e) {
         setLicenseInfo({ type: 'opensource', features: [] });
@@ -54,24 +56,24 @@ export default function SettingsPage() {
 
       // Fetch health info
       try {
-        const healthResponse = await fetch('/health');
+        const healthResponse = await fetch(`${apiUrl}/health`);
         const health = await healthResponse.json();
         setSystemHealth({
-          database: health.database || 'unknown',
-          redis: health.redis || 'unknown',
-          etcd: health.etcd || 'unknown',
+          patternEngine: health.services?.patternEngine?.status || 'unknown',
+          runtime: health.services?.runtime?.status || 'unknown',
+          registry: health.services?.registry?.status || 'unknown',
         });
       } catch (e) {
         setSystemHealth({
-          database: 'unknown',
-          redis: 'unknown',
-          etcd: 'unknown',
+          patternEngine: 'unknown',
+          runtime: 'unknown',
+          registry: 'unknown',
         });
       }
 
       // Fetch cluster info (if available)
       try {
-        const clusterResponse = await fetch('/health/cluster');
+        const clusterResponse = await fetch(`${apiUrl}/health/cluster`);
         const cluster = await clusterResponse.json();
         setClusterInfo(cluster);
       } catch (e) {
@@ -192,24 +194,24 @@ export default function SettingsPage() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-2 border-b border-white/10">
-                  <span className="text-gray-300">Database</span>
+                  <span className="text-gray-300">Pattern Engine</span>
                   <div className="flex items-center gap-2">
-                    {getStatusIcon(systemHealth?.database || 'unknown')}
-                    <span className="capitalize">{systemHealth?.database || 'Unknown'}</span>
+                    {getStatusIcon(systemHealth?.patternEngine === 'up' ? 'healthy' : systemHealth?.patternEngine || 'unknown')}
+                    <span className="capitalize">{systemHealth?.patternEngine || 'Unknown'}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-white/10">
-                  <span className="text-gray-300">Redis</span>
+                  <span className="text-gray-300">Runtime</span>
                   <div className="flex items-center gap-2">
-                    {getStatusIcon(systemHealth?.redis || 'unknown')}
-                    <span className="capitalize">{systemHealth?.redis || 'Unknown'}</span>
+                    {getStatusIcon(systemHealth?.runtime === 'up' ? 'healthy' : systemHealth?.runtime || 'unknown')}
+                    <span className="capitalize">{systemHealth?.runtime || 'Unknown'}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between py-2">
-                  <span className="text-gray-300">etcd</span>
+                  <span className="text-gray-300">Registry (etcd)</span>
                   <div className="flex items-center gap-2">
-                    {getStatusIcon(systemHealth?.etcd || 'unknown')}
-                    <span className="capitalize">{systemHealth?.etcd || 'Unknown'}</span>
+                    {getStatusIcon(systemHealth?.registry === 'up' ? 'healthy' : systemHealth?.registry || 'unknown')}
+                    <span className="capitalize">{systemHealth?.registry || 'Unknown'}</span>
                   </div>
                 </div>
               </div>
@@ -265,7 +267,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between py-2 border-b border-white/10">
                   <span className="text-gray-300">API URL</span>
                   <span className="text-white font-mono text-sm">
-                    {process.env.NEXT_PUBLIC_CONTROL_PLANE_URL || 'http://localhost:8080'}
+                    {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-white/10">

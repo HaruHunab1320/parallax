@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Parallax Dashboard',
-  description: 'AI Coordination Platform Dashboard',
+  description: 'AI Orchestration Platform Dashboard',
 };
 
 export default function RootLayout({

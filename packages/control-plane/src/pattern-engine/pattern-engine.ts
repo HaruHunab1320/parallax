@@ -9,7 +9,8 @@ import { LocalAgentManager } from './local-agents';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
 import { DatabaseService } from '../db/database.service';
-import { IPatternEngine, PatternExecutionOptions } from './interfaces';
+import { IPatternEngine, PatternExecutionOptions, PatternWithSource, PatternVersion } from './interfaces';
+import { DatabasePatternService } from './database-pattern-service';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
@@ -23,24 +24,30 @@ export class PatternEngine implements IPatternEngine {
   protected licenseEnforcer: LicenseEnforcer;
   protected currentExecutionId?: string;
   private agentProxy: AgentProxy;
-  
+  private databasePatterns?: DatabasePatternService;
+
   constructor(
     private runtimeManager: RuntimeManager,
     private agentRegistry: EtcdRegistry,
     private patternsDir: string,
     private logger: Logger,
     private database?: DatabaseService,
-    private executionEvents?: ExecutionEventBus
+    private executionEvents?: ExecutionEventBus,
+    databasePatterns?: DatabasePatternService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
     this._calibrationService = new ConfidenceCalibrationService(logger);
     this.licenseEnforcer = new LicenseEnforcer(logger);
     this.agentProxy = new AgentProxy(logger);
+    this.databasePatterns = databasePatterns;
   }
 
   async initialize(): Promise<void> {
     await this.loader.loadPatterns();
+    if (this.databasePatterns) {
+      await this.databasePatterns.initialize();
+    }
   }
 
   async executePattern(
@@ -459,11 +466,51 @@ export class PatternEngine implements IPatternEngine {
   }
 
   getPattern(name: string): Pattern | null {
+    // Check database patterns first (they override file patterns)
+    if (this.databasePatterns) {
+      // Note: getByName is async but we need sync here for compatibility
+      // The pattern should already be in cache after initialize()
+      const dbPatterns = this.databasePatterns['cache'] as Map<string, Pattern>;
+      if (dbPatterns?.has(name)) {
+        return dbPatterns.get(name) || null;
+      }
+    }
     return this.loader.getPattern(name) || null;
   }
 
-  listPatterns(): Pattern[] {
-    return this.loader.getAllPatterns();
+  listPatterns(): PatternWithSource[] {
+    const filePatterns = this.loader.getAllPatterns();
+
+    // Add source: 'file' to file patterns
+    const patternsWithSource: PatternWithSource[] = filePatterns.map(p => ({
+      ...p,
+      source: 'file' as const,
+    }));
+
+    if (!this.databasePatterns) {
+      return patternsWithSource;
+    }
+
+    // Merge database patterns (they override file patterns with same name)
+    const merged = new Map<string, PatternWithSource>();
+
+    for (const p of patternsWithSource) {
+      merged.set(p.name, p);
+    }
+
+    // Get database patterns from cache
+    const dbCache = this.databasePatterns['cache'] as Map<string, PatternWithSource>;
+    if (dbCache) {
+      for (const p of dbCache.values()) {
+        merged.set(p.name, p);
+      }
+    }
+
+    return Array.from(merged.values());
+  }
+
+  hasDatabasePatterns(): boolean {
+    return !!this.databasePatterns;
   }
 
   getMetrics(): ExecutionMetrics[] {
@@ -495,6 +542,15 @@ export class PatternEngine implements IPatternEngine {
       throw new Error('Pattern script is required');
     }
 
+    // Use database storage if available (enterprise feature)
+    if (this.databasePatterns) {
+      return this.databasePatterns.save(pattern, {
+        overwrite: options?.overwrite,
+        createVersion: true,
+      });
+    }
+
+    // Fall back to file-based storage
     await fs.mkdir(this.patternsDir, { recursive: true });
     const filePath = path.join(this.patternsDir, `${pattern.name}.prism`);
 
@@ -519,6 +575,40 @@ export class PatternEngine implements IPatternEngine {
     }
 
     return saved;
+  }
+
+  async deletePattern(name: string): Promise<void> {
+    // Check if pattern exists
+    const pattern = this.getPattern(name) as PatternWithSource;
+    if (!pattern) {
+      throw new Error(`Pattern '${name}' not found`);
+    }
+
+    // Cannot delete file-based patterns through this API
+    if (pattern.source === 'file' || !this.databasePatterns) {
+      throw new Error(
+        `Cannot delete file-based pattern '${name}'. Remove the .prism file from the filesystem.`
+      );
+    }
+
+    await this.databasePatterns.delete(name);
+  }
+
+  async getPatternVersions(name: string): Promise<PatternVersion[]> {
+    if (!this.databasePatterns) {
+      return []; // File-based patterns don't have versions
+    }
+
+    const versions = await this.databasePatterns.getVersions(name);
+    return versions.map(v => ({
+      id: v.id,
+      patternId: v.patternId,
+      version: v.version,
+      script: v.script,
+      metadata: v.metadata,
+      createdAt: v.createdAt,
+      createdBy: v.createdBy || undefined,
+    }));
   }
   
   /**

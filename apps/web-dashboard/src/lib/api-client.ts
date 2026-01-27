@@ -64,8 +64,11 @@ class ApiClient {
   private influxDB: AxiosInstance;
 
   constructor() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    console.log('[ApiClient] Using API URL:', apiUrl);
+
     this.controlPlane = axios.create({
-      baseURL: process.env.NEXT_PUBLIC_CONTROL_PLANE_URL || 'http://localhost:8080',
+      baseURL: apiUrl,
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
@@ -84,61 +87,93 @@ class ApiClient {
 
   // Agent endpoints
   async getAgents(): Promise<Agent[]> {
-    const response = await this.controlPlane.get('/agents');
-    return response.data;
+    const response = await this.controlPlane.get('/api/agents');
+    return response.data.agents || [];
   }
 
   async getAgent(id: string): Promise<Agent> {
-    const response = await this.controlPlane.get(`/agents/${id}`);
+    const response = await this.controlPlane.get(`/api/agents/${id}`);
     return response.data;
   }
 
   async registerAgent(agent: Partial<Agent>): Promise<Agent> {
-    const response = await this.controlPlane.post('/agents', agent);
+    const response = await this.controlPlane.post('/api/agents', agent);
     return response.data;
   }
 
   async updateAgentStatus(id: string, status: Agent['status']): Promise<void> {
-    await this.controlPlane.patch(`/agents/${id}/status`, { status });
+    await this.controlPlane.patch(`/api/agents/${id}/status`, { status });
   }
 
   // Pattern endpoints
   async getPatterns(): Promise<Pattern[]> {
-    const response = await this.controlPlane.get('/patterns');
-    return response.data;
+    const response = await this.controlPlane.get('/api/patterns');
+    return response.data.patterns || [];
   }
 
   async getPattern(name: string): Promise<Pattern> {
-    const response = await this.controlPlane.get(`/patterns/${name}`);
+    const response = await this.controlPlane.get(`/api/patterns/${name}`);
     return response.data;
   }
 
   async executePattern(name: string, input: any): Promise<PatternExecution> {
-    const response = await this.controlPlane.post(`/patterns/${name}/execute`, input);
+    const response = await this.controlPlane.post(`/api/patterns/${name}/execute`, input);
     return response.data;
   }
 
   // Execution endpoints
   async getExecutions(limit = 100): Promise<PatternExecution[]> {
-    const response = await this.controlPlane.get(`/executions?limit=${limit}`);
-    return response.data;
+    const response = await this.controlPlane.get(`/api/executions?limit=${limit}`);
+    return response.data.executions || [];
   }
 
   async getExecution(id: string): Promise<PatternExecution> {
-    const response = await this.controlPlane.get(`/executions/${id}`);
+    const response = await this.controlPlane.get(`/api/executions/${id}`);
     return response.data;
   }
 
-  // Metrics endpoints
+  // Metrics endpoints - computed from agents and executions since no dedicated endpoint
   async getMetrics(): Promise<Metrics> {
-    const response = await this.controlPlane.get('/metrics');
-    return response.data;
+    try {
+      const [agentsResponse, executionsResponse] = await Promise.all([
+        this.controlPlane.get('/api/agents'),
+        this.controlPlane.get('/api/executions'),
+      ]);
+
+      const agents = agentsResponse.data.agents || [];
+      const executions = executionsResponse.data.executions || [];
+
+      const activeAgents = agents.filter((a: Agent) => a.status === 'active').length;
+      const successfulExecutions = executions.filter((e: PatternExecution) => e.status === 'completed').length;
+      const avgConfidence = agents.length > 0
+        ? agents.reduce((sum: number, a: Agent) => sum + (a.confidence || 0), 0) / agents.length
+        : 0;
+
+      return {
+        agentCount: agents.length,
+        activeAgents,
+        totalExecutions: executions.length,
+        successfulExecutions,
+        averageConfidence: avgConfidence,
+        executionsPerMinute: 0, // Would need time-series data to calculate
+      };
+    } catch (error) {
+      console.error('[ApiClient] Failed to get metrics:', error);
+      return {
+        agentCount: 0,
+        activeAgents: 0,
+        totalExecutions: 0,
+        successfulExecutions: 0,
+        averageConfidence: 0,
+        executionsPerMinute: 0,
+      };
+    }
   }
 
   // License endpoint
   async getLicense(): Promise<LicenseInfo> {
     try {
-      const response = await this.controlPlane.get('/license');
+      const response = await this.controlPlane.get('/api/license');
       return response.data;
     } catch (error) {
       // If endpoint doesn't exist or errors, assume open source
