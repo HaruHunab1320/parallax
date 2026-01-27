@@ -25,8 +25,11 @@ import {
   createTriggersRouter,
   createUsersRouter,
   createAuthRouter,
+  createAuditRouter,
+  createBackupRouter,
 } from './api';
 import { AuthService, requireAuth, optionalAuth } from './auth';
+import { AuditService } from './audit';
 import { LicenseEnforcer } from './licensing/license-enforcer';
 import { DatabaseService } from './db/database.service';
 import { GrpcServer } from './grpc';
@@ -85,6 +88,13 @@ export async function createServer(): Promise<express.Application> {
   if (licenseEnforcer.hasFeature('multi_user')) {
     authService = new AuthService(database.getPrismaClient(), logger);
     logger.info('Authentication service initialized (Enterprise)');
+  }
+
+  // Initialize audit service (for audit_logging enterprise feature)
+  let auditService: AuditService | undefined;
+  if (licenseEnforcer.hasFeature('audit_logging')) {
+    auditService = new AuditService(database.getPrismaClient(), logger);
+    logger.info('Audit logging service initialized (Enterprise)');
   }
 
   // Initialize services
@@ -261,6 +271,24 @@ export async function createServer(): Promise<express.Application> {
     app.use('/api/auth', authRouter);
   }
 
+  // Audit router (Enterprise feature)
+  if (auditService && authService) {
+    const auditRouter = createAuditRouter(auditService, authService, licenseEnforcer, logger);
+    app.use('/api/audit', auditRouter);
+  }
+
+  // Backup router (Enterprise feature)
+  if (authService) {
+    const backupRouter = createBackupRouter(
+      database.getPrismaClient(),
+      authService,
+      auditService,
+      licenseEnforcer,
+      logger
+    );
+    app.use('/api/backup', backupRouter);
+  }
+
   // Default route
   app.get('/', (_req, res) => {
     const endpoints: Record<string, string> = {
@@ -282,6 +310,10 @@ export async function createServer(): Promise<express.Application> {
     if (licenseEnforcer.hasFeature('multi_user')) {
       endpoints.users = '/api/users';
       endpoints.auth = '/api/auth';
+      endpoints.backup = '/api/backup';
+    }
+    if (licenseEnforcer.hasFeature('audit_logging')) {
+      endpoints.audit = '/api/audit';
     }
     if (haServices) {
       endpoints.clusterHealth = '/health/cluster';

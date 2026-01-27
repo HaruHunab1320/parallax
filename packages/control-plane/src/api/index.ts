@@ -6,3 +6,5 @@ export { createSchedulesRouter } from './schedules';
 export { createTriggersRouter } from './triggers';
 export { createUsersRouter } from './users';
 export { createAuthRouter } from './auth';
+export { createAuditRouter } from './audit';
+export { createBackupRouter } from './backup';
