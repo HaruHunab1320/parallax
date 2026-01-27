@@ -102,7 +102,18 @@ output:
 ## Powered By
 
 <div style={{display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'var(--ifm-card-background-color)', borderRadius: '8px', border: '1px solid var(--ifm-color-emphasis-300)'}}>
-  <img src="/img/prism-logo-v1.png" alt="Prism Logo" style={{width: '80px', height: 'auto'}} />
+  <img
+    src="/img/PRISM-logo-light.png"
+    alt="Prism Logo"
+    style={{width: '80px', height: 'auto'}}
+    className="light-mode-only"
+  />
+  <img
+    src="/img/PRISM-logo-dark.png"
+    alt="Prism Logo"
+    style={{width: '80px', height: 'auto'}}
+    className="dark-mode-only"
+  />
   <div>
     <strong>Prism DSL</strong>
     <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--ifm-color-emphasis-600)'}}>

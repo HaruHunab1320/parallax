@@ -24,7 +24,9 @@ import {
   createSchedulesRouter,
   createTriggersRouter,
   createUsersRouter,
+  createAuthRouter,
 } from './api';
+import { AuthService, requireAuth, optionalAuth } from './auth';
 import { LicenseEnforcer } from './licensing/license-enforcer';
 import { DatabaseService } from './db/database.service';
 import { GrpcServer } from './grpc';
@@ -77,6 +79,13 @@ export async function createServer(): Promise<express.Application> {
 
   // Initialize license enforcer
   const licenseEnforcer = new LicenseEnforcer(logger);
+
+  // Initialize auth service (for multi_user enterprise feature)
+  let authService: AuthService | undefined;
+  if (licenseEnforcer.hasFeature('multi_user')) {
+    authService = new AuthService(database.getPrismaClient(), logger);
+    logger.info('Authentication service initialized (Enterprise)');
+  }
 
   // Initialize services
   const etcdEndpoints = (process.env.PARALLAX_ETCD_ENDPOINTS || 'localhost:2379').split(',');
@@ -246,6 +255,12 @@ export async function createServer(): Promise<express.Application> {
     app.use('/api/users', usersRouter);
   }
 
+  // Auth router (Enterprise feature)
+  if (authService) {
+    const authRouter = createAuthRouter(authService, licenseEnforcer, logger);
+    app.use('/api/auth', authRouter);
+  }
+
   // Default route
   app.get('/', (_req, res) => {
     const endpoints: Record<string, string> = {
@@ -266,6 +281,7 @@ export async function createServer(): Promise<express.Application> {
     }
     if (licenseEnforcer.hasFeature('multi_user')) {
       endpoints.users = '/api/users';
+      endpoints.auth = '/api/auth';
     }
     if (haServices) {
       endpoints.clusterHealth = '/health/cluster';

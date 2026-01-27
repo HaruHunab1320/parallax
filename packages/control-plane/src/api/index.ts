@@ -5,3 +5,4 @@ export { createLicenseRouter } from './license';
 export { createSchedulesRouter } from './schedules';
 export { createTriggersRouter } from './triggers';
 export { createUsersRouter } from './users';
+export { createAuthRouter } from './auth';

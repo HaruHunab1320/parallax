@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { MetricCard } from '@/components/dashboard/metric-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bot, Zap, TrendingUp, Activity } from 'lucide-react';
-import { apiClient, type Metrics, type Agent, type PatternExecution } from '@/lib/api-client';
+import { apiClient, type Metrics, type Agent, type PatternExecution, type HourlyStats, type DailyStats } from '@/lib/api-client';
 import { formatRelativeTime, getStatusColor, formatDuration } from '@/lib/utils';
 import {
   LineChart,
@@ -24,20 +24,26 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [recentExecutions, setRecentExecutions] = useState<PatternExecution[]>([]);
+  const [hourlyStats, setHourlyStats] = useState<HourlyStats[]>([]);
+  const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [metricsData, agentsData, executionsData] = await Promise.all([
+        const [metricsData, agentsData, executionsData, hourlyData, dailyData] = await Promise.all([
           apiClient.getMetrics(),
           apiClient.getAgents(),
           apiClient.getExecutions(10),
+          apiClient.getHourlyStats(24),
+          apiClient.getDailyStats(7),
         ]);
 
         setMetrics(metricsData);
         setAgents(agentsData);
         setRecentExecutions(executionsData);
+        setHourlyStats(hourlyData);
+        setDailyStats(dailyData);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -51,16 +57,17 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Mock data for charts
-  const confidenceData = Array.from({ length: 24 }, (_, i) => ({
-    time: `${i}:00`,
-    confidence: 0.7 + Math.random() * 0.2,
+  // Transform hourly stats for confidence chart
+  const confidenceData = hourlyStats.map((stat) => ({
+    time: new Date(stat.hour).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    confidence: stat.avg_confidence ?? 0,
   }));
 
-  const executionData = Array.from({ length: 7 }, (_, i) => ({
-    day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-    executions: Math.floor(100 + Math.random() * 50),
-    successful: Math.floor(80 + Math.random() * 40),
+  // Transform daily stats for executions chart
+  const executionData = dailyStats.map((stat) => ({
+    day: new Date(stat.day).toLocaleDateString('en-US', { weekday: 'short' }),
+    executions: Number(stat.executions) || 0,
+    successful: Number(stat.successful) || 0,
   }));
 
   if (loading) {

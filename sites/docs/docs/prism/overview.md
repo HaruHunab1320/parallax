@@ -6,7 +6,18 @@ title: Overview
 # Prism DSL
 
 <div style={{textAlign: 'center', margin: '2rem 0'}}>
-  <img src="/img/prism-logo-v1.png" alt="Prism Logo" style={{maxWidth: '200px'}} />
+  <img
+    src="/img/PRISM-logo-light.png"
+    alt="Prism Logo"
+    style={{maxWidth: '200px'}}
+    className="light-mode-only"
+  />
+  <img
+    src="/img/PRISM-logo-dark.png"
+    alt="Prism Logo"
+    style={{maxWidth: '200px'}}
+    className="dark-mode-only"
+  />
   <p style={{color: 'var(--ifm-color-emphasis-600)', marginTop: '0.5rem'}}>
     <strong>Powered by Prism</strong> — A language where uncertainty is a first-class citizen
   </p>

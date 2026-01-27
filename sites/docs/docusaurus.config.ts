@@ -56,10 +56,10 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'Parallax',
+      title: '',
       logo: {
         alt: 'Parallax Logo',
-        src: 'img/logo.svg',
+        src: 'img/parallax-LIGHT-no-text.png',
       },
       items: [
         {

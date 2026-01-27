@@ -196,4 +196,45 @@ export class ExecutionRepository extends BaseRepository {
       'ExecutionRepository.cleanup'
     );
   }
+
+  async getHourlyStats(hours: number = 24): Promise<any[]> {
+    return this.executeQuery(
+      async () => {
+        const result = await this.prisma.$queryRaw<any[]>`
+          SELECT
+            date_trunc('hour', time) as hour,
+            COUNT(*) as executions,
+            COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful,
+            COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
+            AVG(confidence) as avg_confidence
+          FROM "Execution"
+          WHERE time >= NOW() - INTERVAL '${hours} hours'
+          GROUP BY hour
+          ORDER BY hour ASC`;
+        return result;
+      },
+      'ExecutionRepository.getHourlyStats'
+    );
+  }
+
+  async getDailyStats(days: number = 7): Promise<any[]> {
+    return this.executeQuery(
+      async () => {
+        const result = await this.prisma.$queryRaw<any[]>`
+          SELECT
+            date_trunc('day', time) as day,
+            COUNT(*) as executions,
+            COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful,
+            COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
+            AVG(confidence) as avg_confidence,
+            AVG("durationMs") as avg_duration_ms
+          FROM "Execution"
+          WHERE time >= NOW() - INTERVAL '${days} days'
+          GROUP BY day
+          ORDER BY day ASC`;
+        return result;
+      },
+      'ExecutionRepository.getDailyStats'
+    );
+  }
 }

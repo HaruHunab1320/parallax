@@ -446,6 +446,97 @@ export function createExecutionsRouter(
     }
   });
 
+  // Get execution stats
+  router.get('/stats/summary', async (_req: any, res: any) => {
+    try {
+      if (database) {
+        const stats = await database.executions.getStats();
+        return res.json(stats);
+      } else {
+        // Calculate from in-memory executions
+        const executionList = Array.from(executions.values());
+        return res.json({
+          total_executions: executionList.length,
+          successful: executionList.filter(e => e.status === 'completed').length,
+          failed: executionList.filter(e => e.status === 'failed').length,
+          cancelled: executionList.filter(e => e.status === 'cancelled').length,
+          in_progress: executionList.filter(e => ['pending', 'running'].includes(e.status)).length,
+          avg_duration_ms: null,
+          avg_confidence: null,
+        });
+      }
+    } catch (error) {
+      logger.error({ error }, 'Failed to get execution stats');
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to get stats'
+      });
+    }
+  });
+
+  // Get hourly stats for charts (last 24 hours)
+  router.get('/stats/hourly', async (_req: any, res: any) => {
+    const hours = parseInt(_req.query.hours as string) || 24;
+
+    try {
+      if (database) {
+        const stats = await database.executions.getHourlyStats(hours);
+        return res.json({ stats });
+      } else {
+        // Generate empty hourly buckets for in-memory mode
+        const stats = Array.from({ length: hours }, (_, i) => {
+          const hour = new Date();
+          hour.setHours(hour.getHours() - (hours - 1 - i), 0, 0, 0);
+          return {
+            hour: hour.toISOString(),
+            executions: 0,
+            successful: 0,
+            failed: 0,
+            avg_confidence: null,
+          };
+        });
+        return res.json({ stats });
+      }
+    } catch (error) {
+      logger.error({ error }, 'Failed to get hourly stats');
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to get hourly stats'
+      });
+    }
+  });
+
+  // Get daily stats for charts (last 7 days)
+  router.get('/stats/daily', async (_req: any, res: any) => {
+    const days = parseInt(_req.query.days as string) || 7;
+
+    try {
+      if (database) {
+        const stats = await database.executions.getDailyStats(days);
+        return res.json({ stats });
+      } else {
+        // Generate empty daily buckets for in-memory mode
+        const stats = Array.from({ length: days }, (_, i) => {
+          const day = new Date();
+          day.setDate(day.getDate() - (days - 1 - i));
+          day.setHours(0, 0, 0, 0);
+          return {
+            day: day.toISOString(),
+            executions: 0,
+            successful: 0,
+            failed: 0,
+            avg_confidence: null,
+            avg_duration_ms: null,
+          };
+        });
+        return res.json({ stats });
+      }
+    } catch (error) {
+      logger.error({ error }, 'Failed to get daily stats');
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to get daily stats'
+      });
+    }
+  });
+
   // Store active streams reference
   (router as any).activeStreams = activeStreams;
 

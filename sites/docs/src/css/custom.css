@@ -36,6 +36,11 @@
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
+.navbar__logo img {
+  height: 36px !important;
+  width: auto !important;
+}
+
 [data-theme='dark'] .navbar {
   background-color: #1e293b;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
@@ -108,4 +113,21 @@ th {
 .hero__subtitle {
   font-size: 1.25rem;
   opacity: 0.9;
+}
+
+/* Theme-based image visibility */
+.light-mode-only {
+  display: block;
+}
+
+.dark-mode-only {
+  display: none;
+}
+
+[data-theme='dark'] .light-mode-only {
+  display: none;
+}
+
+[data-theme='dark'] .dark-mode-only {
+  display: block;
 }

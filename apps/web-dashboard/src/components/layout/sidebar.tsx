@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
@@ -70,11 +71,14 @@ export function Sidebar() {
   return (
     <div className="w-64 h-full glass-panel border-r border-white/10">
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <span className="text-parallax-accent">⚡</span>
-          Parallax
-        </h1>
-        <p className="text-sm text-gray-400 mt-1">AI Orchestration Platform</p>
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/parallax-LIGHT-no-text.png"
+            alt="Parallax Logo"
+            width={60}
+            height={60}
+          />
+        </Link>
       </div>
 
       <nav className="px-4 pb-4">

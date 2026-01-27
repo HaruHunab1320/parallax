@@ -59,6 +59,33 @@ export interface ConfidenceMetrics {
   data: TimeSeriesData[];
 }
 
+export interface HourlyStats {
+  hour: string;
+  executions: number;
+  successful: number;
+  failed: number;
+  avg_confidence: number | null;
+}
+
+export interface DailyStats {
+  day: string;
+  executions: number;
+  successful: number;
+  failed: number;
+  avg_confidence: number | null;
+  avg_duration_ms: number | null;
+}
+
+export interface ExecutionStats {
+  total_executions: number;
+  successful: number;
+  failed: number;
+  cancelled: number;
+  in_progress: number;
+  avg_duration_ms: number | null;
+  avg_confidence: number | null;
+}
+
 class ApiClient {
   private controlPlane: AxiosInstance;
   private influxDB: AxiosInstance;
@@ -233,6 +260,45 @@ class ApiClient {
       successRate: mockData.map(d => ({ ...d, value: 0.8 + Math.random() * 0.2 })),
       avgDuration: mockData.map(d => ({ ...d, value: 100 + Math.random() * 50 })),
     };
+  }
+
+  // Time-series stats endpoints
+  async getHourlyStats(hours: number = 24): Promise<HourlyStats[]> {
+    try {
+      const response = await this.controlPlane.get(`/api/executions/stats/hourly?hours=${hours}`);
+      return response.data.stats || [];
+    } catch (error) {
+      console.error('[ApiClient] Failed to get hourly stats:', error);
+      return [];
+    }
+  }
+
+  async getDailyStats(days: number = 7): Promise<DailyStats[]> {
+    try {
+      const response = await this.controlPlane.get(`/api/executions/stats/daily?days=${days}`);
+      return response.data.stats || [];
+    } catch (error) {
+      console.error('[ApiClient] Failed to get daily stats:', error);
+      return [];
+    }
+  }
+
+  async getExecutionStats(): Promise<ExecutionStats> {
+    try {
+      const response = await this.controlPlane.get('/api/executions/stats/summary');
+      return response.data;
+    } catch (error) {
+      console.error('[ApiClient] Failed to get execution stats:', error);
+      return {
+        total_executions: 0,
+        successful: 0,
+        failed: 0,
+        cancelled: 0,
+        in_progress: 0,
+        avg_duration_ms: null,
+        avg_confidence: null,
+      };
+    }
   }
 
   // WebSocket connection for real-time updates
