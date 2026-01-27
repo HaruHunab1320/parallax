@@ -1,6 +1,6 @@
 # Agent Runtime Implementation Plan
 
-> **Status:** Phase 1-3 Complete, Phase 4-7 Pending
+> **Status:** Phase 1-5 Complete, Phase 6-7 Pending
 > **Priority:** High - Core v1 Feature
 > **Last Updated:** January 2025
 
@@ -1035,37 +1035,49 @@ pattern with_escalation {
   - [x] Graceful shutdown handling
   - [x] Dynamic endpoint listing
 
-### Phase 4: Docker Runtime (Week 4-5)
+### Phase 4: Docker Runtime (Week 4-5) ✅ COMPLETE
 
-- [ ] **M4.1** Agent container images
-  - [ ] Claude image with PTY wrapper
-  - [ ] Aider image
-  - [ ] Base image for custom agents
+- [x] **M4.1** Agent container images
+  - [x] Base image with entrypoint (`images/base/Dockerfile`)
+  - [x] Claude image (`images/claude/Dockerfile`)
+  - [x] Codex image (`images/codex/Dockerfile`)
+  - [x] Gemini image (`images/gemini/Dockerfile`)
 
-- [ ] **M4.2** Docker runtime provider
-  - [ ] Container lifecycle
-  - [ ] Network configuration
-  - [ ] Log streaming
+- [x] **M4.2** Docker runtime provider
+  - [x] DockerRuntime implementation (`docker-runtime.ts`)
+  - [x] Container lifecycle (spawn, stop, restart)
+  - [x] Network configuration (parallax-agents network)
+  - [x] Log streaming and metrics
 
-- [ ] **M4.3** Docker Compose integration
-  - [ ] Update docker-compose.yml
-  - [ ] Agent network configuration
+- [x] **M4.3** HTTP Server
+  - [x] REST API server (`server.ts`)
+  - [x] WebSocket events
+  - [x] CLI entry point (`cli.ts`)
 
-### Phase 5: Kubernetes Runtime (Week 5-7)
+- [x] **M4.4** Control Plane integration
+  - [x] `PARALLAX_DOCKER_RUNTIME_URL` env var support
+  - [x] Runtime auto-registration
 
-- [ ] **M5.1** CRD definitions
-  - [ ] ParallaxAgent CRD
-  - [ ] Validation webhook
+### Phase 5: Kubernetes Runtime (Week 5-7) ✅ COMPLETE
 
-- [ ] **M5.2** Operator implementation
-  - [ ] Controller for agent resources
-  - [ ] Deployment management
-  - [ ] Service creation
+- [x] **M5.1** CRD definitions
+  - [x] ParallaxAgent CRD (`crds/parallax-agent.yaml`)
+  - [x] Full spec with resources, credentials, scaling
 
-- [ ] **M5.3** Helm chart updates
-  - [ ] Operator deployment
-  - [ ] RBAC configuration
-  - [ ] Example agent resources
+- [x] **M5.2** Operator implementation
+  - [x] K8sRuntime provider (`k8s-runtime.ts`)
+  - [x] AgentController for reconciliation (`controllers/agent-controller.ts`)
+  - [x] Deployment and Service creation
+  - [x] Status updates
+
+- [x] **M5.3** HTTP Server
+  - [x] REST API server (`server.ts`)
+  - [x] WebSocket events
+  - [x] CLI entry point (`cli.ts`)
+
+- [x] **M5.4** Control Plane integration
+  - [x] `PARALLAX_K8S_RUNTIME_URL` env var support
+  - [x] Runtime auto-registration
 
 ### Phase 6: Org-Chart Patterns (Week 7-8)
 

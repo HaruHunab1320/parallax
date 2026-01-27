@@ -208,21 +208,55 @@ export async function createServer(): Promise<express.Application> {
   // Initialize Agent Runtime Service (for managed agents)
   let agentRuntimeService: AgentRuntimeService | null = null;
   const localRuntimeUrl = process.env.PARALLAX_LOCAL_RUNTIME_URL;
+  const dockerRuntimeUrl = process.env.PARALLAX_DOCKER_RUNTIME_URL;
+  const k8sRuntimeUrl = process.env.PARALLAX_K8S_RUNTIME_URL;
 
-  if (localRuntimeUrl) {
+  if (localRuntimeUrl || dockerRuntimeUrl || k8sRuntimeUrl) {
     agentRuntimeService = new AgentRuntimeService(logger);
 
     // Register local runtime if configured
-    try {
-      await agentRuntimeService.registerRuntime(
-        'local',
-        'local',
-        { baseUrl: localRuntimeUrl },
-        10 // High priority
-      );
-      logger.info({ url: localRuntimeUrl }, 'Local runtime registered');
-    } catch (error) {
-      logger.warn({ error, url: localRuntimeUrl }, 'Failed to connect to local runtime - agent spawning disabled');
+    if (localRuntimeUrl) {
+      try {
+        await agentRuntimeService.registerRuntime(
+          'local',
+          'local',
+          { baseUrl: localRuntimeUrl },
+          10 // High priority for local dev
+        );
+        logger.info({ url: localRuntimeUrl }, 'Local runtime registered');
+      } catch (error) {
+        logger.warn({ error, url: localRuntimeUrl }, 'Failed to connect to local runtime');
+      }
+    }
+
+    // Register Docker runtime if configured
+    if (dockerRuntimeUrl) {
+      try {
+        await agentRuntimeService.registerRuntime(
+          'docker',
+          'docker',
+          { baseUrl: dockerRuntimeUrl },
+          20 // Lower priority than local
+        );
+        logger.info({ url: dockerRuntimeUrl }, 'Docker runtime registered');
+      } catch (error) {
+        logger.warn({ error, url: dockerRuntimeUrl }, 'Failed to connect to Docker runtime');
+      }
+    }
+
+    // Register Kubernetes runtime if configured
+    if (k8sRuntimeUrl) {
+      try {
+        await agentRuntimeService.registerRuntime(
+          'kubernetes',
+          'kubernetes',
+          { baseUrl: k8sRuntimeUrl },
+          30 // Lower priority than Docker (used for production)
+        );
+        logger.info({ url: k8sRuntimeUrl }, 'Kubernetes runtime registered');
+      } catch (error) {
+        logger.warn({ error, url: k8sRuntimeUrl }, 'Failed to connect to Kubernetes runtime');
+      }
     }
 
     // Forward runtime events to execution events

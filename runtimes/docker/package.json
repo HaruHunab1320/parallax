@@ -1,0 +1,33 @@
+{
+  "name": "@parallax/runtime-docker",
+  "version": "0.1.0",
+  "description": "Docker-based runtime for Parallax CLI agents",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/cli.ts",
+    "start": "node dist/cli.js",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "docker:build": "docker build -t parallax/agent-base ./images/base && docker build -t parallax/agent-claude ./images/claude && docker build -t parallax/agent-codex ./images/codex && docker build -t parallax/agent-gemini ./images/gemini"
+  },
+  "dependencies": {
+    "@parallax/runtime-interface": "workspace:*",
+    "dockerode": "^4.0.7",
+    "express": "^4.21.2",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0",
+    "uuid": "^11.0.5",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^3.3.42",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.14.1",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

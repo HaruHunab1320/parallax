@@ -1,0 +1,167 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: parallaxagents.parallax.ai
+  labels:
+    app.kubernetes.io/name: parallax
+    app.kubernetes.io/component: runtime
+spec:
+  group: parallax.ai
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [type, name, capabilities]
+              properties:
+                type:
+                  type: string
+                  description: CLI agent type
+                  enum: [claude, codex, gemini, aider, custom]
+                name:
+                  type: string
+                  description: Human-readable agent name
+                role:
+                  type: string
+                  description: Organizational role (architect, engineer, qa, etc.)
+                capabilities:
+                  type: array
+                  description: Agent capabilities
+                  items:
+                    type: string
+                reportsTo:
+                  type: string
+                  description: Agent ID this one reports to
+                image:
+                  type: string
+                  description: Override container image
+                resources:
+                  type: object
+                  description: Resource requirements
+                  properties:
+                    cpu:
+                      type: string
+                      default: "1"
+                    memory:
+                      type: string
+                      default: "2Gi"
+                credentials:
+                  type: object
+                  description: Credential references
+                  properties:
+                    secretRef:
+                      type: string
+                      description: Kubernetes secret name containing credentials
+                    anthropicKeyRef:
+                      type: string
+                      description: Secret key for ANTHROPIC_API_KEY
+                    openaiKeyRef:
+                      type: string
+                      description: Secret key for OPENAI_API_KEY
+                    googleKeyRef:
+                      type: string
+                      description: Secret key for GOOGLE_API_KEY
+                env:
+                  type: array
+                  description: Additional environment variables
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                      valueFrom:
+                        type: object
+                        properties:
+                          secretKeyRef:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                              key:
+                                type: string
+                scaling:
+                  type: object
+                  description: Auto-scaling configuration
+                  properties:
+                    min:
+                      type: integer
+                      default: 1
+                    max:
+                      type: integer
+                      default: 1
+                idleTimeout:
+                  type: integer
+                  description: Seconds before idle agent is terminated
+                autoRestart:
+                  type: boolean
+                  description: Restart on crash
+                  default: true
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum: [Pending, Starting, Authenticating, Ready, Stopping, Stopped, Error]
+                replicas:
+                  type: integer
+                readyReplicas:
+                  type: integer
+                endpoint:
+                  type: string
+                  description: Service endpoint for the agent
+                message:
+                  type: string
+                  description: Human-readable status message
+                lastTransitionTime:
+                  type: string
+                  format: date-time
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Type
+          type: string
+          jsonPath: .spec.type
+        - name: Role
+          type: string
+          jsonPath: .spec.role
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Ready
+          type: integer
+          jsonPath: .status.readyReplicas
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: parallaxagents
+    singular: parallaxagent
+    kind: ParallaxAgent
+    shortNames:
+      - pa
+      - pagent

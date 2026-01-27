@@ -34,14 +34,7 @@ const config: Config = {
           editUrl: 'https://github.com/parallax-ai/parallax/tree/main/sites/docs/',
           routeBasePath: '/', // Docs at root
         },
-        blog: {
-          showReadingTime: true,
-          feedOptions: {
-            type: ['rss', 'atom'],
-            xslt: true,
-          },
-          editUrl: 'https://github.com/parallax-ai/parallax/tree/main/sites/docs/',
-        },
+        blog: false,
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -76,11 +69,6 @@ const config: Config = {
         {
           to: '/patterns/overview',
           label: 'Patterns',
-          position: 'left',
-        },
-        {
-          to: '/blog',
-          label: 'Blog',
           position: 'left',
         },
         {
@@ -135,10 +123,6 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            {
-              label: 'Blog',
-              to: '/blog',
-            },
             {
               label: 'GitHub',
               href: 'https://github.com/parallax-ai/parallax',
