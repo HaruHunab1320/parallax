@@ -1,5 +1,4 @@
 import { PrimitiveLoader, loadPrimitives } from './primitive-loader';
-import * as path from 'path';
 
 /**
  * Example usage of the PrimitiveLoader

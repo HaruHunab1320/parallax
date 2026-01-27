@@ -27,7 +27,9 @@ import {
   createAuthRouter,
   createAuditRouter,
   createBackupRouter,
+  createManagedAgentsRouter,
 } from './api';
+import { AgentRuntimeService } from './agent-runtime';
 import { AuthService, requireAuth, optionalAuth } from './auth';
 import { AuditService } from './audit';
 import { LicenseEnforcer } from './licensing/license-enforcer';
@@ -203,6 +205,55 @@ export async function createServer(): Promise<express.Application> {
     logger.info('Scheduler and Trigger services initialized');
   }
 
+  // Initialize Agent Runtime Service (for managed agents)
+  let agentRuntimeService: AgentRuntimeService | null = null;
+  const localRuntimeUrl = process.env.PARALLAX_LOCAL_RUNTIME_URL;
+
+  if (localRuntimeUrl) {
+    agentRuntimeService = new AgentRuntimeService(logger);
+
+    // Register local runtime if configured
+    try {
+      await agentRuntimeService.registerRuntime(
+        'local',
+        'local',
+        { baseUrl: localRuntimeUrl },
+        10 // High priority
+      );
+      logger.info({ url: localRuntimeUrl }, 'Local runtime registered');
+    } catch (error) {
+      logger.warn({ error, url: localRuntimeUrl }, 'Failed to connect to local runtime - agent spawning disabled');
+    }
+
+    // Forward runtime events to execution events
+    agentRuntimeService.on('agent_ready', (data) => {
+      executionEvents.emitEvent({
+        executionId: 'runtime',
+        type: 'managed_agent_ready',
+        data,
+        timestamp: new Date(),
+      });
+    });
+
+    agentRuntimeService.on('agent_stopped', (data) => {
+      executionEvents.emitEvent({
+        executionId: 'runtime',
+        type: 'managed_agent_stopped',
+        data,
+        timestamp: new Date(),
+      });
+    });
+
+    agentRuntimeService.on('message', (data) => {
+      executionEvents.emitEvent({
+        executionId: 'runtime',
+        type: 'managed_agent_message',
+        data,
+        timestamp: new Date(),
+      });
+    });
+  }
+
   // Health checks
   const healthService = new HealthCheckService(
     patternEngine as PatternEngine,
@@ -289,6 +340,13 @@ export async function createServer(): Promise<express.Application> {
     app.use('/api/backup', backupRouter);
   }
 
+  // Managed agents router (for spawning CLI agents)
+  if (agentRuntimeService) {
+    const managedAgentsRouter = createManagedAgentsRouter(agentRuntimeService, logger);
+    app.use('/api/managed-agents', managedAgentsRouter);
+    logger.info('Managed agents API enabled');
+  }
+
   // Default route
   app.get('/', (_req, res) => {
     const endpoints: Record<string, string> = {
@@ -318,6 +376,9 @@ export async function createServer(): Promise<express.Application> {
     if (haServices) {
       endpoints.clusterHealth = '/health/cluster';
     }
+    if (agentRuntimeService) {
+      endpoints.managedAgents = '/api/managed-agents';
+    }
 
     res.json({
       service: 'Parallax Control Plane',
@@ -340,6 +401,11 @@ export async function createServer(): Promise<express.Application> {
     // Stop scheduler
     if (schedulerService) {
       await schedulerService.stop();
+    }
+
+    // Stop agent runtime service
+    if (agentRuntimeService) {
+      await agentRuntimeService.shutdown();
     }
 
     // Stop HA services

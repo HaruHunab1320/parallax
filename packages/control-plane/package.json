@@ -23,6 +23,7 @@
     "@grpc/grpc-js": "^1.13.4",
     "@grpc/proto-loader": "^0.7.15",
     "@parallax/runtime": "workspace:*",
+    "@parallax/runtime-interface": "workspace:*",
     "@parallax/telemetry": "workspace:*",
     "@prism-lang/confidence": "^1.2.4",
     "@prism-lang/core": "^2.0.0",

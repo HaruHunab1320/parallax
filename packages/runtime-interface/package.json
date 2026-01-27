@@ -1,0 +1,21 @@
+{
+  "name": "@parallax/runtime-interface",
+  "version": "0.1.0",
+  "description": "Shared interfaces for Parallax agent runtimes",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "typescript": "^5.7.2"
+  },
+  "files": [
+    "dist"
+  ]
+}
