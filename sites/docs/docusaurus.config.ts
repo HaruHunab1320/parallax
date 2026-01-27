@@ -41,6 +41,10 @@ const config: Config = {
       } satisfies Preset.Options,
     ],
   ],
+  themes: ['@docusaurus/theme-mermaid'],
+  markdown: {
+    mermaid: true,
+  },
 
   themeConfig: {
     image: 'img/parallax-social-card.jpg',

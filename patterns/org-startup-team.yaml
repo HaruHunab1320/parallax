@@ -1,0 +1,116 @@
+# Startup Team Org Pattern
+#
+# A minimal but effective team structure for agile development.
+# Architect provides high-level direction, Engineers implement.
+
+name: startup-team
+version: "1.0.0"
+description: |
+  Agile startup team pattern with architect oversight and parallel engineering.
+  Best for medium-complexity tasks that benefit from architectural guidance.
+
+structure:
+  name: Startup Team
+  description: Lean team with architect and engineers
+
+  roles:
+    architect:
+      id: architect
+      name: Systems Architect
+      description: Provides high-level design and final approval
+      agentType: claude
+      capabilities:
+        - system_design
+        - code_review
+        - decision_making
+        - architecture
+      singleton: true
+      expertise:
+        - architecture
+        - design
+        - requirements
+
+    engineer:
+      id: engineer
+      name: Software Engineer
+      description: Implements features and writes code
+      agentType:
+        - claude
+        - codex
+      capabilities:
+        - implementation
+        - testing
+        - debugging
+      reportsTo: architect
+      minInstances: 2
+      maxInstances: 4
+      expertise:
+        - implementation
+        - testing
+
+  routing:
+    - from: engineer
+      to: architect
+      topics:
+        - architecture
+        - design
+        - requirements
+    - from: engineer
+      to: architect
+      messageTypes:
+        - question
+
+  escalation:
+    defaultBehavior: route_to_reports_to
+    timeoutMs: 30000
+    maxDepth: 2
+    onMaxDepth: surface_to_user
+
+workflow:
+  name: Feature Development
+  input:
+    task:
+      type: string
+      description: The feature or task to implement
+
+  steps:
+    # Architect creates design
+    - type: assign
+      role: architect
+      task: |
+        Create a high-level design for the following task.
+        Include key components, interfaces, and implementation approach.
+        Task: ${input.task}
+
+    # Engineers implement in parallel
+    - type: parallel
+      steps:
+        - type: assign
+          role: engineer
+          task: |
+            Implement the core functionality based on the design.
+            Focus on main business logic.
+            Design: ${step_0_result}
+        - type: assign
+          role: engineer
+          task: |
+            Implement tests and edge case handling based on the design.
+            Focus on validation and error handling.
+            Design: ${step_0_result}
+
+    # Architect reviews
+    - type: review
+      reviewer: architect
+      subject: ${step_1_result}
+
+    # Aggregate results
+    - type: aggregate
+      method: merge
+
+  output: step_3_result
+
+metadata:
+  category: team
+  complexity: medium
+  minAgents: 3
+  maxAgents: 5

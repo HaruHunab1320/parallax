@@ -22,20 +22,26 @@ Single AI agents are unreliable. They hallucinate, make mistakes, and produce in
 
 ## How It Works
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         PARALLAX                                 │
-│  ┌─────────┐    ┌─────────────┐    ┌────────────┐    ┌───────┐ │
-│  │  Input  │───▶│   Agents    │───▶│  Consensus │───▶│Output │ │
-│  │         │    │  (Parallel) │    │  Building  │    │       │ │
-│  └─────────┘    └─────────────┘    └────────────┘    └───────┘ │
-│                       │                   │                     │
-│                 ┌─────┴─────┐      ┌─────┴─────┐               │
-│                 │ Agent 1   │      │ Voting    │               │
-│                 │ Agent 2   │      │ Merging   │               │
-│                 │ Agent 3   │      │ Filtering │               │
-│                 └───────────┘      └───────────┘               │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+  Input[Input] --> Agents["Agents\n(Parallel)"]
+  Agents --> Consensus["Consensus\nBuilding"]
+  Consensus --> Output[Output]
+
+  subgraph PARALLAX
+    Input
+    Agents
+    Consensus
+    Output
+
+    Agents --> A1[Agent 1]
+    Agents --> A2[Agent 2]
+    Agents --> A3[Agent 3]
+
+    Consensus --> V[Voting]
+    Consensus --> M[Merging]
+    Consensus --> F[Filtering]
+  end
 ```
 
 1. **Define a Pattern** - Describe your orchestration flow in YAML or visually

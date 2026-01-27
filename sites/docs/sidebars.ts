@@ -46,7 +46,18 @@ const sidebars: SidebarsConfig = {
         'patterns/quality-gates',
         'patterns/extraction-patterns',
         'patterns/verification-patterns',
+        'patterns/org-chart-patterns',
         'patterns/advanced-composition',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Agent Runtimes',
+      items: [
+        'agent-runtimes/overview',
+        'agent-runtimes/local',
+        'agent-runtimes/docker',
+        'agent-runtimes/kubernetes',
       ],
     },
     {

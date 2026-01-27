@@ -1,0 +1,116 @@
+# Pair Programming Org Pattern
+#
+# Two agents collaborate on implementation with one driving and one reviewing.
+# Roles swap during the process for balanced perspectives.
+
+name: pair-programming
+version: "1.0.0"
+description: |
+  Pair programming pattern with driver and navigator roles.
+  Agents collaborate in real-time, catching issues early.
+
+structure:
+  name: Pair Programming
+  description: Collaborative two-agent development
+
+  roles:
+    driver:
+      id: driver
+      name: Driver
+      description: Writes the code and makes implementation decisions
+      agentType:
+        - claude
+        - codex
+      capabilities:
+        - implementation
+        - coding
+      minInstances: 1
+      maxInstances: 1
+      expertise:
+        - implementation
+
+    navigator:
+      id: navigator
+      name: Navigator
+      description: Reviews code in real-time, suggests improvements
+      agentType: claude
+      capabilities:
+        - code_review
+        - design
+        - strategic_thinking
+      minInstances: 1
+      maxInstances: 1
+      expertise:
+        - review
+        - design
+
+  routing:
+    - from: driver
+      to: navigator
+      messageTypes:
+        - question
+    - from: navigator
+      to: driver
+      messageTypes:
+        - task
+
+  escalation:
+    defaultBehavior: route_to_reports_to
+    timeoutMs: 20000
+    maxDepth: 1
+    onMaxDepth: surface_to_user
+
+workflow:
+  name: Pair Implementation
+  input:
+    task:
+      type: string
+      description: The task to implement
+
+  steps:
+    # Navigator outlines approach
+    - type: assign
+      role: navigator
+      task: |
+        Outline an approach for the following task.
+        Identify key steps and potential pitfalls.
+        Task: ${input.task}
+
+    # Driver implements first part
+    - type: assign
+      role: driver
+      task: |
+        Implement the first part of the task following this approach.
+        Focus on the core functionality.
+        Approach: ${step_0_result}
+        Task: ${input.task}
+
+    # Navigator reviews and suggests improvements
+    - type: assign
+      role: navigator
+      task: |
+        Review the implementation and suggest improvements.
+        Check for edge cases and code quality.
+        Implementation: ${step_1_result}
+
+    # Driver completes with improvements
+    - type: assign
+      role: driver
+      task: |
+        Complete the implementation incorporating the feedback.
+        Ensure all edge cases are handled.
+        Previous work: ${step_1_result}
+        Feedback: ${step_2_result}
+
+    # Final navigator review
+    - type: review
+      reviewer: navigator
+      subject: ${step_3_result}
+
+  output: step_4_result
+
+metadata:
+  category: collaboration
+  complexity: low
+  minAgents: 2
+  maxAgents: 2

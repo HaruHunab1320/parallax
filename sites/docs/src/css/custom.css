@@ -70,12 +70,27 @@
   --docusaurus-highlighted-code-line-bg: rgba(53, 181, 233, 0.2);
 }
 
-body {
-  background: linear-gradient(180deg, var(--px-surface) 0%, var(--px-surface-alt) 100%);
+html,
+body,
+#__docusaurus,
+.main-wrapper {
+  background-color: var(--px-surface);
   color: var(--px-text);
 }
 
-[data-theme='dark'] body {
+.main-wrapper {
+  position: relative;
+}
+
+.main-wrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, var(--px-surface) 0%, var(--px-surface-alt) 100%);
+}
+
+[data-theme='dark'] .main-wrapper::before {
   background: linear-gradient(180deg, #0b0f14 0%, #0f1520 100%);
 }
 
@@ -145,7 +160,7 @@ body {
 
 /* Sidebar */
 .menu__link {
-  border-radius: 6px;
+  border-radius: 2px;
   padding-left: 0.85rem;
   border-left: 2px solid transparent;
   transition: border-color 0.15s ease, color 0.15s ease,
@@ -227,6 +242,49 @@ th {
 .hero__subtitle {
   font-size: 1.25rem;
   opacity: 0.9;
+}
+
+/* Mermaid diagrams */
+.mermaid {
+  font-family: var(--ifm-font-family-base);
+}
+
+.mermaid svg {
+  max-width: 100%;
+}
+
+[data-theme='dark'] .mermaid .node rect,
+[data-theme='dark'] .mermaid .node polygon,
+[data-theme='dark'] .mermaid .node circle,
+[data-theme='dark'] .mermaid .node ellipse {
+  fill: rgba(53, 181, 233, 0.08);
+  stroke: #35b5e9;
+}
+
+[data-theme='dark'] .mermaid .edgePath path {
+  stroke: #7ed1f3;
+}
+
+[data-theme='dark'] .mermaid .cluster rect {
+  fill: rgba(217, 45, 136, 0.06);
+  stroke: rgba(217, 45, 136, 0.45);
+}
+
+[data-theme='light'] .mermaid .node rect,
+[data-theme='light'] .mermaid .node polygon,
+[data-theme='light'] .mermaid .node circle,
+[data-theme='light'] .mermaid .node ellipse {
+  fill: #ffffff !important;
+  stroke: #2a9fcd !important;
+}
+
+[data-theme='light'] .mermaid .edgePath path {
+  stroke: #2a9fcd !important;
+}
+
+[data-theme='light'] .mermaid .cluster rect {
+  fill: transparent !important;
+  stroke: rgba(217, 45, 136, 0.35) !important;
 }
 
 /* Buttons */

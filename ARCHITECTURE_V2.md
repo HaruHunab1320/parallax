@@ -77,12 +77,17 @@ final = threshold(decision, 0.9)
 
 ## System Architecture
 
-Agent Runtime Layer:
-- Manages PTY-backed CLI sessions for agents.
-- Handles interactive auth / login flows.
-- Registers agents with Parallax registry.
+### Agent Runtime Layer
+- Manages CLI-based AI agents (Claude Code, Codex, Gemini CLI)
+- Supports multiple runtime environments: Local (PTY), Docker, Kubernetes
+- Handles agent lifecycle: spawn, communicate, monitor, stop
+- See [Agent Runtimes Documentation](docs/AGENT_RUNTIMES.md)
 
-See `docs/AGENT_RUNTIME_SUPPORT_DEVELOPMENT.md`.
+### Org-Chart Patterns
+- Hierarchical multi-agent orchestration with roles and escalation
+- Supports team structures: startup-team, enterprise-review, pair-programming
+- Message routing based on organizational hierarchy
+- See [Org-Chart Patterns Documentation](docs/ORG_CHART_PATTERNS.md)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

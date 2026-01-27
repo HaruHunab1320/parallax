@@ -1,0 +1,167 @@
+# Enterprise Review Org Pattern
+#
+# Multi-level review process with tech lead and architect approval.
+# Best for critical changes requiring thorough review.
+
+name: enterprise-review
+version: "1.0.0"
+description: |
+  Enterprise code review pattern with multiple review stages.
+  Tech lead reviews implementation, Architect approves architecture.
+
+structure:
+  name: Enterprise Review Team
+  description: Hierarchical review process
+
+  roles:
+    architect:
+      id: architect
+      name: Principal Architect
+      description: Final architectural approval
+      agentType: claude
+      capabilities:
+        - architecture
+        - final_approval
+        - security_review
+      singleton: true
+      expertise:
+        - architecture
+        - security
+        - compliance
+
+    tech_lead:
+      id: tech_lead
+      name: Tech Lead
+      description: Technical review and code quality
+      agentType: claude
+      capabilities:
+        - code_review
+        - task_breakdown
+        - quality_assurance
+      reportsTo: architect
+      minInstances: 1
+      maxInstances: 2
+      expertise:
+        - code_quality
+        - testing
+        - implementation
+
+    engineer:
+      id: engineer
+      name: Senior Engineer
+      description: Implementation and initial self-review
+      agentType:
+        - claude
+        - codex
+      capabilities:
+        - implementation
+        - unit_testing
+        - documentation
+      reportsTo: tech_lead
+      minInstances: 1
+      maxInstances: 3
+
+    qa:
+      id: qa
+      name: QA Engineer
+      description: Quality assurance and testing
+      agentType: claude
+      capabilities:
+        - testing
+        - validation
+        - regression_testing
+      reportsTo: tech_lead
+      minInstances: 1
+      expertise:
+        - testing
+        - validation
+
+  routing:
+    - from: engineer
+      to: tech_lead
+      topics:
+        - code_review
+        - implementation
+    - from: tech_lead
+      to: architect
+      topics:
+        - architecture
+        - approval
+    - from: qa
+      to: tech_lead
+      topics:
+        - testing
+        - bugs
+    - from: "*"
+      to: architect
+      topics:
+        - security
+        - compliance
+
+  escalation:
+    defaultBehavior: route_to_reports_to
+    topicRoutes:
+      security: architect
+      compliance: architect
+      architecture: architect
+    timeoutMs: 45000
+    maxDepth: 3
+    onMaxDepth: surface_to_user
+
+workflow:
+  name: Enterprise Code Review
+  input:
+    code:
+      type: string
+      description: The code or changes to review
+    context:
+      type: string
+      description: Context about the changes
+
+  steps:
+    # Engineer provides self-review
+    - type: assign
+      role: engineer
+      task: |
+        Perform a self-review of the following code changes.
+        Identify any obvious issues, explain the implementation,
+        and note any areas of concern.
+
+        Code: ${input.code}
+        Context: ${input.context}
+
+    # Tech Lead reviews
+    - type: review
+      reviewer: tech_lead
+      subject:
+        code: ${input.code}
+        selfReview: ${step_0_result}
+
+    # QA validates
+    - type: assign
+      role: qa
+      task: |
+        Review the code for testability and create a test plan.
+        Identify edge cases and potential issues.
+
+        Code: ${input.code}
+        Tech Lead Review: ${step_1_result}
+
+    # Architect final approval
+    - type: approve
+      approver: architect
+      subject:
+        code: ${input.code}
+        techLeadReview: ${step_1_result}
+        qaReview: ${step_2_result}
+
+  output: step_3_result
+
+metadata:
+  category: review
+  complexity: high
+  minAgents: 4
+  maxAgents: 7
+  requiredCapabilities:
+    - code_review
+    - architecture
