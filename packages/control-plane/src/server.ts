@@ -29,6 +29,12 @@ import {
   createBackupRouter,
   createManagedAgentsRouter,
 } from './api';
+import {
+  WorkspaceService,
+  CredentialService,
+  GitHubProvider,
+  createWorkspaceRouter,
+} from './workspace';
 import { AgentRuntimeService } from './agent-runtime';
 import { AuthService, requireAuth, optionalAuth } from './auth';
 import { AuditService } from './audit';
@@ -288,6 +294,65 @@ export async function createServer(): Promise<express.Application> {
     });
   }
 
+  // Initialize Workspace Service (for git workspace provisioning)
+  let workspaceService: WorkspaceService | null = null;
+  let credentialService: CredentialService | null = null;
+  let githubProvider: GitHubProvider | null = null;
+
+  const githubAppId = process.env.PARALLAX_GITHUB_APP_ID;
+  const githubPrivateKey = process.env.PARALLAX_GITHUB_PRIVATE_KEY;
+  const workspacesDir = process.env.PARALLAX_WORKSPACES_DIR || path.join(process.cwd(), '.workspaces');
+
+  if (githubAppId && githubPrivateKey) {
+    // Initialize GitHub provider for authenticated git operations
+    githubProvider = new GitHubProvider(
+      {
+        appId: githubAppId,
+        privateKey: githubPrivateKey,
+        webhookSecret: process.env.PARALLAX_GITHUB_WEBHOOK_SECRET,
+        baseUrl: process.env.PARALLAX_GITHUB_BASE_URL,
+      },
+      logger
+    );
+
+    try {
+      await githubProvider.initialize();
+      logger.info('GitHub provider initialized');
+
+      // Initialize credential service with GitHub provider
+      credentialService = new CredentialService(
+        {
+          githubProvider,
+          defaultTtlSeconds: parseInt(process.env.PARALLAX_CREDENTIAL_TTL || '3600'),
+        },
+        logger
+      );
+      logger.info('Credential service initialized');
+
+      // Initialize workspace service
+      workspaceService = new WorkspaceService(
+        {
+          workspacesDir,
+          autoCleanup: process.env.PARALLAX_WORKSPACE_AUTO_CLEANUP !== 'false',
+          workspaceTtlSeconds: parseInt(process.env.PARALLAX_WORKSPACE_TTL || '3600'),
+        },
+        credentialService,
+        logger
+      );
+
+      await workspaceService.initialize();
+      logger.info({ workspacesDir }, 'Workspace service initialized');
+    } catch (error) {
+      logger.warn({ error }, 'Failed to initialize GitHub/workspace services - continuing without workspace support');
+      githubProvider = null;
+      credentialService = null;
+      workspaceService = null;
+    }
+  } else {
+    logger.info('GitHub App not configured - workspace provisioning disabled');
+    logger.info('Set PARALLAX_GITHUB_APP_ID and PARALLAX_GITHUB_PRIVATE_KEY to enable');
+  }
+
   // Health checks
   const healthService = new HealthCheckService(
     patternEngine as PatternEngine,
@@ -381,6 +446,17 @@ export async function createServer(): Promise<express.Application> {
     logger.info('Managed agents API enabled');
   }
 
+  // Workspace router (for git workspace provisioning)
+  if (workspaceService && credentialService) {
+    const workspaceRouter = createWorkspaceRouter({
+      workspaceService,
+      credentialService,
+      logger,
+    });
+    app.use('/api', workspaceRouter);
+    logger.info('Workspace API enabled');
+  }
+
   // Default route
   app.get('/', (_req, res) => {
     const endpoints: Record<string, string> = {
@@ -412,6 +488,10 @@ export async function createServer(): Promise<express.Application> {
     }
     if (agentRuntimeService) {
       endpoints.managedAgents = '/api/managed-agents';
+    }
+    if (workspaceService) {
+      endpoints.workspaces = '/api/workspaces';
+      endpoints.credentials = '/api/credentials';
     }
 
     res.json({
@@ -520,6 +600,9 @@ export async function createServer(): Promise<express.Application> {
       }
       if (schedulerService) {
         logger.info(`Scheduler: Enabled`);
+      }
+      if (workspaceService) {
+        logger.info(`Workspace: Enabled (dir: ${workspacesDir})`);
       }
     });
 
