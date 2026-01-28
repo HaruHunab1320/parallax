@@ -19,29 +19,12 @@ Agents can wrap any AI model or service - OpenAI, Anthropic, Google, local model
 
 ## Agent Lifecycle
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      AGENT LIFECYCLE                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│   1. REGISTER          2. READY           3. EXECUTE        │
-│   ┌─────────┐         ┌─────────┐        ┌─────────┐       │
-│   │ Connect │────────▶│  Wait   │───────▶│  Task   │       │
-│   │   to    │         │   for   │        │ Handler │       │
-│   │   CP    │         │  Tasks  │        │         │       │
-│   └─────────┘         └─────────┘        └────┬────┘       │
-│        │                   ▲                   │            │
-│        │                   │                   │            │
-│        │                   └───────────────────┘            │
-│        │                     (return to ready)              │
-│        │                                                    │
-│   4. DISCONNECT                                             │
-│   ┌─────────┐                                               │
-│   │ Graceful│                                               │
-│   │Shutdown │                                               │
-│   └─────────┘                                               │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+  Register["1. Register\nConnect to CP"] --> Ready["2. Ready\nWait for Tasks"]
+  Ready --> Execute["3. Execute\nTask Handler"]
+  Execute --> Ready
+  Ready --> Disconnect["4. Disconnect\nGraceful Shutdown"]
 ```
 
 ## Creating an Agent

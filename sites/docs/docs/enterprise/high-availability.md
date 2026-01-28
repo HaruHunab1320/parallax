@@ -11,26 +11,15 @@ Deploy Parallax with multi-node clustering for automatic failover and zero-downt
 
 High Availability (HA) mode runs multiple control plane instances that coordinate through a shared state store. If any instance fails, others automatically take over without service interruption.
 
-```
-                    ┌─────────────────────┐
-                    │   Load Balancer     │
-                    └──────────┬──────────┘
-                               │
-         ┌─────────────────────┼─────────────────────┐
-         │                     │                     │
-         ▼                     ▼                     ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│ Control Plane 1 │  │ Control Plane 2 │  │ Control Plane 3 │
-│   (Primary)     │  │   (Standby)     │  │   (Standby)     │
-└────────┬────────┘  └────────┬────────┘  └────────┬────────┘
-         │                    │                    │
-         └────────────────────┼────────────────────┘
-                              │
-                              ▼
-                    ┌─────────────────────┐
-                    │    Redis Cluster    │
-                    │  (State + Locking)  │
-                    └─────────────────────┘
+```mermaid
+flowchart TB
+  LB["Load Balancer"] --> CP1["Control Plane 1\n(Primary)"]
+  LB --> CP2["Control Plane 2\n(Standby)"]
+  LB --> CP3["Control Plane 3\n(Standby)"]
+
+  CP1 --> Redis["Redis Cluster\n(State + Locking)"]
+  CP2 --> Redis
+  CP3 --> Redis
 ```
 
 ## Components

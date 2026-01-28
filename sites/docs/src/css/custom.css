@@ -244,45 +244,61 @@ th {
   opacity: 0.9;
 }
 
+/* Prism hero alignment */
+.prism-hero {
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.prism-hero img {
+  display: block;
+  margin: 0 auto;
+}
+
+.prism-hero p {
+  color: var(--ifm-color-emphasis-600);
+  margin-top: 0.5rem;
+}
+
 /* Mermaid diagrams */
-.mermaid {
+.docusaurus-mermaid-container {
   font-family: var(--ifm-font-family-base);
 }
 
-.mermaid svg {
+.docusaurus-mermaid-container svg {
   max-width: 100%;
 }
 
-[data-theme='dark'] .mermaid .node rect,
-[data-theme='dark'] .mermaid .node polygon,
-[data-theme='dark'] .mermaid .node circle,
-[data-theme='dark'] .mermaid .node ellipse {
+[data-theme='dark'] .docusaurus-mermaid-container .node rect,
+[data-theme='dark'] .docusaurus-mermaid-container .node polygon,
+[data-theme='dark'] .docusaurus-mermaid-container .node circle,
+[data-theme='dark'] .docusaurus-mermaid-container .node ellipse {
   fill: rgba(53, 181, 233, 0.08);
   stroke: #35b5e9;
 }
 
-[data-theme='dark'] .mermaid .edgePath path {
+[data-theme='dark'] .docusaurus-mermaid-container .edgePath path {
   stroke: #7ed1f3;
 }
 
-[data-theme='dark'] .mermaid .cluster rect {
+[data-theme='dark'] .docusaurus-mermaid-container .cluster rect {
   fill: rgba(217, 45, 136, 0.06);
   stroke: rgba(217, 45, 136, 0.45);
 }
 
-[data-theme='light'] .mermaid .node rect,
-[data-theme='light'] .mermaid .node polygon,
-[data-theme='light'] .mermaid .node circle,
-[data-theme='light'] .mermaid .node ellipse {
+[data-theme='light'] .docusaurus-mermaid-container .node rect,
+[data-theme='light'] .docusaurus-mermaid-container .node polygon,
+[data-theme='light'] .docusaurus-mermaid-container .node circle,
+[data-theme='light'] .docusaurus-mermaid-container .node ellipse {
   fill: #ffffff !important;
   stroke: #2a9fcd !important;
 }
 
-[data-theme='light'] .mermaid .edgePath path {
+[data-theme='light'] .docusaurus-mermaid-container .edgePath path {
   stroke: #2a9fcd !important;
 }
 
-[data-theme='light'] .mermaid .cluster rect {
+[data-theme='light'] .docusaurus-mermaid-container .cluster rect {
   fill: transparent !important;
   stroke: rgba(217, 45, 136, 0.35) !important;
 }
@@ -320,10 +336,18 @@ a {
   display: none;
 }
 
-[data-theme='dark'] .light-mode-only {
+html[data-theme='dark'] .light-mode-only {
   display: none;
 }
 
-[data-theme='dark'] .dark-mode-only {
+html[data-theme='dark'] .dark-mode-only {
   display: block;
+}
+
+html[data-theme='light'] .light-mode-only {
+  display: block;
+}
+
+html[data-theme='light'] .dark-mode-only {
+  display: none;
 }

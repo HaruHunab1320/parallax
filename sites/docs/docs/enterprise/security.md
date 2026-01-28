@@ -11,29 +11,16 @@ Enterprise security features including mTLS, RBAC, SSO integration, and audit lo
 
 Parallax Enterprise provides comprehensive security features for production deployments:
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           Security Layers                            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │   Network    │  │   Identity   │  │   Access     │              │
-│  │   Security   │  │   & Auth     │  │   Control    │              │
-│  │              │  │              │  │              │              │
-│  │  • mTLS      │  │  • SSO       │  │  • RBAC      │              │
-│  │  • Network   │  │  • API Keys  │  │  • Policies  │              │
-│  │    Policies  │  │  • JWT       │  │  • Scopes    │              │
-│  └──────────────┘  └──────────────┘  └──────────────┘              │
-│                                                                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │   Data       │  │   Audit      │  │   Secrets    │              │
-│  │   Protection │  │   Logging    │  │   Management │              │
-│  │              │  │              │  │              │              │
-│  │  • Encryption│  │  • Events    │  │  • Vault     │              │
-│  │  • Masking   │  │  • Compliance│  │  • K8s       │              │
-│  └──────────────┘  └──────────────┘  └──────────────┘              │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  subgraph Layers["Security Layers"]
+    N["Network Security\nmTLS\nNetwork Policies"]
+    I["Identity & Auth\nSSO\nAPI Keys\nJWT"]
+    A["Access Control\nRBAC\nPolicies\nScopes"]
+    D["Data Protection\nEncryption\nMasking"]
+    L["Audit Logging\nEvents\nCompliance"]
+    S["Secrets Management\nVault\nK8s"]
+  end
 ```
 
 ## mTLS (Mutual TLS)
@@ -42,15 +29,15 @@ Parallax Enterprise provides comprehensive security features for production depl
 
 Mutual TLS ensures both client and server authenticate each other:
 
-```
-┌──────────────┐                    ┌──────────────┐
-│    Agent     │                    │Control Plane │
-│              │ ──── Hello ────►   │              │
-│              │ ◄── Server Cert ── │              │
-│              │ ── Client Cert ──► │              │
-│              │ ◄── Verified ───── │              │
-│              │ ◄═══ Encrypted ═══►│              │
-└──────────────┘                    └──────────────┘
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant ControlPlane as Control Plane
+  Agent->>ControlPlane: Hello
+  ControlPlane-->>Agent: Server Cert
+  Agent->>ControlPlane: Client Cert
+  ControlPlane-->>Agent: Verified
+  Agent<->>ControlPlane: Encrypted
 ```
 
 ### Enable mTLS

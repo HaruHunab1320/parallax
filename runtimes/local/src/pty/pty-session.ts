@@ -194,7 +194,7 @@ export class PTYSession extends EventEmitter {
   }
 
   /**
-   * Write data to the PTY
+   * Write data to the PTY (formatted by adapter)
    */
   write(data: string): void {
     if (!this.pty) {
@@ -206,6 +206,19 @@ export class PTYSession extends EventEmitter {
     this.pty.write(formatted + '\r');
 
     this.logger.debug({ agentId: this.id, input: data }, 'Sent input to agent');
+  }
+
+  /**
+   * Write raw data directly to the PTY (no formatting)
+   * Used for terminal WebSocket pass-through
+   */
+  writeRaw(data: string): void {
+    if (!this.pty) {
+      throw new Error('Session not started');
+    }
+
+    this._lastActivityAt = new Date();
+    this.pty.write(data);
   }
 
   /**

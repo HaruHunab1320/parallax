@@ -11,15 +11,19 @@ WebSocket protocol specification for agent communication with the control plane.
 
 Agents connect to the control plane via WebSocket for bidirectional communication:
 
-```
-┌─────────────┐                    ┌─────────────────┐
-│    Agent    │ ◄═══ WebSocket ═══►│  Control Plane  │
-│             │                    │                 │
-│  • Connect  │────────────────────│  • Authenticate │
-│  • Register │────────────────────│  • Assign tasks │
-│  • Execute  │────────────────────│  • Aggregate    │
-│  • Report   │────────────────────│  • Monitor      │
-└─────────────┘                    └─────────────────┘
+```mermaid
+flowchart LR
+  Agent[Agent] <--> |WebSocket| Control[Control Plane]
+
+  Agent --- A1[Connect]
+  Agent --- A2[Register]
+  Agent --- A3[Execute]
+  Agent --- A4[Report]
+
+  Control --- C1[Authenticate]
+  Control --- C2[Assign tasks]
+  Control --- C3[Aggregate]
+  Control --- C4[Monitor]
 ```
 
 ## Connection
@@ -334,65 +338,58 @@ Protocol or processing error:
 
 ### 1. Connect
 
-```
-Agent                         Control Plane
-  │                                │
-  │──── WebSocket Connect ────────►│
-  │◄─── 101 Switching Protocols ───│
-  │                                │
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant ControlPlane as Control Plane
+  Agent->>ControlPlane: WebSocket Connect
+  ControlPlane-->>Agent: 101 Switching Protocols
 ```
 
 ### 2. Register
 
-```
-Agent                         Control Plane
-  │                                │
-  │──── register ─────────────────►│
-  │                                │ Validate capabilities
-  │                                │ Assign agent ID
-  │                                │
-  │◄─── registered ────────────────│
-  │                                │
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant ControlPlane as Control Plane
+  Agent->>ControlPlane: register
+  Note right of ControlPlane: Validate capabilities\nAssign agent ID
+  ControlPlane-->>Agent: registered
 ```
 
 ### 3. Task Processing
 
-```
-Agent                         Control Plane
-  │                                │
-  │◄─── task ──────────────────────│
-  │                                │
-  │     Process task               │
-  │                                │
-  │──── task_result ──────────────►│
-  │                                │
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant ControlPlane as Control Plane
+  ControlPlane-->>Agent: task
+  Note left of Agent: Process task
+  Agent->>ControlPlane: task_result
 ```
 
 ### 4. Heartbeat Loop
 
-```
-Agent                         Control Plane
-  │                                │
-  │──── heartbeat ────────────────►│
-  │◄─── heartbeat_ack ─────────────│
-  │                                │
-  │     ... 10 seconds ...         │
-  │                                │
-  │──── heartbeat ────────────────►│
-  │◄─── heartbeat_ack ─────────────│
-  │                                │
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant ControlPlane as Control Plane
+  Agent->>ControlPlane: heartbeat
+  ControlPlane-->>Agent: heartbeat_ack
+  Note over Agent,ControlPlane: ... 10 seconds ...
+  Agent->>ControlPlane: heartbeat
+  ControlPlane-->>Agent: heartbeat_ack
 ```
 
 ### 5. Disconnect
 
-```
-Agent                         Control Plane
-  │                                │
-  │──── disconnect ───────────────►│
-  │                                │ Clean up agent state
-  │                                │
-  │◄─── WebSocket Close ───────────│
-  │                                │
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant ControlPlane as Control Plane
+  Agent->>ControlPlane: disconnect
+  Note right of ControlPlane: Clean up agent state
+  ControlPlane-->>Agent: WebSocket Close
 ```
 
 ## Error Handling

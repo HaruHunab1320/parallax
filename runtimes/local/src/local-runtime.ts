@@ -274,4 +274,27 @@ export class LocalRuntime extends BaseRuntimeProvider {
   async metrics(agentId: string): Promise<AgentMetrics | null> {
     return this.manager.metrics(agentId);
   }
+
+  // ─────────────────────────────────────────────────────────────
+  // Terminal Access
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Attach to an agent's terminal for raw I/O streaming.
+   * Used by WebSocket terminal endpoint for xterm.js integration.
+   */
+  attachTerminal(agentId: string): {
+    onData: (callback: (data: string) => void) => () => void;
+    write: (data: string) => void;
+    resize: (cols: number, rows: number) => void;
+  } | null {
+    return this.manager.attachTerminal(agentId);
+  }
+
+  /**
+   * Check if an agent exists
+   */
+  hasAgent(agentId: string): boolean {
+    return this.manager.has(agentId);
+  }
 }

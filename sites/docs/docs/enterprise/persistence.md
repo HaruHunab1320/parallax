@@ -11,31 +11,21 @@ Configure durable storage for patterns, execution history, and audit logs.
 
 Parallax Enterprise supports persistent storage backends for production deployments where data durability is required.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Control Plane                            │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   │
-│   │   Patterns   │   │  Executions  │   │  Audit Logs  │   │
-│   └──────┬───────┘   └──────┬───────┘   └──────┬───────┘   │
-│          │                  │                  │            │
-│          └──────────────────┼──────────────────┘            │
-│                             │                               │
-│                             ▼                               │
-│                   ┌─────────────────┐                       │
-│                   │  Storage Layer  │                       │
-│                   └────────┬────────┘                       │
-│                            │                                │
-└────────────────────────────┼────────────────────────────────┘
-                             │
-           ┌─────────────────┼─────────────────┐
-           │                 │                 │
-           ▼                 ▼                 ▼
-    ┌────────────┐   ┌────────────┐   ┌────────────┐
-    │ PostgreSQL │   │   SQLite   │   │    File    │
-    │  (Prod)    │   │   (Dev)    │   │  (Simple)  │
-    └────────────┘   └────────────┘   └────────────┘
+```mermaid
+flowchart TB
+  subgraph Control["Control Plane"]
+    Patterns["Patterns"]
+    Executions["Executions"]
+    Audits["Audit Logs"]
+    Storage["Storage Layer"]
+    Patterns --> Storage
+    Executions --> Storage
+    Audits --> Storage
+  end
+
+  Storage --> PG["PostgreSQL\n(Prod)"]
+  Storage --> SQLite["SQLite\n(Dev)"]
+  Storage --> File["File\n(Simple)"]
 ```
 
 ## Storage Backends

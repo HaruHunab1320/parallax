@@ -16,22 +16,29 @@ Instead of flat parallel execution, org-chart patterns define:
 - **Escalation** - How unresolved questions bubble up
 - **Workflows** - Sequences of role assignments
 
-```
-┌─────────────────────────────────────────────────┐
-│              Org-Chart Pattern                   │
-│  ┌─────────────────────────────────────────────┐│
-│  │                Architect                     ││
-│  │              (singleton)                     ││
-│  │                   │                          ││
-│  │         ┌─────────┼─────────┐               ││
-│  │         ▼         ▼         ▼               ││
-│  │   Tech Lead   Tech Lead    QA Lead          ││
-│  │       │           │          │               ││
-│  │   ┌───┴───┐   ┌───┴───┐   ┌─┴─┐            ││
-│  │   ▼       ▼   ▼       ▼   ▼   ▼            ││
-│  │  Eng     Eng Eng     Eng QA   QA           ││
-│  └─────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  Architect["Architect\n(singleton)"]
+  TL1["Tech Lead"]
+  TL2["Tech Lead"]
+  QALead["QA Lead"]
+  E1["Eng"]
+  E2["Eng"]
+  E3["Eng"]
+  E4["Eng"]
+  QA1["QA"]
+  QA2["QA"]
+
+  Architect --> TL1
+  Architect --> TL2
+  Architect --> QALead
+
+  TL1 --> E1
+  TL1 --> E2
+  TL2 --> E3
+  TL2 --> E4
+  QALead --> QA1
+  QALead --> QA2
 ```
 
 ## Basic Pattern Structure

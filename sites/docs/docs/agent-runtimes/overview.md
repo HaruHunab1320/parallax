@@ -24,22 +24,23 @@ Agent Runtimes allow Parallax to:
 
 ## Runtime Environments
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Control Plane                               │
-│                  AgentRuntimeService                             │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-┌───────▼───────┐   ┌───────▼───────┐   ┌───────▼───────┐
-│    Local      │   │    Docker     │   │  Kubernetes   │
-│   Runtime     │   │   Runtime     │   │   Runtime     │
-├───────────────┤   ├───────────────┤   ├───────────────┤
-│ PTY Sessions  │   │  Containers   │   │   CRD Pods    │
-│ Direct CLI    │   │  Isolation    │   │  Auto-scaling │
-│ Development   │   │  Staging      │   │  Production   │
-└───────────────┘   └───────────────┘   └───────────────┘
+```mermaid
+flowchart TB
+  Control["Control Plane\nAgentRuntimeService"] --> Local["Local Runtime"]
+  Control --> Docker["Docker Runtime"]
+  Control --> K8s["Kubernetes Runtime"]
+
+  Local --- L1["PTY Sessions"]
+  Local --- L2["Direct CLI"]
+  Local --- L3["Development"]
+
+  Docker --- D1["Containers"]
+  Docker --- D2["Isolation"]
+  Docker --- D3["Staging"]
+
+  K8s --- K1["CRD Pods"]
+  K8s --- K2["Auto-scaling"]
+  K8s --- K3["Production"]
 ```
 
 | Runtime | Use Case | Requirements |
@@ -130,20 +131,60 @@ curl -X POST http://localhost:3000/api/managed-agents/agent-123/send \
 }
 ```
 
-## Events
+## WebSocket Endpoints
 
-The runtime system emits events via WebSocket:
+The runtime provides real-time WebSocket endpoints for UI integration:
 
-| Event | Description |
-|-------|-------------|
-| `agent_ready` | Agent is ready to receive tasks |
-| `agent_stopped` | Agent has stopped |
-| `message` | Message sent or received |
-| `error` | Error occurred |
+### Terminal Streaming
+
+Connect directly to an agent's PTY for xterm.js integration:
+
+```
+ws://localhost:3100/ws/agents/:id/terminal
+```
 
 ```javascript
-const ws = new WebSocket('ws://localhost:3000/api/managed-agents/events');
-ws.onmessage = (e) => console.log(JSON.parse(e.data));
+const ws = new WebSocket(`ws://runtime:3100/ws/agents/${agentId}/terminal`);
+
+// Raw terminal output -> xterm.js
+ws.onmessage = (e) => terminal.write(e.data);
+
+// Keyboard input -> PTY
+terminal.onData((data) => ws.send(data));
+
+// Resize
+ws.send(JSON.stringify({ type: 'resize', cols: 120, rows: 40 }));
+```
+
+### Event Streaming
+
+Subscribe to agent lifecycle events:
+
+```
+ws://localhost:3100/ws/events
+ws://localhost:3100/ws/events?agentId=abc-123  # Filter by agent
+```
+
+| Event | Data | Description |
+|-------|------|-------------|
+| `agent_started` | `{ agent }` | Agent spawned |
+| `agent_ready` | `{ agent }` | Agent ready for commands |
+| `agent_stopped` | `{ agent, reason }` | Agent stopped |
+| `agent_error` | `{ agent, error }` | Error occurred |
+| `login_required` | `{ agent, loginUrl }` | Authentication needed |
+| `message` | `{ message }` | Agent output |
+| `question` | `{ agent, question }` | Agent needs input |
+
+```javascript
+const ws = new WebSocket('ws://runtime:3100/ws/events');
+
+ws.onmessage = (e) => {
+  const { event, data } = JSON.parse(e.data);
+  if (event === 'login_required') {
+    // Show terminal UI for authentication
+    openTerminal(data.agent.id);
+  }
+};
 ```
 
 ## Multi-Runtime Selection

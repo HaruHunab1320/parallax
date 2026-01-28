@@ -119,8 +119,8 @@ const config: Config = {
               href: 'https://discord.gg/parallax',
             },
             {
-              label: 'Twitter',
-              href: 'https://twitter.com/parallax_ai',
+              label: 'X',
+              href: 'https://twitter.com/parallax__ai',
             },
           ],
         },
@@ -138,12 +138,31 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Parallax. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Parallax.`,
     },
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
       additionalLanguages: ['typescript', 'yaml', 'bash', 'json'],
+    },
+    mermaid: {
+      theme: {light: 'base', dark: 'dark'},
+      options: {
+        themeVariables: {
+          background: 'transparent',
+          primaryColor: '#ffffff',
+          primaryBorderColor: '#2a9fcd',
+          primaryTextColor: '#0f1720',
+          lineColor: '#2a9fcd',
+          secondaryColor: '#f7f8fb',
+          tertiaryColor: '#ffffff',
+          clusterBkg: 'transparent',
+          clusterBorder: 'rgba(217, 45, 136, 0.35)',
+          noteBkgColor: '#ffffff',
+          noteTextColor: '#0f1720',
+          noteBorderColor: '#f5ed4c',
+        },
+      },
     },
     // TODO: Set up Algolia DocSearch when ready
     // algolia: {

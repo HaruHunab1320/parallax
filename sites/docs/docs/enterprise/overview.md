@@ -11,37 +11,31 @@ Parallax Enterprise adds production-grade capabilities for teams and organizatio
 
 Parallax Open Source is **fully featured for local development** — unlimited agents, all patterns, complete CLI. Enterprise adds what you need for **production deployments**.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                                                                     │
-│   Open Source (Free Forever)                                        │
-│   ├── ✅ Unlimited agents                                           │
-│   ├── ✅ All pattern types (voting, consensus, merge, etc.)         │
-│   ├── ✅ Pattern Builder (visual + YAML)                            │
-│   ├── ✅ Full Prism DSL support                                     │
-│   ├── ✅ Complete CLI                                               │
-│   └── ❌ In-memory only (state lost on restart)                     │
-│                                                                     │
-│   Enterprise                                                        │
-│   ├── ✅ Everything in Open Source, plus:                           │
-│   ├── ✅ Persistence (PostgreSQL/TimescaleDB)                       │
-│   ├── ✅ Execution history & audit logs                             │
-│   ├── ✅ Web Dashboard                                              │
-│   ├── ✅ Scheduled patterns (cron, triggers)                        │
-│   ├── ✅ High Availability (clustering, failover)                   │
-│   ├── ✅ Multi-user / RBAC                                          │
-│   ├── ✅ SSO Integration (SAML, OIDC)                               │
-│   └── ✅ Priority Support                                           │
-│                                                                     │
-│   Enterprise Plus                                                   │
-│   ├── ✅ Everything in Enterprise, plus:                            │
-│   ├── ✅ Multi-region deployment                                    │
-│   ├── ✅ Advanced analytics                                         │
-│   ├── ✅ 24/7 Support                                               │
-│   └── ✅ Custom feature development                                 │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
+### Open Source (Free Forever)
+- ✅ Unlimited agents
+- ✅ All pattern types (voting, consensus, merge, etc.)
+- ✅ Pattern Builder (visual + YAML)
+- ✅ Full Prism DSL support
+- ✅ Complete CLI
+- ❌ In-memory only (state lost on restart)
+
+### Enterprise
+- ✅ Everything in Open Source, plus:
+- ✅ Persistence (PostgreSQL/TimescaleDB)
+- ✅ Execution history & audit logs
+- ✅ Web Dashboard
+- ✅ Scheduled patterns (cron, triggers)
+- ✅ High Availability (clustering, failover)
+- ✅ Multi-user / RBAC
+- ✅ SSO Integration (SAML, OIDC)
+- ✅ Priority Support
+
+### Enterprise Plus
+- ✅ Everything in Enterprise, plus:
+- ✅ Multi-region deployment
+- ✅ Advanced analytics
+- ✅ 24/7 Support
+- ✅ Custom feature development
 
 ## Feature Comparison
 
@@ -144,28 +138,19 @@ parallax users add bob@company.com --role viewer
 
 ## Architecture
 
-```
-                          ┌─────────────────────────────────────────────┐
-                          │              Load Balancer                   │
-                          └─────────────────────┬───────────────────────┘
-                                                │
-              ┌─────────────────────────────────┼─────────────────────────────────┐
-              │                                 │                                 │
-              ▼                                 ▼                                 ▼
-┌─────────────────────────┐   ┌─────────────────────────┐   ┌─────────────────────────┐
-│    Control Plane 1      │   │    Control Plane 2      │   │    Control Plane 3      │
-│    (Leader)             │   │    (Follower)           │   │    (Follower)           │
-└───────────┬─────────────┘   └───────────┬─────────────┘   └───────────┬─────────────┘
-            │                             │                             │
-            └─────────────────────────────┼─────────────────────────────┘
-                                          │
-                          ┌───────────────┴───────────────┐
-                          │                               │
-                          ▼                               ▼
-              ┌─────────────────────┐       ┌─────────────────────┐
-              │    Redis Cluster    │       │   PostgreSQL/       │
-              │    (State sync)     │       │   TimescaleDB       │
-              └─────────────────────┘       └─────────────────────┘
+```mermaid
+flowchart TB
+  LB["Load Balancer"] --> CP1["Control Plane 1\n(Leader)"]
+  LB --> CP2["Control Plane 2\n(Follower)"]
+  LB --> CP3["Control Plane 3\n(Follower)"]
+
+  CP1 --> Redis["Redis Cluster\n(State sync)"]
+  CP2 --> Redis
+  CP3 --> Redis
+
+  CP1 --> DB["PostgreSQL/\nTimescaleDB"]
+  CP2 --> DB
+  CP3 --> DB
 ```
 
 ## Deployment Options

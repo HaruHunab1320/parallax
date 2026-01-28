@@ -9,20 +9,16 @@ The Docker runtime runs agents in isolated containers, providing resource limits
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────┐
-│              Docker Runtime                      │
-│  ┌─────────────────────────────────────────────┐│
-│  │           Docker Daemon                      ││
-│  │  ┌─────────────────┐ ┌─────────────────┐   ││
-│  │  │  claude-agent-1 │ │  codex-agent-1  │   ││
-│  │  │  CPU: 0.5       │ │  CPU: 0.5       │   ││
-│  │  │  Mem: 512Mi     │ │  Mem: 512Mi     │   ││
-│  │  └─────────────────┘ └─────────────────┘   ││
-│  └─────────────────────────────────────────────┘│
-│                        │                         │
-│                parallax-agents (network)        │
-└─────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  subgraph Runtime["Docker Runtime"]
+    Daemon["Docker Daemon"]
+    Daemon --> C1["claude-agent-1\nCPU: 0.5\nMem: 512Mi"]
+    Daemon --> C2["codex-agent-1\nCPU: 0.5\nMem: 512Mi"]
+    Net["parallax-agents (network)"]
+    C1 --- Net
+    C2 --- Net
+  end
 ```
 
 ## Installation
@@ -86,23 +82,11 @@ pnpm start
 
 ## Container Lifecycle
 
-```
-spawn()
-    │
-    ▼
-create container
-    │
-    ▼
-start container
-    │
-    ▼
-health check ──► ready
-    │
-    ▼
-  (work)
-    │
-    ▼
-stop() ──► stop container ──► remove container
+```mermaid
+flowchart TB
+  Spawn["spawn()"] --> Create["create container"] --> Start["start container"]
+  Start --> Health["health check"] --> Ready["ready"] --> Work["(work)"]
+  Work --> Stop["stop()"] --> StopContainer["stop container"] --> Remove["remove container"]
 ```
 
 ## API Usage

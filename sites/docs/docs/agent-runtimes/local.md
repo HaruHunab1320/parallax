@@ -9,26 +9,14 @@ The local runtime spawns agents as PTY (pseudo-terminal) sessions on the host ma
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────┐
-│            Local Runtime                 │
-│  ┌─────────────────────────────────────┐│
-│  │           PTY Manager               ││
-│  │  ┌───────────────────────────────┐ ││
-│  │  │  PTY Session 1 (Claude)       │ ││
-│  │  │  stdin ◄──► stdout            │ ││
-│  │  └───────────────────────────────┘ ││
-│  │  ┌───────────────────────────────┐ ││
-│  │  │  PTY Session 2 (Codex)        │ ││
-│  │  │  stdin ◄──► stdout            │ ││
-│  │  └───────────────────────────────┘ ││
-│  └─────────────────────────────────────┘│
-│                                          │
-│  ┌─────────────────────────────────────┐│
-│  │         CLI Adapters                ││
-│  │  Claude | Codex | Gemini            ││
-│  └─────────────────────────────────────┘│
-└──────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  subgraph Local["Local Runtime"]
+    PTY["PTY Manager"]
+    PTY --> S1["PTY Session 1 (Claude)\nstdin ↔ stdout"]
+    PTY --> S2["PTY Session 2 (Codex)\nstdin ↔ stdout"]
+    Adapters["CLI Adapters\nClaude | Codex | Gemini"]
+  end
 ```
 
 ## Installation
@@ -129,14 +117,11 @@ Each agent runs in an isolated PTY session that:
 
 ### Session Lifecycle
 
-```
-spawn() ──► create PTY ──► start CLI ──► ready
-                                │
-                           send message
-                                │
-                           wait response
-                                │
-stop() ◄─── cleanup ◄─── kill process
+```mermaid
+flowchart LR
+  Spawn["spawn()"] --> Create["create PTY"] --> Start["start CLI"] --> Ready["ready"]
+  Ready --> Send["send message"] --> Wait["wait response"] --> Ready
+  Stop["stop()"] --> Cleanup["cleanup"] --> Kill["kill process"]
 ```
 
 ## API Usage
@@ -174,6 +159,85 @@ curl http://localhost:3100/agents/agent-123/logs?lines=50
 
 ```bash
 curl -X DELETE http://localhost:3100/agents/agent-123
+```
+
+## WebSocket Endpoints
+
+The local runtime provides WebSocket endpoints for real-time streaming and event subscription.
+
+### Terminal WebSocket
+
+Connect directly to an agent's PTY for raw terminal I/O (ideal for xterm.js integration):
+
+```
+ws://localhost:3100/ws/agents/:id/terminal
+```
+
+**Usage with JavaScript:**
+
+```javascript
+const ws = new WebSocket(`ws://localhost:3100/ws/agents/${agentId}/terminal`);
+
+// Receive terminal output
+ws.onmessage = (event) => {
+  if (event.data.startsWith('{')) {
+    // Control message (e.g., { type: 'connected' })
+    const ctrl = JSON.parse(event.data);
+    console.log('Control:', ctrl.type);
+  } else {
+    // Raw terminal data - send to xterm.js
+    terminal.write(event.data);
+  }
+};
+
+// Send keyboard input
+terminal.onData((data) => {
+  ws.send(data);
+});
+
+// Resize terminal
+ws.send(JSON.stringify({ type: 'resize', cols: 120, rows: 40 }));
+```
+
+### Events WebSocket
+
+Subscribe to agent lifecycle events:
+
+```
+ws://localhost:3100/ws/events
+ws://localhost:3100/ws/events?agentId=abc-123  # Filter by agent
+```
+
+**Events:**
+
+| Event | Data | Description |
+|-------|------|-------------|
+| `agent_started` | `{ agent }` | Agent spawned |
+| `agent_ready` | `{ agent }` | Agent ready for commands |
+| `agent_stopped` | `{ agent, reason }` | Agent stopped |
+| `agent_error` | `{ agent, error }` | Agent error |
+| `login_required` | `{ agent, loginUrl }` | Authentication needed |
+| `message` | `{ message }` | Agent output message |
+| `question` | `{ agent, question }` | Agent asking a question |
+
+**Example:**
+
+```javascript
+const ws = new WebSocket('ws://localhost:3100/ws/events');
+
+ws.onmessage = (event) => {
+  const { event: eventType, data, timestamp } = JSON.parse(event.data);
+
+  switch (eventType) {
+    case 'agent_ready':
+      console.log(`Agent ${data.agent.name} is ready`);
+      break;
+    case 'login_required':
+      // Show terminal UI for user to authenticate
+      openTerminal(data.agent.id, data.loginUrl);
+      break;
+  }
+};
 ```
 
 ## Error Handling

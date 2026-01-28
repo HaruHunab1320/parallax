@@ -9,32 +9,16 @@ Agent registration is the process by which agents connect to the Parallax contro
 
 ## Registration Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     AGENT REGISTRATION FLOW                          │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│   Agent                                Control Plane                 │
-│     │                                       │                        │
-│     │  1. WebSocket Connect                 │                        │
-│     │──────────────────────────────────────▶│                        │
-│     │                                       │                        │
-│     │  2. Register (name, capabilities)     │                        │
-│     │──────────────────────────────────────▶│                        │
-│     │                                       │                        │
-│     │  3. Registration Confirmed            │                        │
-│     │◀──────────────────────────────────────│                        │
-│     │                                       │                        │
-│     │  4. Heartbeat (every 30s)             │                        │
-│     │──────────────────────────────────────▶│                        │
-│     │                                       │                        │
-│     │  5. Task Assignment                   │                        │
-│     │◀──────────────────────────────────────│                        │
-│     │                                       │                        │
-│     │  6. Task Result                       │                        │
-│     │──────────────────────────────────────▶│                        │
-│     │                                       │                        │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant ControlPlane as Control Plane
+  Agent->>ControlPlane: 1. WebSocket Connect
+  Agent->>ControlPlane: 2. Register (name, capabilities)
+  ControlPlane-->>Agent: 3. Registration Confirmed
+  Agent->>ControlPlane: 4. Heartbeat (every 30s)
+  ControlPlane-->>Agent: 5. Task Assignment
+  Agent->>ControlPlane: 6. Task Result
 ```
 
 ## Basic Registration

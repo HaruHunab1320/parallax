@@ -11,15 +11,15 @@ Learn how Parallax patterns written in YAML compile to executable Prism code.
 
 The Parallax compiler transforms declarative YAML patterns into imperative Prism code:
 
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Pattern YAML   │────►│  Prism Compiler  │────►│   Prism Code    │
-│                 │     │                  │     │                 │
-│  Declarative    │     │  • Parse YAML    │     │  Executable     │
-│  Configuration  │     │  • Validate      │     │  Uncertainty-   │
-│                 │     │  • Generate AST  │     │  Aware Program  │
-│                 │     │  • Emit Prism    │     │                 │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
+```mermaid
+flowchart LR
+  YAML["Pattern YAML\nDeclarative\nConfiguration"] --> Compiler["Prism Compiler"]
+  Compiler --> Code["Prism Code\nExecutable\nUncertainty-Aware Program"]
+
+  Compiler --- C1["Parse YAML"]
+  Compiler --- C2["Validate"]
+  Compiler --- C3["Generate AST"]
+  Compiler --- C4["Emit Prism"]
 ```
 
 ## Basic Pattern Compilation

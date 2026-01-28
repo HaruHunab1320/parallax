@@ -11,24 +11,12 @@ Deploy agents across geographic regions for latency optimization, compliance, an
 
 Multi-region deployment distributes agents across geographic locations while maintaining centralized orchestration.
 
-```
-                        ┌─────────────────────────────────┐
-                        │       Control Plane Cluster      │
-                        │         (Primary Region)         │
-                        └──────────────┬──────────────────┘
-                                       │
-       ┌───────────────────────────────┼───────────────────────────────┐
-       │                               │                               │
-       ▼                               ▼                               ▼
-┌─────────────────┐           ┌─────────────────┐           ┌─────────────────┐
-│   US-EAST       │           │   EU-WEST       │           │   AP-SOUTH      │
-│   Region        │           │   Region        │           │   Region        │
-├─────────────────┤           ├─────────────────┤           ├─────────────────┤
-│ Agent Pool      │           │ Agent Pool      │           │ Agent Pool      │
-│ - 10 agents     │           │ - 8 agents      │           │ - 6 agents      │
-│ - classification│           │ - classification│           │ - classification│
-│ - analysis      │           │ - translation   │           │ - analysis      │
-└─────────────────┘           └─────────────────┘           └─────────────────┘
+```mermaid
+flowchart TB
+  Control["Control Plane Cluster\n(Primary Region)"]
+  Control --> USEast["US-EAST Region\nAgent Pool\n- 10 agents\n- classification\n- analysis"]
+  Control --> EUWest["EU-WEST Region\nAgent Pool\n- 8 agents\n- classification\n- translation"]
+  Control --> APSouth["AP-SOUTH Region\nAgent Pool\n- 6 agents\n- classification\n- analysis"]
 ```
 
 ## Use Cases
@@ -258,22 +246,13 @@ routing:
 
 Single control plane serving all regions:
 
-```
-┌─────────────────────────────────────────────────┐
-│           Global Control Plane (HA)              │
-│                 us-east-1                        │
-├─────────────────────────────────────────────────┤
-│  Global Load Balancer                           │
-│  - GeoDNS routing                               │
-│  - Anycast IP                                   │
-└─────────────────────┬───────────────────────────┘
-                      │
-    ┌─────────────────┼─────────────────┐
-    │                 │                 │
-    ▼                 ▼                 ▼
-┌────────┐      ┌────────┐      ┌────────┐
-│US Agents│     │EU Agents│     │AP Agents│
-└────────┘      └────────┘      └────────┘
+```mermaid
+flowchart TB
+  Global["Global Control Plane (HA)\nus-east-1"]
+  Global --> LB["Global Load Balancer\n- GeoDNS routing\n- Anycast IP"]
+  LB --> US["US Agents"]
+  LB --> EU["EU Agents"]
+  LB --> AP["AP Agents"]
 ```
 
 Configuration:
@@ -296,16 +275,12 @@ controlPlane:
 
 Regional control planes with federation:
 
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│ US Control  │◄──►│ EU Control  │◄──►│ AP Control  │
-│ Plane       │    │ Plane       │    │ Plane       │
-└──────┬──────┘    └──────┬──────┘    └──────┬──────┘
-       │                  │                  │
-       ▼                  ▼                  ▼
-  ┌────────┐        ┌────────┐        ┌────────┐
-  │US Agents│       │EU Agents│       │AP Agents│
-  └────────┘        └────────┘        └────────┘
+```mermaid
+flowchart LR
+  USCP["US Control Plane"] <--> EUCP["EU Control Plane"] <--> APCP["AP Control Plane"]
+  USCP --> USAgents["US Agents"]
+  EUCP --> EUAgents["EU Agents"]
+  APCP --> APAgents["AP Agents"]
 ```
 
 Configuration:

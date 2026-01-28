@@ -311,4 +311,61 @@ export class PTYManager extends EventEmitter {
 
     return counts;
   }
+
+  // ─────────────────────────────────────────────────────────────
+  // Terminal Access (for WebSocket streaming)
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Attach to a session's terminal for raw I/O streaming.
+   * Returns an object with methods to subscribe to output and write input.
+   */
+  attachTerminal(agentId: string): {
+    onData: (callback: (data: string) => void) => () => void;
+    write: (data: string) => void;
+    resize: (cols: number, rows: number) => void;
+    getSession: () => PTYSession | undefined;
+  } | null {
+    const session = this.sessions.get(agentId);
+    if (!session) {
+      return null;
+    }
+
+    return {
+      /**
+       * Subscribe to raw terminal output
+       * Returns an unsubscribe function
+       */
+      onData: (callback: (data: string) => void) => {
+        session.on('output', callback);
+        return () => session.off('output', callback);
+      },
+
+      /**
+       * Write raw data to terminal (no formatting applied)
+       */
+      write: (data: string) => {
+        session.writeRaw(data);
+      },
+
+      /**
+       * Resize the terminal
+       */
+      resize: (cols: number, rows: number) => {
+        session.resize(cols, rows);
+      },
+
+      /**
+       * Get the underlying session (for advanced use)
+       */
+      getSession: () => session,
+    };
+  }
+
+  /**
+   * Check if an agent exists
+   */
+  has(agentId: string): boolean {
+    return this.sessions.has(agentId);
+  }
 }

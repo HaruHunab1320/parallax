@@ -28,10 +28,9 @@ The connection line shows:
 
 Passes data from one node to the next.
 
-```
-┌─────────┐          ┌─────────┐
-│  Agent  │─────────▶│  Vote   │
-└─────────┘  data    └─────────┘
+```mermaid
+flowchart LR
+  Agent[Agent] -->|data| Vote[Vote]
 ```
 
 - **Color**: Blue
@@ -42,10 +41,9 @@ Passes data from one node to the next.
 
 Signals execution order without data transfer.
 
-```
-┌─────────┐          ┌─────────┐
-│ Step 1  │─ ─ ─ ─ ─▶│ Step 2  │
-└─────────┘ trigger  └─────────┘
+```mermaid
+flowchart LR
+  Step1[Step 1] -. "trigger" .-> Step2[Step 2]
 ```
 
 - **Color**: Gray
@@ -56,10 +54,9 @@ Signals execution order without data transfer.
 
 Routes errors to error handlers.
 
-```
-┌─────────┐          ┌─────────┐
-│  Agent  │────X────▶│ Fallback│
-└─────────┘  error   └─────────┘
+```mermaid
+flowchart LR
+  Agent[Agent] -- "error" --> Fallback[Fallback]
 ```
 
 - **Color**: Red
@@ -93,12 +90,13 @@ Routes errors to error handlers.
 
 Connections validate data types:
 
-```
-String Output ────▶ String Input    ✓ Compatible
-Number Output ────▶ Number Input    ✓ Compatible
-String Output ────▶ Number Input    ✗ Type mismatch
-Array Output  ────▶ Object Input    ✗ Type mismatch
-Any Output    ────▶ Any Input       ✓ Universal type
+```mermaid
+flowchart TB
+  A["String Output"] --> B["String Input"] --> C["✓ Compatible"]
+  D["Number Output"] --> E["Number Input"] --> F["✓ Compatible"]
+  G["String Output"] --> H["Number Input"] --> I["✗ Type mismatch"]
+  J["Array Output"] --> K["Object Input"] --> L["✗ Type mismatch"]
+  M["Any Output"] --> N["Any Input"] --> O["✓ Universal type"]
 ```
 
 ## Managing Connections
@@ -124,40 +122,29 @@ Any Output    ────▶ Any Input       ✓ Universal type
 
 Located on the right side of nodes:
 
-```
-┌─────────────────────┐
-│                     │
-│      Node       (●) │ ← Output handle
-│                     │
-└─────────────────────┘
+```mermaid
+flowchart LR
+  Node["Node"] --> Out["Output handle (●)"]
 ```
 
 ### Input Handles
 
 Located on the left side of nodes:
 
-```
-┌─────────────────────┐
-│                     │
-│ (●)    Node         │
-│                     │
-└─────────────────────┘
-  ↑
-Input handle
+```mermaid
+flowchart LR
+  In["Input handle (●)"] --> Node["Node"]
 ```
 
 ### Multiple Handles
 
 Some nodes have multiple connection points:
 
-```
-┌─────────────────────┐
-│     Switch Node     │
-├─────────────────────┤
-│ case: document  (●) │ ← Route to document handler
-│ case: image     (●) │ ← Route to image handler
-│ default         (●) │ ← Default route
-└─────────────────────┘
+```mermaid
+flowchart LR
+  Switch["Switch Node"] --> Doc["case: document (●)"]
+  Switch --> Img["case: image (●)"]
+  Switch --> Def["default (●)"]
 ```
 
 ## Data Flow Patterns
@@ -166,38 +153,43 @@ Some nodes have multiple connection points:
 
 Simple sequential processing:
 
-```
-Input → Agent → Vote → Output
+```mermaid
+flowchart LR
+  Input --> Agent --> Vote --> Output
 ```
 
 ### Parallel Flow
 
 Multiple paths merge:
 
-```
-         ┌─ Agent 1 ─┐
-Input ───┤           ├─── Merge → Output
-         └─ Agent 2 ─┘
+```mermaid
+flowchart LR
+  Input --> Agent1["Agent 1"]
+  Input --> Agent2["Agent 2"]
+  Agent1 --> Merge["Merge"]
+  Agent2 --> Merge
+  Merge --> Output
 ```
 
 ### Branching Flow
 
 Conditional routing:
 
-```
-                ┌─ Handler A → Output A
-Input → Switch ─┤
-                └─ Handler B → Output B
+```mermaid
+flowchart LR
+  Input --> Switch
+  Switch --> HandlerA["Handler A"] --> OutputA["Output A"]
+  Switch --> HandlerB["Handler B"] --> OutputB["Output B"]
 ```
 
 ### Loop Flow
 
 Iterative processing:
 
-```
-Input → Process → Quality Gate ─┐
-            ↑                   │ (retry)
-            └───────────────────┘
+```mermaid
+flowchart LR
+  Input --> Process --> Gate["Quality Gate"]
+  Gate -- retry --> Process
 ```
 
 ## Variable References
@@ -208,8 +200,9 @@ Connections implicitly create variable references.
 
 When you connect nodes, variables are created:
 
-```
-Agent → Vote
+```mermaid
+flowchart LR
+  Agent --> Vote
 ```
 
 Creates:

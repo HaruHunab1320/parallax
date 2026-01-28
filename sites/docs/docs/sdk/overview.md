@@ -88,27 +88,22 @@ yarn add @parallax/pattern-sdk
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          Your Application                            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│   ┌──────────────────┐              ┌──────────────────┐            │
-│   │   TypeScript SDK │              │   Pattern SDK    │            │
-│   │   (Client/Agent) │              │    (Builder)     │            │
-│   └────────┬─────────┘              └────────┬─────────┘            │
-│            │                                  │                      │
-└────────────┼──────────────────────────────────┼──────────────────────┘
-             │                                  │
-             │  WebSocket/HTTP                  │  YAML/JSON
-             │                                  │
-┌────────────▼──────────────────────────────────▼──────────────────────┐
-│                         Control Plane                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
-│  │   Agent     │  │   Pattern   │  │    Task     │  │   Result    │ │
-│  │  Registry   │  │   Engine    │  │  Scheduler  │  │ Aggregator  │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │
-└──────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  subgraph App["Your Application"]
+    TS["TypeScript SDK\n(Client/Agent)"]
+    PS["Pattern SDK\n(Builder)"]
+  end
+
+  subgraph Control["Control Plane"]
+    AR["Agent\nRegistry"]
+    PE["Pattern\nEngine"]
+    TSched["Task\nScheduler"]
+    RA["Result\nAggregator"]
+  end
+
+  TS -- "WebSocket/HTTP" --> Control
+  PS -- "YAML/JSON" --> Control
 ```
 
 ## Common SDK Operations

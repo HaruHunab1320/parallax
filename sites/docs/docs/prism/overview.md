@@ -5,7 +5,7 @@ title: Overview
 
 # Prism DSL
 
-<div style={{textAlign: 'center', margin: '2rem 0'}}>
+<div className="prism-hero">
   <img
     src="/img/PRISM-logo-light.png"
     alt="Prism Logo"
@@ -29,21 +29,14 @@ Prism is the domain-specific language that powers Parallax pattern execution. Wh
 
 Prism is a TypeScript-based programming language where **uncertainty is a first-class citizen**. It's designed specifically for AI-driven applications where confidence levels matter.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Parallax Workflow                           │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   ┌──────────────┐         ┌──────────────┐         ┌────────────┐ │
-│   │  Pattern     │  ─────► │   Prism      │  ─────► │  Control   │ │
-│   │  (YAML)      │ compile │   Code       │ execute │  Plane     │ │
-│   └──────────────┘         └──────────────┘         └────────────┘ │
-│                                                                     │
-│   User-friendly            Executable               Orchestrates   │
-│   configuration            uncertainty-aware        multi-agent    │
-│                            program                  execution      │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+  Pattern["Pattern\n(YAML)"] -->|compile| Prism["Prism\nCode"]
+  Prism -->|execute| Control["Control\nPlane"]
+
+  Pattern --- PNote["User-friendly\nconfiguration"]
+  Prism --- PrNote["Executable\nuncertainty-aware\nprogram"]
+  Control --- CNote["Orchestrates\nmulti-agent\nexecution"]
 ```
 
 ## Key Features

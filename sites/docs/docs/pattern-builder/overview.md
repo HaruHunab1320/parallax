@@ -19,29 +19,24 @@ The Pattern Builder is a visual editor for creating orchestration patterns using
 
 ## Interface Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  File   Edit   Examples   Export                              Help  │
-├──────────┬──────────────────────────────────────────────┬───────────┤
-│          │                                              │           │
-│  Node    │                                              │  YAML     │
-│  Palette │              Canvas                          │  Preview  │
-│          │                                              │           │
-│ ┌──────┐ │     ┌─────────┐      ┌─────────┐            │           │
-│ │Input │ │     │  Input  │─────▶│  Agent  │            │  name:... │
-│ └──────┘ │     └─────────┘      └────┬────┘            │  version: │
-│ ┌──────┐ │                          │                  │  input:   │
-│ │Agent │ │                          ▼                  │    ...    │
-│ └──────┘ │                    ┌───────────┐            │           │
-│ ┌──────┐ │                    │   Vote    │            │           │
-│ │ Vote │ │                    └─────┬─────┘            │           │
-│ └──────┘ │                          │                  │           │
-│ ┌──────┐ │                          ▼                  │           │
-│ │Output│ │                    ┌───────────┐            │           │
-│ └──────┘ │                    │  Output   │            │           │
-│          │                    └───────────┘            │           │
-│          │                                              │           │
-└──────────┴──────────────────────────────────────────────┴───────────┘
+```mermaid
+flowchart LR
+  subgraph UI["Pattern Builder UI"]
+    Toolbar["Toolbar\nFile | Edit | Examples | Export | Help"]
+
+    subgraph Workspace["Workspace"]
+      Palette["Node Palette\nInput | Agent | Vote | Output"]
+
+      subgraph Canvas["Canvas"]
+        In["Input"] --> Agent["Agent"] --> Vote["Vote"] --> Out["Output"]
+      end
+
+      Preview["YAML Preview\nname: ...\nversion: ...\ninput: ..."]
+    end
+  end
+
+  Palette --> Canvas
+  Canvas --> Preview
 ```
 
 ## Getting Started

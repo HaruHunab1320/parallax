@@ -11,14 +11,18 @@ Receive real-time notifications for execution events via webhooks.
 
 Webhooks allow you to receive HTTP callbacks when events occur in Parallax:
 
-```
-┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
-│  Pattern        │──────►│  Control Plane  │──────►│  Your Server    │
-│  Execution      │       │                 │       │                 │
-│                 │       │  • Event occurs │       │  • Receive POST │
-│                 │       │  • Send webhook │       │  • Process event│
-│                 │       │  • Retry failed │       │  • Return 2xx   │
-└─────────────────┘       └─────────────────┘       └─────────────────┘
+```mermaid
+flowchart LR
+  Pattern["Pattern\nExecution"] --> Control["Control Plane"]
+  Control --> Server["Your Server"]
+
+  Control --- C1["Event occurs"]
+  Control --- C2["Send webhook"]
+  Control --- C3["Retry failed"]
+
+  Server --- S1["Receive POST"]
+  Server --- S2["Process event"]
+  Server --- S3["Return 2xx"]
 ```
 
 ## Configuration

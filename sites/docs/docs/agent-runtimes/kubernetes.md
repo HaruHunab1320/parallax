@@ -9,25 +9,18 @@ The Kubernetes runtime manages agents as CRD-based resources, enabling productio
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                  Kubernetes Cluster                      │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │              ParallaxAgent CRD                       ││
-│  │  ┌───────────────┐  ┌───────────────┐              ││
-│  │  │  code-reviewer │  │  analyzer     │              ││
-│  │  │  type: claude  │  │  type: codex  │              ││
-│  │  │  replicas: 2   │  │  replicas: 3  │              ││
-│  │  └───────────────┘  └───────────────┘              ││
-│  └─────────────────────────────────────────────────────┘│
-│                          │                               │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │              Agent Controller                        ││
-│  │  - Watches ParallaxAgent resources                   ││
-│  │  - Reconciles Deployments + Services                ││
-│  │  - Updates status                                    ││
-│  └─────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  subgraph Cluster["Kubernetes Cluster"]
+    subgraph CRD["ParallaxAgent CRD"]
+      CR1["code-reviewer\ntype: claude\nreplicas: 2"]
+      CR2["analyzer\ntype: codex\nreplicas: 3"]
+    end
+
+    Controller["Agent Controller\n- Watches ParallaxAgent resources\n- Reconciles Deployments + Services\n- Updates status"]
+
+    CRD --> Controller
+  end
 ```
 
 ## Installation
