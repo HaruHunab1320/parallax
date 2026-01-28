@@ -55,7 +55,7 @@ flowchart TB
 
 ```bash
 # Local development
-cd runtimes/local
+cd packages/runtime-local
 pnpm build && pnpm start
 # Server starts on port 3100
 ```

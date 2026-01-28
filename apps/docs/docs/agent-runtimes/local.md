@@ -22,7 +22,7 @@ flowchart TB
 ## Installation
 
 ```bash
-cd runtimes/local
+cd packages/runtime-local
 pnpm install
 pnpm build
 ```

@@ -3,6 +3,5 @@ packages:
   - apps/*
   - examples/*
   - demos/*
-  - runtimes/*
 onlyBuiltDependencies:
   - node-pty

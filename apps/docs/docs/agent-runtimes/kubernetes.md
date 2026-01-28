@@ -28,13 +28,13 @@ flowchart TB
 ### 1. Install the CRD
 
 ```bash
-kubectl apply -f runtimes/k8s/crds/parallax-agent.yaml
+kubectl apply -f packages/runtime-k8s/crds/parallax-agent.yaml
 ```
 
 ### 2. Deploy the Controller
 
 ```bash
-kubectl apply -f runtimes/k8s/deploy/
+kubectl apply -f packages/runtime-k8s/deploy/
 ```
 
 ### 3. Verify Installation

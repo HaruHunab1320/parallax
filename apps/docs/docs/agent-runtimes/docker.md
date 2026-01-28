@@ -24,7 +24,7 @@ flowchart TB
 ## Installation
 
 ```bash
-cd runtimes/docker
+cd packages/runtime-docker
 pnpm install
 pnpm build
 ```
