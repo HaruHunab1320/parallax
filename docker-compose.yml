@@ -1,24 +1,59 @@
+# Parallax Docker Compose
+#
+# Usage:
+#   docker compose up                        # Core only (etcd, postgres, redis)
+#   docker compose --profile monitoring up   # Core + monitoring stack
+#   docker compose --profile full up         # Everything
+#
+# Ports:
+#   - 2379: etcd (mapped to 2389 externally to avoid conflicts)
+#   - 5432: PostgreSQL (mapped to 5435 externally)
+#   - 6379: Redis (mapped to 6380 externally)
+#   - 9090: Prometheus (monitoring profile)
+#   - 3001: Grafana (monitoring profile)
+#   - 16686: Jaeger UI (monitoring profile)
+
 services:
-  # etcd for service discovery
+  # ===================
+  # Core Infrastructure
+  # ===================
+
   etcd:
     image: quay.io/coreos/etcd:v3.5.9
+    container_name: parallax-etcd
+    restart: unless-stopped
+    command:
+      - etcd
+      - --name=node1
+      - --data-dir=/etcd-data
+      - --advertise-client-urls=http://0.0.0.0:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-advertise-peer-urls=http://etcd:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-cluster=node1=http://etcd:2380
     ports:
       - "2389:2379"
       - "2390:2380"
-    command:
-      - etcd
-      - --advertise-client-urls=http://0.0.0.0:2379
-      - --listen-client-urls=http://0.0.0.0:2379
+    volumes:
+      - etcd_data:/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - parallax-network
 
-  # PostgreSQL with TimescaleDB for time-series features
   postgres:
     image: timescale/timescaledb:latest-pg16
+    container_name: parallax-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: parallax
+      POSTGRES_PASSWORD: parallax123
+      POSTGRES_DB: parallax
     ports:
       - "5435:5432"
-    environment:
-      - POSTGRES_USER=parallax
-      - POSTGRES_PASSWORD=parallax123
-      - POSTGRES_DB=parallax
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,12 +61,100 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - parallax-network
 
-  # Redis for HA features
   redis:
     image: redis:7-alpine
+    container_name: parallax-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
     ports:
       - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - parallax-network
+
+  # ===================
+  # Monitoring Stack
+  # ===================
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: parallax-prometheus
+    restart: unless-stopped
+    profiles: [monitoring, full]
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - parallax-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: parallax-grafana
+    restart: unless-stopped
+    profiles: [monitoring, full]
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - parallax-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: parallax-jaeger
+    restart: unless-stopped
+    profiles: [monitoring, full]
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"   # Jaeger UI
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    networks:
+      - parallax-network
 
 volumes:
+  etcd_data:
   postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  parallax-network:
+    driver: bridge
+    name: parallax-network

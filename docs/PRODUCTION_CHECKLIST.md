@@ -1,18 +1,36 @@
 # Production Readiness Checklist
 
-Use this checklist to verify all systems before deploying to production.
+This comprehensive checklist covers everything needed to deploy Parallax to production.
 
-## 🚀 Quick Start Test
+## Quick Start Test
 
 ```bash
-# Run automated test suite
-./test-production-system.sh
+# Run automated production test suite
+./scripts/test-production-system.sh
 
 # Or start full production stack manually
 pnpm run dev:prod
 ```
 
-## ✅ Core Systems
+## What's Verified by Tests
+
+### Core Functionality
+- [x] All services start and communicate correctly
+- [x] Pattern execution engine works
+- [x] Database persistence functional
+- [x] Monitoring and observability active
+- [x] API endpoints responding
+- [x] Performance meets baseline (200ms avg execution)
+
+### Infrastructure
+- [x] Docker containers build and run
+- [x] Database migrations work
+- [x] Service discovery operational
+- [x] Metrics collection functioning
+
+---
+
+## Core Systems Checklist
 
 ### Database
 - [ ] PostgreSQL running and accessible
@@ -20,6 +38,8 @@ pnpm run dev:prod
 - [ ] Database migrations applied
 - [ ] Connection pooling configured
 - [ ] Backup strategy defined
+- [ ] Production PostgreSQL instance provisioned
+- [ ] Replication/HA setup configured
 
 ### Cache
 - [ ] Redis running and accessible
@@ -33,7 +53,9 @@ pnpm run dev:prod
 - [ ] Health checks working
 - [ ] Failure detection configured
 
-## ✅ Control Plane API
+---
+
+## Control Plane API
 
 ### Endpoints
 - [ ] GET `/health` returns 200
@@ -49,7 +71,47 @@ pnpm run dev:prod
 - [ ] Memory usage stable under load
 - [ ] No memory leaks after 1hr run
 
-## ✅ Monitoring & Observability
+---
+
+## Security Hardening
+
+### Credentials (Critical)
+- [ ] **Change default credentials**
+  - PostgreSQL password (default: parallax123)
+  - Grafana admin password (default: admin/admin)
+  - JWT secret (default: development-secret-key)
+
+### API Security
+- [ ] Input validation working
+- [ ] SQL injection protection verified
+- [ ] XSS protection verified
+- [ ] Rate limiting configured
+- [ ] CORS configured properly
+
+### TLS/HTTPS
+- [ ] API endpoints use TLS
+- [ ] Database connections encrypted
+- [ ] Inter-service communication secured
+
+### Network Security
+- [ ] Firewall rules configured
+- [ ] VPC/network isolation
+- [ ] Unnecessary ports closed
+
+### Secrets Management
+- [ ] Use vault/secret manager
+- [ ] Credentials rotated regularly
+- [ ] Sensitive data encrypted at rest
+
+### Infrastructure Security
+- [ ] etcd authentication configured
+- [ ] Agent runtime isolates sessions (PTY or container)
+- [ ] MCP API keys stored per agent and rotated
+- [ ] Web terminal access gated by auth + audit logging
+
+---
+
+## Monitoring & Observability
 
 ### Metrics (Prometheus)
 - [ ] All targets UP at http://localhost:9090/targets
@@ -59,7 +121,7 @@ pnpm run dev:prod
 - [ ] Custom business metrics working
 
 ### Dashboards (Grafana)
-- [ ] Login works at http://localhost:3000 (admin/admin)
+- [ ] Login works at http://localhost:3000
 - [ ] System Overview dashboard has data
 - [ ] Pattern Execution dashboard has data
 - [ ] Agent Performance dashboard has data
@@ -76,27 +138,20 @@ pnpm run dev:prod
 - [ ] Low agent availability alert configured
 - [ ] Database connection alert configured
 - [ ] High latency alert configured
+- [ ] PagerDuty/on-call integration (production)
+- [ ] SLA monitoring configured
 
-## ✅ Security
+### Logging
+- [ ] Structured logging configured
+- [ ] Log levels appropriate
+- [ ] Centralized log aggregation
+- [ ] Log retention policies set
+- [ ] Security audit logs enabled
+- [ ] Error tracking (Sentry, etc.)
 
-### API Security
-- [ ] Input validation working
-- [ ] SQL injection protection verified
-- [ ] XSS protection verified
-- [ ] Rate limiting configured
-- [ ] CORS configured properly
+---
 
-### Infrastructure Security
-- [ ] Database credentials secure
-- [ ] Redis password set (if exposed)
-- [ ] etcd authentication configured
-- [ ] TLS enabled for production
-- [ ] Secrets management configured
-- [ ] Agent runtime isolates sessions (PTY or container)
-- [ ] MCP API keys stored per agent and rotated
-- [ ] Web terminal access gated by auth + audit logging
-
-## ✅ High Availability
+## High Availability & Scale
 
 ### Resilience
 - [ ] Service auto-restarts on failure
@@ -109,8 +164,16 @@ pnpm run dev:prod
 - [ ] Load balancing configured
 - [ ] Session affinity handled
 - [ ] Stateless design verified
+- [ ] Auto-scaling configured
 
-## ✅ Data Management
+### Load Balancing
+- [ ] Multiple API instances
+- [ ] Health-based routing
+- [ ] SSL termination
+
+---
+
+## Data Management
 
 ### Persistence
 - [ ] Execution history saved correctly
@@ -123,20 +186,21 @@ pnpm run dev:prod
 - [ ] Point-in-time recovery tested
 - [ ] Configuration backed up
 - [ ] Disaster recovery plan documented
+- [ ] Recovery time objectives (RTO) defined
 
-## ✅ Operational Readiness
+---
 
-### Logging
-- [ ] Structured logging configured
-- [ ] Log levels appropriate
-- [ ] Log aggregation working
-- [ ] Log retention policies set
+## Operational Readiness
 
-### Deployment
-- [ ] Docker images built and tagged
-- [ ] Helm charts validated
-- [ ] Environment variables documented
+### Container Registry
+- [ ] Images pushed to private registry
+- [ ] Tagged with version numbers
+- [ ] Vulnerability scanning enabled
+
+### Kubernetes/Cloud Setup
+- [ ] Production cluster configured
 - [ ] Resource limits set
+- [ ] Health checks and probes configured
 
 ### Documentation
 - [ ] API documentation complete
@@ -144,7 +208,24 @@ pnpm run dev:prod
 - [ ] Architecture diagrams updated
 - [ ] Team trained on operations
 
-## 🎯 Performance Benchmarks
+### Change Management
+- [ ] Deployment procedures documented
+- [ ] Rollback plans tested
+- [ ] Blue-green deployment configured
+- [ ] Feature flags implemented
+
+---
+
+## Compliance & Governance
+
+- [ ] GDPR/privacy compliance
+- [ ] Security audit completed
+- [ ] Penetration testing done
+- [ ] Vulnerability assessment completed
+
+---
+
+## Performance Benchmarks
 
 Run these tests to establish baselines:
 
@@ -159,16 +240,78 @@ docker exec -it parallax-postgres pgbench -U parallax -d parallax -c 10 -j 2 -T 
 docker stats --no-stream
 ```
 
-Expected results:
-- API latency: p50 < 50ms, p95 < 100ms, p99 < 500ms
-- Throughput: > 1000 executions/minute
-- Error rate: < 0.1%
-- Memory usage: < 1GB per service
-- CPU usage: < 50% under normal load
+**Expected Results:**
+| Metric | Target |
+|--------|--------|
+| API latency (p50) | < 50ms |
+| API latency (p95) | < 100ms |
+| API latency (p99) | < 500ms |
+| Throughput | > 1000 executions/minute |
+| Error rate | < 0.1% |
+| Memory per service | < 1GB |
+| CPU under normal load | < 50% |
 
-## 🚨 Common Issues
+---
 
-### Issue: Services not starting
+## Deployment Phases
+
+### Phase 1: Staging Environment
+1. Deploy to staging with production configs
+2. Run full test suite
+3. Performance testing
+4. Security scanning
+
+### Phase 2: Production Pilot
+1. Deploy to production with limited traffic
+2. Monitor all metrics closely
+3. Gradual traffic increase
+4. Full cutover after stability confirmed
+
+### Phase 3: Full Production
+1. Enable all production features
+2. Scale to meet demand
+3. Continuous monitoring
+4. Regular updates and patches
+
+---
+
+## Production Configuration Examples
+
+### Environment Variables
+```bash
+# Production .env
+NODE_ENV=production
+DATABASE_URL=postgresql://user:SECURE_PASSWORD@prod-db:5432/parallax?sslmode=require
+JWT_SECRET=<generate-with-openssl-rand-base64-32>
+REDIS_URL=redis://:SECURE_REDIS_PASSWORD@prod-redis:6379/0
+LOG_LEVEL=info
+ENABLE_METRICS=true
+ENABLE_TRACING=true
+```
+
+### Kubernetes Resources
+```yaml
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+  limits:
+    memory: "1Gi"
+    cpu: "1000m"
+```
+
+### Database Optimizations
+```sql
+ALTER SYSTEM SET max_connections = 200;
+ALTER SYSTEM SET shared_buffers = '256MB';
+ALTER SYSTEM SET effective_cache_size = '1GB';
+```
+
+---
+
+## Troubleshooting
+
+### Services Not Starting
 ```bash
 # Check logs
 docker-compose logs -f
@@ -180,7 +323,7 @@ docker network ls
 docker system df
 ```
 
-### Issue: Poor performance
+### Poor Performance
 ```bash
 # Check database indexes
 docker exec -it parallax-postgres psql -U parallax -d parallax -c "\di"
@@ -192,7 +335,7 @@ docker exec -it parallax-postgres psql -U parallax -d parallax -c "SELECT count(
 docker exec -it parallax-redis redis-cli info stats | grep keyspace
 ```
 
-### Issue: Monitoring gaps
+### Monitoring Gaps
 ```bash
 # Verify Prometheus scraping
 curl http://localhost:9090/api/v1/targets
@@ -204,7 +347,9 @@ curl -u admin:admin http://localhost:3000/api/datasources
 curl http://localhost:8080/metrics
 ```
 
-## 📋 Sign-off
+---
+
+## Final Sign-off
 
 Before deploying to production, ensure:
 

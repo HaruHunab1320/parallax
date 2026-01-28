@@ -50,23 +50,23 @@ output "next_steps" {
   description = "Next steps after deployment"
   value = <<-EOT
     1. Configure kubectl:
-       ${self.connection_command}
-    
+       gcloud container clusters get-credentials ${google_container_cluster.primary.name} --zone ${var.zone} --project ${var.project_id}
+
     2. Check deployment status:
        kubectl get pods -n parallax
-    
+
     3. Access the API:
-       ${self.api_url}/health
-    
+       curl http://${google_compute_global_address.parallax_ip.address}/health
+
     4. Access Grafana:
-       ${self.grafana_url}
+       URL: ${var.domain_name != "" ? "https://grafana.${var.domain_name}" : "http://${google_compute_global_address.parallax_ip.address}"}
        Username: admin
-       Password: changeme (update this!)
-    
+       Password: (set via grafana_admin_password variable)
+
     5. Push Docker image:
        docker build -t gcr.io/${var.project_id}/parallax-control-plane:latest packages/control-plane
        docker push gcr.io/${var.project_id}/parallax-control-plane:latest
-    
+
     6. Update deployment:
        kubectl rollout restart deployment/parallax-control-plane -n parallax
   EOT

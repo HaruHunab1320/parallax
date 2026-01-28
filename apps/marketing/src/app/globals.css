@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root {
+  --px-cyan: #35b5e9;
+  --px-magenta: #d92d88;
+  --px-yellow: #f5ed4c;
+  --px-ink: #0b0f14;
+  --px-slate: #111826;
+  --px-surface: #f7f8fb;
+  --px-surface-alt: #eef2f7;
+  --px-border: #d7dee8;
+  --px-text: #0f1720;
+  --px-muted: #667085;
+}
+
+@theme inline {
+  --color-background: var(--px-surface);
+  --color-foreground: var(--px-text);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(53, 181, 233, 0.16), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, rgba(217, 45, 136, 0.12), transparent 55%),
+    linear-gradient(180deg, var(--px-surface) 0%, var(--px-surface-alt) 100%);
+  color: var(--px-text);
+  font-family: var(--font-manrope), system-ui, -apple-system, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-space-grotesk), system-ui, -apple-system, sans-serif;
+}
+
+a {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}

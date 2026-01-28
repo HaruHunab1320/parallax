@@ -19,8 +19,10 @@ terraform {
   }
 
   # Backend for state storage
+  # NOTE: Create bucket first: gsutil mb -l us-central1 gs://YOUR-BUCKET-NAME
+  # Then initialize: terraform init -backend-config="bucket=YOUR-BUCKET-NAME"
   backend "gcs" {
-    bucket = "parallax-terraform-state"
+    # bucket is configured via -backend-config during terraform init
     prefix = "terraform/state"
   }
 }

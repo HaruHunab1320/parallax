@@ -56,7 +56,7 @@ resource "google_sql_database_instance" "postgres" {
     }
   }
 
-  deletion_protection = false  # Set to true in production
+  deletion_protection = var.db_deletion_protection
 }
 
 # Database

@@ -66,7 +66,7 @@ resource "helm_release" "prometheus" {
       }
       grafana = {
         enabled = true
-        adminPassword = "changeme"  # Change in production!
+        adminPassword = var.grafana_admin_password
         persistence = {
           enabled = true
           size    = "5Gi"

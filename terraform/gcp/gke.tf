@@ -30,9 +30,12 @@ resource "google_container_cluster" "primary" {
   }
 
   master_authorized_networks_config {
-    cidr_blocks {
-      cidr_block   = "0.0.0.0/0"  # Change this to your IP in production!
-      display_name = "All networks"
+    dynamic "cidr_blocks" {
+      for_each = var.master_authorized_networks
+      content {
+        cidr_block   = cidr_blocks.value.cidr_block
+        display_name = cidr_blocks.value.display_name
+      }
     }
   }
 

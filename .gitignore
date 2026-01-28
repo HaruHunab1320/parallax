@@ -82,6 +82,12 @@ Cargo.lock
 execution-logs/
 confidence-metrics/
 
+# Legacy directory (was renamed to apps/docs)
+sites/
+
+# Docusaurus
+.docusaurus/
+
 # Proto generated files are intentionally committed for all SDKs
 # This allows users to use the SDKs without having protoc installed
 # But we ignore the TypeScript build artifacts in generated folders
@@ -97,3 +103,6 @@ agent-logs/
 # etcd data (if running locally)
 etcd-data/
 default.etcd/
+
+# Git workspaces (cloned repos for coding tasks)
+.workspaces/

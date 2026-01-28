@@ -78,8 +78,10 @@ cd terraform/gcp
 cp terraform.tfvars.example terraform.tfvars
 
 # Edit terraform.tfvars with your values:
-# - project_id
-# - authorized_networks (your IP address)
+# - project_id (required)
+# - authorized_networks (required - your IP/CIDR for Cloud SQL access)
+# - master_authorized_networks (required - your IP/CIDR for GKE master access)
+# - grafana_admin_password (required - minimum 12 characters)
 # - domain_name (optional)
 ```
 
@@ -131,7 +133,7 @@ curl http://$PARALLAX_IP/health
 
 # Access Grafana
 open http://$PARALLAX_IP
-# Login: admin / changeme
+# Login: admin / (password set via grafana_admin_password variable)
 ```
 
 ## Cost Optimization for Free Tier
@@ -230,6 +232,9 @@ gcloud alpha billing budgets list
 To avoid charges:
 
 ```bash
+# Disable deletion protection first
+terraform apply -var="db_deletion_protection=false"
+
 # Destroy all resources
 terraform destroy
 
