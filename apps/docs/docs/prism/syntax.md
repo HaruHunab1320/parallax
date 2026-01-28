@@ -487,6 +487,6 @@ if ({ data } = response ~@> 0.8) {
 
 ## Next Steps
 
-- [YAML to Prism Compilation](/prism/compilation) - How patterns compile
-- [Using Prism Directly](/prism/using-prism-directly) - Write Prism code
+- [YAML to Prism Compilation](/docs/prism/compilation) - How patterns compile
+- [Using Prism Directly](/docs/prism/using-prism-directly) - Write Prism code
 - [Prism Documentation](https://docs.prismlang.dev/) - Full language docs

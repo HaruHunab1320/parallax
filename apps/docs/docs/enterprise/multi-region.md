@@ -637,6 +637,6 @@ parallax region failover --force --to eu-west-1
 
 ## Next Steps
 
-- [High Availability](/enterprise/high-availability) - HA within regions
-- [Security](/enterprise/security) - Cross-region security
-- [Persistence](/enterprise/persistence) - Data replication
+- [High Availability](/docs/enterprise/high-availability) - HA within regions
+- [Security](/docs/enterprise/security) - Cross-region security
+- [Persistence](/docs/enterprise/persistence) - Data replication

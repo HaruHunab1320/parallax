@@ -124,6 +124,6 @@ Each agent registers with the control plane and receives tasks.
 
 ## Next Steps
 
-- [Your First Pattern](/getting-started/your-first-pattern) - Build a custom pattern
-- [Core Concepts](/getting-started/concepts) - Understand how it all works
-- [Pattern Library](/patterns/overview) - Explore ready-to-use patterns
+- [Your First Pattern](/docs/getting-started/your-first-pattern) - Build a custom pattern
+- [Core Concepts](/docs/getting-started/concepts) - Understand how it all works
+- [Pattern Library](/docs/patterns/overview) - Explore ready-to-use patterns

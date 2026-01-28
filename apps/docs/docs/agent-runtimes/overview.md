@@ -45,9 +45,9 @@ flowchart TB
 
 | Runtime | Use Case | Requirements |
 |---------|----------|--------------|
-| **[Local](/agent-runtimes/local)** | Development | Node.js, CLI tools installed |
-| **[Docker](/agent-runtimes/docker)** | Staging/Testing | Docker daemon |
-| **[Kubernetes](/agent-runtimes/kubernetes)** | Production | K8s cluster with CRD support |
+| **[Local](/docs/agent-runtimes/local)** | Development | Node.js, CLI tools installed |
+| **[Docker](/docs/agent-runtimes/docker)** | Staging/Testing | Docker daemon |
+| **[Kubernetes](/docs/agent-runtimes/kubernetes)** | Production | K8s cluster with CRD support |
 
 ## Quick Start
 
@@ -212,7 +212,7 @@ structure:
 
 ## Next Steps
 
-- [Local Runtime](/agent-runtimes/local) - Development setup
-- [Docker Runtime](/agent-runtimes/docker) - Container-based agents
-- [Kubernetes Runtime](/agent-runtimes/kubernetes) - Production deployment
-- [Org-Chart Patterns](/patterns/org-chart-patterns) - Hierarchical orchestration
+- [Local Runtime](/docs/agent-runtimes/local) - Development setup
+- [Docker Runtime](/docs/agent-runtimes/docker) - Container-based agents
+- [Kubernetes Runtime](/docs/agent-runtimes/kubernetes) - Production deployment
+- [Org-Chart Patterns](/docs/patterns/org-chart-patterns) - Hierarchical orchestration

@@ -540,6 +540,6 @@ output:
 
 ## Next Steps
 
-- [Quality Gates](/patterns/quality-gates) - Use verification with quality gates
-- [Advanced Composition](/patterns/advanced-composition) - Complex verification workflows
-- [Extraction Patterns](/patterns/extraction-patterns) - Verify extracted data
+- [Quality Gates](/docs/patterns/quality-gates) - Use verification with quality gates
+- [Advanced Composition](/docs/patterns/advanced-composition) - Complex verification workflows
+- [Extraction Patterns](/docs/patterns/extraction-patterns) - Verify extracted data

@@ -288,7 +288,7 @@ output:
 
 ### Visual Builder
 
-Use the [Pattern Builder](/pattern-builder/overview) to create patterns visually by dragging and connecting nodes.
+Use the [Pattern Builder](/docs/pattern-builder/overview) to create patterns visually by dragging and connecting nodes.
 
 ### Programmatic
 
@@ -306,6 +306,6 @@ const pattern = new PatternBuilder('my-pattern')
 
 ## Next Steps
 
-- [Primitives](/concepts/primitives) - Building blocks for patterns
-- [YAML Syntax](/patterns/yaml-syntax) - Complete reference
-- [Pattern Builder](/pattern-builder/overview) - Visual editor
+- [Primitives](/docs/concepts/primitives) - Building blocks for patterns
+- [YAML Syntax](/docs/patterns/yaml-syntax) - Complete reference
+- [Pattern Builder](/docs/pattern-builder/overview) - Visual editor

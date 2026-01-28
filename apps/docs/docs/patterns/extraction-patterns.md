@@ -595,6 +595,6 @@ output:
 
 ## Next Steps
 
-- [Verification Patterns](/patterns/verification-patterns) - Verify extracted data
-- [Quality Gates](/patterns/quality-gates) - Filter low-quality extractions
-- [Advanced Composition](/patterns/advanced-composition) - Complex extraction pipelines
+- [Verification Patterns](/docs/patterns/verification-patterns) - Verify extracted data
+- [Quality Gates](/docs/patterns/quality-gates) - Filter low-quality extractions
+- [Advanced Composition](/docs/patterns/advanced-composition) - Complex extraction pipelines

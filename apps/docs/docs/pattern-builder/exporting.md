@@ -344,6 +344,6 @@ client.executePattern('my-pattern', input, { version: 'latest' });
 
 ## Next Steps
 
-- [Overview](/pattern-builder/overview) - Builder guide
-- [YAML Syntax](/patterns/yaml-syntax) - YAML reference
-- [Executing Patterns](/sdk/executing-patterns) - Using exported patterns
+- [Overview](/docs/pattern-builder/overview) - Builder guide
+- [YAML Syntax](/docs/patterns/yaml-syntax) - YAML reference
+- [Executing Patterns](/docs/sdk/executing-patterns) - Using exported patterns

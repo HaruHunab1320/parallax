@@ -239,7 +239,7 @@ export function createWorkspaceRouter(config: WorkspaceApiConfig): Router {
    * Get credential grant info (for audit)
    */
   router.get('/credentials/:id', async (req: Request, res: Response) => {
-    const grant = credentialService.getGrant(req.params.id);
+    const grant = await credentialService.getGrant(req.params.id);
 
     if (!grant) {
       res.status(404).json({ error: 'Credential grant not found' });

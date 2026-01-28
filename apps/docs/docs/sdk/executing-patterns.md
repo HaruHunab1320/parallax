@@ -481,6 +481,6 @@ const metrics = client.getMetrics();
 
 ## Next Steps
 
-- [Patterns Concept](/concepts/patterns) - Understanding patterns
-- [Streaming](/patterns/advanced-composition) - Advanced streaming patterns
-- [TypeScript SDK](/sdk/typescript) - Full SDK reference
+- [Patterns Concept](/docs/concepts/patterns) - Understanding patterns
+- [Streaming](/docs/patterns/advanced-composition) - Advanced streaming patterns
+- [TypeScript SDK](/docs/sdk/typescript) - Full SDK reference

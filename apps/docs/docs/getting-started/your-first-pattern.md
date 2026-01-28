@@ -151,6 +151,6 @@ The 89% confidence means 3 agents largely agreed on the analysis, weighted by th
 
 ## Next Steps
 
-- [Pattern Syntax](/patterns/yaml-syntax) - Learn all pattern options
-- [Voting Patterns](/patterns/voting-patterns) - For classification tasks
-- [Quality Gates](/patterns/quality-gates) - Add confidence thresholds
+- [Pattern Syntax](/docs/patterns/yaml-syntax) - Learn all pattern options
+- [Voting Patterns](/docs/patterns/voting-patterns) - For classification tasks
+- [Quality Gates](/docs/patterns/quality-gates) - Add confidence thresholds

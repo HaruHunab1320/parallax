@@ -9,4 +9,5 @@ export * from './branch-naming';
 export * from './credential-service';
 export * from './workspace-service';
 export * from './workspace-api';
+export * from './github-webhooks';
 export * from './providers';

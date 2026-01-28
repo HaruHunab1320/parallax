@@ -304,6 +304,6 @@ Hover over a problematic connection to see details:
 
 ## Next Steps
 
-- [Nodes](/pattern-builder/nodes) - Node reference
-- [Exporting](/pattern-builder/exporting) - Export patterns
-- [Overview](/pattern-builder/overview) - Getting started
+- [Nodes](/docs/pattern-builder/nodes) - Node reference
+- [Exporting](/docs/pattern-builder/exporting) - Export patterns
+- [Overview](/docs/pattern-builder/overview) - Getting started

@@ -504,6 +504,6 @@ const result = await mockClient.executePattern('sentiment-analysis', {
 
 ## Next Steps
 
-- [Agent Registration](/sdk/agent-registration) - Detailed registration guide
-- [Executing Patterns](/sdk/executing-patterns) - Advanced execution options
-- [Pattern SDK](/sdk/pattern-sdk) - Build patterns programmatically
+- [Agent Registration](/docs/sdk/agent-registration) - Detailed registration guide
+- [Executing Patterns](/docs/sdk/executing-patterns) - Advanced execution options
+- [Pattern SDK](/docs/sdk/pattern-sdk) - Build patterns programmatically

@@ -1,4 +1,4 @@
-import { Pattern, PatternExecution, ExecutionMetrics } from './types';
+import { Pattern, PatternExecution, ExecutionMetrics, PatternWorkspaceConfig } from './types';
 import { PatternLoader } from './pattern-loader';
 import { RuntimeManager } from '../runtime-manager';
 import { EtcdRegistry } from '../registry';
@@ -14,6 +14,7 @@ import { DatabasePatternService } from './database-pattern-service';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
+import { WorkspaceService, Workspace, WorkspaceConfig } from '../workspace';
 
 export class PatternEngine implements IPatternEngine {
   private loader: PatternLoader;
@@ -25,6 +26,7 @@ export class PatternEngine implements IPatternEngine {
   protected currentExecutionId?: string;
   private agentProxy: AgentProxy;
   private databasePatterns?: DatabasePatternService;
+  private workspaceService?: WorkspaceService;
 
   constructor(
     private runtimeManager: RuntimeManager,
@@ -33,7 +35,8 @@ export class PatternEngine implements IPatternEngine {
     private logger: Logger,
     private database?: DatabaseService,
     private executionEvents?: ExecutionEventBus,
-    databasePatterns?: DatabasePatternService
+    databasePatterns?: DatabasePatternService,
+    workspaceService?: WorkspaceService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -41,6 +44,7 @@ export class PatternEngine implements IPatternEngine {
     this.licenseEnforcer = new LicenseEnforcer(logger);
     this.agentProxy = new AgentProxy(logger);
     this.databasePatterns = databasePatterns;
+    this.workspaceService = workspaceService;
   }
 
   async initialize(): Promise<void> {
@@ -48,6 +52,13 @@ export class PatternEngine implements IPatternEngine {
     if (this.databasePatterns) {
       await this.databasePatterns.initialize();
     }
+  }
+
+  /**
+   * Set the workspace service (for deferred initialization)
+   */
+  setWorkspaceService(service: WorkspaceService): void {
+    this.workspaceService = service;
   }
 
   async executePattern(
@@ -95,6 +106,40 @@ export class PatternEngine implements IPatternEngine {
     };
 
     emitEvent('started', { patternName });
+
+    // Provision workspace if pattern requires it
+    let workspace: Workspace | null = null;
+    if (pattern.workspace?.enabled && this.workspaceService) {
+      const workspaceConfig = this.resolveWorkspaceConfig(pattern, input, executionId);
+      if (workspaceConfig) {
+        try {
+          emitEvent('workspace_provisioning', { repo: workspaceConfig.repo });
+          workspace = await this.workspaceService.provision(workspaceConfig);
+          execution.workspace = {
+            id: workspace.id,
+            path: workspace.path,
+            repo: workspace.repo,
+            branch: workspace.branch.name,
+            baseBranch: workspace.branch.baseBranch,
+          };
+          emitEvent('workspace_ready', {
+            workspaceId: workspace.id,
+            branch: workspace.branch.name,
+            path: workspace.path,
+          });
+        } catch (error) {
+          this.logger.error({ error, executionId, patternName }, 'Failed to provision workspace');
+          emitEvent('workspace_failed', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+          // Don't fail the entire execution if workspace provisioning fails
+          // unless the pattern explicitly requires it
+          if (pattern.workspace.repo) {
+            throw new Error(`Workspace provisioning failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+      }
+    }
 
     try {
       // Select agents based on pattern requirements
@@ -219,6 +264,14 @@ export class PatternEngine implements IPatternEngine {
       // Prepare context with pre-processed results
       const context = {
         input,
+        // Include workspace info if available
+        workspace: workspace ? {
+          id: workspace.id,
+          path: workspace.path,
+          repo: workspace.repo,
+          branch: workspace.branch.name,
+          baseBranch: workspace.branch.baseBranch,
+        } : undefined,
         agentList: agents.map(a => ({
           id: a.id,
           name: a.name,
@@ -333,11 +386,48 @@ export class PatternEngine implements IPatternEngine {
         'Pattern execution completed'
       );
 
+      // Finalize workspace (push, create PR) if configured
+      if (workspace && pattern.workspace?.createPr && this.workspaceService) {
+        try {
+          emitEvent('workspace_finalizing', { workspaceId: workspace.id });
+          const pr = await this.workspaceService.finalize(workspace.id, {
+            push: true,
+            createPr: true,
+            pr: {
+              title: `[Parallax] ${patternName}: ${execution.id.slice(0, 8)}`,
+              body: this.generatePrBody(pattern, execution),
+              targetBranch: workspace.branch.baseBranch,
+              draft: pattern.workspace?.pr?.draft,
+              labels: pattern.workspace?.pr?.labels,
+              reviewers: pattern.workspace?.pr?.reviewers,
+            },
+            cleanup: false, // Keep workspace for now
+          });
+
+          if (pr) {
+            execution.workspace!.prUrl = pr.url;
+            execution.workspace!.prNumber = pr.number;
+            emitEvent('workspace_pr_created', {
+              workspaceId: workspace.id,
+              prNumber: pr.number,
+              prUrl: pr.url,
+            });
+          }
+        } catch (error) {
+          this.logger.warn({ error, workspaceId: workspace.id }, 'Failed to finalize workspace');
+          emitEvent('workspace_finalize_failed', {
+            workspaceId: workspace.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+
       emitEvent('completed', {
         patternName,
         confidence: execution.metrics?.averageConfidence ?? 0,
         durationMs: execution.metrics?.executionTime ?? 0,
-        agentCount: agents.length
+        agentCount: agents.length,
+        prUrl: execution.workspace?.prUrl,
       });
 
       return execution;
@@ -646,5 +736,76 @@ export class PatternEngine implements IPatternEngine {
 
     const header = `/**\n${metadataLines.map(line => ` * ${line}`).join('\n')}\n */\n`;
     return `${header}${pattern.script.trim()}`;
+  }
+
+  /**
+   * Resolve workspace configuration from pattern and input
+   */
+  private resolveWorkspaceConfig(
+    pattern: Pattern,
+    input: any,
+    executionId: string
+  ): WorkspaceConfig | null {
+    const wsConfig = pattern.workspace;
+    if (!wsConfig?.enabled) {
+      return null;
+    }
+
+    // Get repo from pattern config or input
+    const repo = input?.repo || wsConfig.repo;
+    if (!repo) {
+      this.logger.warn(
+        { patternName: pattern.name },
+        'Workspace enabled but no repo specified in pattern or input'
+      );
+      return null;
+    }
+
+    return {
+      repo,
+      provider: 'github', // Default to GitHub for now
+      branchStrategy: wsConfig.branchStrategy || 'feature_branch',
+      baseBranch: input?.baseBranch || wsConfig.baseBranch || 'main',
+      execution: {
+        id: executionId,
+        patternName: pattern.name,
+      },
+      task: {
+        id: `task-${executionId.slice(0, 8)}`,
+        role: 'agent',
+        slug: pattern.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      },
+    };
+  }
+
+  /**
+   * Generate PR body from pattern execution
+   */
+  private generatePrBody(pattern: Pattern, execution: PatternExecution): string {
+    const lines = [
+      '## Summary',
+      '',
+      `This PR was automatically generated by Parallax pattern: **${pattern.name}** (v${pattern.version})`,
+      '',
+      '### Execution Details',
+      '',
+      `- **Execution ID**: \`${execution.id}\``,
+      `- **Started**: ${execution.startTime.toISOString()}`,
+      `- **Status**: ${execution.status}`,
+    ];
+
+    if (execution.metrics?.agentsUsed) {
+      lines.push(`- **Agents Used**: ${execution.metrics.agentsUsed}`);
+    }
+
+    if (execution.metrics?.averageConfidence) {
+      lines.push(`- **Confidence**: ${(execution.metrics.averageConfidence * 100).toFixed(1)}%`);
+    }
+
+    lines.push('');
+    lines.push('---');
+    lines.push('*Generated by [Parallax](https://github.com/parallax) agent orchestration platform*');
+
+    return lines.join('\n');
   }
 }

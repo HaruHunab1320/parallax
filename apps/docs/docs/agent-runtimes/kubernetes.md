@@ -323,6 +323,6 @@ kubectl top pods -l parallax.io/agent=code-reviewer
 
 ## Next Steps
 
-- [Docker Runtime](/agent-runtimes/docker) - For staging
-- [Local Runtime](/agent-runtimes/local) - For development
-- [Enterprise Features](/enterprise/overview) - HA and security
+- [Docker Runtime](/docs/agent-runtimes/docker) - For staging
+- [Local Runtime](/docs/agent-runtimes/local) - For development
+- [Enterprise Features](/docs/enterprise/overview) - HA and security

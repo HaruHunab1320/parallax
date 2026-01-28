@@ -11,11 +11,11 @@ The Pattern Library provides ready-to-use orchestration patterns for common mult
 
 | Category | Description | Use Cases |
 |----------|-------------|-----------|
-| [Voting Patterns](/patterns/voting-patterns) | Classification and decision-making | Content moderation, sentiment analysis, categorization |
-| [Quality Gates](/patterns/quality-gates) | Confidence-based filtering | Ensuring output quality, retry logic |
-| [Extraction Patterns](/patterns/extraction-patterns) | Data extraction and merging | Entity extraction, document analysis |
-| [Verification Patterns](/patterns/verification-patterns) | Fact-checking and validation | Translation verification, data validation |
-| [Advanced Composition](/patterns/advanced-composition) | Complex multi-step workflows | Research pipelines, document processing |
+| [Voting Patterns](/docs/patterns/voting-patterns) | Classification and decision-making | Content moderation, sentiment analysis, categorization |
+| [Quality Gates](/docs/patterns/quality-gates) | Confidence-based filtering | Ensuring output quality, retry logic |
+| [Extraction Patterns](/docs/patterns/extraction-patterns) | Data extraction and merging | Entity extraction, document analysis |
+| [Verification Patterns](/docs/patterns/verification-patterns) | Fact-checking and validation | Translation verification, data validation |
+| [Advanced Composition](/docs/patterns/advanced-composition) | Complex multi-step workflows | Research pipelines, document processing |
 
 ## Quick Start Patterns
 
@@ -340,6 +340,6 @@ for (const p of patterns) {
 
 ## Next Steps
 
-- [YAML Syntax](/patterns/yaml-syntax) - Complete syntax reference
-- [Voting Patterns](/patterns/voting-patterns) - Classification patterns
-- [Pattern Builder](/pattern-builder/overview) - Visual pattern editor
+- [YAML Syntax](/docs/patterns/yaml-syntax) - Complete syntax reference
+- [Voting Patterns](/docs/patterns/voting-patterns) - Classification patterns
+- [Pattern Builder](/docs/pattern-builder/overview) - Visual pattern editor

@@ -1,4 +1,5 @@
 import { Pattern, PatternExecution, ExecutionMetrics } from './types';
+import { WorkspaceService } from '../workspace';
 
 /**
  * Common interface for pattern engines
@@ -43,4 +44,8 @@ export interface IPatternEngine {
   deletePattern(name: string): Promise<void>;
   getPatternVersions(name: string): Promise<PatternVersion[]>;
   hasDatabasePatterns(): boolean;
+  /**
+   * Set the workspace service for git workspace provisioning
+   */
+  setWorkspaceService(service: WorkspaceService): void;
 }

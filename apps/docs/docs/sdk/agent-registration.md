@@ -469,6 +469,6 @@ agent.onTask(async (task) => {
 
 ## Next Steps
 
-- [Agents Concept](/concepts/agents) - Understanding agents
-- [Executing Patterns](/sdk/executing-patterns) - Running patterns
-- [TypeScript SDK](/sdk/typescript) - Full SDK reference
+- [Agents Concept](/docs/concepts/agents) - Understanding agents
+- [Executing Patterns](/docs/sdk/executing-patterns) - Running patterns
+- [TypeScript SDK](/docs/sdk/typescript) - Full SDK reference

@@ -17,6 +17,7 @@ import {
   GitHubAppInstallation,
 } from './types';
 import { GitHubProvider, GitHubProviderConfig } from './providers/github-provider';
+import { CredentialGrantRepository } from '../db/repositories/credential-grant.repository';
 
 export interface CredentialServiceConfig {
   /**
@@ -43,6 +44,12 @@ export interface CredentialServiceConfig {
    * Encryption key for storing credentials
    */
   encryptionKey?: string;
+
+  /**
+   * Database repository for persistent storage (optional)
+   * If not provided, grants are stored in memory only
+   */
+  repository?: CredentialGrantRepository;
 }
 
 export class CredentialService {
@@ -51,6 +58,7 @@ export class CredentialService {
   private readonly defaultTtl: number;
   private readonly maxTtl: number;
   private githubProvider?: GitHubProvider;
+  private repository?: CredentialGrantRepository;
 
   constructor(
     private readonly config: CredentialServiceConfig,
@@ -58,6 +66,7 @@ export class CredentialService {
   ) {
     this.defaultTtl = config.defaultTtlSeconds || 3600; // 1 hour
     this.maxTtl = config.maxTtlSeconds || 3600; // 1 hour max
+    this.repository = config.repository;
 
     // Use pre-initialized provider if provided, otherwise create from config
     if (config.githubProvider) {
@@ -137,13 +146,35 @@ export class CredentialService {
       expiresAt: credential.expiresAt,
     };
 
+    // Store grant in memory
     this.grants.set(grant.id, grant);
+
+    // Persist to database if repository is available
+    if (this.repository) {
+      try {
+        await this.repository.create({
+          id: grant.id,
+          type: grant.type,
+          repo: grant.repo,
+          provider: grant.provider,
+          executionId: grant.grantedTo.executionId,
+          taskId: grant.grantedTo.taskId,
+          agentId: grant.grantedTo.agentId,
+          permissions: grant.permissions,
+          reason: request.context.reason,
+          expiresAt: grant.expiresAt,
+        });
+      } catch (error) {
+        this.logger.warn({ grantId: grant.id, error }, 'Failed to persist credential grant to database');
+      }
+    }
 
     this.logger.info(
       {
         grantId: grant.id,
         repo: request.repo,
         expiresAt: credential.expiresAt,
+        persisted: !!this.repository,
       },
       'Credential granted'
     );
@@ -157,11 +188,28 @@ export class CredentialService {
   async revokeCredential(grantId: string): Promise<void> {
     const grant = this.grants.get(grantId);
     if (!grant) {
+      // Try to revoke in database even if not in memory
+      if (this.repository) {
+        try {
+          await this.repository.revoke(grantId);
+        } catch (error) {
+          this.logger.warn({ grantId, error }, 'Failed to revoke credential in database');
+        }
+      }
       return;
     }
 
     grant.revokedAt = new Date();
     this.grants.set(grantId, grant);
+
+    // Update database
+    if (this.repository) {
+      try {
+        await this.repository.revoke(grantId);
+      } catch (error) {
+        this.logger.warn({ grantId, error }, 'Failed to revoke credential in database');
+      }
+    }
 
     this.logger.info({ grantId }, 'Credential revoked');
   }
@@ -172,11 +220,23 @@ export class CredentialService {
   async revokeForExecution(executionId: string): Promise<number> {
     let count = 0;
 
+    // Revoke in memory
     for (const [id, grant] of this.grants) {
       if (grant.grantedTo.executionId === executionId && !grant.revokedAt) {
         grant.revokedAt = new Date();
         this.grants.set(id, grant);
         count++;
+      }
+    }
+
+    // Revoke in database
+    if (this.repository) {
+      try {
+        const dbCount = await this.repository.revokeForExecution(executionId);
+        // Use the larger count (database may have grants not in memory)
+        count = Math.max(count, dbCount);
+      } catch (error) {
+        this.logger.warn({ executionId, error }, 'Failed to revoke credentials in database');
       }
     }
 
@@ -198,14 +258,72 @@ export class CredentialService {
   /**
    * Get grant info for audit
    */
-  getGrant(grantId: string): CredentialGrant | null {
-    return this.grants.get(grantId) || null;
+  async getGrant(grantId: string): Promise<CredentialGrant | null> {
+    // Check memory first
+    const memoryGrant = this.grants.get(grantId);
+    if (memoryGrant) {
+      return memoryGrant;
+    }
+
+    // Check database
+    if (this.repository) {
+      try {
+        const dbGrant = await this.repository.findById(grantId);
+        if (dbGrant) {
+          // Convert database model to CredentialGrant
+          return {
+            id: dbGrant.id,
+            type: dbGrant.type as CredentialType,
+            repo: dbGrant.repo,
+            provider: dbGrant.provider as GitProvider,
+            grantedTo: {
+              executionId: dbGrant.executionId,
+              taskId: dbGrant.taskId || undefined,
+              agentId: dbGrant.agentId || undefined,
+            },
+            permissions: dbGrant.permissions as string[],
+            createdAt: dbGrant.createdAt,
+            expiresAt: dbGrant.expiresAt,
+            revokedAt: dbGrant.revokedAt || undefined,
+          };
+        }
+      } catch (error) {
+        this.logger.warn({ grantId, error }, 'Failed to get grant from database');
+      }
+    }
+
+    return null;
   }
 
   /**
    * List all grants for an execution
    */
-  getGrantsForExecution(executionId: string): CredentialGrant[] {
+  async getGrantsForExecution(executionId: string): Promise<CredentialGrant[]> {
+    // Try database first for complete history
+    if (this.repository) {
+      try {
+        const dbGrants = await this.repository.findByExecutionId(executionId);
+        return dbGrants.map((g) => ({
+          id: g.id,
+          type: g.type as CredentialType,
+          repo: g.repo,
+          provider: g.provider as GitProvider,
+          grantedTo: {
+            executionId: g.executionId,
+            taskId: g.taskId || undefined,
+            agentId: g.agentId || undefined,
+          },
+          permissions: g.permissions as string[],
+          createdAt: g.createdAt,
+          expiresAt: g.expiresAt,
+          revokedAt: g.revokedAt || undefined,
+        }));
+      } catch (error) {
+        this.logger.warn({ executionId, error }, 'Failed to get grants from database');
+      }
+    }
+
+    // Fallback to memory
     return Array.from(this.grants.values()).filter(
       (g) => g.grantedTo.executionId === executionId
     );

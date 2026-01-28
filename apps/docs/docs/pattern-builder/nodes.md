@@ -481,6 +481,6 @@ Where connections exit the node:
 
 ## Next Steps
 
-- [Connections](/pattern-builder/connections) - Connecting nodes
-- [Exporting](/pattern-builder/exporting) - Export patterns
-- [Overview](/pattern-builder/overview) - Pattern Builder guide
+- [Connections](/docs/pattern-builder/connections) - Connecting nodes
+- [Exporting](/docs/pattern-builder/exporting) - Export patterns
+- [Overview](/docs/pattern-builder/overview) - Pattern Builder guide

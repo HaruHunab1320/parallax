@@ -239,5 +239,5 @@ docker run --security-opt=no-new-privileges ...
 
 ## Next Steps
 
-- [Kubernetes Runtime](/agent-runtimes/kubernetes) - For production at scale
-- [Local Runtime](/agent-runtimes/local) - For development
+- [Kubernetes Runtime](/docs/agent-runtimes/kubernetes) - For production at scale
+- [Local Runtime](/docs/agent-runtimes/local) - For development

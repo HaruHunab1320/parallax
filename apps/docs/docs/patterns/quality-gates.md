@@ -469,6 +469,6 @@ output:
 
 ## Next Steps
 
-- [Voting Patterns](/patterns/voting-patterns) - Add voting before gates
-- [Verification Patterns](/patterns/verification-patterns) - Multi-step validation
-- [Confidence Scoring](/concepts/confidence-scoring) - Understanding confidence
+- [Voting Patterns](/docs/patterns/voting-patterns) - Add voting before gates
+- [Verification Patterns](/docs/patterns/verification-patterns) - Multi-step validation
+- [Confidence Scoring](/docs/concepts/confidence-scoring) - Understanding confidence

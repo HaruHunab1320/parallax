@@ -741,6 +741,6 @@ output:
 
 ## Next Steps
 
-- [Voting Patterns](/patterns/voting-patterns) - Voting pattern examples
-- [Quality Gates](/patterns/quality-gates) - Validation patterns
-- [Pattern SDK](/sdk/pattern-sdk) - Build patterns programmatically
+- [Voting Patterns](/docs/patterns/voting-patterns) - Voting pattern examples
+- [Quality Gates](/docs/patterns/quality-gates) - Validation patterns
+- [Pattern SDK](/docs/sdk/pattern-sdk) - Build patterns programmatically

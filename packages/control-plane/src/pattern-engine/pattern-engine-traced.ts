@@ -1,4 +1,4 @@
-import { Pattern, PatternExecution, ExecutionMetrics } from './types';
+import { Pattern, PatternExecution, ExecutionMetrics, PatternWorkspaceConfig } from './types';
 import { PatternLoader } from './pattern-loader';
 import { RuntimeManager } from '../runtime-manager';
 import { EtcdRegistry } from '../registry';
@@ -18,6 +18,7 @@ import { DatabasePatternService } from './database-pattern-service';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
+import { WorkspaceService, Workspace, WorkspaceConfig } from '../workspace';
 
 export class TracedPatternEngine implements IPatternEngine {
   private loader: PatternLoader;
@@ -29,6 +30,7 @@ export class TracedPatternEngine implements IPatternEngine {
   protected licenseEnforcer: LicenseEnforcer;
   private agentProxy: AgentProxy;
   private databasePatterns?: DatabasePatternService;
+  private workspaceService?: WorkspaceService;
 
   constructor(
     private runtimeManager: RuntimeManager,
@@ -37,7 +39,8 @@ export class TracedPatternEngine implements IPatternEngine {
     private logger: Logger,
     private database?: DatabaseService,
     private executionEvents?: ExecutionEventBus,
-    databasePatterns?: DatabasePatternService
+    databasePatterns?: DatabasePatternService,
+    workspaceService?: WorkspaceService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -46,6 +49,7 @@ export class TracedPatternEngine implements IPatternEngine {
     this.licenseEnforcer = new LicenseEnforcer(logger);
     this.agentProxy = new AgentProxy(logger);
     this.databasePatterns = databasePatterns;
+    this.workspaceService = workspaceService;
   }
 
   async initialize(): Promise<void> {
@@ -55,6 +59,13 @@ export class TracedPatternEngine implements IPatternEngine {
     if (this.databasePatterns) {
       await this.databasePatterns.initialize();
     }
+  }
+
+  /**
+   * Set the workspace service (for deferred initialization)
+   */
+  setWorkspaceService(service: WorkspaceService): void {
+    this.workspaceService = service;
   }
 
   async executePattern(

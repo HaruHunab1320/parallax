@@ -34,6 +34,7 @@ import {
   CredentialService,
   GitHubProvider,
   createWorkspaceRouter,
+  createGitHubWebhookRouter,
 } from './workspace';
 import { AgentRuntimeService } from './agent-runtime';
 import { AuthService, requireAuth, optionalAuth } from './auth';
@@ -128,6 +129,7 @@ export async function createServer(): Promise<express.Application> {
   }
 
   // Use traced pattern engine if tracing is enabled
+  // Note: workspaceService will be set later after it's initialized
   const patternEngine: IPatternEngine = tracingConfig.exporterType !== 'none'
     ? new TracedPatternEngine(
         runtimeManager,
@@ -136,7 +138,8 @@ export async function createServer(): Promise<express.Application> {
         logger,
         database,
         executionEvents,
-        databasePatterns
+        databasePatterns,
+        undefined // workspaceService - set later
       )
     : new PatternEngine(
         runtimeManager,
@@ -145,7 +148,8 @@ export async function createServer(): Promise<express.Application> {
         logger,
         database,
         executionEvents,
-        databasePatterns
+        databasePatterns,
+        undefined // workspaceService - set later
       );
   await patternEngine.initialize();
 
@@ -319,15 +323,16 @@ export async function createServer(): Promise<express.Application> {
       await githubProvider.initialize();
       logger.info('GitHub provider initialized');
 
-      // Initialize credential service with GitHub provider
+      // Initialize credential service with GitHub provider and database
       credentialService = new CredentialService(
         {
           githubProvider,
           defaultTtlSeconds: parseInt(process.env.PARALLAX_CREDENTIAL_TTL || '3600'),
+          repository: database.credentialGrants,
         },
         logger
       );
-      logger.info('Credential service initialized');
+      logger.info('Credential service initialized (with database persistence)');
 
       // Initialize workspace service
       workspaceService = new WorkspaceService(
@@ -342,6 +347,9 @@ export async function createServer(): Promise<express.Application> {
 
       await workspaceService.initialize();
       logger.info({ workspacesDir }, 'Workspace service initialized');
+
+      // Wire workspace service into pattern engine
+      patternEngine.setWorkspaceService(workspaceService);
     } catch (error) {
       logger.warn({ error }, 'Failed to initialize GitHub/workspace services - continuing without workspace support');
       githubProvider = null;
@@ -457,6 +465,18 @@ export async function createServer(): Promise<express.Application> {
     logger.info('Workspace API enabled');
   }
 
+  // GitHub webhook router (for installation events)
+  const githubWebhookSecret = process.env.PARALLAX_GITHUB_WEBHOOK_SECRET;
+  if (githubProvider && githubWebhookSecret) {
+    const webhookRouter = createGitHubWebhookRouter({
+      webhookSecret: githubWebhookSecret,
+      githubProvider,
+      logger,
+    });
+    app.use('/api/webhooks/github', webhookRouter);
+    logger.info('GitHub webhook endpoint enabled');
+  }
+
   // Default route
   app.get('/', (_req, res) => {
     const endpoints: Record<string, string> = {
@@ -492,6 +512,9 @@ export async function createServer(): Promise<express.Application> {
     if (workspaceService) {
       endpoints.workspaces = '/api/workspaces';
       endpoints.credentials = '/api/credentials';
+    }
+    if (githubProvider && githubWebhookSecret) {
+      endpoints.githubWebhook = '/api/webhooks/github';
     }
 
     res.json({

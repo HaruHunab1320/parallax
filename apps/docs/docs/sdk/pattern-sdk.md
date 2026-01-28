@@ -595,6 +595,6 @@ const locationDatePattern = createExtractionPattern(['location', 'date']);
 
 ## Next Steps
 
-- [YAML Syntax](/patterns/yaml-syntax) - Complete YAML reference
-- [Pattern Builder](/pattern-builder/overview) - Visual pattern editor
-- [Advanced Composition](/patterns/advanced-composition) - Complex pattern techniques
+- [YAML Syntax](/docs/patterns/yaml-syntax) - Complete YAML reference
+- [Pattern Builder](/docs/pattern-builder/overview) - Visual pattern editor
+- [Advanced Composition](/docs/patterns/advanced-composition) - Complex pattern techniques

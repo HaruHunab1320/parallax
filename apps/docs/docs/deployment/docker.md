@@ -636,6 +636,6 @@ docker system prune -a
 
 ## Next Steps
 
-- [Kubernetes](/deployment/kubernetes) - Production orchestration
-- [High Availability](/enterprise/high-availability) - Multi-node setup
-- [Security](/enterprise/security) - Production security
+- [Kubernetes](/docs/deployment/kubernetes) - Production orchestration
+- [High Availability](/docs/enterprise/high-availability) - Multi-node setup
+- [Security](/docs/enterprise/security) - Production security

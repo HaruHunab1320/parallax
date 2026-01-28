@@ -271,3 +271,48 @@ model ApiKey {
   @@index([keyHash])
   @@index([userId])
 }
+
+// Git credential grants for workspace provisioning
+model CredentialGrant {
+  id            String    @id @default(uuid())
+  type          String    // github_app, oauth, deploy_key, pat
+  repo          String    // Repository (e.g., owner/repo)
+  provider      String    // github, gitlab, bitbucket, azure_devops, self_hosted
+  executionId   String    // Execution that requested the credential
+  taskId        String?   // Optional task ID
+  agentId       String?   // Optional agent ID
+  permissions   Json      // Array of permissions granted
+  reason        String?   // Reason for credential request
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  lastUsedAt    DateTime?
+  usageCount    Int       @default(0)
+
+  @@index([executionId])
+  @@index([repo])
+  @@index([createdAt])
+  @@index([expiresAt])
+}
+
+// Workspace records for git workspace provisioning
+model Workspace {
+  id            String    @id @default(uuid())
+  path          String    // Local path to workspace
+  repo          String    // Repository (e.g., owner/repo)
+  branchName    String    // Branch name (parallax/{execution-id}/{role}-{slug})
+  baseBranch    String    // Base branch (e.g., main)
+  executionId   String    // Execution that owns this workspace
+  taskId        String?   // Optional task ID
+  role          String?   // Role of the agent using this workspace
+  status        String    @default("provisioning") // provisioning, ready, in_use, finalizing, cleaned_up, error
+  credentialId  String?   // Reference to CredentialGrant
+  provisionedAt DateTime  @default(now())
+  cleanedUpAt   DateTime?
+  prNumber      Int?      // Pull request number if created
+  prUrl         String?   // Pull request URL
+
+  @@index([executionId])
+  @@index([status])
+  @@index([repo])
+}

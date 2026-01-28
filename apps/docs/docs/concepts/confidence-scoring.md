@@ -447,6 +447,6 @@ alerts:
 
 ## Next Steps
 
-- [Consensus](/concepts/consensus) - How confidence affects consensus building
-- [Agents](/concepts/agents) - Implementing confidence in agents
-- [Quality Gates](/patterns/quality-gates) - Using confidence for validation
+- [Consensus](/docs/concepts/consensus) - How confidence affects consensus building
+- [Agents](/docs/concepts/agents) - Implementing confidence in agents
+- [Quality Gates](/docs/patterns/quality-gates) - Using confidence for validation

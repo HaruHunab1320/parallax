@@ -66,5 +66,5 @@ You should see:
 
 ## Next Steps
 
-- [Quickstart Guide](/getting-started/quickstart) - Run your first pattern
-- [Core Concepts](/getting-started/concepts) - Learn how Parallax works
+- [Quickstart Guide](/docs/getting-started/quickstart) - Run your first pattern
+- [Core Concepts](/docs/getting-started/concepts) - Learn how Parallax works

@@ -735,15 +735,15 @@ Response includes pagination info:
 
 ## Webhooks
 
-See [Webhooks](/api/webhooks) for event notifications.
+See [Webhooks](/docs/api/webhooks) for event notifications.
 
 ## SDKs
 
-- [TypeScript SDK](/sdk/typescript) - Official TypeScript client
-- [Pattern SDK](/sdk/pattern-sdk) - Pattern building
+- [TypeScript SDK](/docs/sdk/typescript) - Official TypeScript client
+- [Pattern SDK](/docs/sdk/pattern-sdk) - Pattern building
 
 ## Next Steps
 
-- [Agent Protocol](/api/agent-protocol) - WebSocket protocol
-- [Webhooks](/api/webhooks) - Event notifications
-- [TypeScript SDK](/sdk/typescript) - SDK reference
+- [Agent Protocol](/docs/api/agent-protocol) - WebSocket protocol
+- [Webhooks](/docs/api/webhooks) - Event notifications
+- [TypeScript SDK](/docs/sdk/typescript) - SDK reference

@@ -99,6 +99,6 @@ These compose together to create sophisticated orchestration flows.
 
 ## Next Steps
 
-- [Your First Pattern](/getting-started/your-first-pattern) - Build something
-- [Agents Deep Dive](/concepts/agents) - Learn more about agents
-- [Pattern Syntax](/patterns/yaml-syntax) - Master the YAML format
+- [Your First Pattern](/docs/getting-started/your-first-pattern) - Build something
+- [Agents Deep Dive](/docs/concepts/agents) - Learn more about agents
+- [Pattern Syntax](/docs/patterns/yaml-syntax) - Master the YAML format

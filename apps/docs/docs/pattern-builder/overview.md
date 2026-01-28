@@ -241,6 +241,6 @@ output:
 
 ## Next Steps
 
-- [Nodes](/pattern-builder/nodes) - Detailed node reference
-- [Connections](/pattern-builder/connections) - Connection rules
-- [Exporting](/pattern-builder/exporting) - Export formats and options
+- [Nodes](/docs/pattern-builder/nodes) - Detailed node reference
+- [Connections](/docs/pattern-builder/connections) - Connection rules
+- [Exporting](/docs/pattern-builder/exporting) - Export formats and options

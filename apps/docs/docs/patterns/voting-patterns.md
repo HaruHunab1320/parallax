@@ -505,6 +505,6 @@ aggregation:
 
 ## Next Steps
 
-- [Quality Gates](/patterns/quality-gates) - Add validation to voting
-- [Consensus](/concepts/consensus) - For structured outputs
-- [Advanced Composition](/patterns/advanced-composition) - Complex voting workflows
+- [Quality Gates](/docs/patterns/quality-gates) - Add validation to voting
+- [Consensus](/docs/concepts/consensus) - For structured outputs
+- [Advanced Composition](/docs/patterns/advanced-composition) - Complex voting workflows

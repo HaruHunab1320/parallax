@@ -455,6 +455,6 @@ parallax execution list --status pending
 
 ## Next Steps
 
-- [Docker Deployment](/deployment/docker) - Container deployment
-- [Kubernetes](/deployment/kubernetes) - Production deployment
-- [Your First Pattern](/getting-started/your-first-pattern) - Create a pattern
+- [Docker Deployment](/docs/deployment/docker) - Container deployment
+- [Kubernetes](/docs/deployment/kubernetes) - Production deployment
+- [Your First Pattern](/docs/getting-started/your-first-pattern) - Create a pattern

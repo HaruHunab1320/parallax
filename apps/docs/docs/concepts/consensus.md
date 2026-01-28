@@ -483,6 +483,6 @@ validation:
 
 ## Next Steps
 
-- [Confidence Scoring](/concepts/confidence-scoring) - How confidence affects consensus
-- [Voting Patterns](/patterns/voting-patterns) - Alternative aggregation
-- [Quality Gates](/patterns/quality-gates) - Using consensus for validation
+- [Confidence Scoring](/docs/concepts/confidence-scoring) - How confidence affects consensus
+- [Voting Patterns](/docs/patterns/voting-patterns) - Alternative aggregation
+- [Quality Gates](/docs/patterns/quality-gates) - Using consensus for validation

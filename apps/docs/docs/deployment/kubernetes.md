@@ -789,6 +789,6 @@ curl localhost:8080/metrics
 
 ## Next Steps
 
-- [High Availability](/enterprise/high-availability) - HA configuration
-- [Multi-Region](/enterprise/multi-region) - Geographic distribution
-- [Security](/enterprise/security) - Security hardening
+- [High Availability](/docs/enterprise/high-availability) - HA configuration
+- [Multi-Region](/docs/enterprise/multi-region) - Geographic distribution
+- [Security](/docs/enterprise/security) - Security hardening

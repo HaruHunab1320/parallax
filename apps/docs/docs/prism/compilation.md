@@ -573,6 +573,6 @@ Error: Invalid aggregation strategy 'voteing'
 
 ## Next Steps
 
-- [Using Prism Directly](/prism/using-prism-directly) - Write Prism code
-- [Prism Syntax Reference](/prism/syntax) - Full language syntax
-- [Pattern YAML Syntax](/patterns/yaml-syntax) - YAML reference
+- [Using Prism Directly](/docs/prism/using-prism-directly) - Write Prism code
+- [Prism Syntax Reference](/docs/prism/syntax) - Full language syntax
+- [Pattern YAML Syntax](/docs/patterns/yaml-syntax) - YAML reference

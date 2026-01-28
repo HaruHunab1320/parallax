@@ -31,8 +31,8 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/parallax-ai/parallax/tree/main/sites/docs/',
-          routeBasePath: '/', // Docs at root
+          editUrl: 'https://github.com/parallax-ai/parallax/tree/main/apps/docs/',
+          routeBasePath: 'docs',
         },
         blog: false,
         theme: {
@@ -57,6 +57,7 @@ const config: Config = {
       logo: {
         alt: 'Parallax Logo',
         src: 'img/parallax-LIGHT-no-text.png',
+        srcDark: 'img/parallax-DARK.png',
       },
       items: [
         {
@@ -64,14 +65,15 @@ const config: Config = {
           sidebarId: 'docsSidebar',
           position: 'left',
           label: 'Docs',
+          docId: 'intro',
         },
         {
-          to: '/sdk/overview',
+          to: '/docs/sdk/overview',
           label: 'SDK',
           position: 'left',
         },
         {
-          to: '/patterns/overview',
+          to: '/docs/patterns/overview',
           label: 'Patterns',
           position: 'left',
         },
@@ -95,15 +97,15 @@ const config: Config = {
           items: [
             {
               label: 'Getting Started',
-              to: '/getting-started/installation',
+              to: '/docs/getting-started/installation',
             },
             {
               label: 'SDK Reference',
-              to: '/sdk/overview',
+              to: '/docs/sdk/overview',
             },
             {
               label: 'Pattern Library',
-              to: '/patterns/overview',
+              to: '/docs/patterns/overview',
             },
           ],
         },

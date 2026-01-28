@@ -86,7 +86,7 @@ output:
         Install Parallax and run your first pattern in under 5 minutes.
       </div>
       <div className="card__footer">
-        <a className="button button--primary button--block" href="/getting-started/quickstart">Quickstart Guide</a>
+        <a className="button button--primary button--block" href="/docs/getting-started/quickstart">Quickstart Guide</a>
       </div>
     </div>
   </div>
@@ -99,7 +99,7 @@ output:
         Understand agents, patterns, and how Parallax orchestrates them.
       </div>
       <div className="card__footer">
-        <a className="button button--secondary button--block" href="/getting-started/concepts">Core Concepts</a>
+        <a className="button button--secondary button--block" href="/docs/getting-started/concepts">Core Concepts</a>
       </div>
     </div>
   </div>
@@ -123,7 +123,7 @@ output:
   <div>
     <strong>Prism DSL</strong>
     <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--ifm-color-emphasis-600)'}}>
-      Parallax patterns compile to <a href="/prism/overview">Prism</a>, a programming language where uncertainty is a first-class citizen.
+      Parallax patterns compile to <a href="/docs/prism/overview">Prism</a>, a programming language where uncertainty is a first-class citizen.
       <a href="https://docs.prismlang.dev/" target="_blank" rel="noopener noreferrer"> Learn more →</a>
     </p>
   </div>
@@ -139,4 +139,4 @@ Parallax is open source under the Apache 2.0 license. The open source version in
 - ✅ Full SDK access
 - ✅ In-memory execution
 
-[Enterprise features](/enterprise/overview) add distributed execution, persistence, high availability, and more for production deployments.
+[Enterprise features](/docs/enterprise/overview) add distributed execution, persistence, high availability, and more for production deployments.

@@ -686,6 +686,6 @@ class ParallaxAgent:
 
 ## Next Steps
 
-- [Control Plane API](/api/control-plane) - REST API reference
-- [Webhooks](/api/webhooks) - Event notifications
-- [TypeScript SDK](/sdk/typescript) - Use the SDK instead of raw protocol
+- [Control Plane API](/docs/api/control-plane) - REST API reference
+- [Webhooks](/docs/api/webhooks) - Event notifications
+- [TypeScript SDK](/docs/sdk/typescript) - Use the SDK instead of raw protocol

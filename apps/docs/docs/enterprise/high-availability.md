@@ -543,6 +543,6 @@ parallax_ha_sync_latency_seconds{quantile="0.99"} > 1
 
 ## Next Steps
 
-- [Persistence](/enterprise/persistence) - Durable storage
-- [Multi-Region](/enterprise/multi-region) - Geographic distribution
-- [Security](/enterprise/security) - Secure the cluster
+- [Persistence](/docs/enterprise/persistence) - Durable storage
+- [Multi-Region](/docs/enterprise/multi-region) - Geographic distribution
+- [Security](/docs/enterprise/security) - Secure the cluster

@@ -142,6 +142,6 @@ While YAML covers most use cases, you might write Prism directly for:
 
 ## Next Steps
 
-- [Prism Syntax](/prism/syntax) - Complete syntax reference
-- [YAML to Prism Compilation](/prism/compilation) - How patterns compile
-- [Using Prism Directly](/prism/using-prism-directly) - Write Prism code
+- [Prism Syntax](/docs/prism/syntax) - Complete syntax reference
+- [YAML to Prism Compilation](/docs/prism/compilation) - How patterns compile
+- [Using Prism Directly](/docs/prism/using-prism-directly) - Write Prism code

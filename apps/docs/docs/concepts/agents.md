@@ -241,6 +241,6 @@ The control plane automatically distributes tasks across available agents with m
 
 ## Next Steps
 
-- [Patterns](/concepts/patterns) - Learn how agents are orchestrated
-- [Agent Registration](/sdk/agent-registration) - Detailed registration API
-- [Confidence Scoring](/concepts/confidence-scoring) - Deep dive on confidence
+- [Patterns](/docs/concepts/patterns) - Learn how agents are orchestrated
+- [Agent Registration](/docs/sdk/agent-registration) - Detailed registration API
+- [Confidence Scoring](/docs/concepts/confidence-scoring) - Deep dive on confidence

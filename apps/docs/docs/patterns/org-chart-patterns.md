@@ -426,6 +426,6 @@ curl -X POST http://localhost:3000/api/patterns/startup-team/execute \
 
 ## Next Steps
 
-- [Voting Patterns](/patterns/voting-patterns) - Flat voting patterns
-- [Agent Runtimes](/agent-runtimes/overview) - Spawn managed agents
-- [Advanced Composition](/patterns/advanced-composition) - Complex workflows
+- [Voting Patterns](/docs/patterns/voting-patterns) - Flat voting patterns
+- [Agent Runtimes](/docs/agent-runtimes/overview) - Spawn managed agents
+- [Advanced Composition](/docs/patterns/advanced-composition) - Complex workflows

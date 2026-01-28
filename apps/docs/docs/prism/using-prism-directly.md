@@ -519,6 +519,6 @@ prism validate pattern.prism
 
 ## Next Steps
 
-- [Prism Syntax Reference](/prism/syntax) - Complete syntax
-- [YAML to Prism Compilation](/prism/compilation) - Compilation process
-- [Pattern SDK](/sdk/pattern-sdk) - Build patterns programmatically
+- [Prism Syntax Reference](/docs/prism/syntax) - Complete syntax
+- [YAML to Prism Compilation](/docs/prism/compilation) - Compilation process
+- [Pattern SDK](/docs/sdk/pattern-sdk) - Build patterns programmatically

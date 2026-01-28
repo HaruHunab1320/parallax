@@ -828,6 +828,6 @@ security:
 
 ## Next Steps
 
-- [High Availability](/enterprise/high-availability) - Secure HA setup
-- [Persistence](/enterprise/persistence) - Secure storage
-- [Multi-Region](/enterprise/multi-region) - Cross-region security
+- [High Availability](/docs/enterprise/high-availability) - Secure HA setup
+- [Persistence](/docs/enterprise/persistence) - Secure storage
+- [Multi-Region](/docs/enterprise/multi-region) - Cross-region security

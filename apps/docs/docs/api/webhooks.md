@@ -698,6 +698,6 @@ alerts:
 
 ## Next Steps
 
-- [Control Plane API](/api/control-plane) - REST API
-- [Agent Protocol](/api/agent-protocol) - WebSocket protocol
-- [Executing Patterns](/sdk/executing-patterns) - SDK usage
+- [Control Plane API](/docs/api/control-plane) - REST API
+- [Agent Protocol](/docs/api/agent-protocol) - WebSocket protocol
+- [Executing Patterns](/docs/sdk/executing-patterns) - SDK usage

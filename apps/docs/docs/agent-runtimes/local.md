@@ -280,5 +280,5 @@ curl http://localhost:3100/health
 
 ## Next Steps
 
-- [Docker Runtime](/agent-runtimes/docker) - For isolated containers
-- [Kubernetes Runtime](/agent-runtimes/kubernetes) - For production
+- [Docker Runtime](/docs/agent-runtimes/docker) - For isolated containers
+- [Kubernetes Runtime](/docs/agent-runtimes/kubernetes) - For production

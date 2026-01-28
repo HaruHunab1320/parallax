@@ -6,24 +6,28 @@ import {
   PatternRepository,
   AgentRepository,
   ExecutionRepository,
+  CredentialGrantRepository,
+  createCredentialGrantRepository,
 } from './repositories';
 
 export class DatabaseService {
   private prisma: PrismaClient;
   private logger: Logger;
-  
+
   public patterns: PatternRepository;
   public agents: AgentRepository;
   public executions: ExecutionRepository;
+  public credentialGrants: CredentialGrantRepository;
 
   constructor(logger: Logger) {
     this.logger = logger.child({ component: 'DatabaseService' });
     this.prisma = getPrismaClient(this.logger);
-    
+
     // Initialize repositories
     this.patterns = new PatternRepository(this.prisma, this.logger);
     this.agents = new AgentRepository(this.prisma, this.logger);
     this.executions = new ExecutionRepository(this.prisma, this.logger);
+    this.credentialGrants = createCredentialGrantRepository(this.prisma);
   }
 
   async initialize(): Promise<void> {

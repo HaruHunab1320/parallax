@@ -233,7 +233,7 @@ const config: AgentConfig = {
 
 ## Next Steps
 
-- [TypeScript SDK](/sdk/typescript) - Full SDK documentation
-- [Pattern SDK](/sdk/pattern-sdk) - Building patterns programmatically
-- [Agent Registration](/sdk/agent-registration) - Deep dive into agent setup
-- [Executing Patterns](/sdk/executing-patterns) - Pattern execution guide
+- [TypeScript SDK](/docs/sdk/typescript) - Full SDK documentation
+- [Pattern SDK](/docs/sdk/pattern-sdk) - Building patterns programmatically
+- [Agent Registration](/docs/sdk/agent-registration) - Deep dive into agent setup
+- [Executing Patterns](/docs/sdk/executing-patterns) - Pattern execution guide

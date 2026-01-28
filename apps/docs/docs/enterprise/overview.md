@@ -221,7 +221,7 @@ Store all execution data in PostgreSQL:
 - **Audit trail** — Who ran what, when, for compliance
 - **Metrics** — Historical performance data in TimescaleDB
 
-[Learn more →](/enterprise/persistence)
+[Learn more →](/docs/enterprise/persistence)
 
 ### High Availability
 
@@ -232,7 +232,7 @@ Zero-downtime operation with clustering:
 - **Failover** — Automatic recovery from failures
 - **Rolling updates** — Update without service interruption
 
-[Learn more →](/enterprise/high-availability)
+[Learn more →](/docs/enterprise/high-availability)
 
 ### Web Dashboard
 
@@ -252,7 +252,7 @@ Enterprise-grade security features:
 - **SSO** — SAML/OIDC integration (Okta, Azure AD, Google)
 - **Audit logs** — Compliance-ready event logging
 
-[Learn more →](/enterprise/security)
+[Learn more →](/docs/enterprise/security)
 
 ### Multi-Region (Enterprise Plus)
 
@@ -262,7 +262,7 @@ Geographic distribution for global deployments:
 - **Data residency** — Keep data in specific regions
 - **Disaster recovery** — Failover between regions
 
-[Learn more →](/enterprise/multi-region)
+[Learn more →](/docs/enterprise/multi-region)
 
 ## Support
 
@@ -281,7 +281,7 @@ Geographic distribution for global deployments:
 
 ## Next Steps
 
-- [High Availability](/enterprise/high-availability) — Set up clustering
-- [Persistence](/enterprise/persistence) — Configure storage
-- [Security](/enterprise/security) — Enable security features
-- [Multi-Region](/enterprise/multi-region) — Geographic distribution
+- [High Availability](/docs/enterprise/high-availability) — Set up clustering
+- [Persistence](/docs/enterprise/persistence) — Configure storage
+- [Security](/docs/enterprise/security) — Enable security features
+- [Multi-Region](/docs/enterprise/multi-region) — Geographic distribution
