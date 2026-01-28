@@ -58,6 +58,46 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@20.19.9)(terser@5.46.0)
 
+  apps/docs:
+    dependencies:
+      '@docusaurus/core':
+        specifier: 3.9.2
+        version: 3.9.2(@mdx-js/react@3.1.1(@types/react@18.3.23)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.6.3)
+      '@docusaurus/preset-classic':
+        specifier: 3.9.2
+        version: 3.9.2(@mdx-js/react@3.1.1(@types/react@18.3.23)(react@19.2.4))(@types/react@18.3.23)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.6.3)
+      '@docusaurus/theme-mermaid':
+        specifier: ^3.9.2
+        version: 3.9.2(@docusaurus/plugin-content-docs@3.9.2(@mdx-js/react@3.1.1(@types/react@18.3.23)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.6.3))(@mdx-js/react@3.1.1(@types/react@18.3.23)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.6.3)
+      '@mdx-js/react':
+        specifier: ^3.0.0
+        version: 3.1.1(@types/react@18.3.23)(react@19.2.4)
+      clsx:
+        specifier: ^2.0.0
+        version: 2.1.1
+      prism-react-renderer:
+        specifier: ^2.3.0
+        version: 2.4.1(react@19.2.4)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@docusaurus/module-type-aliases':
+        specifier: 3.9.2
+        version: 3.9.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@docusaurus/tsconfig':
+        specifier: 3.9.2
+        version: 3.9.2
+      '@docusaurus/types':
+        specifier: 3.9.2
+        version: 3.9.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      typescript:
+        specifier: ~5.6.2
+        version: 5.6.3
+
   apps/web-dashboard:
     dependencies:
       '@docusaurus/theme-mermaid':
@@ -104,7 +144,7 @@ importers:
         version: 0.468.0(react@18.3.1)
       next:
         specifier: 14.2.30
-        version: 14.2.30(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 14.2.30(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -530,7 +570,7 @@ importers:
         version: 2.0.0(@prism-lang/llm@1.3.0)
       '@prism-lang/llm':
         specifier: ^1.3.0
-        version: 1.3.0(@prism-lang/confidence@1.2.4)(react@18.3.1)
+        version: 1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)
       '@prisma/client':
         specifier: ^6.12.0
         version: 6.12.0(prisma@6.12.0(typescript@5.8.3))(typescript@5.8.3)
@@ -663,7 +703,7 @@ importers:
         version: link:../sdk-typescript
       ai:
         specifier: ^3.0.0
-        version: 3.4.33(react@18.3.1)(sswr@2.2.0(svelte@5.36.16))(svelte@5.36.16)(vue@3.5.18(typescript@5.8.3))(zod@3.25.76)
+        version: 3.4.33(react@19.2.4)(sswr@2.2.0(svelte@5.36.16))(svelte@5.36.16)(vue@3.5.18(typescript@5.8.3))(zod@3.25.76)
       zod:
         specifier: ^3.22.0
         version: 3.25.76
@@ -740,7 +780,7 @@ importers:
         version: 1.4.0(@prism-lang/llm@1.3.0)
       ai:
         specifier: ^3.0.0
-        version: 3.4.33(react@18.3.1)(sswr@2.2.0(svelte@5.36.16))(svelte@5.36.16)(vue@3.5.18(typescript@5.8.3))(zod@3.25.76)
+        version: 3.4.33(react@19.2.4)(sswr@2.2.0(svelte@5.36.16))(svelte@5.36.16)(vue@3.5.18(typescript@5.8.3))(zod@3.25.76)
       chalk:
         specifier: ^5.3.0
         version: 5.4.1
@@ -771,10 +811,10 @@ importers:
     devDependencies:
       '@prism-lang/cli':
         specifier: ^1.3.0
-        version: 1.3.0(@prism-lang/confidence@1.2.4)(react@18.3.1)
+        version: 1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)
       '@prism-lang/repl':
         specifier: ^1.3.0
-        version: 1.3.0(@prism-lang/confidence@1.2.4)(react@18.3.1)
+        version: 1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)
       '@types/fs-extra':
         specifier: ^11.0.4
         version: 11.0.4
@@ -1142,46 +1182,6 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.8.3
-
-  sites/docs:
-    dependencies:
-      '@docusaurus/core':
-        specifier: 3.9.2
-        version: 3.9.2(@mdx-js/react@3.1.1(@types/react@18.3.23)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.6.3)
-      '@docusaurus/preset-classic':
-        specifier: 3.9.2
-        version: 3.9.2(@mdx-js/react@3.1.1(@types/react@18.3.23)(react@19.2.4))(@types/react@18.3.23)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.6.3)
-      '@docusaurus/theme-mermaid':
-        specifier: ^3.9.2
-        version: 3.9.2(@docusaurus/plugin-content-docs@3.9.2(@mdx-js/react@3.1.1(@types/react@18.3.23)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.6.3))(@mdx-js/react@3.1.1(@types/react@18.3.23)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.6.3)
-      '@mdx-js/react':
-        specifier: ^3.0.0
-        version: 3.1.1(@types/react@18.3.23)(react@19.2.4)
-      clsx:
-        specifier: ^2.0.0
-        version: 2.1.1
-      prism-react-renderer:
-        specifier: ^2.3.0
-        version: 2.4.1(react@19.2.4)
-      react:
-        specifier: ^19.0.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@docusaurus/module-type-aliases':
-        specifier: 3.9.2
-        version: 3.9.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@docusaurus/tsconfig':
-        specifier: 3.9.2
-        version: 3.9.2
-      '@docusaurus/types':
-        specifier: 3.9.2
-        version: 3.9.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      typescript:
-        specifier: ~5.6.2
-        version: 5.6.3
 
 packages:
 
@@ -12248,22 +12248,22 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@0.0.70(react@18.3.1)(zod@3.25.76)':
+  '@ai-sdk/react@0.0.70(react@19.2.4)(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider-utils': 1.0.22(zod@3.25.76)
       '@ai-sdk/ui-utils': 0.0.50(zod@3.25.76)
-      swr: 2.3.4(react@18.3.1)
+      swr: 2.3.4(react@19.2.4)
       throttleit: 2.1.0
     optionalDependencies:
-      react: 18.3.1
+      react: 19.2.4
       zod: 3.25.76
 
-  '@ai-sdk/react@1.2.12(react@18.3.1)(zod@3.25.76)':
+  '@ai-sdk/react@1.2.12(react@19.2.4)(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider-utils': 2.2.8(zod@3.25.76)
       '@ai-sdk/ui-utils': 1.2.11(zod@3.25.76)
-      react: 18.3.1
-      swr: 2.3.4(react@18.3.1)
+      react: 19.2.4
+      swr: 2.3.4(react@19.2.4)
       throttleit: 2.1.0
     optionalDependencies:
       zod: 3.25.76
@@ -16308,11 +16308,11 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@prism-lang/cli@1.3.0(@prism-lang/confidence@1.2.4)(react@18.3.1)':
+  '@prism-lang/cli@1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)':
     dependencies:
       '@prism-lang/core': 2.0.0(@prism-lang/llm@1.3.0)
-      '@prism-lang/llm': 1.3.0(@prism-lang/confidence@1.2.4)(react@18.3.1)
-      '@prism-lang/repl': 1.3.0(@prism-lang/confidence@1.2.4)(react@18.3.1)
+      '@prism-lang/llm': 1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)
+      '@prism-lang/repl': 1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)
       dotenv: 16.6.1
     transitivePeerDependencies:
       - '@prism-lang/confidence'
@@ -16326,15 +16326,15 @@ snapshots:
 
   '@prism-lang/core@2.0.0(@prism-lang/llm@1.3.0)':
     optionalDependencies:
-      '@prism-lang/llm': 1.3.0(@prism-lang/confidence@1.2.4)(react@18.3.1)
+      '@prism-lang/llm': 1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)
 
-  '@prism-lang/llm@1.3.0(@prism-lang/confidence@1.2.4)(react@18.3.1)':
+  '@prism-lang/llm@1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)':
     dependencies:
       '@ai-sdk/anthropic': 1.2.12(zod@3.25.76)
       '@ai-sdk/google': 1.2.22(zod@3.25.76)
       '@prism-lang/core': 2.0.0(@prism-lang/llm@1.3.0)
       '@types/node-fetch': 2.6.12
-      ai: 4.3.19(react@18.3.1)(zod@3.25.76)
+      ai: 4.3.19(react@19.2.4)(zod@3.25.76)
       dotenv: 16.6.1
       node-fetch: 3.3.2
       zod: 3.25.76
@@ -16343,10 +16343,10 @@ snapshots:
     transitivePeerDependencies:
       - react
 
-  '@prism-lang/repl@1.3.0(@prism-lang/confidence@1.2.4)(react@18.3.1)':
+  '@prism-lang/repl@1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)':
     dependencies:
       '@prism-lang/core': 2.0.0(@prism-lang/llm@1.3.0)
-      '@prism-lang/llm': 1.3.0(@prism-lang/confidence@1.2.4)(react@18.3.1)
+      '@prism-lang/llm': 1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)
     transitivePeerDependencies:
       - '@prism-lang/confidence'
       - react
@@ -17096,12 +17096,12 @@ snapshots:
 
   '@types/bonjour@3.5.13':
     dependencies:
-      '@types/node': 24.1.0
+      '@types/node': 20.19.9
 
   '@types/connect-history-api-fallback@1.5.4':
     dependencies:
       '@types/express-serve-static-core': 5.0.6
-      '@types/node': 24.1.0
+      '@types/node': 20.19.9
 
   '@types/connect@3.4.38':
     dependencies:
@@ -17331,7 +17331,7 @@ snapshots:
 
   '@types/http-proxy@1.17.17':
     dependencies:
-      '@types/node': 24.1.0
+      '@types/node': 20.19.9
 
   '@types/inquirer@6.5.0':
     dependencies:
@@ -17457,7 +17457,7 @@ snapshots:
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 24.1.0
+      '@types/node': 20.19.9
 
   '@types/send@0.17.5':
     dependencies:
@@ -17478,7 +17478,7 @@ snapshots:
 
   '@types/sockjs@0.3.36':
     dependencies:
-      '@types/node': 24.1.0
+      '@types/node': 20.19.9
 
   '@types/ssh2@1.15.5':
     dependencies:
@@ -18016,11 +18016,11 @@ snapshots:
       clean-stack: 2.2.0
       indent-string: 4.0.0
 
-  ai@3.4.33(react@18.3.1)(sswr@2.2.0(svelte@5.36.16))(svelte@5.36.16)(vue@3.5.18(typescript@5.8.3))(zod@3.25.76):
+  ai@3.4.33(react@19.2.4)(sswr@2.2.0(svelte@5.36.16))(svelte@5.36.16)(vue@3.5.18(typescript@5.8.3))(zod@3.25.76):
     dependencies:
       '@ai-sdk/provider': 0.0.26
       '@ai-sdk/provider-utils': 1.0.22(zod@3.25.76)
-      '@ai-sdk/react': 0.0.70(react@18.3.1)(zod@3.25.76)
+      '@ai-sdk/react': 0.0.70(react@19.2.4)(zod@3.25.76)
       '@ai-sdk/solid': 0.0.54(zod@3.25.76)
       '@ai-sdk/svelte': 0.0.57(svelte@5.36.16)(zod@3.25.76)
       '@ai-sdk/ui-utils': 0.0.50(zod@3.25.76)
@@ -18032,7 +18032,7 @@ snapshots:
       secure-json-parse: 2.7.0
       zod-to-json-schema: 3.24.6(zod@3.25.76)
     optionalDependencies:
-      react: 18.3.1
+      react: 19.2.4
       sswr: 2.2.0(svelte@5.36.16)
       svelte: 5.36.16
       zod: 3.25.76
@@ -18040,17 +18040,17 @@ snapshots:
       - solid-js
       - vue
 
-  ai@4.3.19(react@18.3.1)(zod@3.25.76):
+  ai@4.3.19(react@19.2.4)(zod@3.25.76):
     dependencies:
       '@ai-sdk/provider': 1.1.3
       '@ai-sdk/provider-utils': 2.2.8(zod@3.25.76)
-      '@ai-sdk/react': 1.2.12(react@18.3.1)(zod@3.25.76)
+      '@ai-sdk/react': 1.2.12(react@19.2.4)(zod@3.25.76)
       '@ai-sdk/ui-utils': 1.2.11(zod@3.25.76)
       '@opentelemetry/api': 1.9.0
       jsondiffpatch: 0.6.0
       zod: 3.25.76
     optionalDependencies:
-      react: 18.3.1
+      react: 19.2.4
 
   ajv-formats@2.1.1(ajv@8.17.1):
     optionalDependencies:
@@ -19954,7 +19954,7 @@ snapshots:
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
       eslint-plugin-react: 7.37.5(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.0.0-canary-7118f5dd7-20230705(eslint@8.57.1)
@@ -19984,7 +19984,7 @@ snapshots:
       tinyglobby: 0.2.14
       unrs-resolver: 1.9.2
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -19999,7 +19999,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -20263,7 +20263,7 @@ snapshots:
 
   eval@0.1.8:
     dependencies:
-      '@types/node': 24.1.0
+      '@types/node': 20.19.9
       require-like: 0.1.2
 
   eventemitter3@4.0.7: {}
@@ -21907,7 +21907,7 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 24.1.0
+      '@types/node': 20.19.9
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
@@ -22939,7 +22939,7 @@ snapshots:
 
   netmask@2.0.2: {}
 
-  next@14.2.30(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  next@14.2.30(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@next/env': 14.2.30
       '@swc/helpers': 0.5.5
@@ -22949,7 +22949,7 @@ snapshots:
       postcss: 8.4.31
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-      styled-jsx: 5.1.1(@babel/core@7.28.6)(react@18.3.1)
+      styled-jsx: 5.1.1(react@18.3.1)
     optionalDependencies:
       '@next/swc-darwin-arm64': 14.2.30
       '@next/swc-darwin-x64': 14.2.30
@@ -25229,12 +25229,10 @@ snapshots:
     dependencies:
       inline-style-parser: 0.2.7
 
-  styled-jsx@5.1.1(@babel/core@7.28.6)(react@18.3.1):
+  styled-jsx@5.1.1(react@18.3.1):
     dependencies:
       client-only: 0.0.1
       react: 18.3.1
-    optionalDependencies:
-      '@babel/core': 7.28.6
 
   stylehacks@6.1.1(postcss@8.5.6):
     dependencies:
@@ -25323,11 +25321,11 @@ snapshots:
       lower-case: 1.1.4
       upper-case: 1.1.3
 
-  swr@2.3.4(react@18.3.1):
+  swr@2.3.4(react@19.2.4):
     dependencies:
       dequal: 2.0.3
-      react: 18.3.1
-      use-sync-external-store: 1.5.0(react@18.3.1)
+      react: 19.2.4
+      use-sync-external-store: 1.5.0(react@19.2.4)
 
   swrev@4.0.0: {}
 
@@ -25948,6 +25946,10 @@ snapshots:
   use-sync-external-store@1.5.0(react@18.3.1):
     dependencies:
       react: 18.3.1
+
+  use-sync-external-store@1.5.0(react@19.2.4):
+    dependencies:
+      react: 19.2.4
 
   util-deprecate@1.0.2: {}
 
