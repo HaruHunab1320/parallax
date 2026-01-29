@@ -1,0 +1,18 @@
+[build]
+  command = "pnpm --filter marketing build"
+  publish = "apps/marketing/.next"
+
+# Marketing site
+[context.marketing]
+  command = "pnpm --filter marketing build"
+  publish = "apps/marketing/.next"
+
+# Docs site (Docusaurus)
+[context.docs]
+  command = "pnpm --filter docs build"
+  publish = "apps/docs/build"
+
+# Builder site (Next.js)
+[context.builder]
+  command = "pnpm --filter builder build"
+  publish = "apps/builder/.next"

@@ -339,6 +339,69 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <section className="px-6 pb-24">
+          <div className="mx-auto w-full max-w-6xl rounded-[32px] border border-[#e2e8f0] bg-white/90 p-10 shadow-xl shadow-[#0f172a]/10">
+            <div className="grid gap-10 lg:grid-cols-[1fr_1.2fr]">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#64748b]">
+                  Contact
+                </p>
+                <h2 className="mt-4 text-3xl font-semibold text-[#0b0f14]">
+                  Want to collaborate or share feedback?
+                </h2>
+                <p className="mt-4 text-sm leading-relaxed text-[#64748b]">
+                  We would love to hear how you are using Parallax or what you
+                  want to see next. Drop a note and we will follow up.
+                </p>
+              </div>
+              <form
+                name="contact"
+                method="POST"
+                data-netlify="true"
+                data-netlify-honeypot="bot-field"
+                className="grid gap-4"
+              >
+                <input type="hidden" name="form-name" value="contact" />
+                <input type="hidden" name="bot-field" />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748b]">
+                    Name
+                    <input
+                      name="name"
+                      required
+                      className="mt-2 w-full rounded-2xl border border-[#e2e8f0] px-4 py-3 text-sm text-[#0f172a] shadow-sm focus:border-[#35b5e9] focus:outline-none"
+                    />
+                  </label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748b]">
+                    Email
+                    <input
+                      name="email"
+                      type="email"
+                      required
+                      className="mt-2 w-full rounded-2xl border border-[#e2e8f0] px-4 py-3 text-sm text-[#0f172a] shadow-sm focus:border-[#35b5e9] focus:outline-none"
+                    />
+                  </label>
+                </div>
+                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748b]">
+                  Message
+                  <textarea
+                    name="message"
+                    rows={4}
+                    required
+                    className="mt-2 w-full rounded-2xl border border-[#e2e8f0] px-4 py-3 text-sm text-[#0f172a] shadow-sm focus:border-[#35b5e9] focus:outline-none"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="rounded-full bg-[#35b5e9] px-6 py-3 text-sm font-semibold text-[#0b0f14] shadow-lg shadow-[#35b5e9]/30 transition hover:-translate-y-0.5"
+                >
+                  Send message
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
       </main>
 
       <footer className="border-t border-[#e2e8f0] px-6 py-10 text-sm text-[#64748b]">
