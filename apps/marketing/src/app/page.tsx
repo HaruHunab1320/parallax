@@ -74,6 +74,7 @@ export default function Home() {
 
       <main>
         <section className="relative overflow-hidden px-6 pb-16 pt-16">
+          <div className="triangles-bg pointer-events-none absolute inset-0 opacity-60" />
           <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-8">
               <div className="inline-flex items-center gap-2 rounded-full border border-[#d7dee8] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-[#1e293b]">

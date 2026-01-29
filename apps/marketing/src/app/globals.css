@@ -40,3 +40,11 @@ a {
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
 }
+
+.triangles-bg {
+  background-image: url("data:image/svg+xml,%3Csvg width='120' height='104' viewBox='0 0 120 104' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 4 L116 100 H4 L60 4 Z' stroke='rgba(53,181,233,0.18)' stroke-width='1'/%3E%3Cpath d='M60 22 L98 92 H22 L60 22 Z' stroke='rgba(217,45,136,0.12)' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 180px 156px;
+  background-repeat: repeat;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, transparent 70%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, transparent 70%);
+}

@@ -1,33 +1,24 @@
 # Parallax Kubernetes Deployment
 
-This directory contains Kubernetes manifests, operators, and Helm charts for deploying the Parallax platform on Kubernetes.
+Helm chart for deploying the Parallax control plane to Kubernetes.
 
 ## Directory Structure
 
 ```
 k8s/
-├── crds/                  # Custom Resource Definitions
-├── operators/             # Kubernetes Operator
-├── examples/              # Example manifests
-└── helm/                  # Helm chart
+└── helm/parallax/       # Helm chart for full stack deployment
 ```
 
 ## Prerequisites
 
 - Kubernetes 1.26+
 - kubectl configured to access your cluster
-- Helm 3+ (for Helm installation)
+- Helm 3+
 - cert-manager (optional, for TLS)
 
 ## Quick Start
 
-### Option 1: Using Helm (Recommended)
-
 ```bash
-# Add the Parallax Helm repository (when published)
-# helm repo add parallax https://charts.parallax.io
-# helm repo update
-
 # Install from local chart
 helm install parallax ./k8s/helm/parallax \
   --namespace parallax-system \
@@ -40,149 +31,74 @@ helm install parallax ./k8s/helm/parallax \
   --values my-values.yaml
 ```
 
-### Option 2: Using kubectl
+## What Gets Deployed
 
-```bash
-# Install CRDs
-kubectl apply -f k8s/crds/
+The Helm chart deploys:
 
-# Install the operator
-kubectl apply -f k8s/operators/parallax-operator/deploy/
-
-# Wait for operator to be ready
-kubectl wait --for=condition=available --timeout=300s \
-  deployment/parallax-operator -n parallax-system
-
-# Deploy example agents and patterns
-kubectl apply -f k8s/examples/
-```
-
-## Custom Resource Definitions (CRDs)
-
-### ParallaxAgent
-
-Defines an AI agent that can be deployed and managed by the platform.
-
-```yaml
-apiVersion: agent.parallax.io/v1alpha1
-kind: ParallaxAgent
-metadata:
-  name: sentiment-analyzer
-spec:
-  agentId: sentiment-1
-  image: parallax/sentiment-agent:latest
-  replicas: 2
-  capabilities:
-    - sentiment
-    - emotion
-  autoscaling:
-    enabled: true
-    targetConfidenceThreshold: 0.85
-```
-
-### Pattern
-
-Defines a coordination pattern written in Prism.
-
-```yaml
-apiVersion: pattern.parallax.io/v1alpha1
-kind: Pattern
-metadata:
-  name: consensus-builder
-spec:
-  name: consensus-builder
-  source:
-    type: inline
-    content: |
-      pattern consensus_builder {
-        agents~: select(capability: "analysis", min: 3)
-        results~: parallel(agents~, analyze, input)
-        consensus~>: aggregate(results~, weighted_vote)
-        return consensus~
-      }
-  minAgents: 3
-  confidenceThreshold: 0.7
-```
-
-### PatternExecution
-
-Triggers execution of a pattern with specific input.
-
-```yaml
-apiVersion: execution.parallax.io/v1alpha1
-kind: PatternExecution
-metadata:
-  name: analyze-text-001
-spec:
-  patternRef:
-    name: consensus-builder
-  input:
-    text: "Analyze this text"
-  successPolicy:
-    minConfidence: 0.8
-```
+- **Control Plane** - Core Parallax orchestration service
+- **etcd** - Distributed key-value store for agent registry
+- **PostgreSQL** - Database for patterns, executions, and metrics
+- **Redis** - Caching and pub/sub
+- **InfluxDB** - Time-series metrics storage
+- **Grafana** - Dashboards and visualization
+- **Prometheus** - Metrics collection
 
 ## Configuration
 
-### Helm Values
-
-Key configuration options in `values.yaml`:
+### Key Helm Values
 
 ```yaml
 # Control Plane
 controlPlane:
   enabled: true
   replicaCount: 1
+  licenseKey: ""  # Enterprise license (optional)
   resources:
     requests:
       cpu: 200m
       memory: 256Mi
 
+# Database
+postgresql:
+  enabled: true
+  auth:
+    username: parallax
+    password: changeme  # Change in production!
+    database: parallax
+
 # Monitoring
+grafana:
+  enabled: true
+  adminPassword: changeme  # Change in production!
+
 influxdb:
   enabled: true
   persistence:
     size: 10Gi
 
-grafana:
-  enabled: true
-  adminPassword: changeme
-
 # Security
 security:
   tls:
-    enabled: true
+    enabled: false
     certManager:
-      enabled: true
+      enabled: false
 ```
 
-### Environment Variables
+### Environment-specific Values
 
-Control plane configuration via environment:
+```bash
+# Development
+helm install parallax ./k8s/helm/parallax \
+  -f ./k8s/helm/parallax/values-dev.yaml
 
-- `PARALLAX_ETCD_ENDPOINTS` - etcd cluster endpoints
-- `PARALLAX_CONFIDENCE_STORE` - "memory" or "influxdb"
-- `INFLUXDB_URL` - InfluxDB URL (when using InfluxDB)
-- `INFLUXDB_TOKEN` - InfluxDB auth token
+# Production
+helm install parallax ./k8s/helm/parallax \
+  -f ./k8s/helm/parallax/values-production.yaml
+```
 
 ## Monitoring
 
-### Prometheus Metrics
-
-The platform exposes Prometheus metrics on `/metrics`:
-
-```bash
-# Port-forward to access metrics
-kubectl port-forward -n parallax-system \
-  svc/parallax-control-plane 3001:3001
-
-# View metrics
-curl http://localhost:3001/metrics
-```
-
-### Grafana Dashboards
-
-Access Grafana dashboards:
+### Access Grafana
 
 ```bash
 # Port-forward Grafana
@@ -193,42 +109,31 @@ kubectl port-forward -n parallax-system \
 # Default: admin / parallax123
 ```
 
-## Scaling
-
-### Horizontal Pod Autoscaling
-
-Agents support HPA based on CPU and confidence metrics:
-
-```yaml
-spec:
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 70
-    targetConfidenceThreshold: 0.85
-```
-
-### Manual Scaling
+### Access Prometheus Metrics
 
 ```bash
-# Scale an agent
-kubectl scale parallaxagent sentiment-analyzer --replicas=5
+kubectl port-forward -n parallax-system \
+  svc/parallax-control-plane 3001:3001
+
+curl http://localhost:3001/metrics
+```
+
+## Scaling
+
+### Enable Horizontal Pod Autoscaling
+
+```yaml
+controlPlane:
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
 ```
 
 ## Security
 
-### RBAC
-
-The operator requires cluster-wide permissions to manage resources. Review and adjust RBAC as needed:
-
-```bash
-kubectl describe clusterrole parallax-operator
-```
-
 ### Network Policies
-
-Enable network policies in Helm values:
 
 ```yaml
 networkPolicy:
@@ -240,9 +145,7 @@ networkPolicy:
             name: parallax-system
 ```
 
-### TLS/mTLS
-
-Enable TLS for agent communication:
+### TLS
 
 ```yaml
 security:
@@ -253,124 +156,70 @@ security:
       issuer: letsencrypt-prod
 ```
 
+## Agent Runtimes
+
+The control plane supports multiple agent runtimes:
+
+| Runtime | Description |
+|---------|-------------|
+| `local` | Agents run as local processes (default) |
+| `docker` | Agents run as Docker containers |
+| `kubernetes` | Agents run as K8s pods via `runtime-k8s` |
+
+To use the Kubernetes runtime for agents, configure:
+
+```yaml
+controlPlane:
+  env:
+    PARALLAX_RUNTIME: kubernetes
+    PARALLAX_K8S_NAMESPACE: parallax-agents
+```
+
+The `runtime-k8s` package (`/packages/runtime-k8s`) handles spawning agents as Kubernetes pods.
+
 ## Troubleshooting
 
-### Check Operator Logs
+### Check Control Plane Logs
 
 ```bash
-kubectl logs -n parallax-system deployment/parallax-operator
+kubectl logs -n parallax-system deployment/parallax-control-plane
 ```
 
-### Check Agent Status
+### Check Pod Status
 
 ```bash
-# List all agents
-kubectl get parallaxagents
-
-# Describe specific agent
-kubectl describe parallaxagent sentiment-analyzer
-```
-
-### Check Pattern Executions
-
-```bash
-# List executions
-kubectl get patternexecutions
-
-# View execution details
-kubectl describe patternexecution analyze-text-001
+kubectl get pods -n parallax-system
+kubectl describe pod <pod-name> -n parallax-system
 ```
 
 ### Common Issues
 
-1. **Agents not registering**
-   - Check etcd connectivity
-   - Verify service discovery configuration
-   - Check agent logs: `kubectl logs deployment/<agent-name>`
+1. **Control plane not starting**
+   - Check database connectivity
+   - Verify etcd is running
+   - Review resource limits
 
-2. **Pattern execution failing**
-   - Verify required capabilities are available
-   - Check confidence thresholds
-   - Review pattern syntax
-
-3. **Metrics not available**
+2. **Metrics not available**
    - Ensure Prometheus is running
    - Check service monitor configuration
-   - Verify metrics endpoint is accessible
 
-## Advanced Topics
+3. **Database connection errors**
+   - Verify PostgreSQL credentials
+   - Check network policies
 
-### Multi-Region Deployment
-
-Deploy control planes in multiple regions:
-
-```yaml
-# region-1-values.yaml
-controlPlane:
-  env:
-    REGION: us-west-2
-    FEDERATION_ENABLED: true
-```
-
-### Custom Operators
-
-Extend the operator with custom controllers:
-
-```go
-// Add to main.go
-if err = (&mycontroller.Reconciler{
-    Client: mgr.GetClient(),
-    Scheme: mgr.GetScheme(),
-}).SetupWithManager(mgr); err != nil {
-    setupLog.Error(err, "unable to create controller")
-    os.Exit(1)
-}
-```
-
-### GitOps Integration
-
-Use Flux or ArgoCD for GitOps:
-
-```yaml
-# flux-kustomization.yaml
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: parallax
-spec:
-  interval: 10m
-  path: ./k8s
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: parallax
-```
-
-## Development
-
-### Building the Operator
+## Upgrade
 
 ```bash
-cd k8s/operators/parallax-operator
-make build
-make docker-build docker-push IMG=parallax/operator:dev
+helm upgrade parallax ./k8s/helm/parallax \
+  --namespace parallax-system \
+  --values my-values.yaml
 ```
 
-### Testing CRDs
+## Uninstall
 
 ```bash
-# Validate CRDs
-kubectl apply --dry-run=client -f k8s/crds/
+helm uninstall parallax --namespace parallax-system
 
-# Test with examples
-kubectl apply -f k8s/examples/ --dry-run=client
+# Optional: delete namespace
+kubectl delete namespace parallax-system
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
