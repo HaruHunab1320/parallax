@@ -32,11 +32,19 @@ export function BaseNode({
   const definition = getNodeDefinition(type as PatternNodeType);
   const hasInputHandle = definition ? definition.inputs > 0 : true;
   const hasOutputHandle = definition ? definition.outputs > 0 : true;
+  const handleStyle = {
+    width: 14,
+    height: 14,
+    border: '2px solid #ffffff',
+    background: '#94a3b8',
+    boxShadow: '0 0 0 2px rgba(53, 181, 233, 0.15)',
+  } as const;
+  const handleOffset = -3;
 
   return (
     <div
       className={clsx(
-        'rounded-lg shadow-lg bg-white border-2 min-w-[180px] w-fit',
+        'relative overflow-visible rounded-lg shadow-lg bg-white border-2 min-w-[180px] w-fit',
         selected ? 'border-blue-500 shadow-blue-200' : 'border-slate-200',
         className
       )}
@@ -67,6 +75,12 @@ export function BaseNode({
         <Handle
           type="target"
           position={Position.Left}
+          style={{
+            ...handleStyle,
+            top: '50%',
+            left: handleOffset,
+            transform: 'translate(-50%, -50%)',
+          }}
           className="w-3 h-3 bg-slate-400 border-2 border-white"
         />
       )}
@@ -76,6 +90,12 @@ export function BaseNode({
         <Handle
           type="source"
           position={Position.Right}
+          style={{
+            ...handleStyle,
+            top: '50%',
+            right: handleOffset,
+            transform: 'translate(50%, -50%)',
+          }}
           className="w-3 h-3 bg-slate-400 border-2 border-white"
         />
       )}
@@ -87,14 +107,24 @@ export function BaseNode({
             type="source"
             position={Position.Right}
             id="true"
-            style={{ top: '35%' }}
+            style={{
+              ...handleStyle,
+              top: '35%',
+              right: handleOffset,
+              transform: 'translate(50%, -50%)',
+            }}
             className="w-3 h-3 bg-green-500 border-2 border-white"
           />
           <Handle
             type="source"
             position={Position.Right}
             id="false"
-            style={{ top: '65%' }}
+            style={{
+              ...handleStyle,
+              top: '65%',
+              right: handleOffset,
+              transform: 'translate(50%, -50%)',
+            }}
             className="w-3 h-3 bg-red-500 border-2 border-white"
           />
         </>

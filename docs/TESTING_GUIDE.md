@@ -75,17 +75,85 @@ pnpm test:coverage
 
 ## Test Categories
 
-### 1. Core Runtime Tests
+### 1. Agent Runtime Tests
 
-#### 1.1 Agent Management
+#### 1.1 Runtime Interface
+- [ ] Runtime provider selection works (`local`, `docker`, `kubernetes`)
+- [ ] Runtime initialization succeeds
+- [ ] Runtime shutdown cleans up resources
+- [ ] Runtime health check returns accurate status
+- [ ] Multiple runtimes can be configured (not simultaneous)
+
+#### 1.2 Runtime: Local Provider
+```bash
+# Test local runtime
+pnpm test --filter @parallax/runtime-local
+```
+- [ ] Agent process spawning works
+- [ ] Agent process receives environment variables
+- [ ] Agent stdout/stderr captured
+- [ ] Agent process cleanup on stop
+- [ ] Agent process cleanup on control plane shutdown
+- [ ] Orphan process detection and cleanup
+- [ ] Max concurrent agent limit enforced
+- [ ] Agent working directory created
+- [ ] Agent working directory cleaned up
+
+#### 1.3 Runtime: Docker Provider
+```bash
+# Test docker runtime
+pnpm test --filter @parallax/runtime-docker
+
+# Manual verification
+docker ps | grep parallax-agent
+```
+- [ ] Docker daemon connection works
+- [ ] Agent container creation works
+- [ ] Agent container starts successfully
+- [ ] Agent container receives environment variables
+- [ ] Agent container logs accessible
+- [ ] Agent container stop works (graceful)
+- [ ] Agent container stop works (force)
+- [ ] Agent container cleanup on control plane shutdown
+- [ ] Orphan container detection and cleanup
+- [ ] Container resource limits applied
+- [ ] Container network connectivity
+- [ ] Volume mounts work for workspaces
+- [ ] Custom agent images work
+
+#### 1.4 Runtime: Kubernetes Provider
+```bash
+# Test k8s runtime (requires cluster)
+pnpm test --filter @parallax/runtime-k8s
+
+# Manual verification
+kubectl get parallaxagents -n parallax-agents
+kubectl get pods -n parallax-agents
+```
+- [ ] Kubernetes cluster connection works
+- [ ] ParallaxAgent CRD can be created
+- [ ] Agent pod is created from CRD
+- [ ] Agent pod receives environment variables
+- [ ] Agent pod logs accessible
+- [ ] Agent CRD deletion cleans up pod
+- [ ] Agent pod status syncs to CRD status
+- [ ] Agent endpoint discovery works
+- [ ] RBAC permissions sufficient
+- [ ] Namespace isolation works
+- [ ] Resource requests/limits applied
+- [ ] Pod security context applied
+
+#### 1.5 Agent Management (All Runtimes)
 - [ ] Agent registration and discovery
 - [ ] Agent health checks and monitoring
 - [ ] Agent capability detection
 - [ ] Agent lifecycle management (start/stop/restart)
 - [ ] gRPC communication between agents and runtime
 - [ ] Agent proxy functionality
+- [ ] Agent reconnection after network issues
+- [ ] Agent timeout and cleanup
 
-#### 1.2 Pattern Execution
+#### 1.6 Pattern Execution
 - [ ] Pattern loading and validation
 - [ ] Epistemic orchestrator pattern execution
 - [ ] Consensus builder pattern execution
@@ -93,12 +161,14 @@ pnpm test:coverage
 - [ ] Confidence score calculation and tracking
 - [ ] Parallel path exploration for high-confidence disagreements
 
-#### 1.3 Confidence Protocol
+#### 1.8 Confidence Protocol
 - [ ] Confidence scoring accuracy
 - [ ] Weighted consensus calculation
 - [ ] Threshold-based decision making
 - [ ] Confidence history tracking
 - [ ] Anomaly detection in confidence patterns
+
+---
 
 ### 2. Security Tests
 
@@ -239,14 +309,291 @@ pnpm test:coverage
 - [ ] Database failure recovery
 - [ ] Control plane failover
 
-### 10. SDK Pre-requisites
+### 10. Workspace Service Tests
 
-Before implementing SDKs, ensure:
+#### 10.1 Git Operations
+```bash
+# Test workspace service
+pnpm test --filter @parallax/control-plane -- --testPathPattern=workspace
+```
+- [ ] Repository cloning (HTTPS)
+- [ ] Repository cloning (SSH)
+- [ ] Repository cloning (private repos)
+- [ ] Branch creation from default branch
+- [ ] Branch creation from specific commit
+- [ ] File read operations
+- [ ] File write operations
+- [ ] Commit creation
+- [ ] Push to remote
+- [ ] Pull/fetch updates
+- [ ] Merge operations
+- [ ] Conflict detection
+
+#### 10.2 Workspace Isolation
+- [ ] Each agent gets isolated workspace
+- [ ] Workspaces don't interfere with each other
+- [ ] Workspace cleanup after agent termination
+- [ ] Workspace persistence across agent restarts (if configured)
+- [ ] Large repository handling (> 1GB)
+- [ ] Shallow clone support
+
+#### 10.3 GitHub App Integration
+```bash
+# Test GitHub integration (requires GitHub App setup)
+curl -X POST http://localhost:8080/api/webhooks/github \
+  -H "Content-Type: application/json" \
+  -H "X-GitHub-Event: ping" \
+  -d '{"zen": "test"}'
+```
+- [ ] Webhook endpoint accessible
+- [ ] Webhook signature validation
+- [ ] Push event handling
+- [ ] Pull request event handling
+- [ ] Installation token generation
+- [ ] Token refresh on expiration
+- [ ] Repository access via installation token
+
+---
+
+### 11. SDK Tests
+
+#### 11.1 TypeScript SDK
+```bash
+# Run TypeScript SDK tests
+pnpm test --filter @parallax/sdk-typescript
+
+# Integration test with control plane
+cd apps/demo-typescript && pnpm test
+```
+- [ ] SDK installation works (`npm install @parallax/sdk-typescript`)
+- [ ] gRPC channel creation
+- [ ] Agent registration
+- [ ] Agent heartbeat
+- [ ] Send message to control plane
+- [ ] Receive message from control plane
+- [ ] Report confidence score
+- [ ] Handle disconnection gracefully
+- [ ] Automatic reconnection
+- [ ] TypeScript types are correct
+
+#### 11.2 Python SDK
+```bash
+# Run Python SDK tests
+cd packages/sdk-python && poetry run pytest
+
+# Integration test
+cd apps/demo-python && poetry run pytest
+```
+- [ ] SDK installation works (`pip install parallax-sdk`)
+- [ ] gRPC channel creation
+- [ ] Agent registration
+- [ ] Agent heartbeat
+- [ ] Send/receive messages
+- [ ] Confidence reporting
+- [ ] Async support (asyncio)
+- [ ] Error handling
+
+#### 11.3 Go SDK
+```bash
+# Run Go SDK tests
+cd packages/sdk-go && go test ./...
+
+# Integration test
+cd apps/demo-go && go test ./...
+```
+- [ ] SDK installation works (`go get github.com/parallax-ai/parallax/sdk-go`)
+- [ ] gRPC channel creation
+- [ ] Agent registration
+- [ ] Agent heartbeat
+- [ ] Send/receive messages
+- [ ] Confidence reporting
+- [ ] Context cancellation support
+- [ ] Error handling
+
+#### 11.4 Rust SDK
+```bash
+# Run Rust SDK tests
+cd packages/sdk-rust && cargo test
+
+# Integration test
+cd apps/demo-rust && cargo test
+```
+- [ ] SDK builds (`cargo build`)
+- [ ] gRPC channel creation
+- [ ] Agent registration
+- [ ] Agent heartbeat
+- [ ] Send/receive messages
+- [ ] Confidence reporting
+- [ ] Async support (tokio)
+- [ ] Error handling
+
+#### 11.5 Cross-SDK Compatibility
+- [ ] TypeScript agent can communicate with Python agent
+- [ ] Go agent can communicate with Rust agent
+- [ ] All SDKs produce compatible confidence scores
+- [ ] All SDKs handle same message formats
+
+---
+
+### 12. CLI Tests
+
+```bash
+# Run CLI tests
+pnpm test --filter @parallax/cli
+```
+
+#### 12.1 Authentication
+- [ ] `parallax login` prompts for credentials
+- [ ] `parallax login --token <token>` works
+- [ ] `parallax logout` clears credentials
+- [ ] `parallax whoami` shows current user
+
+#### 12.2 Agent Commands
+- [ ] `parallax agent list` shows all agents
+- [ ] `parallax agent list --status running` filters by status
+- [ ] `parallax agent status <id>` shows agent details
+- [ ] `parallax agent logs <id>` streams logs
+- [ ] `parallax agent stop <id>` stops agent
+
+#### 12.3 Pattern Commands
+- [ ] `parallax pattern list` shows all patterns
+- [ ] `parallax pattern show <name>` shows pattern details
+- [ ] `parallax pattern validate <file>` validates pattern file
+- [ ] `parallax pattern execute <name>` executes pattern
+- [ ] `parallax pattern execute <name> --input '{"key":"value"}'` with input
+
+#### 12.4 Execution Commands
+- [ ] `parallax execution list` shows executions
+- [ ] `parallax execution status <id>` shows execution details
+- [ ] `parallax execution logs <id>` shows execution logs
+- [ ] `parallax execution cancel <id>` cancels execution
+
+#### 12.5 Configuration
+- [ ] `parallax config set endpoint <url>` sets control plane URL
+- [ ] `parallax config get endpoint` shows current endpoint
+- [ ] Config persists across CLI invocations
+- [ ] Environment variables override config file
+
+---
+
+### 13. Pattern Builder Tests
+
+```bash
+# Run pattern builder tests
+pnpm test --filter @parallax/pattern-builder
+```
+
+#### 13.1 Visual Editor
+- [ ] Canvas renders correctly
+- [ ] Nodes can be added
+- [ ] Nodes can be connected
+- [ ] Nodes can be deleted
+- [ ] Connections can be deleted
+- [ ] Undo/redo works
+- [ ] Zoom and pan works
+- [ ] Node properties can be edited
+
+#### 13.2 Pattern Export
+- [ ] Export to YAML produces valid pattern
+- [ ] Export to JSON produces valid pattern
+- [ ] Exported patterns can be executed
+- [ ] Round-trip (export then import) preserves structure
+
+#### 13.3 Pattern Import
+- [ ] Import YAML pattern works
+- [ ] Import JSON pattern works
+- [ ] Invalid patterns show error message
+- [ ] Large patterns render correctly
+
+#### 13.4 Pattern Validation
+- [ ] Missing required fields detected
+- [ ] Invalid connections detected
+- [ ] Circular dependencies detected
+- [ ] Validation errors shown in UI
+
+---
+
+### 14. End-to-End Workflow Tests
+
+#### 14.1 Complete Agent Lifecycle
+```bash
+# Full lifecycle test
+./scripts/test-agent-lifecycle.sh
+```
+1. [ ] Start control plane
+2. [ ] Register agent via SDK
+3. [ ] Agent appears in `parallax agent list`
+4. [ ] Send message to agent
+5. [ ] Agent receives and responds
+6. [ ] Agent reports confidence
+7. [ ] Confidence visible in metrics
+8. [ ] Stop agent
+9. [ ] Agent removed from registry
+10. [ ] Cleanup verified
+
+#### 14.2 Complete Pattern Execution
+```bash
+# Full pattern execution test
+./scripts/test-pattern-execution.sh
+```
+1. [ ] Create pattern via API/CLI
+2. [ ] Pattern appears in list
+3. [ ] Execute pattern
+4. [ ] Agents spawned automatically
+5. [ ] Agents communicate
+6. [ ] Consensus reached
+7. [ ] Result returned
+8. [ ] Execution recorded in history
+9. [ ] Metrics captured
+10. [ ] Agents cleaned up
+
+#### 14.3 Git Workflow Integration
+```bash
+# Full git workflow test
+./scripts/test-git-workflow.sh
+```
+1. [ ] Clone repository
+2. [ ] Create feature branch
+3. [ ] Agent makes code changes
+4. [ ] Agent commits changes
+5. [ ] Agent pushes branch
+6. [ ] (Optional) Create pull request
+7. [ ] Workspace cleaned up
+
+---
+
+### 15. Performance Tests
+
+#### 15.1 Agent Scalability
+```bash
+# Scale test
+./scripts/test-agent-scale.sh
+```
+- [ ] 10 concurrent agents: < 1s spawn time
+- [ ] 50 concurrent agents: < 5s spawn time
+- [ ] 100 concurrent agents: < 10s spawn time
+- [ ] Memory usage scales linearly
+- [ ] No agent starvation under load
+
+#### 15.2 Runtime Performance
+| Runtime | Spawn Time | Memory/Agent | Cleanup Time |
+|---------|-----------|--------------|--------------|
+| Local | < 100ms | < 100MB | < 50ms |
+| Docker | < 2s | < 200MB | < 1s |
+| Kubernetes | < 10s | < 200MB | < 5s |
+
+---
+
+### 16. SDK Pre-requisites
+
+Before releasing SDKs, ensure:
 - [ ] All core APIs are stable
 - [ ] Protocol buffers are finalized
 - [ ] Authentication flows are tested
 - [ ] Error handling patterns are established
 - [ ] Performance baselines are set
+- [ ] All four SDKs pass integration tests
+- [ ] Cross-SDK compatibility verified
 
 ---
 

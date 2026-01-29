@@ -1,0 +1,72 @@
+@config "../../tailwind.config.ts";
+@import "tailwindcss";
+@source "../../../../packages/pattern-builder/src/**/*.{ts,tsx}";
+
+:root {
+  --px-cyan: #35b5e9;
+  --px-magenta: #d92d88;
+  --px-yellow: #f5ed4c;
+  --px-ink: #0b0f14;
+  --px-slate: #111826;
+  --px-surface: #f7f8fb;
+  --px-surface-alt: #eef2f7;
+  --px-border: #d7dee8;
+  --px-text: #0f1720;
+  --px-muted: #667085;
+}
+
+@theme inline {
+  --color-background: var(--px-surface);
+  --color-foreground: var(--px-text);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+body {
+  background: #f3f5f8;
+  color: var(--px-text);
+  font-family: var(--font-manrope), system-ui, -apple-system, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-space-grotesk), system-ui, -apple-system, sans-serif;
+}
+
+a {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.triangles-bg {
+  background-image: url("data:image/svg+xml,%3Csvg width='120' height='104' viewBox='0 0 120 104' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 4 L116 100 H4 L60 4 Z' stroke='rgba(53,181,233,0.18)' stroke-width='1'/%3E%3Cpath d='M60 22 L98 92 H22 L60 22 Z' stroke='rgba(217,45,136,0.12)' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 180px 156px;
+  background-repeat: repeat;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, transparent 70%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, transparent 70%);
+}
+
+/* React Flow defaults can add extra borders; neutralize so custom nodes show cleanly */
+.react-flow__node,
+.react-flow__node-default,
+.react-flow__node-input,
+.react-flow__node-output {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.react-flow__node.selected {
+  box-shadow: none !important;
+}
+
+/* Handle alignment to custom node edges */
+.react-flow__handle {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ffffff;
+  background: #94a3b8;
+  box-shadow: 0 0 0 2px rgba(53, 181, 233, 0.15);
+}
