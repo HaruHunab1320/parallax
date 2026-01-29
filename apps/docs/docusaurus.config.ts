@@ -51,7 +51,7 @@ const config: Config = {
   themeConfig: {
     image: 'img/parallax-social-card.jpg',
     colorMode: {
-      defaultMode: 'dark',
+      defaultMode: 'light',
       respectPrefersColorScheme: true,
     },
     navbar: {
