@@ -4,7 +4,7 @@
   "description": "AI agent orchestration platform with uncertainty as a first-class citizen",
   "private": true,
   "scripts": {
-    "build": "turbo build",
+    "build": "turbo build --filter=!./apps/demo-* --filter=!./examples/* --filter=!./demos/*",
     "lint": "turbo lint",
     "test": "turbo test",
     "test:coverage": "turbo test -- --coverage",
@@ -66,5 +66,11 @@
   "packageManager": "pnpm@10.11.0",
   "engines": {
     "node": ">=18"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "^19.0.0",
+      "@types/react-dom": "^19.0.0"
+    }
   }
 }

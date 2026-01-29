@@ -9,7 +9,6 @@
   },
   "include": ["src/**/*"],
   "references": [
-    { "path": "../../packages/sdk-typescript" },
-    { "path": "../../packages/proto" }
+    { "path": "../../packages/sdk-typescript" }
   ]
 }
