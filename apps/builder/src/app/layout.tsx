@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   title: "Parallax Builder — Visual pattern editor",
   description:
     "Design, validate, and export Parallax orchestration patterns with the visual builder.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
