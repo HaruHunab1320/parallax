@@ -60,7 +60,7 @@ export function PatternBuilder({
   return (
     <div
       className={clsx(
-        'flex flex-col h-full bg-white',
+        'flex flex-col h-full bg-white overflow-hidden',
         className
       )}
     >
@@ -175,7 +175,7 @@ export function PatternBuilder({
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Node Palette */}
-        <NodePalette className="w-56 flex-shrink-0" />
+        <NodePalette className="w-56 flex-shrink-0 overflow-y-auto" />
 
         {/* Canvas */}
         <div className="flex-1 relative">
@@ -183,11 +183,11 @@ export function PatternBuilder({
         </div>
 
         {/* Properties Panel */}
-        <PropertiesPanel className="w-72 flex-shrink-0" />
+        <PropertiesPanel className="w-72 flex-shrink-0 overflow-y-auto" />
 
         {/* YAML Preview */}
         {isYamlVisible && (
-          <div className="w-80 flex-shrink-0 border-l border-slate-200 bg-slate-900 text-slate-100 p-4 overflow-auto">
+          <div className="w-80 flex-shrink-0 border-l border-slate-200 bg-slate-900 text-slate-100 p-4 overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
                 YAML Output

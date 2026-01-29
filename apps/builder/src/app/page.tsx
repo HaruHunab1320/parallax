@@ -19,7 +19,7 @@ export default function BuilderPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       <header className="flex items-center justify-between border-b border-[#d7dee8] bg-white px-6 py-4">
         <div className="flex items-center gap-3">
           <Image
@@ -61,7 +61,7 @@ export default function BuilderPage() {
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col">
+      <main className="flex flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between border-b border-[#e2e8f0] bg-white/80 px-6 py-3 text-xs text-[#64748b]">
           <span>Design orchestration patterns visually, then export to YAML.</span>
           <span>
@@ -69,7 +69,7 @@ export default function BuilderPage() {
           </span>
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 overflow-hidden">
           <PatternBuilder onSave={handleSave} showYamlPreview />
         </div>
       </main>
