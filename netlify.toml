@@ -1,11 +1,11 @@
+# Marketing site (static export for Netlify Forms)
 [build]
   command = "pnpm --filter marketing build"
-  publish = "apps/marketing/.next"
+  publish = "apps/marketing/out"
 
-# Marketing site
 [context.marketing]
   command = "pnpm --filter marketing build"
-  publish = "apps/marketing/.next"
+  publish = "apps/marketing/out"
 
 # Docs site (Docusaurus)
 [context.docs]
