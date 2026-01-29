@@ -56,15 +56,15 @@ export default function Home() {
             </span>
           </div>
           <nav className="hidden items-center gap-6 text-sm font-medium text-[#475569] md:flex">
-            <a href="https://docs.parallax.dev/docs/intro">Docs</a>
-            <a href="https://docs.parallax.dev/docs/patterns/overview">
+            <a href="https://docs.parallaxai.dev/docs/intro">Docs</a>
+            <a href="https://docs.parallaxai.dev/docs/patterns/overview">
               Patterns
             </a>
-            <a href="https://parallax.dev/builder">Builder</a>
+            <a href="https://builder.parallaxai.dev">Builder</a>
             <a href="https://github.com/parallax-ai/parallax">GitHub</a>
           </nav>
           <a
-            href="https://docs.parallax.dev/docs/getting-started/quickstart"
+            href="https://docs.parallaxai.dev/docs/getting-started/quickstart"
             className="hidden rounded-full bg-[#35b5e9] px-4 py-2 text-sm font-semibold text-[#0b0f14] shadow-md shadow-[#35b5e9]/30 transition hover:-translate-y-0.5 md:inline-flex"
           >
             Get Started
@@ -94,13 +94,13 @@ export default function Home() {
               </div>
               <div className="flex flex-wrap gap-3">
                 <a
-                  href="https://docs.parallax.dev/docs/getting-started/quickstart"
+                  href="https://docs.parallaxai.dev/docs/getting-started/quickstart"
                   className="rounded-full bg-[#35b5e9] px-6 py-3 text-sm font-semibold text-[#0b0f14] shadow-lg shadow-[#35b5e9]/30 transition hover:-translate-y-0.5"
                 >
                   Read the docs
                 </a>
                 <a
-                  href="https://parallax.dev/builder"
+                  href="https://builder.parallaxai.dev"
                   className="rounded-full border border-[#cbd5e1] bg-white px-6 py-3 text-sm font-semibold text-[#0f172a] transition hover:border-[#35b5e9]"
                 >
                   Launch builder
@@ -330,7 +330,7 @@ export default function Home() {
                   Star on GitHub
                 </a>
                 <a
-                  href="https://docs.parallax.dev/docs/getting-started/installation"
+                  href="https://docs.parallaxai.dev/docs/getting-started/installation"
                   className="rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white"
                 >
                   Install locally
@@ -408,11 +408,13 @@ export default function Home() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <span>Parallax — multi-agent orchestration.</span>
           <div className="flex flex-wrap gap-4">
-            <a href="https://docs.parallax.dev/docs/intro">Docs</a>
-            <a href="https://docs.parallax.dev/docs/enterprise/overview">
+            <a href="https://docs.parallaxai.dev/docs/intro">Docs</a>
+            <a href="https://docs.parallaxai.dev/docs/enterprise/overview">
               Enterprise
             </a>
             <a href="https://github.com/parallax-ai/parallax">GitHub</a>
+            <a href="https://discord.gg/jdjqvMa2">Discord</a>
+            <a href="https://x.com/Parallax__AI">X</a>
           </div>
         </div>
       </footer>

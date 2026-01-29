@@ -1,0 +1,32 @@
+# Parallax Docs for LLMs
+
+Parallax is an orchestration layer for AI agents. It coordinates multiple agents/models, applies consensus and quality gates, and produces confidence-scored results. Patterns are defined in YAML or via the visual Pattern Builder.
+
+Start here:
+- https://docs.parallaxai.dev/docs/intro
+- https://docs.parallaxai.dev/docs/getting-started/quickstart
+- https://docs.parallaxai.dev/docs/concepts/patterns
+- https://docs.parallaxai.dev/docs/sdk/overview
+- https://docs.parallaxai.dev/docs/pattern-builder/overview
+
+Key concepts:
+- https://docs.parallaxai.dev/docs/concepts/agents
+- https://docs.parallaxai.dev/docs/concepts/patterns
+- https://docs.parallaxai.dev/docs/concepts/consensus
+- https://docs.parallaxai.dev/docs/concepts/confidence-scoring
+
+Patterns & examples:
+- https://docs.parallaxai.dev/docs/patterns/overview
+- https://docs.parallaxai.dev/docs/patterns/voting-patterns
+- https://docs.parallaxai.dev/docs/patterns/advanced-composition
+
+Runtimes:
+- https://docs.parallaxai.dev/docs/agent-runtimes/overview
+- https://docs.parallaxai.dev/docs/agent-runtimes/local
+- https://docs.parallaxai.dev/docs/agent-runtimes/docker
+- https://docs.parallaxai.dev/docs/agent-runtimes/kubernetes
+
+Enterprise:
+- https://docs.parallaxai.dev/docs/enterprise/overview
+- https://docs.parallaxai.dev/docs/enterprise/high-availability
+- https://docs.parallaxai.dev/docs/enterprise/security

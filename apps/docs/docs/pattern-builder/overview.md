@@ -7,7 +7,7 @@ title: Overview
 
 The Pattern Builder is a visual editor for creating orchestration patterns using a drag-and-drop interface. Build complex multi-agent workflows without writing YAML.
 
-[Launch Pattern Builder](https://parallax.dev/builder)
+[Launch Pattern Builder](https://builder.parallaxai.dev)
 
 ## Features
 
@@ -43,7 +43,7 @@ flowchart LR
 
 ### 1. Open the Builder
 
-Navigate to [parallax.dev/builder](https://parallax.dev/builder) or click "Pattern Builder" in the navigation.
+Navigate to [builder.parallaxai.dev](https://builder.parallaxai.dev) or click "Pattern Builder" in the navigation.
 
 ### 2. Start from an Example (Recommended)
 

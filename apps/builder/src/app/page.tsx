@@ -41,13 +41,13 @@ export default function BuilderPage() {
 
         <div className="flex items-center gap-3 text-sm">
           <a
-            href="https://docs.parallax.dev/docs/pattern-builder/overview"
+            href="https://docs.parallaxai.dev/docs/pattern-builder/overview"
             className="rounded-full border border-[#e2e8f0] px-4 py-2 font-semibold text-[#475569] transition hover:border-[#35b5e9]"
           >
             Docs
           </a>
           <a
-            href="https://docs.parallax.dev/docs/patterns/overview"
+            href="https://docs.parallaxai.dev/docs/patterns/overview"
             className="rounded-full border border-[#e2e8f0] px-4 py-2 font-semibold text-[#475569] transition hover:border-[#35b5e9]"
           >
             Patterns

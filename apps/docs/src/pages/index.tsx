@@ -159,7 +159,7 @@ export default function Home(): React.ReactNode {
               </Link>
               <Link
                 className={clsx("button", styles.ghostButton)}
-                to="https://parallax.dev/builder"
+                to="https://builder.parallaxai.dev"
               >
                 Pattern Builder
               </Link>

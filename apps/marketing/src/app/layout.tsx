@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   title: "Parallax — Multi-agent orchestration for reliable AI systems",
   description:
     "Parallax is an orchestration layer for agents: consensus, voting, confidence scoring, and production-grade runtimes.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

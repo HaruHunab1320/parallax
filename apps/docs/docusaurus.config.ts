@@ -11,7 +11,7 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://docs.parallax.dev',
+  url: 'https://docs.parallaxai.dev',
   baseUrl: '/',
 
   organizationName: 'parallax-ai',
@@ -80,7 +80,7 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://parallax.dev/builder',
+          href: 'https://builder.parallaxai.dev',
           label: 'Pattern Builder',
           position: 'right',
         },
@@ -120,11 +120,11 @@ const config: Config = {
             },
             {
               label: 'Discord',
-              href: 'https://discord.gg/parallax',
+              href: 'https://discord.gg/jdjqvMa2',
             },
             {
               label: 'X',
-              href: 'https://twitter.com/parallax__ai',
+              href: 'https://x.com/Parallax__AI',
             },
           ],
         },
@@ -137,7 +137,7 @@ const config: Config = {
             },
             {
               label: 'Pattern Builder',
-              href: 'https://parallax.dev/builder',
+              href: 'https://builder.parallaxai.dev',
             },
           ],
         },
