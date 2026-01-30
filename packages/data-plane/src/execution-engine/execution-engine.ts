@@ -257,4 +257,11 @@ export class ExecutionEngine extends EventEmitter {
     this.removeAllListeners();
     this.parallelExecutor.removeAllListeners();
   }
+
+  /**
+   * Get the AgentProxy instance for agent registration
+   */
+  getAgentProxy(): AgentProxy {
+    return this.agentProxy;
+  }
 }

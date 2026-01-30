@@ -15,6 +15,12 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
 import { WorkspaceService, Workspace, WorkspaceConfig } from '../workspace';
+import {
+  ExecutionEngine,
+  ExecutionTask,
+  ExecutionResult,
+  ParallelExecutionPlan
+} from '@parallax/data-plane';
 
 export class PatternEngine implements IPatternEngine {
   private loader: PatternLoader;
@@ -27,6 +33,7 @@ export class PatternEngine implements IPatternEngine {
   private agentProxy: AgentProxy;
   private databasePatterns?: DatabasePatternService;
   private workspaceService?: WorkspaceService;
+  private executionEngine?: ExecutionEngine;
 
   constructor(
     private runtimeManager: RuntimeManager,
@@ -36,7 +43,8 @@ export class PatternEngine implements IPatternEngine {
     private database?: DatabaseService,
     private executionEvents?: ExecutionEventBus,
     databasePatterns?: DatabasePatternService,
-    workspaceService?: WorkspaceService
+    workspaceService?: WorkspaceService,
+    executionEngine?: ExecutionEngine
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -45,6 +53,7 @@ export class PatternEngine implements IPatternEngine {
     this.agentProxy = new AgentProxy(logger);
     this.databasePatterns = databasePatterns;
     this.workspaceService = workspaceService;
+    this.executionEngine = executionEngine;
   }
 
   async initialize(): Promise<void> {
@@ -165,100 +174,165 @@ export class PatternEngine implements IPatternEngine {
           patternNameLower.includes('translation') ||
           patternNameLower.includes('documentanalysis') ||
           patternNameLower.includes('prompttest')) {
-        
-        // Execute all agent analyses in parallel
-        let completedCount = 0;
-        let failedCount = 0;
-        const waitForAgentHealthy = async (address: string): Promise<boolean> => {
-          const attempts = 5;
-          for (let attempt = 0; attempt < attempts; attempt += 1) {
-            const healthy = await this.agentProxy.healthCheck(address, 2000);
-            if (healthy) return true;
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-          return false;
-        };
 
-        const agentResults = await Promise.all(
-          agents.map(async (agent) => {
+        let agentResults: any[];
+
+        // Use ExecutionEngine if available, otherwise fall back to direct AgentProxy calls
+        if (this.executionEngine) {
+          // Register agents with the ExecutionEngine's proxy
+          await this.registerAgentsWithExecutionEngine(agents);
+
+          // Map agents to ExecutionTasks
+          const tasks = this.mapAgentsToExecutionTasks(agents, input, pattern.name, executionId);
+
+          // Emit start events for each agent
+          agents.forEach(agent => {
             emitEvent('agent_started', {
               agentId: agent.id,
               agentName: agent.name,
               capabilities: agent.capabilities,
               task: input.task || input?.data?.task
             });
-            try {
-              const healthy = await waitForAgentHealthy(agent.address || agent.endpoint);
-              if (!healthy) {
-                this.logger.warn(
-                  { agentId: agent.id, agentAddress: agent.address || agent.endpoint },
-                  'Agent health check failed; continuing'
-                );
-              }
-              const result = await this.agentProxy.executeTask(
-                agent.address || agent.endpoint,
-                {
-                  description: input.task || 'analyze',
-                  data: input.data || input
-                },
-                30000 // 30 second timeout
-              );
+          });
+
+          // Create parallel execution plan
+          const plan: ParallelExecutionPlan = {
+            id: `${executionId}-parallel`,
+            tasks,
+            strategy: 'all',
+            maxConcurrency: 10,
+            timeout: 30000,
+          };
+
+          // Execute via ExecutionEngine
+          this.logger.debug({ planId: plan.id, taskCount: tasks.length }, 'Executing agents via ExecutionEngine');
+          const results = await this.executionEngine.executeParallel(plan);
+
+          // Map results back to expected format
+          agentResults = this.mapExecutionResultsToAgentResults(results, agents);
+
+          // Emit completion events
+          const completedCount = agentResults.filter(r => r.confidence > 0).length;
+          const failedCount = agentResults.length - completedCount;
+
+          agentResults.forEach(result => {
+            if (result.confidence > 0) {
               emitEvent('agent_completed', {
-                agentId: agent.id,
-                agentName: agent.name,
-                confidence: result.confidence
-              });
-              completedCount += 1;
-              emitEvent('progress', {
-                total: agents.length,
-                completed: completedCount,
-                failed: failedCount
-              });
-              return {
-                agentId: agent.id,
-                agentName: agent.name,
-                capabilities: agent.capabilities,
-                expertise: agent.expertise || 0.7,
-                result: result.value,
+                agentId: result.agentId,
+                agentName: result.agentName,
                 confidence: result.confidence,
-                reasoning: result.reasoning,
-                timestamp: Date.now()
-              };
-            } catch (error) {
-              this.logger.warn({ agentId: agent.id, error }, 'Agent analysis failed');
+              });
+            } else {
               emitEvent('agent_failed', {
-                agentId: agent.id,
-                agentName: agent.name,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                agentId: result.agentId,
+                agentName: result.agentName,
+                error: result.error,
               });
-              failedCount += 1;
-              emitEvent('progress', {
-                total: agents.length,
-                completed: completedCount,
-                failed: failedCount
-              });
-              return {
+            }
+          });
+
+          emitEvent('agents_completed', {
+            total: agents.length,
+            completed: completedCount,
+            failed: failedCount,
+          });
+
+        } else {
+          // Fallback: Execute all agent analyses in parallel using direct AgentProxy
+          let completedCount = 0;
+          let failedCount = 0;
+          const waitForAgentHealthy = async (address: string): Promise<boolean> => {
+            const attempts = 5;
+            for (let attempt = 0; attempt < attempts; attempt += 1) {
+              const healthy = await this.agentProxy.healthCheck(address, 2000);
+              if (healthy) return true;
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            return false;
+          };
+
+          agentResults = await Promise.all(
+            agents.map(async (agent) => {
+              emitEvent('agent_started', {
                 agentId: agent.id,
                 agentName: agent.name,
                 capabilities: agent.capabilities,
-                expertise: agent.expertise || 0.7,
-                result: null,
-                confidence: 0,
-                reasoning: 'Agent failed to respond',
-                error: error instanceof Error ? error.message : 'Unknown error',
-                timestamp: Date.now()
-              };
-            }
-          })
-        );
-        
+                task: input.task || input?.data?.task
+              });
+              try {
+                const healthy = await waitForAgentHealthy(agent.address || agent.endpoint);
+                if (!healthy) {
+                  this.logger.warn(
+                    { agentId: agent.id, agentAddress: agent.address || agent.endpoint },
+                    'Agent health check failed; continuing'
+                  );
+                }
+                const result = await this.agentProxy.executeTask(
+                  agent.address || agent.endpoint,
+                  {
+                    description: input.task || 'analyze',
+                    data: input.data || input
+                  },
+                  30000 // 30 second timeout
+                );
+                emitEvent('agent_completed', {
+                  agentId: agent.id,
+                  agentName: agent.name,
+                  confidence: result.confidence
+                });
+                completedCount += 1;
+                emitEvent('progress', {
+                  total: agents.length,
+                  completed: completedCount,
+                  failed: failedCount
+                });
+                return {
+                  agentId: agent.id,
+                  agentName: agent.name,
+                  capabilities: agent.capabilities,
+                  expertise: agent.expertise || 0.7,
+                  result: result.value,
+                  confidence: result.confidence,
+                  reasoning: result.reasoning,
+                  timestamp: Date.now()
+                };
+              } catch (error) {
+                this.logger.warn({ agentId: agent.id, error }, 'Agent analysis failed');
+                emitEvent('agent_failed', {
+                  agentId: agent.id,
+                  agentName: agent.name,
+                  error: error instanceof Error ? error.message : 'Unknown error'
+                });
+                failedCount += 1;
+                emitEvent('progress', {
+                  total: agents.length,
+                  completed: completedCount,
+                  failed: failedCount
+                });
+                return {
+                  agentId: agent.id,
+                  agentName: agent.name,
+                  capabilities: agent.capabilities,
+                  expertise: agent.expertise || 0.7,
+                  result: null,
+                  confidence: 0,
+                  reasoning: 'Agent failed to respond',
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                  timestamp: Date.now()
+                };
+              }
+            })
+          );
+
+          emitEvent('agents_completed', {
+            total: agents.length,
+            completed: completedCount,
+            failed: failedCount
+          });
+        }
+
         preProcessedData.agentResults = agentResults;
         preProcessedData.successfulResults = agentResults.filter(r => r.confidence > 0);
-        emitEvent('agents_completed', {
-          total: agents.length,
-          completed: completedCount,
-          failed: failedCount
-        });
       }
       
       // Prepare context with pre-processed results
@@ -807,5 +881,100 @@ export class PatternEngine implements IPatternEngine {
     lines.push('*Generated by [Parallax](https://github.com/parallax) agent orchestration platform*');
 
     return lines.join('\n');
+  }
+
+  /**
+   * Map selected agents to ExecutionEngine tasks
+   */
+  private mapAgentsToExecutionTasks(
+    agents: any[],
+    input: any,
+    patternName: string,
+    executionId: string
+  ): ExecutionTask[] {
+    return agents.map((agent, index) => ({
+      id: `${executionId}-${agent.id}-${index}`,
+      type: 'agent' as const,
+      target: agent.id,
+      payload: {
+        task: input.task || 'analyze',
+        data: input.data || input,
+        agentAddress: agent.address || agent.endpoint,
+      },
+      metadata: {
+        pattern: patternName,
+        agentName: agent.name,
+        agentAddress: agent.address || agent.endpoint,
+        capabilities: agent.capabilities,
+        expertise: agent.expertise || 0.7,
+        timeout: 30000,
+        retries: 2,
+      },
+    }));
+  }
+
+  /**
+   * Map ExecutionEngine results back to agent result format
+   */
+  private mapExecutionResultsToAgentResults(
+    results: ExecutionResult[],
+    agents: any[]
+  ): any[] {
+    const agentMap = new Map(agents.map(a => [a.id, a]));
+
+    return results.map(result => {
+      // Extract agent ID from task ID (format: executionId-agentId-index)
+      const parts = result.taskId.split('-');
+      const agentId = result.metadata?.agentId || parts.slice(1, -1).join('-');
+      const agent = agentMap.get(agentId);
+
+      if (result.status === 'success') {
+        return {
+          agentId: agent?.id || agentId,
+          agentName: agent?.name || 'unknown',
+          capabilities: agent?.capabilities || [],
+          expertise: agent?.expertise || 0.7,
+          result: result.result?.value || result.result,
+          confidence: result.confidence || result.result?.confidence || 0,
+          reasoning: result.result?.reasoning || result.metadata?.reasoning,
+          timestamp: Date.now(),
+        };
+      } else {
+        return {
+          agentId: agent?.id || agentId,
+          agentName: agent?.name || 'unknown',
+          capabilities: agent?.capabilities || [],
+          expertise: agent?.expertise || 0.7,
+          result: null,
+          confidence: 0,
+          reasoning: 'Agent failed to respond',
+          error: result.error || `Task ${result.status}`,
+          timestamp: Date.now(),
+        };
+      }
+    });
+  }
+
+  /**
+   * Register agents with the ExecutionEngine's AgentProxy
+   */
+  private async registerAgentsWithExecutionEngine(agents: any[]): Promise<void> {
+    if (!this.executionEngine) return;
+
+    const agentProxy = this.executionEngine.getAgentProxy();
+
+    for (const agent of agents) {
+      const endpoint = agent.address || agent.endpoint;
+      const protocol = endpoint.startsWith('http') ? 'http' : 'grpc';
+
+      try {
+        await agentProxy.registerAgent(agent.id, endpoint, protocol);
+      } catch (error) {
+        this.logger.warn(
+          { agentId: agent.id, endpoint, error },
+          'Failed to register agent with ExecutionEngine proxy'
+        );
+      }
+    }
   }
 }

@@ -55,6 +55,15 @@ import {
   HAServices,
 } from './ha';
 
+// Data plane imports for ExecutionEngine integration
+import {
+  ExecutionEngine,
+  ExecutionEngineConfig,
+  AgentProxy as DataPlaneAgentProxy,
+  ProxyConfig,
+  ConfidenceTracker,
+} from '@parallax/data-plane';
+
 // Scheduler imports
 import {
   SchedulerService,
@@ -128,6 +137,99 @@ export async function createServer(): Promise<express.Application> {
     logger.info('Database pattern management enabled (Enterprise)');
   }
 
+  // Initialize ExecutionEngine (data plane integration)
+  let executionEngine: ExecutionEngine | undefined;
+  const enableExecutionEngine = process.env.PARALLAX_EXECUTION_ENGINE !== 'false';
+
+  if (enableExecutionEngine) {
+    const proxyConfig: ProxyConfig = {
+      timeout: parseInt(process.env.PARALLAX_AGENT_TIMEOUT || '30000'),
+      retries: parseInt(process.env.PARALLAX_AGENT_RETRIES || '2'),
+      circuitBreaker: {
+        failureThreshold: parseInt(process.env.PARALLAX_CB_FAILURE_THRESHOLD || '5'),
+        resetTimeout: parseInt(process.env.PARALLAX_CB_RESET_TIMEOUT || '30000'),
+        monitoringPeriod: parseInt(process.env.PARALLAX_CB_MONITORING_PERIOD || '60000'),
+      },
+      rateLimit: {
+        maxRequests: parseInt(process.env.PARALLAX_RATE_LIMIT_MAX || '100'),
+        windowMs: parseInt(process.env.PARALLAX_RATE_LIMIT_WINDOW || '60000'),
+      },
+    };
+
+    const dataPlaneAgentProxy = new DataPlaneAgentProxy(proxyConfig, logger);
+
+    const confidenceTracker = new ConfidenceTracker({
+      maxDataPoints: 10000,
+      retentionPeriodDays: 7,
+      aggregationIntervals: {
+        minute: 60,
+        hour: 24,
+        day: 30,
+      },
+      anomalyDetection: {
+        enabled: true,
+        suddenDropThreshold: 0.3,
+        lowConfidenceThreshold: 0.5,
+        highVarianceThreshold: 0.2,
+        checkIntervalMs: 60000,
+      },
+      store: 'memory',
+    }, logger);
+
+    const executionEngineConfig: ExecutionEngineConfig = {
+      maxConcurrency: parseInt(process.env.PARALLAX_MAX_CONCURRENCY || '10'),
+      defaultTimeout: parseInt(process.env.PARALLAX_AGENT_TIMEOUT || '30000'),
+      retryConfig: {
+        maxRetries: parseInt(process.env.PARALLAX_AGENT_RETRIES || '2'),
+        backoffMultiplier: 2,
+        initialDelay: 1000,
+      },
+      cache: {
+        enabled: process.env.PARALLAX_CACHE_ENABLED !== 'false',
+        ttl: parseInt(process.env.PARALLAX_CACHE_TTL || '300'),
+        confidenceThreshold: parseFloat(process.env.PARALLAX_CACHE_CONFIDENCE_THRESHOLD || '0.8'),
+        maxEntries: parseInt(process.env.PARALLAX_CACHE_MAX_ENTRIES || '1000'),
+      },
+    };
+
+    executionEngine = new ExecutionEngine(
+      executionEngineConfig,
+      dataPlaneAgentProxy,
+      confidenceTracker,
+      logger
+    );
+
+    // Wire ExecutionEngine events to ExecutionEventBus
+    executionEngine.on('task:completed', (result) => {
+      executionEvents.emitEvent({
+        executionId: result.metadata?.executionId || 'unknown',
+        type: 'agent_task_completed',
+        data: {
+          taskId: result.taskId,
+          agentId: result.metadata?.agentId,
+          confidence: result.confidence,
+          executionTime: result.executionTime,
+        },
+        timestamp: new Date(),
+      });
+    });
+
+    executionEngine.on('task:failed', (result) => {
+      executionEvents.emitEvent({
+        executionId: result.metadata?.executionId || 'unknown',
+        type: 'agent_task_failed',
+        data: {
+          taskId: result.taskId,
+          agentId: result.metadata?.agentId,
+          error: result.error,
+        },
+        timestamp: new Date(),
+      });
+    });
+
+    logger.info('ExecutionEngine initialized with data plane integration');
+  }
+
   // Use traced pattern engine if tracing is enabled
   // Note: workspaceService will be set later after it's initialized
   const patternEngine: IPatternEngine = tracingConfig.exporterType !== 'none'
@@ -139,7 +241,8 @@ export async function createServer(): Promise<express.Application> {
         database,
         executionEvents,
         databasePatterns,
-        undefined // workspaceService - set later
+        undefined, // workspaceService - set later
+        executionEngine
       )
     : new PatternEngine(
         runtimeManager,
@@ -149,7 +252,8 @@ export async function createServer(): Promise<express.Application> {
         database,
         executionEvents,
         databasePatterns,
-        undefined // workspaceService - set later
+        undefined, // workspaceService - set later
+        executionEngine
       );
   await patternEngine.initialize();
 

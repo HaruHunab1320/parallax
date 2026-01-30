@@ -637,6 +637,9 @@ importers:
       '@parallax/auth':
         specifier: workspace:*
         version: link:../auth
+      '@parallax/data-plane':
+        specifier: workspace:*
+        version: link:../data-plane
       '@parallax/runtime':
         specifier: workspace:*
         version: link:../runtime
