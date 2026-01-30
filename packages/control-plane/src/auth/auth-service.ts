@@ -41,16 +41,29 @@ export class AuthService {
     config?: Partial<AuthConfig>
   ) {
     this.logger = logger.child({ component: 'AuthService' });
+    const jwtSecret = config?.jwtSecret || process.env.JWT_SECRET;
+
+    // In production, JWT_SECRET must be explicitly set
+    if (!jwtSecret) {
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (isProduction) {
+        throw new Error(
+          'JWT_SECRET environment variable is required in production. ' +
+          'Generate a secure secret with: openssl rand -base64 32'
+        );
+      }
+      this.logger.warn(
+        'JWT_SECRET not set - using insecure default for development only. ' +
+        'Set JWT_SECRET environment variable before deploying to production.'
+      );
+    }
+
     this.config = {
-      jwtSecret: config?.jwtSecret || process.env.JWT_SECRET || 'parallax-dev-secret-change-in-production',
+      jwtSecret: jwtSecret || 'parallax-dev-secret-DO-NOT-USE-IN-PRODUCTION',
       accessTokenExpiry: config?.accessTokenExpiry || '15m',
       refreshTokenExpiry: config?.refreshTokenExpiry || '7d',
       bcryptRounds: config?.bcryptRounds || 12,
     };
-
-    if (this.config.jwtSecret === 'parallax-dev-secret-change-in-production') {
-      this.logger.warn('Using default JWT secret - change JWT_SECRET in production!');
-    }
   }
 
   /**

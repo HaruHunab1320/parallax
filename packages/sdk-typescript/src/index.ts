@@ -17,5 +17,9 @@ export * from './server';
 export { SecureParallaxAgent, serveSecureAgent } from './secure-agent';
 export { withConfidence, withConfidenceWrapper } from './confidence';
 
-// Proto exports
-export * from './proto';
+// Generated gRPC clients and types (preferred over manual types)
+export * from './grpc-clients';
+
+// Manual proto types (for compatibility - prefer generated types above)
+// Note: Some types like AgentRequest, Capabilities, etc. are already exported from grpc-clients
+export { HealthStatus } from './proto/types';

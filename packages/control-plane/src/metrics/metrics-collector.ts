@@ -23,6 +23,10 @@ export class MetricsCollector {
   // System metrics
   public queueSize!: Gauge;
   public concurrentExecutions!: Gauge;
+
+  // API metrics
+  public apiRequests!: Counter;
+  public apiLatency!: Histogram;
   
   constructor() {
     this.registry = new Registry();
@@ -109,6 +113,22 @@ export class MetricsCollector {
     this.concurrentExecutions = new Gauge({
       name: 'parallax_concurrent_executions',
       help: 'Number of concurrent pattern executions',
+      registers: [this.registry],
+    });
+
+    // API metrics
+    this.apiRequests = new Counter({
+      name: 'parallax_api_requests_total',
+      help: 'Total number of API requests',
+      labelNames: ['resource', 'method', 'status_code'],
+      registers: [this.registry],
+    });
+
+    this.apiLatency = new Histogram({
+      name: 'parallax_api_latency_seconds',
+      help: 'API request latency in seconds',
+      labelNames: ['resource', 'method'],
+      buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
       registers: [this.registry],
     });
   }
@@ -206,9 +226,22 @@ export class MetricsCollector {
   /**
    * Record API call metrics
    */
-  recordApiCall(_resource: string, _method: string, _statusCode: number): void {
-    // This could be implemented with a counter if needed
-    // For now, just a placeholder
+  recordApiCall(resource: string, method: string, statusCode: number): void {
+    this.apiRequests.inc({
+      resource,
+      method: method.toUpperCase(),
+      status_code: String(statusCode),
+    });
+  }
+
+  /**
+   * Start timing an API call - returns a function to call when done
+   */
+  startApiTimer(resource: string, method: string): () => void {
+    return this.apiLatency.startTimer({
+      resource,
+      method: method.toUpperCase(),
+    });
   }
   
   /**

@@ -1,180 +1,218 @@
+import * as grpc from '@grpc/grpc-js';
+import {
+  ConfidenceAgentClient,
+  AgentRequest,
+  ConfidenceResult,
+  Capabilities,
+  Health,
+  Health_Status,
+  GoogleEmpty,
+} from '@parallax/sdk-typescript';
 import { Agent, AgentResult } from './types';
 
 /**
  * Proxy class that represents a remote agent connected via gRPC.
  * This allows the core runtime to communicate with agents written in any language.
+ *
+ * Uses the SDK's generated ConfidenceAgentClient for type-safe gRPC communication.
  */
 export class GrpcAgentProxy implements Agent {
-  // private _client: any; // Will be replaced with proper gRPC client when proto generation is fixed
+  private _client: ConfidenceAgentClient;
   private _capabilities: string[] = [];
-  // private _metadata: Record<string, any> = {};
-  public expertise: number = 0.7; // Default expertise level
-  public historicalConfidence: number = 0.75; // Default historical confidence
-  public confidence: number = 0.8; // Current confidence level
-  
+  private _expertiseLevel: number = 0.7;
+  private _capabilityScores: Record<string, number> = {};
+  private _initialized: boolean = false;
+  private _initPromise: Promise<void>;
+
   constructor(
     public readonly id: string,
     public readonly name: string,
-    public readonly endpoint: string
+    public readonly endpoint: string,
+    credentials?: grpc.ChannelCredentials
   ) {
-    // Create gRPC client - placeholder until proto generation is fixed
-    // this.client = new ConfidenceAgentClient(
-    //   endpoint,
-    //   grpc.credentials.createInsecure()
-    // );
-    
+    // Create gRPC client with proper credentials
+    this._client = new ConfidenceAgentClient(
+      endpoint,
+      credentials || grpc.credentials.createInsecure()
+    );
+
     // Load capabilities on creation
-    this.loadCapabilities().catch(console.error);
+    this._initPromise = this.loadCapabilities().catch(() => {
+      // Capabilities loading failed - agent will use defaults
+      // This is non-fatal as agent may not be available yet
+      this._capabilities = ['analyze', 'process'];
+    });
   }
-  
+
   get capabilities(): string[] {
     return this._capabilities;
   }
-  
-  private async loadCapabilities(): Promise<void> {
-    try {
-      // Placeholder until proto generation is fixed
-      // const response = await new Promise<Capabilities>((resolve, reject) => {
-      //   this.client.getCapabilities(new Empty(), (err, response) => {
-      //     if (err) reject(err);
-      //     else resolve(response!);
-      //   });
-      // });
-      
-      // this._capabilities = response.getCapabilitiesList();
-      // this._metadata = {
-      //   expertise: response.getExpertiseLevel(),
-      //   capabilityScores: Object.fromEntries(
-      //     response.getCapabilityScoresMap().entries()
-      //   )
-      // };
-      
-      // Temporary mock implementation
-      // Set capabilities based on agent name/id for demo purposes
-      if (this.name.includes('security')) {
-        this._capabilities = ['security', 'code-analysis', 'analyze', 'assessment'];
-        this.expertise = 0.9;
-      } else if (this.name.includes('architect')) {
-        this._capabilities = ['architecture', 'code-analysis', 'analyze', 'assessment'];
-        this.expertise = 0.85;
-      } else if (this.name.includes('performance')) {
-        this._capabilities = ['performance', 'code-analysis', 'analyze', 'assessment'];
-        this.expertise = 0.8;
-      } else if (this.name.includes('complexity')) {
-        this._capabilities = ['complexity', 'code-analysis', 'analyze', 'assessment'];
-        this.expertise = 0.75;
-      } else {
-        this._capabilities = ['analyze', 'process', 'transform', 'assessment', 'query-processing'];
-      }
-      // this._metadata = {
-      //   expertise: 'general',
-      //   capabilityScores: { analyze: 0.9, process: 0.85, transform: 0.8 }
-      // };
-    } catch (error) {
-      console.error(`Failed to load capabilities for agent ${this.id}:`, error);
-    }
+
+  get expertise(): number {
+    return this._expertiseLevel;
   }
-  
+
+  get capabilityScores(): Record<string, number> {
+    return this._capabilityScores;
+  }
+
+  /**
+   * Wait for initialization to complete
+   */
+  async waitForInit(): Promise<void> {
+    await this._initPromise;
+  }
+
+  private async loadCapabilities(): Promise<void> {
+    const deadline = new Date();
+    deadline.setSeconds(deadline.getSeconds() + 10); // 10 second timeout
+
+    const response = await new Promise<Capabilities>((resolve, reject) => {
+      this._client.getCapabilities(
+        GoogleEmpty.create({}),
+        new grpc.Metadata(),
+        { deadline },
+        (err: grpc.ServiceError | null, response?: Capabilities) => {
+          if (err) reject(err);
+          else if (response) resolve(response);
+          else reject(new Error('No response received'));
+        }
+      );
+    });
+
+    this._capabilities = response.capabilities;
+    this._expertiseLevel = response.expertiseLevel;
+    this._capabilityScores = response.capabilityScores;
+    this._initialized = true;
+  }
+
   async isAvailable(): Promise<boolean> {
     try {
-      // Placeholder until proto generation is fixed
-      // const response = await new Promise<Health>((resolve, reject) => {
-      //   const deadline = new Date();
-      //   deadline.setSeconds(deadline.getSeconds() + 5); // 5 second timeout
-      //   
-      //   this.client.healthCheck(
-      //     new Empty(),
-      //     { deadline },
-      //     (err, response) => {
-      //       if (err) reject(err);
-      //       else resolve(response!);
-      //     }
-      //   );
-      // });
-      
-      // return response.getStatus() === Health.Status.HEALTHY;
-      
-      // Temporary mock implementation
-      return true;
-    } catch (error) {
+      const deadline = new Date();
+      deadline.setSeconds(deadline.getSeconds() + 5); // 5 second timeout
+
+      const response = await new Promise<Health>((resolve, reject) => {
+        this._client.healthCheck(
+          GoogleEmpty.create({}),
+          new grpc.Metadata(),
+          { deadline },
+          (err: grpc.ServiceError | null, response?: Health) => {
+            if (err) reject(err);
+            else if (response) resolve(response);
+            else reject(new Error('No response received'));
+          }
+        );
+      });
+
+      return response.status === Health_Status.HEALTHY;
+    } catch {
       return false;
     }
   }
-  
-  async analyze<T>(_task: string, _data?: any): Promise<AgentResult<T>> {
+
+  async analyze<T>(task: string, data?: any): Promise<AgentResult<T>> {
+    // Ensure initialization is complete
+    if (!this._initialized) {
+      await this._initPromise;
+    }
+
+    const request: AgentRequest = {
+      taskId: `task-${Date.now()}`,
+      taskDescription: task,
+      data: data,
+      context: {},
+      timeoutMs: 30000,
+      patternName: '',
+    };
+
+    const deadline = new Date();
+    deadline.setSeconds(deadline.getSeconds() + 30); // 30 second timeout
+
+    const response = await new Promise<ConfidenceResult>((resolve, reject) => {
+      this._client.analyze(
+        request,
+        new grpc.Metadata(),
+        { deadline },
+        (err: grpc.ServiceError | null, response?: ConfidenceResult) => {
+          if (err) reject(err);
+          else if (response) resolve(response);
+          else reject(new Error('No response received'));
+        }
+      );
+    });
+
+    // Parse the JSON value from the response
+    let value: T;
     try {
-      // Placeholder until proto generation is fixed
-      // const request = new AgentRequest();
-      // request.setTaskDescription(task);
-      
-      // if (data !== undefined) {
-      //   const { Struct } = require('google-protobuf/google/protobuf/struct_pb');
-      //   request.setData(Struct.fromJavaScript(data));
-      // }
-      
-      // const response = await new Promise<ConfidenceResult>((resolve, reject) => {
-      //   this.client.analyze(request, (err, response) => {
-      //     if (err) reject(err);
-      //     else resolve(response!);
-      //   });
-      // });
-      
-      // const value = JSON.parse(response.getValueJson()) as T;
-      
-      // Temporary mock implementation
-      const mockValue = {
-        recommendation: `${this.name} recommends approach based on analysis`,
-        pros: [`Strength identified by ${this.name}`],
-        cons: [`Weakness identified by ${this.name}`],
-        analysis: _data
-      } as any as T;
-      
-      return {
-        value: mockValue,
-        confidence: this.confidence,
-        agent: this.name,
-        reasoning: `Analyzed task: ${_task}`,
-        uncertainties: undefined,
-        timestamp: Date.now()
+      value = JSON.parse(response.valueJson) as T;
+    } catch {
+      // If parsing fails, use the raw string as value
+      value = response.valueJson as unknown as T;
+    }
+
+    return {
+      value,
+      confidence: response.confidence,
+      agent: response.agentId || this.name,
+      reasoning: response.reasoning,
+      uncertainties: response.uncertainties.length > 0 ? response.uncertainties : undefined,
+      timestamp: response.timestamp?.getTime() || Date.now(),
+    };
+  }
+
+  /**
+   * Stream analysis for long-running tasks
+   * Returns an async generator that yields results as they arrive
+   */
+  async *streamAnalyze<T>(task: string, data?: any): AsyncGenerator<AgentResult<T>> {
+    const request: AgentRequest = {
+      taskId: `task-${Date.now()}`,
+      taskDescription: task,
+      data: data,
+      context: {},
+      timeoutMs: 300000, // 5 minute timeout for streaming
+      patternName: '',
+    };
+
+    const stream = this._client.streamAnalyze(request);
+
+    for await (const response of stream) {
+      let value: T;
+      try {
+        value = JSON.parse(response.valueJson) as T;
+      } catch {
+        value = response.valueJson as unknown as T;
+      }
+
+      yield {
+        value,
+        confidence: response.confidence,
+        agent: response.agentId || this.name,
+        reasoning: response.reasoning,
+        uncertainties: response.uncertainties.length > 0 ? response.uncertainties : undefined,
+        timestamp: response.timestamp?.getTime() || Date.now(),
       };
-    } catch (error) {
-      throw new Error(`Agent ${this.name} failed to analyze: ${error}`);
     }
   }
-  
-  async process<T>(_input: any, _options?: any): Promise<AgentResult<T>> {
-    try {
-      // Placeholder until proto generation is fixed
-      // This method will be similar to analyze but for processing tasks
-      
-      // Temporary mock implementation
-      const mockValue = {
-        result: `Processed by ${this.name}`,
-        recommendation: `${this.name} suggests this approach`,
-        data: _input
-      } as any as T;
-      
-      return {
-        value: mockValue,
-        confidence: this.confidence * 0.95, // Slightly lower confidence for process
-        agent: this.name,
-        reasoning: `Processed input with options: ${JSON.stringify(_options || {})}`,
-        uncertainties: undefined,
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      throw new Error(`Agent ${this.name} failed to process: ${error}`);
-    }
+
+  /**
+   * Close the gRPC connection
+   */
+  close(): void {
+    this._client.close();
   }
-  
+
   /**
    * Static factory method to create a proxy from agent metadata
    */
-  static fromMetadata(metadata: {
-    id: string;
-    name: string;
-    endpoint: string;
-  }): GrpcAgentProxy {
-    return new GrpcAgentProxy(metadata.id, metadata.name, metadata.endpoint);
+  static fromMetadata(
+    metadata: {
+      id: string;
+      name: string;
+      endpoint: string;
+    },
+    credentials?: grpc.ChannelCredentials
+  ): GrpcAgentProxy {
+    return new GrpcAgentProxy(metadata.id, metadata.name, metadata.endpoint, credentials);
   }
 }

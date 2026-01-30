@@ -15,6 +15,7 @@
   "dependencies": {
     "@prism-lang/core": "^2.0.0",
     "@grpc/grpc-js": "^1.12.4",
+    "@parallax/sdk-typescript": "workspace:*",
     "@parallax/security": "workspace:*",
     "pino": "^9.5.0"
   },
