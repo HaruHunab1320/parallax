@@ -99,6 +99,7 @@ parallax/
 - Discord: https://discord.gg/jdjqvMa2
 - X: https://x.com/Parallax__AI
 
-## License
+## Licensing
 
-Apache 2.0
+Parallax is open source at the core under Apache 2.0, with enterprise features
+available under a commercial license. See `LICENSE` and `LICENSE-ENTERPRISE`.

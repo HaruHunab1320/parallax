@@ -318,8 +318,9 @@ export default function Home() {
                   Built for builders, open for everyone.
                 </h2>
                 <p className="mt-4 max-w-xl text-sm leading-relaxed text-[#cbd5e1]">
-                  Parallax is Apache 2.0 and welcomes contributions. Build
-                  production-grade workflows or fork it for your research stack.
+                  Parallax is open source at the core, with enterprise features
+                  available under a commercial license. Build production-grade
+                  workflows or fork it for your research stack.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
