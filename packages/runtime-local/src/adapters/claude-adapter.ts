@@ -4,12 +4,60 @@
  * Adapter for the Claude Code CLI (claude command).
  */
 
-import { AgentConfig, ParsedOutput, LoginDetection } from '@parallax/runtime-interface';
+import {
+  AgentConfig,
+  ParsedOutput,
+  LoginDetection,
+  BlockingPromptDetection,
+  AutoResponseRule,
+} from '@parallax/runtime-interface';
 import { BaseCLIAdapter } from './base-adapter';
 
 export class ClaudeAdapter extends BaseCLIAdapter {
   readonly agentType = 'claude';
   readonly displayName = 'Claude Code';
+
+  /**
+   * Auto-response rules for Claude Code CLI.
+   * These handle common prompts that can be safely auto-responded.
+   */
+  readonly autoResponseRules: AutoResponseRule[] = [
+    {
+      pattern: /update available.*\[y\/n\]/i,
+      type: 'update',
+      response: 'n',
+      description: 'Decline Claude Code update to continue execution',
+      safe: true,
+    },
+    {
+      pattern: /new version.*available.*\[y\/n\]/i,
+      type: 'update',
+      response: 'n',
+      description: 'Decline version upgrade prompt',
+      safe: true,
+    },
+    {
+      pattern: /would you like to enable.*telemetry.*\[y\/n\]/i,
+      type: 'config',
+      response: 'n',
+      description: 'Decline telemetry prompt',
+      safe: true,
+    },
+    {
+      pattern: /send anonymous usage data.*\[y\/n\]/i,
+      type: 'config',
+      response: 'n',
+      description: 'Decline anonymous usage data',
+      safe: true,
+    },
+    {
+      pattern: /continue without.*\[y\/n\]/i,
+      type: 'config',
+      response: 'y',
+      description: 'Continue without optional feature',
+      safe: true,
+    },
+  ];
 
   getCommand(): string {
     return 'claude';
@@ -84,6 +132,77 @@ export class ClaudeAdapter extends BaseCLIAdapter {
     }
 
     return { required: false };
+  }
+
+  /**
+   * Detect blocking prompts specific to Claude Code CLI
+   */
+  detectBlockingPrompt(output: string): BlockingPromptDetection {
+    const stripped = this.stripAnsi(output);
+
+    // First check for login (highest priority)
+    const loginDetection = this.detectLogin(output);
+    if (loginDetection.required) {
+      return {
+        detected: true,
+        type: 'login',
+        prompt: loginDetection.instructions,
+        url: loginDetection.url,
+        canAutoRespond: false,
+        instructions: loginDetection.instructions,
+      };
+    }
+
+    // Claude-specific: Model selection prompt
+    if (/choose.*model|select.*model|available models/i.test(stripped) &&
+        /\d+\)|claude-/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'model_select',
+        prompt: 'Claude model selection',
+        canAutoRespond: false,
+        instructions: 'Please select a Claude model or set ANTHROPIC_MODEL env var',
+      };
+    }
+
+    // Claude-specific: API key tier/plan selection
+    if (/which.*tier|select.*plan|api.*tier/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'config',
+        prompt: 'API tier selection',
+        canAutoRespond: false,
+        instructions: 'Please select an API tier',
+      };
+    }
+
+    // Claude-specific: First-time setup wizard
+    if (/welcome to claude|first time setup|initial configuration/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'config',
+        prompt: 'First-time setup',
+        canAutoRespond: false,
+        instructions: 'Claude Code requires initial configuration',
+      };
+    }
+
+    // Claude-specific: Permission to access files/directories
+    if (/allow.*access|grant.*permission|access to .* files/i.test(stripped) &&
+        /\[y\/n\]/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'permission',
+        prompt: 'File/directory access permission',
+        options: ['y', 'n'],
+        suggestedResponse: 'y', // Generally safe in controlled environments
+        canAutoRespond: true,
+        instructions: 'Claude Code requesting file access permission',
+      };
+    }
+
+    // Fall back to base class detection
+    return super.detectBlockingPrompt(output);
   }
 
   detectReady(output: string): boolean {

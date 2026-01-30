@@ -14,6 +14,7 @@ import {
   AgentStatus,
   CLIAdapter,
   AdapterRegistry,
+  BlockingPromptInfo,
 } from '@parallax/runtime-interface';
 import { Logger } from 'pino';
 import { PTYSession } from './pty-session';
@@ -24,6 +25,7 @@ export interface PTYManagerEvents {
   agent_stopped: (agent: AgentHandle, reason: string) => void;
   agent_error: (agent: AgentHandle, error: string) => void;
   login_required: (agent: AgentHandle, instructions?: string, url?: string) => void;
+  blocking_prompt: (agent: AgentHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => void;
   message: (message: AgentMessage) => void;
   question: (agent: AgentHandle, question: string) => void;
 }
@@ -106,6 +108,10 @@ export class PTYManager extends EventEmitter {
 
     session.on('login_required', (instructions?: string, url?: string) => {
       this.emit('login_required', session.toHandle(), instructions, url);
+    });
+
+    session.on('blocking_prompt', (promptInfo: BlockingPromptInfo, autoResponded: boolean) => {
+      this.emit('blocking_prompt', session.toHandle(), promptInfo, autoResponded);
     });
 
     session.on('message', (message: AgentMessage) => {

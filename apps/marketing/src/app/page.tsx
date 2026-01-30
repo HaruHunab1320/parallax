@@ -56,7 +56,7 @@ export default function Home() {
             </span>
           </div>
           <nav className="hidden items-center gap-6 text-sm font-medium text-[#475569] md:flex">
-            <a href="https://docs.parallaxai.dev/docs/intro">Docs</a>
+            <a href="https://docs.parallaxai.dev">Docs</a>
             <a href="https://docs.parallaxai.dev/docs/patterns/overview">
               Patterns
             </a>
@@ -409,7 +409,7 @@ export default function Home() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <span>Parallax — multi-agent orchestration.</span>
           <div className="flex flex-wrap gap-4">
-            <a href="https://docs.parallaxai.dev/docs/intro">Docs</a>
+            <a href="https://docs.parallaxai.dev">Docs</a>
             <a href="https://docs.parallaxai.dev/docs/enterprise/overview">
               Enterprise
             </a>

@@ -68,6 +68,10 @@ export class LocalRuntime extends BaseRuntimeProvider {
       this.emit('login_required', agent, url);
     });
 
+    this.manager.on('blocking_prompt', (agent, promptInfo, autoResponded) => {
+      this.emit('blocking_prompt', agent, promptInfo, autoResponded);
+    });
+
     this.manager.on('message', (message) => {
       this.emit('message', message);
     });

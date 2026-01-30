@@ -92,6 +92,7 @@ export class WorkflowExecutor extends EventEmitter {
     };
 
     const stepResults: WorkflowResult['steps'] = [];
+    let unsubscribeMessages: (() => void) | null = null;
 
     try {
       // Initialize agents for all roles
@@ -106,6 +107,10 @@ export class WorkflowExecutor extends EventEmitter {
 
       // Wire up router events
       this.setupRouterEvents(router, context);
+
+      // Subscribe to agent messages and route based on org hierarchy
+      // This enables sub-agents to communicate with their lead/manager
+      unsubscribeMessages = this.subscribeToAgentMessages(context, router);
 
       context.state = 'running';
 
@@ -137,6 +142,14 @@ export class WorkflowExecutor extends EventEmitter {
 
       context.state = 'completed';
 
+      // Cleanup message subscriptions
+      if (unsubscribeMessages) {
+        unsubscribeMessages();
+      }
+
+      // Cleanup agents
+      await this.cleanupAgents(context);
+
       const completedAt = new Date();
       const finalOutput = this.extractOutput(pattern.workflow.output, context);
 
@@ -165,6 +178,11 @@ export class WorkflowExecutor extends EventEmitter {
         { executionId, error },
         'Org workflow failed'
       );
+
+      // Cleanup message subscriptions
+      if (unsubscribeMessages) {
+        unsubscribeMessages();
+      }
 
       // Cleanup agents
       await this.cleanupAgents(context);
@@ -549,6 +567,96 @@ export class WorkflowExecutor extends EventEmitter {
         reason,
       });
     });
+  }
+
+  /**
+   * Subscribe to messages from all agents and route based on org hierarchy.
+   *
+   * When an agent sends a message, it gets routed to whoever they reportsTo.
+   * The receiving agent (typically a lead/manager) responds naturally as an LLM.
+   * No question detection needed - the LLM understands context.
+   */
+  private subscribeToAgentMessages(
+    context: OrgExecutionContext,
+    router: MessageRouter
+  ): () => void {
+    const unsubscribers: Array<() => void> = [];
+
+    for (const [agentId, agentInstance] of context.agents) {
+      const unsubscribe = this.runtimeService.subscribe(agentId, async (message) => {
+        // Find who this agent reports to
+        const role = context.pattern.structure.roles[agentInstance.role];
+        if (!role?.reportsTo) {
+          // Top-level agent (lead) - surface to user or handle as final output
+          this.logger.debug(
+            { agentId, role: agentInstance.role },
+            'Message from top-level agent (no reportsTo)'
+          );
+          this.emit('lead_agent_message', {
+            executionId: context.id,
+            agentId,
+            role: agentInstance.role,
+            message,
+          });
+          return;
+        }
+
+        // Find the manager agent(s) for this role
+        const managerAgentIds = context.roleAssignments.get(role.reportsTo) || [];
+        if (managerAgentIds.length === 0) {
+          this.logger.warn(
+            { agentId, role: agentInstance.role, reportsTo: role.reportsTo },
+            'No manager agent found for reportsTo role'
+          );
+          return;
+        }
+
+        // Route message to the manager (first available)
+        const managerId = managerAgentIds[0];
+
+        this.logger.debug(
+          { fromAgentId: agentId, toAgentId: managerId, fromRole: agentInstance.role, toRole: role.reportsTo },
+          'Routing agent message to manager'
+        );
+
+        try {
+          // Send the message to the manager agent
+          // The manager (as an LLM) will naturally understand and respond
+          const response = await this.runtimeService.send(
+            managerId,
+            `Message from ${role.name} (${agentInstance.role}):\n${message.content}`,
+            { expectResponse: true, timeout: 30000 }
+          );
+
+          // If manager responded, send that response back to the original agent
+          if (response) {
+            await this.runtimeService.send(
+              agentId,
+              `Response from ${role.reportsTo}:\n${response.content}`,
+              { expectResponse: false }
+            );
+          }
+        } catch (error) {
+          this.logger.error(
+            { error, fromAgentId: agentId, toAgentId: managerId },
+            'Failed to route message to manager'
+          );
+
+          // Use router's escalation logic as fallback
+          router.handleQuestion(agentId, message.content, undefined, {
+            originalMessage: message,
+            routingFailed: true,
+          });
+        }
+      });
+
+      unsubscribers.push(unsubscribe);
+    }
+
+    // Return function to unsubscribe all
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
   }
 
   /**

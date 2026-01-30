@@ -14,6 +14,7 @@ export {
   AgentHandle,
   AgentMessage,
   RuntimeEvent,
+  BlockingPromptInfo,
   AgentRequirement,
   AgentMetrics,
   AgentLogEntry,
@@ -35,5 +36,8 @@ export {
   CLIAdapter,
   ParsedOutput,
   LoginDetection,
+  BlockingPromptType,
+  BlockingPromptDetection,
+  AutoResponseRule,
   AdapterRegistry,
 } from './adapter';

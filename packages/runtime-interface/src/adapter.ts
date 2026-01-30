@@ -28,6 +28,71 @@ export interface LoginDetection {
 }
 
 /**
+ * Types of blocking prompts that can occur during startup or execution
+ */
+export type BlockingPromptType =
+  | 'login'          // Authentication required
+  | 'update'         // Update/upgrade available
+  | 'config'         // Configuration choice needed
+  | 'tos'            // Terms of service acceptance
+  | 'model_select'   // Model/version selection
+  | 'project_select' // Project/workspace selection
+  | 'permission'     // Permission request
+  | 'unknown';       // Unrecognized blocking prompt
+
+/**
+ * Blocking prompt detection result
+ *
+ * Generalizes login detection to handle any CLI prompt that blocks execution
+ * and requires user input or auto-response.
+ */
+export interface BlockingPromptDetection {
+  /** Whether a blocking prompt was detected */
+  detected: boolean;
+
+  /** Type of blocking prompt */
+  type?: BlockingPromptType;
+
+  /** The prompt text shown to the user */
+  prompt?: string;
+
+  /** Available options/choices if detected (e.g., ['y', 'n'], ['1', '2', '3']) */
+  options?: string[];
+
+  /** Suggested auto-response (if safe to auto-respond) */
+  suggestedResponse?: string;
+
+  /** Whether it's safe to auto-respond without user confirmation */
+  canAutoRespond?: boolean;
+
+  /** Instructions for the user if manual intervention needed */
+  instructions?: string;
+
+  /** URL to open if browser action needed */
+  url?: string;
+}
+
+/**
+ * Auto-response rule for handling known blocking prompts
+ */
+export interface AutoResponseRule {
+  /** Pattern to match in output */
+  pattern: RegExp;
+
+  /** Type of prompt this handles */
+  type: BlockingPromptType;
+
+  /** Response to send automatically */
+  response: string;
+
+  /** Human-readable description of what this does */
+  description: string;
+
+  /** Whether this is safe to auto-respond (default: true) */
+  safe?: boolean;
+}
+
+/**
  * Interface that CLI adapters must implement
  */
 export interface CLIAdapter {
@@ -36,6 +101,12 @@ export interface CLIAdapter {
 
   /** Display name for the CLI */
   readonly displayName: string;
+
+  /**
+   * Auto-response rules for handling known blocking prompts.
+   * These are applied automatically during startup and execution.
+   */
+  readonly autoResponseRules?: AutoResponseRule[];
 
   /**
    * Get the CLI command to execute
@@ -54,8 +125,23 @@ export interface CLIAdapter {
 
   /**
    * Detect if output indicates login is required
+   * @deprecated Use detectBlockingPrompt() instead for comprehensive detection
    */
   detectLogin(output: string): LoginDetection;
+
+  /**
+   * Detect any blocking prompt that requires user input or auto-response.
+   * This generalizes login detection to handle updates, config choices, TOS, etc.
+   *
+   * Implementations should check for:
+   * - Login/authentication prompts
+   * - Update/upgrade prompts
+   * - Configuration choices (model selection, project selection)
+   * - Terms of service acceptance
+   * - Permission requests
+   * - Any other prompt that blocks execution
+   */
+  detectBlockingPrompt?(output: string): BlockingPromptDetection;
 
   /**
    * Detect if agent is ready to receive tasks

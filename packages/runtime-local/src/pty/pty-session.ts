@@ -13,6 +13,8 @@ import {
   AgentStatus,
   AgentMessage,
   CLIAdapter,
+  BlockingPromptDetection,
+  BlockingPromptInfo,
 } from '@parallax/runtime-interface';
 import { Logger } from 'pino';
 
@@ -20,6 +22,7 @@ export interface PTYSessionEvents {
   output: (data: string) => void;
   ready: () => void;
   login_required: (instructions?: string, url?: string) => void;
+  blocking_prompt: (prompt: BlockingPromptInfo, autoResponded: boolean) => void;
   message: (message: AgentMessage) => void;
   question: (question: string) => void;
   exit: (code: number) => void;
@@ -125,7 +128,14 @@ export class PTYSession extends EventEmitter {
       // Emit raw output
       this.emit('output', data);
 
-      // Check for login required
+      // Check for blocking prompts (generalizes login detection)
+      const blockingPrompt = this.detectAndHandleBlockingPrompt();
+      if (blockingPrompt) {
+        // Blocking prompt was detected and handled (or needs user intervention)
+        return;
+      }
+
+      // Fallback: Check for login required (legacy support)
       const loginDetection = this.adapter.detectLogin(this.outputBuffer);
       if (loginDetection.required && this._status !== 'authenticating') {
         this._status = 'authenticating';
@@ -134,6 +144,7 @@ export class PTYSession extends EventEmitter {
           { agentId: this.id, loginType: loginDetection.type },
           'Login required'
         );
+        return;
       }
 
       // Check for ready state
@@ -162,6 +173,126 @@ export class PTYSession extends EventEmitter {
       );
       this.emit('exit', exitCode);
     });
+  }
+
+  /**
+   * Detect blocking prompts and handle them with auto-responses or user notification
+   * Returns true if a blocking prompt was detected and handled
+   */
+  private detectAndHandleBlockingPrompt(): boolean {
+    // First, check adapter's auto-response rules
+    const autoHandled = this.tryAutoResponse();
+    if (autoHandled) {
+      return true;
+    }
+
+    // Then check the adapter's detectBlockingPrompt method
+    if (this.adapter.detectBlockingPrompt) {
+      const detection = this.adapter.detectBlockingPrompt(this.outputBuffer);
+
+      if (detection.detected) {
+        const promptInfo: BlockingPromptInfo = {
+          type: detection.type || 'unknown',
+          prompt: detection.prompt,
+          options: detection.options,
+          canAutoRespond: detection.canAutoRespond || false,
+          instructions: detection.instructions,
+          url: detection.url,
+        };
+
+        // If we can auto-respond and have a suggested response, do it
+        if (detection.canAutoRespond && detection.suggestedResponse) {
+          this.logger.info(
+            {
+              agentId: this.id,
+              promptType: detection.type,
+              response: detection.suggestedResponse,
+            },
+            'Auto-responding to blocking prompt'
+          );
+
+          this.writeRaw(detection.suggestedResponse + '\r');
+          this.emit('blocking_prompt', promptInfo, true);
+          return true;
+        }
+
+        // Otherwise, notify that user intervention is needed
+        if (detection.type === 'login') {
+          this._status = 'authenticating';
+        }
+
+        this.logger.warn(
+          {
+            agentId: this.id,
+            promptType: detection.type,
+            prompt: detection.prompt,
+          },
+          'Blocking prompt requires user intervention'
+        );
+
+        this.emit('blocking_prompt', promptInfo, false);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Try to match and apply auto-response rules
+   * Returns true if an auto-response was applied
+   */
+  private tryAutoResponse(): boolean {
+    const rules = this.adapter.autoResponseRules;
+    if (!rules || rules.length === 0) {
+      return false;
+    }
+
+    for (const rule of rules) {
+      if (rule.pattern.test(this.outputBuffer)) {
+        // Check if it's safe to auto-respond (default: true)
+        const safe = rule.safe !== false;
+
+        if (safe) {
+          this.logger.info(
+            {
+              agentId: this.id,
+              promptType: rule.type,
+              description: rule.description,
+              response: rule.response,
+            },
+            'Applying auto-response rule'
+          );
+
+          this.writeRaw(rule.response + '\r');
+
+          // Clear the matched portion from buffer to prevent re-matching
+          this.outputBuffer = this.outputBuffer.replace(rule.pattern, '');
+
+          const promptInfo: BlockingPromptInfo = {
+            type: rule.type,
+            prompt: rule.description,
+            canAutoRespond: true,
+          };
+
+          this.emit('blocking_prompt', promptInfo, true);
+          return true;
+        } else {
+          // Not safe to auto-respond, emit for user intervention
+          const promptInfo: BlockingPromptInfo = {
+            type: rule.type,
+            prompt: rule.description,
+            canAutoRespond: false,
+            instructions: `Prompt matched but requires user confirmation: ${rule.description}`,
+          };
+
+          this.emit('blocking_prompt', promptInfo, false);
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   /**

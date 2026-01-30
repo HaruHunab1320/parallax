@@ -5,7 +5,14 @@
  */
 
 import { spawn } from 'child_process';
-import { CLIAdapter, AgentConfig, ParsedOutput, LoginDetection } from '@parallax/runtime-interface';
+import {
+  CLIAdapter,
+  AgentConfig,
+  ParsedOutput,
+  LoginDetection,
+  BlockingPromptDetection,
+  AutoResponseRule,
+} from '@parallax/runtime-interface';
 
 /**
  * Abstract base class for CLI adapters with common functionality
@@ -13,6 +20,12 @@ import { CLIAdapter, AgentConfig, ParsedOutput, LoginDetection } from '@parallax
 export abstract class BaseCLIAdapter implements CLIAdapter {
   abstract readonly agentType: string;
   abstract readonly displayName: string;
+
+  /**
+   * Auto-response rules for handling known blocking prompts.
+   * Subclasses should override this to add CLI-specific rules.
+   */
+  readonly autoResponseRules: AutoResponseRule[] = [];
 
   abstract getCommand(): string;
   abstract getArgs(config: AgentConfig): string[];
@@ -44,6 +57,88 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     return { exited: false };
+  }
+
+  /**
+   * Default blocking prompt detection - looks for common prompt patterns.
+   * Subclasses should override for CLI-specific detection.
+   */
+  detectBlockingPrompt(output: string): BlockingPromptDetection {
+    const stripped = this.stripAnsi(output);
+
+    // Check for login/auth first (highest priority)
+    const loginDetection = this.detectLogin(output);
+    if (loginDetection.required) {
+      return {
+        detected: true,
+        type: 'login',
+        prompt: loginDetection.instructions,
+        url: loginDetection.url,
+        canAutoRespond: false,
+        instructions: loginDetection.instructions,
+      };
+    }
+
+    // Check for common update prompts
+    if (/update (available|now|ready)/i.test(stripped) && /\[y\/n\]/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'update',
+        prompt: 'Update available',
+        options: ['y', 'n'],
+        suggestedResponse: 'n',
+        canAutoRespond: true,
+        instructions: 'CLI update available - auto-declining to continue',
+      };
+    }
+
+    // Check for terms of service / license acceptance
+    if (/accept.*(terms|license|agreement)/i.test(stripped) && /\[y\/n\]/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'tos',
+        prompt: 'Terms/license acceptance required',
+        options: ['y', 'n'],
+        canAutoRespond: false,
+        instructions: 'Please accept the terms of service manually',
+      };
+    }
+
+    // Check for model/version selection
+    if (/choose.*model|select.*model|which model/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'model_select',
+        prompt: 'Model selection required',
+        canAutoRespond: false,
+        instructions: 'Please select a model',
+      };
+    }
+
+    // Check for project/workspace selection
+    if (/choose.*(project|workspace)|select.*(project|workspace)/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'project_select',
+        prompt: 'Project/workspace selection required',
+        canAutoRespond: false,
+        instructions: 'Please select a project or workspace',
+      };
+    }
+
+    // Check for generic y/n prompts that look like they're blocking
+    if (/\[y\/n\]|\(y\/n\)|\[Y\/n\]|\[y\/N\]/i.test(stripped) && stripped.includes('?')) {
+      return {
+        detected: true,
+        type: 'unknown',
+        prompt: stripped.slice(-200), // Last 200 chars for context
+        options: ['y', 'n'],
+        canAutoRespond: false,
+        instructions: 'Unknown confirmation prompt detected',
+      };
+    }
+
+    return { detected: false };
   }
 
   /**

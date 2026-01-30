@@ -117,6 +117,18 @@ export interface AgentMessage {
 }
 
 /**
+ * Blocking prompt info for runtime events
+ */
+export interface BlockingPromptInfo {
+  type: string;           // 'login' | 'update' | 'config' | 'tos' | etc.
+  prompt?: string;        // The actual prompt text
+  options?: string[];     // Available choices
+  canAutoRespond: boolean;
+  instructions?: string;
+  url?: string;
+}
+
+/**
  * Runtime events
  */
 export type RuntimeEvent =
@@ -125,6 +137,7 @@ export type RuntimeEvent =
   | { type: 'agent_stopped'; agent: AgentHandle; reason: string }
   | { type: 'agent_error'; agent: AgentHandle; error: string }
   | { type: 'login_required'; agent: AgentHandle; loginUrl?: string; loginInstructions?: string }
+  | { type: 'blocking_prompt'; agent: AgentHandle; prompt: BlockingPromptInfo; autoResponded: boolean }
   | { type: 'message'; message: AgentMessage }
   | { type: 'question'; agent: AgentHandle; question: string; context?: string };
 

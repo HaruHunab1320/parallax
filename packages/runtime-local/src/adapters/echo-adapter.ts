@@ -5,11 +5,21 @@
  * without requiring actual AI CLI tools.
  */
 
-import { CLIAdapter, AgentConfig, ParsedOutput, LoginDetection } from '@parallax/runtime-interface';
+import {
+  CLIAdapter,
+  AgentConfig,
+  ParsedOutput,
+  LoginDetection,
+  BlockingPromptDetection,
+  AutoResponseRule,
+} from '@parallax/runtime-interface';
 
 export class EchoAdapter implements CLIAdapter {
   readonly agentType = 'echo';
   readonly displayName = 'Echo (Test)';
+
+  // No auto-response rules for echo adapter - it's for testing
+  readonly autoResponseRules: AutoResponseRule[] = [];
 
   getCommand(): string {
     // Use bash as the underlying shell with absolute path
@@ -29,6 +39,11 @@ export class EchoAdapter implements CLIAdapter {
   detectLogin(_output: string): LoginDetection {
     // Echo adapter never needs login
     return { required: false };
+  }
+
+  detectBlockingPrompt(_output: string): BlockingPromptDetection {
+    // Echo adapter never has blocking prompts - it's for testing
+    return { detected: false };
   }
 
   detectReady(output: string): boolean {
