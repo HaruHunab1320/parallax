@@ -48,6 +48,11 @@ const DEFAULT_IMAGES: Record<AgentType, string> = {
   custom: 'parallax/agent-base:latest',
 };
 
+// Environment variable defaults for configuration
+const DEFAULT_NAMESPACE = process.env.PARALLAX_NAMESPACE || 'parallax-agents';
+const DEFAULT_IMAGE_PREFIX = process.env.PARALLAX_IMAGE_PREFIX || '';
+const DEFAULT_REGISTRY_ENDPOINT = process.env.PARALLAX_REGISTRY || '';
+
 const CRD_GROUP = 'parallax.ai';
 const CRD_VERSION = 'v1';
 const CRD_PLURAL = 'parallaxagents';
@@ -84,8 +89,8 @@ export class K8sRuntime extends BaseRuntimeProvider {
     this.coreApi = this.kc.makeApiClient(k8s.CoreV1Api);
     this.appsApi = this.kc.makeApiClient(k8s.AppsV1Api);
     this.customApi = this.kc.makeApiClient(k8s.CustomObjectsApi);
-    this.namespace = options.namespace || 'parallax-agents';
-    this.imagePrefix = options.imagePrefix || '';
+    this.namespace = options.namespace || DEFAULT_NAMESPACE;
+    this.imagePrefix = options.imagePrefix || DEFAULT_IMAGE_PREFIX;
   }
 
   async initialize(): Promise<void> {
@@ -334,9 +339,75 @@ export class K8sRuntime extends BaseRuntimeProvider {
       throw new Error(`Agent ${agentId} not found`);
     }
 
-    // For K8s, we'd typically use a WebSocket connection to the agent service
-    // This is a placeholder implementation
-    yield* [];
+    // Get the agent's service endpoint
+    const endpoint = info.handle.endpoint;
+    if (!endpoint) {
+      throw new Error(`Agent ${agentId} has no endpoint - cannot subscribe`);
+    }
+
+    // Create an abort controller for cleanup
+    const abortController = new AbortController();
+
+    try {
+      // Connect to the agent's streaming endpoint using Server-Sent Events
+      const response = await fetch(`${endpoint}/stream`, {
+        method: 'GET',
+        headers: { 'Accept': 'text/event-stream' },
+        signal: abortController.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to connect to agent stream: ${response.statusText}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body from agent stream');
+      }
+
+      // Parse SSE stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              const message: AgentMessage = {
+                id: data.id || `msg-${Date.now()}`,
+                agentId: agentId,
+                direction: 'outbound',
+                type: data.type || 'response',
+                content: data.content || data.message || '',
+                timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+                metadata: data.metadata,
+              };
+              yield message;
+            } catch {
+              // Skip malformed messages
+              this.logger.debug({ line }, 'Skipping malformed SSE message');
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        // Normal cleanup, don't log as error
+        return;
+      }
+      this.logger.error({ agentId, error }, 'Error in agent subscription');
+      throw error;
+    } finally {
+      abortController.abort();
+    }
   }
 
   async *logs(agentId: string, options?: LogOptions): AsyncIterable<string> {
@@ -581,8 +652,9 @@ export class K8sRuntime extends BaseRuntimeProvider {
       { name: 'AGENT_CAPABILITIES', value: JSON.stringify(config.capabilities || []) },
     ];
 
-    if (this.options.registryEndpoint) {
-      env.push({ name: 'PARALLAX_REGISTRY_ENDPOINT', value: this.options.registryEndpoint });
+    const registryEndpoint = this.options.registryEndpoint || DEFAULT_REGISTRY_ENDPOINT;
+    if (registryEndpoint) {
+      env.push({ name: 'PARALLAX_REGISTRY_ENDPOINT', value: registryEndpoint });
     }
 
     if (config.env) {

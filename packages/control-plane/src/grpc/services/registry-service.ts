@@ -3,7 +3,7 @@
  */
 
 import * as grpc from '@grpc/grpc-js';
-import type { IAgentRegistry } from '../../registry';
+import type { IAgentRegistry, ServiceRegistration } from '../../registry';
 import { Logger } from 'pino';
 
 export class RegistryServiceImpl {
@@ -40,15 +40,15 @@ export class RegistryServiceImpl {
 
       this.logger.info({ agentId: agent.id }, 'Registering agent via gRPC');
 
-      const serviceRegistration: any = {
+      const serviceRegistration: ServiceRegistration = {
         id: agent.id,
         name: agent.name || agent.id,
-        address: agent.endpoint || agent.address || '',
         endpoint: agent.endpoint || agent.address || '',
-        capabilities: agent.capabilities || [],
-        metadata: agent.metadata || {},
-        lastSeen: new Date(),
         type: 'agent',
+        metadata: {
+          capabilities: agent.capabilities || [],
+          ...(agent.metadata || {}),
+        },
         health: {
           status: 'healthy',
           lastCheck: new Date(),
@@ -123,13 +123,12 @@ export class RegistryServiceImpl {
         return;
       }
       
-      const updated = {
+      const updated: ServiceRegistration = {
         ...agent,
-        lastSeen: new Date(),
         health: {
           status: 'healthy',
           lastCheck: new Date(),
-          checkInterval: 30000
+          checkInterval: agent.health?.checkInterval || 30000
         }
       };
       await this.registerAgent(updated);
@@ -201,7 +200,7 @@ export class RegistryServiceImpl {
   async watch(call: grpc.ServerWritableStream<any, any>) {
     const { include_initial, capabilities } = call.request || {};
     let active = true;
-    let previous = new Map<string, { agent: any; hash: string }>();
+    let previous = new Map<string, { agent: ServiceRegistration; hash: string }>();
 
     let interval: NodeJS.Timeout | null = null;
     const stop = () => {
@@ -229,12 +228,12 @@ export class RegistryServiceImpl {
       const agents = (await this.listAgentsInternal())
         .filter(agent => this.matchesCapabilities(agent, capabilities));
 
-      const current = new Map<string, { agent: any; hash: string }>();
+      const current = new Map<string, { agent: ServiceRegistration; hash: string }>();
       for (const agent of agents) {
         const hash = JSON.stringify({
           name: agent.name,
-          endpoint: agent.endpoint || agent.address,
-          capabilities: agent.capabilities || agent.metadata?.capabilities || [],
+          endpoint: agent.endpoint,
+          capabilities: agent.metadata?.capabilities || [],
           metadata: agent.metadata || {}
         });
         current.set(agent.id, { agent, hash });
@@ -270,70 +269,51 @@ export class RegistryServiceImpl {
     call.on('end', stop);
   }
 
-  private async listAgentsInternal(): Promise<any[]> {
-    const registry: any = this.agentRegistry as any;
-    if (typeof registry.list === 'function') {
-      return registry.list();
-    }
-    if (typeof registry.listServices === 'function') {
-      return registry.listServices('agent');
-    }
-    return [];
+  private async listAgentsInternal(): Promise<ServiceRegistration[]> {
+    // Use listServices which filters by type
+    return this.agentRegistry.listServices('agent');
   }
 
-  private async getAgentInternal(agentId: string): Promise<any | null> {
-    const registry: any = this.agentRegistry as any;
-    if (typeof registry.get === 'function') {
-      return registry.get(agentId);
-    }
-    if (typeof registry.getService === 'function') {
-      return registry.getService('agent', agentId);
-    }
-    return null;
+  private async getAgentInternal(agentId: string): Promise<ServiceRegistration | null> {
+    return this.agentRegistry.get(agentId);
   }
 
-  private async registerAgent(agent: any): Promise<void> {
-    const registry: any = this.agentRegistry as any;
-    if (typeof registry.register === 'function') {
-      await registry.register(agent);
-      return;
-    }
-    throw new Error('Agent registry does not support register');
+  private async registerAgent(agent: ServiceRegistration): Promise<void> {
+    await this.agentRegistry.register(agent);
   }
 
   private async unregisterAgent(agentId: string): Promise<void> {
-    const registry: any = this.agentRegistry as any;
-    if (typeof registry.unregister === 'function') {
-      await registry.unregister(agentId);
-      return;
-    }
-    if (typeof registry.unregisterService === 'function') {
-      await registry.unregisterService('agent', agentId);
-      return;
-    }
-    throw new Error('Agent registry does not support unregister');
+    await this.agentRegistry.unregister('agent', agentId);
   }
 
-  private matchesCapabilities(agent: any, capabilities?: string[]): boolean {
+  private matchesCapabilities(agent: ServiceRegistration, capabilities?: string[]): boolean {
     if (!capabilities || capabilities.length === 0) return true;
-    const agentCaps = agent.capabilities || agent.metadata?.capabilities || [];
+    const agentCaps = agent.metadata?.capabilities || [];
     return capabilities.every(cap => agentCaps.includes(cap));
   }
 
-  private toAgentRegistration(agent: any): any {
+  private toAgentRegistration(agent: ServiceRegistration): {
+    id: string;
+    name: string;
+    endpoint: string;
+    capabilities: string[];
+    metadata: Record<string, unknown>;
+    registered_at: { seconds: number; nanos: number };
+    ttl?: { seconds: number; nanos: number };
+  } {
     const metadata = agent.metadata || {};
     return {
       id: agent.id,
       name: agent.name || agent.id,
-      endpoint: agent.endpoint || agent.address || '',
-      capabilities: agent.capabilities || metadata.capabilities || [],
+      endpoint: agent.endpoint || '',
+      capabilities: metadata.capabilities || [],
       metadata: {
         version: metadata.version || '',
         region: metadata.region || '',
         labels: metadata.labels || {},
         default_confidence: metadata.default_confidence || 0
       },
-      registered_at: this.toTimestamp(agent.registeredAt || agent.lastSeen || new Date()),
+      registered_at: this.toTimestamp(agent.registeredAt || new Date()),
       ttl: agent.ttl ? { seconds: agent.ttl, nanos: 0 } : undefined
     };
   }

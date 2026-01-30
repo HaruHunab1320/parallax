@@ -39,11 +39,13 @@ export class JWTService {
    * Sign a JWT token
    */
   private async signToken(
-    payload: JWTPayload | any,
+    payload: JWTPayload,
     expiresIn: string
   ): Promise<string> {
     const options: jwt.SignOptions = {
-      expiresIn: expiresIn as any,
+      // Cast to satisfy jwt.SignOptions which expects StringValue | number
+      // Our config always provides valid time strings like "1h", "7d"
+      expiresIn: expiresIn as jwt.SignOptions['expiresIn'],
       issuer: this.config.issuer,
       audience: this.config.audience,
       algorithm: this.config.algorithm,
@@ -99,7 +101,7 @@ export class JWTService {
     const payload = await this.verifyToken(refreshToken);
     
     // Verify it's a refresh token
-    if ((payload as any).type !== 'refresh') {
+    if (payload.type !== 'refresh') {
       throw new Error('Invalid refresh token');
     }
 

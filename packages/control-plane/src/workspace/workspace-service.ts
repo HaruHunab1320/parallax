@@ -25,6 +25,12 @@ import {
   generateSlug,
   filterBranchesByExecution,
 } from './branch-naming';
+import {
+  configureCredentialHelper,
+  cleanupCredentialFiles,
+  getGitCredentialConfig,
+  CredentialContext,
+} from './git-credential-helper';
 
 const execAsync = promisify(exec);
 
@@ -232,6 +238,13 @@ export class WorkspaceService {
 
     this.logger.info({ workspaceId }, 'Cleaning up workspace');
 
+    // Clean up credential files first (securely remove tokens)
+    try {
+      await cleanupCredentialFiles(workspace.path);
+    } catch (error) {
+      this.logger.warn({ workspaceId, error }, 'Failed to clean up credential files');
+    }
+
     // Revoke credentials
     await this.credentialService.revokeCredential(workspace.credential.id);
 
@@ -279,15 +292,36 @@ export class WorkspaceService {
     await this.execInDir(workspace.path, 'git config user.name "Parallax Agent"');
     await this.execInDir(workspace.path, 'git config user.email "agent@parallax.io"');
 
-    // Configure credential helper (uses our service)
-    // TODO: Implement credential helper script
+    // Configure credential helper
+    const credentialContext: CredentialContext = {
+      workspaceId: workspace.id,
+      executionId: workspace.branch.executionId,
+      repo: workspace.repo,
+      token: workspace.credential.token,
+      expiresAt: workspace.credential.expiresAt.toISOString(),
+    };
+
+    const helperScriptPath = await configureCredentialHelper(
+      workspace.path,
+      credentialContext
+    );
+
+    // Configure git to use our credential helper
+    const configCommands = getGitCredentialConfig(helperScriptPath);
+    for (const cmd of configCommands) {
+      await this.execInDir(workspace.path, cmd);
+    }
+
+    this.logger.debug(
+      { workspaceId: workspace.id, helperPath: helperScriptPath },
+      'Git credential helper configured'
+    );
   }
 
   private async pushBranch(workspace: Workspace): Promise<void> {
-    const token = workspace.credential.token;
-    const authUrl = this.buildAuthenticatedUrl(workspace.repo, token);
-
-    await this.execInDir(workspace.path, `git push -u ${authUrl} ${workspace.branch.name}`);
+    // Push using origin remote - credentials provided by helper
+    // This is more secure than embedding tokens in the command line
+    await this.execInDir(workspace.path, `git push -u origin ${workspace.branch.name}`);
   }
 
   private async createPullRequest(

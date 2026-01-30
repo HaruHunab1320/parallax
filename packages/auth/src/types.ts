@@ -21,6 +21,7 @@ export interface JWTPayload {
   email: string;
   name: string;
   roles: string[];
+  type?: 'access' | 'refresh'; // Token type for access/refresh differentiation
   tenantId?: string;
   iat?: number;
   exp?: number;

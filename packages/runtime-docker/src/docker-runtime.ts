@@ -41,6 +41,11 @@ interface ContainerInfo {
   messageQueue: AgentMessage[];
 }
 
+// Default configuration values - can be overridden via environment variables
+const DEFAULT_DOCKER_SOCKET = process.env.DOCKER_SOCKET || '/var/run/docker.sock';
+const DEFAULT_DOCKER_NETWORK = process.env.DOCKER_NETWORK || 'parallax-agents';
+const DEFAULT_REGISTRY_ENDPOINT = process.env.PARALLAX_REGISTRY || 'localhost:50051';
+
 const DEFAULT_IMAGES: Record<AgentType, string> = {
   claude: 'parallax/agent-claude:latest',
   codex: 'parallax/agent-codex:latest',
@@ -65,9 +70,9 @@ export class DockerRuntime extends BaseRuntimeProvider {
   ) {
     super();
     this.docker = new Docker({
-      socketPath: options.socketPath || '/var/run/docker.sock',
+      socketPath: options.socketPath || DEFAULT_DOCKER_SOCKET,
     });
-    this.network = options.network || 'parallax-agents';
+    this.network = options.network || DEFAULT_DOCKER_NETWORK;
     this.imagePrefix = options.imagePrefix || '';
   }
 

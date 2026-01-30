@@ -11,3 +11,4 @@ export * from './workspace-service';
 export * from './workspace-api';
 export * from './github-webhooks';
 export * from './providers';
+export * from './git-credential-helper';
