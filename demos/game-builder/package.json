@@ -1,0 +1,23 @@
+{
+  "name": "@parallax-demos/game-builder",
+  "version": "0.1.0",
+  "description": "Flagship demo: AI agents collaboratively build a Pong game",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "./scripts/run-demo.sh",
+    "build-game": "tsx src/build-game.ts",
+    "start:infra": "docker compose -f ../../docker-compose.yml --profile monitoring up -d",
+    "start:control-plane": "cd ../../packages/control-plane && pnpm dev",
+    "start:dashboard": "cd ../../apps/web-dashboard && pnpm dev",
+    "stop:infra": "docker compose -f ../../docker-compose.yml --profile monitoring down"
+  },
+  "dependencies": {
+    "@parallax/sdk-typescript": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

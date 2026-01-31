@@ -46,6 +46,11 @@ const DEFAULT_DOCKER_SOCKET = process.env.DOCKER_SOCKET || '/var/run/docker.sock
 const DEFAULT_DOCKER_NETWORK = process.env.DOCKER_NETWORK || 'parallax-agents';
 const DEFAULT_REGISTRY_ENDPOINT = process.env.PARALLAX_REGISTRY || 'localhost:50051';
 
+/**
+ * Default Docker images for each agent type.
+ * These images should be pre-built using: pnpm docker:build
+ * Or pulled from a registry: docker pull parallax/agent-claude:latest
+ */
 const DEFAULT_IMAGES: Record<AgentType, string> = {
   claude: 'parallax/agent-claude:latest',
   codex: 'parallax/agent-codex:latest',

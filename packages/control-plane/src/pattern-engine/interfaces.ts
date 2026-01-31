@@ -1,5 +1,6 @@
 import { Pattern, PatternExecution, ExecutionMetrics } from './types';
 import { WorkspaceService, UserProvidedCredentials } from '../workspace';
+import { AgentRuntimeService } from '../agent-runtime';
 
 /**
  * Common interface for pattern engines
@@ -53,4 +54,8 @@ export interface IPatternEngine {
    * Set the workspace service for git workspace provisioning
    */
   setWorkspaceService(service: WorkspaceService): void;
+  /**
+   * Set the agent runtime service for dynamic agent spawning
+   */
+  setAgentRuntimeService(service: AgentRuntimeService): void;
 }

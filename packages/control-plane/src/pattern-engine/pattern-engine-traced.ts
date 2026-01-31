@@ -19,6 +19,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
 import { WorkspaceService, Workspace, WorkspaceConfig } from '../workspace';
+import { AgentRuntimeService } from '../agent-runtime';
 import {
   ExecutionEngine,
   ExecutionTask,
@@ -38,6 +39,7 @@ export class TracedPatternEngine implements IPatternEngine {
   private databasePatterns?: DatabasePatternService;
   private workspaceService?: WorkspaceService;
   private executionEngine?: ExecutionEngine;
+  private agentRuntimeService?: AgentRuntimeService;
 
   constructor(
     private runtimeManager: RuntimeManager,
@@ -48,7 +50,8 @@ export class TracedPatternEngine implements IPatternEngine {
     private executionEvents?: ExecutionEventBus,
     databasePatterns?: DatabasePatternService,
     workspaceService?: WorkspaceService,
-    executionEngine?: ExecutionEngine
+    executionEngine?: ExecutionEngine,
+    agentRuntimeService?: AgentRuntimeService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -59,6 +62,7 @@ export class TracedPatternEngine implements IPatternEngine {
     this.databasePatterns = databasePatterns;
     this.workspaceService = workspaceService;
     this.executionEngine = executionEngine;
+    this.agentRuntimeService = agentRuntimeService;
   }
 
   async initialize(): Promise<void> {
@@ -75,6 +79,13 @@ export class TracedPatternEngine implements IPatternEngine {
    */
   setWorkspaceService(service: WorkspaceService): void {
     this.workspaceService = service;
+  }
+
+  /**
+   * Set the agent runtime service (for deferred initialization)
+   */
+  setAgentRuntimeService(service: AgentRuntimeService): void {
+    this.agentRuntimeService = service;
   }
 
   async executePattern(

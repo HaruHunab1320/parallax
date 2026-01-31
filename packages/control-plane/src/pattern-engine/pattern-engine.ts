@@ -15,6 +15,8 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
 import { WorkspaceService, Workspace, WorkspaceConfig, UserProvidedCredentials } from '../workspace';
+import { AgentRuntimeService } from '../agent-runtime';
+import { AgentHandle, AgentConfig } from '@parallax/runtime-interface';
 import {
   ExecutionEngine,
   ExecutionTask,
@@ -34,6 +36,8 @@ export class PatternEngine implements IPatternEngine {
   private databasePatterns?: DatabasePatternService;
   private workspaceService?: WorkspaceService;
   private executionEngine?: ExecutionEngine;
+  private agentRuntimeService?: AgentRuntimeService;
+  private spawnedAgents: Map<string, AgentHandle[]> = new Map(); // executionId -> spawned agents
 
   constructor(
     private runtimeManager: RuntimeManager,
@@ -44,7 +48,8 @@ export class PatternEngine implements IPatternEngine {
     private executionEvents?: ExecutionEventBus,
     databasePatterns?: DatabasePatternService,
     workspaceService?: WorkspaceService,
-    executionEngine?: ExecutionEngine
+    executionEngine?: ExecutionEngine,
+    agentRuntimeService?: AgentRuntimeService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -54,6 +59,7 @@ export class PatternEngine implements IPatternEngine {
     this.databasePatterns = databasePatterns;
     this.workspaceService = workspaceService;
     this.executionEngine = executionEngine;
+    this.agentRuntimeService = agentRuntimeService;
   }
 
   async initialize(): Promise<void> {
@@ -68,6 +74,133 @@ export class PatternEngine implements IPatternEngine {
    */
   setWorkspaceService(service: WorkspaceService): void {
     this.workspaceService = service;
+  }
+
+  /**
+   * Set the agent runtime service (for deferred initialization)
+   */
+  setAgentRuntimeService(service: AgentRuntimeService): void {
+    this.agentRuntimeService = service;
+  }
+
+  /**
+   * Spawn agents for a pattern execution based on pattern requirements
+   */
+  private async spawnAgentsForPattern(
+    pattern: Pattern,
+    executionId: string,
+    workspace?: Workspace | null
+  ): Promise<AgentHandle[]> {
+    if (!this.agentRuntimeService) {
+      this.logger.debug('AgentRuntimeService not available, skipping agent spawn');
+      return [];
+    }
+
+    const minAgents = pattern.minAgents || 1;
+    const maxAgents = pattern.maxAgents || minAgents;
+    const capabilities = pattern.agents?.capabilities || [];
+
+    const spawnedAgents: AgentHandle[] = [];
+
+    this.logger.info(
+      { patternName: pattern.name, minAgents, maxAgents, capabilities },
+      'Spawning agents for pattern execution'
+    );
+
+    for (let i = 0; i < minAgents; i++) {
+      try {
+        const agentConfig: AgentConfig = {
+          id: `${executionId}-agent-${i}`,
+          name: `${pattern.name}-agent-${i}`,
+          type: 'claude', // Default to Claude agents
+          capabilities,
+          // Include workspace path if available
+          workdir: workspace?.path,
+          env: {
+            PARALLAX_EXECUTION_ID: executionId,
+            PARALLAX_PATTERN_NAME: pattern.name,
+            PARALLAX_AGENT_INDEX: i.toString(),
+            PARALLAX_AGENT_PROMPT: this.generateAgentPrompt(pattern, workspace),
+          },
+        };
+
+        const agent = await this.agentRuntimeService.spawn(agentConfig);
+        spawnedAgents.push(agent);
+
+        this.logger.info(
+          { agentId: agent.id, runtime: (agent as any).runtime },
+          'Agent spawned for pattern execution'
+        );
+
+        // Emit event
+        this.executionEvents?.emitEvent({
+          executionId,
+          type: 'agent_spawned',
+          data: {
+            agentId: agent.id,
+            agentName: agentConfig.name,
+            capabilities,
+          },
+          timestamp: new Date(),
+        });
+      } catch (error) {
+        this.logger.error(
+          { error, agentIndex: i, patternName: pattern.name },
+          'Failed to spawn agent'
+        );
+        // Continue trying to spawn remaining agents
+      }
+    }
+
+    // Track spawned agents for cleanup
+    this.spawnedAgents.set(executionId, spawnedAgents);
+
+    return spawnedAgents;
+  }
+
+  /**
+   * Generate the prompt/instructions for a spawned agent
+   */
+  private generateAgentPrompt(pattern: Pattern, workspace?: Workspace | null): string {
+    const lines: string[] = [
+      `You are an AI agent participating in the "${pattern.name}" pattern execution.`,
+      '',
+      pattern.description || 'Execute your assigned tasks.',
+      '',
+    ];
+
+    if (workspace) {
+      lines.push(`Working directory: ${workspace.path}`);
+      lines.push(`Repository: ${workspace.repo}`);
+      lines.push(`Branch: ${workspace.branch.name}`);
+      lines.push('');
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Clean up spawned agents after execution completes
+   */
+  private async cleanupSpawnedAgents(executionId: string): Promise<void> {
+    const agents = this.spawnedAgents.get(executionId);
+    if (!agents || agents.length === 0) return;
+
+    this.logger.info(
+      { executionId, agentCount: agents.length },
+      'Cleaning up spawned agents'
+    );
+
+    for (const agent of agents) {
+      try {
+        await this.agentRuntimeService?.stop(agent.id);
+        this.logger.debug({ agentId: agent.id }, 'Agent stopped');
+      } catch (error) {
+        this.logger.warn({ agentId: agent.id, error }, 'Failed to stop agent');
+      }
+    }
+
+    this.spawnedAgents.delete(executionId);
   }
 
   async executePattern(
@@ -151,8 +284,8 @@ export class PatternEngine implements IPatternEngine {
     }
 
     try {
-      // Select agents based on pattern requirements
-      const agents = await this.selectAgents(pattern);
+      // Select agents based on pattern requirements (may spawn agents if needed)
+      const agents = await this.selectAgents(pattern, executionId, workspace);
       emitEvent('agents_selected', { count: agents.length });
       
       // Pre-execute async agent operations based on pattern requirements
@@ -504,12 +637,15 @@ export class PatternEngine implements IPatternEngine {
         prUrl: execution.workspace?.prUrl,
       });
 
+      // Clean up spawned agents (if any)
+      await this.cleanupSpawnedAgents(executionId);
+
       return execution;
     } catch (error) {
       execution.endTime = new Date();
       execution.status = 'failed';
       execution.error = error instanceof Error ? error.message : String(error);
-      
+
       this.logger.error(
         { executionId: execution.id, pattern: patternName, error },
         'Pattern execution failed'
@@ -520,13 +656,20 @@ export class PatternEngine implements IPatternEngine {
         error: execution.error
       });
 
+      // Clean up spawned agents even on failure
+      await this.cleanupSpawnedAgents(executionId);
+
       throw error;
     }
   }
 
-  private async selectAgents(pattern: Pattern): Promise<any[]> {
+  private async selectAgents(
+    pattern: Pattern,
+    executionId?: string,
+    workspace?: Workspace | null
+  ): Promise<any[]> {
     let agents: any[] = [];
-    
+
     // First, check for directly registered local agents (for demos)
     if (this.localAgents.length > 0) {
       this.logger.info(`Using ${this.localAgents.length} directly registered agents`);
@@ -568,6 +711,38 @@ export class PatternEngine implements IPatternEngine {
         pattern.agents!.capabilities!.every((cap: string) =>
           agent.capabilities.includes(cap)
         )
+      );
+    }
+
+    // If not enough agents are available and we can spawn agents, do so
+    const minAgents = pattern.minAgents || 0;
+    if (agents.length < minAgents && this.agentRuntimeService && executionId) {
+      this.logger.info(
+        { available: agents.length, required: minAgents },
+        'Not enough agents discovered, attempting to spawn'
+      );
+
+      const spawnedHandles = await this.spawnAgentsForPattern(pattern, executionId, workspace);
+
+      // Convert spawned agent handles to the expected format
+      const spawnedAgents = spawnedHandles.map((handle, index) => ({
+        id: handle.id,
+        name: handle.name || `spawned-agent-${index}`,
+        address: `spawned://${handle.id}`, // Special address for spawned agents
+        endpoint: `spawned://${handle.id}`,
+        capabilities: pattern.agents?.capabilities || [],
+        expertise: 0.8,
+        historicalConfidence: 0.8,
+        spawned: true,
+        handle, // Keep reference for sending messages
+      }));
+
+      // Combine discovered agents with spawned agents
+      agents = [...agents, ...spawnedAgents];
+
+      this.logger.info(
+        { discovered: agents.length - spawnedAgents.length, spawned: spawnedAgents.length, total: agents.length },
+        'Agents ready for pattern execution'
       );
     }
 

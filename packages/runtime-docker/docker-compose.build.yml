@@ -1,0 +1,49 @@
+# Docker Compose for building Parallax Agent Images
+#
+# Usage:
+#   docker compose -f docker-compose.build.yml build
+#   docker compose -f docker-compose.build.yml push
+
+services:
+  agent-base:
+    build:
+      context: ./images/base
+      dockerfile: Dockerfile
+    image: parallax/agent-base:latest
+    platform: linux/amd64
+
+  agent-claude:
+    build:
+      context: ./images/claude
+      dockerfile: Dockerfile
+    image: parallax/agent-claude:latest
+    platform: linux/amd64
+    depends_on:
+      - agent-base
+
+  agent-codex:
+    build:
+      context: ./images/codex
+      dockerfile: Dockerfile
+    image: parallax/agent-codex:latest
+    platform: linux/amd64
+    depends_on:
+      - agent-base
+
+  agent-gemini:
+    build:
+      context: ./images/gemini
+      dockerfile: Dockerfile
+    image: parallax/agent-gemini:latest
+    platform: linux/amd64
+    depends_on:
+      - agent-base
+
+  agent-aider:
+    build:
+      context: ./images/aider
+      dockerfile: Dockerfile
+    image: parallax/agent-aider:latest
+    platform: linux/amd64
+    depends_on:
+      - agent-base

@@ -231,7 +231,7 @@ export async function createServer(): Promise<express.Application> {
   }
 
   // Use traced pattern engine if tracing is enabled
-  // Note: workspaceService will be set later after it's initialized
+  // Note: workspaceService and agentRuntimeService will be set later after they're initialized
   const patternEngine: IPatternEngine = tracingConfig.exporterType !== 'none'
     ? new TracedPatternEngine(
         runtimeManager,
@@ -242,7 +242,8 @@ export async function createServer(): Promise<express.Application> {
         executionEvents,
         databasePatterns,
         undefined, // workspaceService - set later
-        executionEngine
+        executionEngine,
+        undefined  // agentRuntimeService - set later
       )
     : new PatternEngine(
         runtimeManager,
@@ -253,7 +254,8 @@ export async function createServer(): Promise<express.Application> {
         executionEvents,
         databasePatterns,
         undefined, // workspaceService - set later
-        executionEngine
+        executionEngine,
+        undefined  // agentRuntimeService - set later
       );
   await patternEngine.initialize();
 
@@ -408,6 +410,10 @@ export async function createServer(): Promise<express.Application> {
         timestamp: new Date(),
       });
     });
+
+    // Wire agent runtime service into pattern engine for dynamic agent spawning
+    patternEngine.setAgentRuntimeService(agentRuntimeService);
+    logger.info('Agent runtime service wired to pattern engine');
   }
 
   // Initialize Workspace Service (for git workspace provisioning)

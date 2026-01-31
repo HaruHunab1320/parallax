@@ -1,0 +1,163 @@
+# Pong Game Builder - Org-Chart Pattern
+#
+# This pattern orchestrates a team of AI agents to build a complete Pong game.
+# It demonstrates:
+# - Hierarchical team structure (architect → engineers)
+# - Parallel task execution
+# - Code review workflow
+# - Workspace provisioning (git clone, branch, PR)
+
+name: pong-builder
+version: "1.0.0"
+description: Build a complete Pong game with a team of AI agents
+
+# Workspace configuration - enables git integration
+workspace:
+  enabled: true
+  branchStrategy: feature_branch
+  createPr: true
+  pr:
+    draft: false
+    labels:
+      - parallax
+      - ai-generated
+
+structure:
+  name: Game Development Team
+
+  roles:
+    architect:
+      id: architect
+      name: Game Architect
+      agentType: claude
+      singleton: true
+      capabilities:
+        - architecture
+        - code_review
+        - game_design
+      expertise:
+        - html5_canvas
+        - javascript
+        - game_physics
+
+    engineer:
+      id: engineer
+      name: Game Engineer
+      agentType: claude
+      reportsTo: architect
+      minInstances: 2
+      maxInstances: 4
+      capabilities:
+        - implementation
+        - javascript
+        - html5
+
+  routing:
+    - from: engineer
+      to: architect
+      topics:
+        - architecture
+        - design_decision
+        - api_question
+
+  escalation:
+    defaultBehavior: route_to_reports_to
+    timeoutMs: 60000
+    maxDepth: 2
+    onMaxDepth: surface_to_user
+
+workflow:
+  name: Build Pong Game
+
+  input:
+    gameType:
+      type: string
+      default: "pong"
+    features:
+      type: array
+      default:
+        - basic_gameplay
+        - keyboard_controls
+        - scoring
+        - win_condition
+
+  steps:
+    # Step 0: Architect designs the game structure
+    - type: assign
+      role: architect
+      task: |
+        Design the architecture for a Pong game with the following structure:
+
+        1. Create an index.html with:
+           - A canvas element (800x600)
+           - Basic styling (centered, dark background)
+           - Script tag loading game.js
+
+        2. Plan game.js with these components:
+           - Game constants (canvas size, paddle size, ball size, speeds)
+           - Game state object (paddle positions, ball position/velocity, scores)
+           - Input handling (keyboard events for paddle movement)
+           - Game loop (update, render, requestAnimationFrame)
+           - Collision detection (ball vs paddles, ball vs walls)
+           - Scoring system (first to 5 wins)
+
+        Output a detailed technical specification that engineers can implement.
+
+    # Step 1: Engineers implement in parallel
+    - type: parallel
+      steps:
+        - type: assign
+          role: engineer
+          task: |
+            Based on the architect's design, implement the HTML structure and canvas setup:
+
+            Create index.html with:
+            - DOCTYPE and proper HTML5 structure
+            - Canvas element with id="gameCanvas" (800x600)
+            - CSS styling: centered canvas, dark background (#1a1a2e), no margin
+            - Script tag at end of body loading game.js
+
+            Write the complete index.html file to the workspace.
+
+        - type: assign
+          role: engineer
+          task: |
+            Based on the architect's design, implement the core game logic:
+
+            Create game.js with:
+            1. Canvas setup and context
+            2. Game constants (PADDLE_WIDTH=10, PADDLE_HEIGHT=100, BALL_SIZE=10, etc.)
+            3. Game state initialization
+            4. Keyboard input handlers (W/S for left paddle, Up/Down for right)
+            5. Game loop with update() and render() functions
+            6. Ball movement and wall collision
+            7. Paddle collision detection
+            8. Scoring and win condition (first to 5)
+            9. Game reset function
+            10. Start the game loop
+
+            Write the complete game.js file to the workspace.
+
+    # Step 2: Architect reviews the implementation
+    - type: review
+      reviewer: architect
+      subject: ${step_1_result}
+
+    # Step 3: Conditional fix if review found issues
+    - type: condition
+      check: ${step_2_result.approved}
+      then:
+        type: assign
+        role: architect
+        task: "Finalize: Verify both files work together and the game is playable"
+      else:
+        type: sequential
+        steps:
+          - type: assign
+            role: engineer
+            task: "Fix issues identified in review: ${step_2_result.issues}"
+          - type: review
+            reviewer: architect
+            subject: ${step_3_result}
+
+  output: step_3_result

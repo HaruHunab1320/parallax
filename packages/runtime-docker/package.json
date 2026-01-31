@@ -10,7 +10,12 @@
     "start": "node dist/cli.js",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
-    "docker:build": "docker build -t parallax/agent-base ./images/base && docker build -t parallax/agent-claude ./images/claude && docker build -t parallax/agent-codex ./images/codex && docker build -t parallax/agent-gemini ./images/gemini"
+    "docker:build": "./scripts/build-images.sh",
+    "docker:build:claude": "./scripts/build-images.sh claude",
+    "docker:build:codex": "./scripts/build-images.sh codex",
+    "docker:build:gemini": "./scripts/build-images.sh gemini",
+    "docker:build:aider": "./scripts/build-images.sh aider",
+    "docker:push": "./scripts/build-images.sh --push"
   },
   "dependencies": {
     "@parallax/runtime-interface": "workspace:*",

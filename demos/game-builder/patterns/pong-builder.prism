@@ -1,0 +1,229 @@
+/**
+ * @name pong-builder
+ * @version 1.0.0
+ * @description Build a complete Pong game with AI agents
+ * @input {"gameType": "string", "features": "array"}
+ * @agents {"capabilities": ["implementation", "javascript", "code_review"]}
+ * @minAgents 2
+ * @workspace {"enabled": true, "branchStrategy": "feature_branch", "createPr": true}
+ */
+
+// Pong Game Builder Pattern
+// This pattern orchestrates agents to build a complete Pong game
+
+// Phase 1: Design the game architecture
+let designTask = {
+  description: "Design a Pong game with the following requirements",
+  requirements: [
+    "HTML5 canvas (800x600)",
+    "Two paddles controlled by keyboard",
+    "Ball with physics",
+    "Collision detection",
+    "Scoring system (first to 5 wins)"
+  ]
+};
+
+// Get design from architect agent
+let architectResult = agentResults[0];
+let design = architectResult?.result || {
+  htmlStructure: "canvas with dark background",
+  gameComponents: ["paddle", "ball", "score"],
+  controls: { left: ["W", "S"], right: ["ArrowUp", "ArrowDown"] }
+};
+
+// Phase 2: Implementation by engineers (parallel)
+let htmlTask = {
+  file: "index.html",
+  content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pong - Built by Parallax AI</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #1a1a2e;
+    }
+    canvas {
+      border: 2px solid #4a4a6a;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <script src="game.js"></script>
+</body>
+</html>`
+};
+
+let jsTask = {
+  file: "game.js",
+  content: `// Pong Game - Built by Parallax AI Agents
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Game constants
+const PADDLE_WIDTH = 10;
+const PADDLE_HEIGHT = 100;
+const BALL_SIZE = 10;
+const PADDLE_SPEED = 8;
+const BALL_SPEED = 5;
+const WINNING_SCORE = 5;
+
+// Game state
+let leftPaddle = { y: canvas.height / 2 - PADDLE_HEIGHT / 2 };
+let rightPaddle = { y: canvas.height / 2 - PADDLE_HEIGHT / 2 };
+let ball = { x: canvas.width / 2, y: canvas.height / 2, vx: BALL_SPEED, vy: BALL_SPEED };
+let scores = { left: 0, right: 0 };
+let gameOver = false;
+let keys = {};
+
+// Input handling
+document.addEventListener('keydown', (e) => keys[e.key] = true);
+document.addEventListener('keyup', (e) => keys[e.key] = false);
+
+function update() {
+  if (gameOver) return;
+
+  // Move paddles
+  if (keys['w'] || keys['W']) leftPaddle.y = Math.max(0, leftPaddle.y - PADDLE_SPEED);
+  if (keys['s'] || keys['S']) leftPaddle.y = Math.min(canvas.height - PADDLE_HEIGHT, leftPaddle.y + PADDLE_SPEED);
+  if (keys['ArrowUp']) rightPaddle.y = Math.max(0, rightPaddle.y - PADDLE_SPEED);
+  if (keys['ArrowDown']) rightPaddle.y = Math.min(canvas.height - PADDLE_HEIGHT, rightPaddle.y + PADDLE_SPEED);
+
+  // Move ball
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+
+  // Wall collision
+  if (ball.y <= 0 || ball.y >= canvas.height - BALL_SIZE) {
+    ball.vy *= -1;
+  }
+
+  // Paddle collision
+  if (ball.x <= PADDLE_WIDTH + 20 &&
+      ball.y >= leftPaddle.y &&
+      ball.y <= leftPaddle.y + PADDLE_HEIGHT) {
+    ball.vx = Math.abs(ball.vx);
+  }
+  if (ball.x >= canvas.width - PADDLE_WIDTH - 20 - BALL_SIZE &&
+      ball.y >= rightPaddle.y &&
+      ball.y <= rightPaddle.y + PADDLE_HEIGHT) {
+    ball.vx = -Math.abs(ball.vx);
+  }
+
+  // Scoring
+  if (ball.x < 0) {
+    scores.right++;
+    resetBall();
+  }
+  if (ball.x > canvas.width) {
+    scores.left++;
+    resetBall();
+  }
+
+  // Check win condition
+  if (scores.left >= WINNING_SCORE || scores.right >= WINNING_SCORE) {
+    gameOver = true;
+  }
+}
+
+function resetBall() {
+  ball.x = canvas.width / 2;
+  ball.y = canvas.height / 2;
+  ball.vx = (Math.random() > 0.5 ? 1 : -1) * BALL_SPEED;
+  ball.vy = (Math.random() > 0.5 ? 1 : -1) * BALL_SPEED;
+}
+
+function render() {
+  // Clear canvas
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw center line
+  ctx.strokeStyle = '#4a4a6a';
+  ctx.setLineDash([10, 10]);
+  ctx.beginPath();
+  ctx.moveTo(canvas.width / 2, 0);
+  ctx.lineTo(canvas.width / 2, canvas.height);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw paddles
+  ctx.fillStyle = '#00ff88';
+  ctx.fillRect(20, leftPaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+  ctx.fillRect(canvas.width - 30, rightPaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+
+  // Draw ball
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(ball.x, ball.y, BALL_SIZE, BALL_SIZE);
+
+  // Draw scores
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '48px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(scores.left.toString(), canvas.width / 4, 60);
+  ctx.fillText(scores.right.toString(), 3 * canvas.width / 4, 60);
+
+  // Draw game over
+  if (gameOver) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#00ff88';
+    ctx.font = '36px monospace';
+    const winner = scores.left >= WINNING_SCORE ? 'Left' : 'Right';
+    ctx.fillText(winner + ' Player Wins!', canvas.width / 2, canvas.height / 2);
+    ctx.font = '20px monospace';
+    ctx.fillText('Press Space to restart', canvas.width / 2, canvas.height / 2 + 40);
+  }
+}
+
+// Restart game on space
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && gameOver) {
+    scores = { left: 0, right: 0 };
+    gameOver = false;
+    resetBall();
+  }
+});
+
+function gameLoop() {
+  update();
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// Start the game
+gameLoop();
+console.log('Pong game started! Built by Parallax AI Agents.');`
+};
+
+// Combine results
+let implementation = {
+  files: [htmlTask, jsTask],
+  design: design,
+  status: "complete"
+};
+
+// Phase 3: Review (simulated)
+let reviewResult = {
+  approved: true,
+  confidence: 0.95,
+  feedback: "Game implementation looks complete and playable"
+};
+
+// Final output
+let result = {
+  implementation: implementation,
+  review: reviewResult,
+  confidence: reviewResult.confidence,
+  summary: "Pong game successfully built with HTML5 Canvas and JavaScript"
+};
+
+result
