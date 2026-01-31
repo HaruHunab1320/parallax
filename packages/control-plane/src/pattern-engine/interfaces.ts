@@ -1,5 +1,5 @@
 import { Pattern, PatternExecution, ExecutionMetrics } from './types';
-import { WorkspaceService } from '../workspace';
+import { WorkspaceService, UserProvidedCredentials } from '../workspace';
 
 /**
  * Common interface for pattern engines
@@ -8,6 +8,11 @@ export interface PatternExecutionOptions {
   timeout?: number;
   stream?: boolean;
   executionId?: string;
+  /**
+   * User-provided credentials (PAT or OAuth token)
+   * If provided, these are used instead of GitHub App credentials
+   */
+  credentials?: UserProvidedCredentials;
 }
 
 export interface PatternWithSource extends Pattern {

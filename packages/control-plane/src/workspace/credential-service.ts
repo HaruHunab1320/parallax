@@ -15,6 +15,7 @@ import {
   CredentialType,
   GitHubAppConfig,
   GitHubAppInstallation,
+  UserProvidedCredentials,
 } from './types';
 import { GitHubProvider, GitHubProviderConfig } from './providers/github-provider';
 import { CredentialGrantRepository } from '../db/repositories/credential-grant.repository';
@@ -118,11 +119,20 @@ export class CredentialService {
     // Try credential sources in order of preference
     let credential: GitCredential | null = null;
 
-    if (provider === 'github' && this.config.githubApp) {
+    // Priority 1: User-provided credentials (PAT or OAuth token)
+    if (request.userProvided) {
+      credential = this.createUserProvidedCredential(request, ttlSeconds, provider);
+      this.logger.info(
+        { repo: request.repo, type: request.userProvided.type },
+        'Using user-provided credentials'
+      );
+    }
+    // Priority 2: GitHub App credentials
+    else if (provider === 'github' && this.githubProvider) {
       credential = await this.getGitHubAppCredential(request, ttlSeconds);
     }
 
-    // TODO: Add OAuth, deploy key, PAT fallbacks
+    // TODO: Add OAuth, deploy key fallbacks
 
     if (!credential) {
       throw new Error(
@@ -419,6 +429,37 @@ export class CredentialService {
     }
 
     return null;
+  }
+
+  /**
+   * Create a GitCredential from user-provided credentials (PAT or OAuth token)
+   */
+  private createUserProvidedCredential(
+    request: GitCredentialRequest,
+    ttlSeconds: number,
+    provider: GitProvider
+  ): GitCredential {
+    const userCreds = request.userProvided!;
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+    // Map user credential type to our CredentialType
+    const credentialType: CredentialType = userCreds.type === 'pat' ? 'pat' : 'oauth';
+
+    // For user-provided credentials, we assume full repo access based on what they provided
+    // The actual permissions are determined by the token's scope at the provider level
+    const permissions = request.access === 'write'
+      ? ['contents:read', 'contents:write', 'pull_requests:write']
+      : ['contents:read'];
+
+    return {
+      id: randomUUID(),
+      type: credentialType,
+      token: userCreds.token,
+      repo: request.repo,
+      permissions,
+      expiresAt,
+      provider: userCreds.provider || provider,
+    };
   }
 
 }

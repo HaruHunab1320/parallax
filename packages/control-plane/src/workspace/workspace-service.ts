@@ -101,6 +101,8 @@ export class WorkspaceService {
         userId: config.user?.id,
         reason: `Workspace for ${config.task.role} in ${config.execution.patternName}`,
       },
+      // Pass user-provided credentials if available
+      userProvided: config.userCredentials,
     });
 
     // Generate branch name

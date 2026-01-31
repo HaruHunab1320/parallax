@@ -65,6 +65,27 @@ export type GitProvider = 'github' | 'gitlab' | 'bitbucket' | 'azure_devops' | '
 
 export type CredentialType = 'github_app' | 'oauth' | 'deploy_key' | 'pat' | 'ssh_key';
 
+/**
+ * User-provided credentials passed at execution time.
+ * Allows users to supply their own PAT or OAuth token instead of relying on GitHub App.
+ */
+export interface UserProvidedCredentials {
+  /**
+   * Type of credential
+   */
+  type: 'pat' | 'oauth';
+
+  /**
+   * The credential token
+   */
+  token: string;
+
+  /**
+   * Git provider this credential is for (defaults to 'github')
+   */
+  provider?: GitProvider;
+}
+
 export interface GitCredentialRequest {
   /**
    * Repository URL or identifier
@@ -91,6 +112,12 @@ export interface GitCredentialRequest {
    * Requested TTL in seconds (max enforced by policy)
    */
   ttlSeconds?: number;
+
+  /**
+   * User-provided credentials (PAT or OAuth token)
+   * If provided, these are used instead of GitHub App credentials
+   */
+  userProvided?: UserProvidedCredentials;
 }
 
 export interface GitCredential {
@@ -198,6 +225,12 @@ export interface WorkspaceConfig {
     id: string;
     oauthToken?: string;
   };
+
+  /**
+   * User-provided credentials (PAT or OAuth token)
+   * If provided, these are used instead of GitHub App credentials
+   */
+  userCredentials?: UserProvidedCredentials;
 }
 
 export interface Workspace {

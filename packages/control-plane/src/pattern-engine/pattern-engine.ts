@@ -14,7 +14,7 @@ import { DatabasePatternService } from './database-pattern-service';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
-import { WorkspaceService, Workspace, WorkspaceConfig } from '../workspace';
+import { WorkspaceService, Workspace, WorkspaceConfig, UserProvidedCredentials } from '../workspace';
 import {
   ExecutionEngine,
   ExecutionTask,
@@ -119,7 +119,7 @@ export class PatternEngine implements IPatternEngine {
     // Provision workspace if pattern requires it
     let workspace: Workspace | null = null;
     if (pattern.workspace?.enabled && this.workspaceService) {
-      const workspaceConfig = this.resolveWorkspaceConfig(pattern, input, executionId);
+      const workspaceConfig = this.resolveWorkspaceConfig(pattern, input, executionId, options?.credentials);
       if (workspaceConfig) {
         try {
           emitEvent('workspace_provisioning', { repo: workspaceConfig.repo });
@@ -818,7 +818,8 @@ export class PatternEngine implements IPatternEngine {
   private resolveWorkspaceConfig(
     pattern: Pattern,
     input: any,
-    executionId: string
+    executionId: string,
+    userCredentials?: UserProvidedCredentials
   ): WorkspaceConfig | null {
     const wsConfig = pattern.workspace;
     if (!wsConfig?.enabled) {
@@ -849,6 +850,8 @@ export class PatternEngine implements IPatternEngine {
         role: 'agent',
         slug: pattern.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       },
+      // Pass user-provided credentials if supplied
+      userCredentials,
     };
   }
 

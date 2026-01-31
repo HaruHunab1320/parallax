@@ -11,6 +11,7 @@ import {
 } from '../pattern-engine/pattern-engine-db';
 import { ExecutionEventBus } from '../execution-events';
 import { WebhookService, WebhookConfig, WebhookPayload } from '../webhooks';
+import { UserProvidedCredentials } from '../workspace';
 
 interface ExecutionRequest {
   patternName: string;
@@ -18,6 +19,11 @@ interface ExecutionRequest {
   options?: {
     timeout?: number;
     stream?: boolean;
+    /**
+     * User-provided credentials (PAT or OAuth token)
+     * If provided, these are used instead of GitHub App credentials
+     */
+    credentials?: UserProvidedCredentials;
   };
   webhook?: WebhookConfig;
 }

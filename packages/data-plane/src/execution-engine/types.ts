@@ -45,3 +45,39 @@ export interface CachePolicy {
   confidenceThreshold: number; // Only cache high confidence results
   maxEntries: number;
 }
+
+/**
+ * Interface for executing nested patterns.
+ * Implemented by PatternEngine in control-plane.
+ * Injected into ExecutionEngine to avoid circular dependency.
+ */
+export interface PatternExecutor {
+  /**
+   * Execute a pattern by name
+   * @param patternName - Name of the pattern to execute
+   * @param input - Input data for the pattern
+   * @param options - Optional execution options
+   * @returns Promise resolving to the execution result
+   */
+  execute(
+    patternName: string,
+    input: any,
+    options?: PatternExecutorOptions
+  ): Promise<PatternExecutionResult>;
+}
+
+export interface PatternExecutorOptions {
+  timeout?: number;
+  executionId?: string;
+  parentTaskId?: string;
+}
+
+export interface PatternExecutionResult {
+  id: string;
+  patternName: string;
+  status: 'completed' | 'failed';
+  result?: any;
+  error?: string;
+  confidence?: number;
+  executionTime: number;
+}

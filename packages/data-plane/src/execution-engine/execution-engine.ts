@@ -1,9 +1,10 @@
-import { 
-  ExecutionTask, 
-  ExecutionResult, 
+import {
+  ExecutionTask,
+  ExecutionResult,
   ParallelExecutionPlan,
   ExecutionMetrics,
-  CachePolicy 
+  CachePolicy,
+  PatternExecutor,
 } from './types';
 import { ParallelExecutor } from './parallel-executor';
 import { ResultCache } from './result-cache';
@@ -21,11 +22,13 @@ export interface ExecutionEngineConfig {
     initialDelay: number;
   };
   cache: CachePolicy;
+  patternExecutor?: PatternExecutor;
 }
 
 export class ExecutionEngine extends EventEmitter {
   private parallelExecutor: ParallelExecutor;
   private cache: ResultCache;
+  private patternExecutor?: PatternExecutor;
   private metrics: ExecutionMetrics = {
     totalTasks: 0,
     successfulTasks: 0,
@@ -44,8 +47,17 @@ export class ExecutionEngine extends EventEmitter {
     super();
     this.parallelExecutor = new ParallelExecutor();
     this.cache = new ResultCache(config.cache);
-    
+    this.patternExecutor = config.patternExecutor;
+
     this.setupEventHandlers();
+  }
+
+  /**
+   * Set the pattern executor for nested pattern execution.
+   * Allows deferred injection to avoid circular dependencies.
+   */
+  setPatternExecutor(executor: PatternExecutor): void {
+    this.patternExecutor = executor;
   }
 
   private setupEventHandlers(): void {
@@ -178,14 +190,31 @@ export class ExecutionEngine extends EventEmitter {
       }
 
       case 'pattern': {
-        // Pattern execution would be handled by the pattern engine
-        // This is a placeholder
+        if (!this.patternExecutor) {
+          throw new Error('Pattern execution requested but no PatternExecutor configured');
+        }
+
+        const patternResult = await this.patternExecutor.execute(
+          task.target,
+          task.payload,
+          {
+            timeout: task.metadata?.timeout,
+            parentTaskId: task.id,
+          }
+        );
+
         return {
           taskId: task.id,
-          status: 'success',
-          result: { pattern: task.target, executed: true },
-          executionTime: Date.now() - startTime,
+          status: patternResult.status === 'completed' ? 'success' : 'failure',
+          result: patternResult.result,
+          error: patternResult.error,
+          confidence: patternResult.confidence,
+          executionTime: patternResult.executionTime,
           retries: 0,
+          metadata: {
+            patternName: patternResult.patternName,
+            nestedExecutionId: patternResult.id,
+          },
         };
       }
 

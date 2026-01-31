@@ -5,7 +5,7 @@
 import express from 'express';
 import cors from 'cors';
 import pino from 'pino';
-import { PatternEngine } from './pattern-engine';
+import { PatternEngine, PatternExecutorAdapter } from './pattern-engine';
 import { TracedPatternEngine } from './pattern-engine/pattern-engine-traced';
 import { IPatternEngine } from './pattern-engine/interfaces';
 import { DatabasePatternService } from './pattern-engine/database-pattern-service';
@@ -256,6 +256,14 @@ export async function createServer(): Promise<express.Application> {
         executionEngine
       );
   await patternEngine.initialize();
+
+  // Wire up nested pattern execution support
+  // This allows ExecutionEngine to execute patterns via the PatternExecutor interface
+  if (executionEngine) {
+    const patternExecutorAdapter = new PatternExecutorAdapter(patternEngine as PatternEngine);
+    executionEngine.setPatternExecutor(patternExecutorAdapter);
+    logger.info('Nested pattern execution enabled via PatternExecutorAdapter');
+  }
 
   // Initialize metrics
   const metrics = new MetricsCollector();
