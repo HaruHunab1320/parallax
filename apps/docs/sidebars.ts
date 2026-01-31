@@ -27,6 +27,17 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Architecture',
+      items: [
+        'architecture/overview',
+        'architecture/org-chart-flow',
+        'architecture/data-plane',
+        'architecture/agent-lifecycle',
+        'architecture/workspace-service',
+      ],
+    },
+    {
+      type: 'category',
       label: 'SDK',
       items: [
         'sdk/overview',
