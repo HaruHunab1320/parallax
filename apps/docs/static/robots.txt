@@ -1,0 +1,13 @@
+# Parallax Documentation
+# https://docs.parallaxai.dev
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://docs.parallaxai.dev/sitemap.xml
+
+# LLM-friendly documentation index
+# See https://llmstxt.org for the llms.txt standard
+# llms.txt: https://docs.parallaxai.dev/llms.txt
+# llms-full.txt: https://docs.parallaxai.dev/llms-full.txt

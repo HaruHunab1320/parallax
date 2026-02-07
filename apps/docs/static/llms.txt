@@ -15,8 +15,16 @@ Key concepts:
 - https://docs.parallaxai.dev/docs/concepts/consensus
 - https://docs.parallaxai.dev/docs/concepts/confidence-scoring
 
+Architecture:
+- https://docs.parallaxai.dev/docs/architecture/overview
+- https://docs.parallaxai.dev/docs/architecture/org-chart-flow
+- https://docs.parallaxai.dev/docs/architecture/data-plane
+- https://docs.parallaxai.dev/docs/architecture/agent-lifecycle
+- https://docs.parallaxai.dev/docs/architecture/workspace-service
+
 Patterns & examples:
 - https://docs.parallaxai.dev/docs/patterns/overview
+- https://docs.parallaxai.dev/docs/patterns/org-chart-patterns
 - https://docs.parallaxai.dev/docs/patterns/voting-patterns
 - https://docs.parallaxai.dev/docs/patterns/advanced-composition
 
@@ -26,7 +34,14 @@ Runtimes:
 - https://docs.parallaxai.dev/docs/agent-runtimes/docker
 - https://docs.parallaxai.dev/docs/agent-runtimes/kubernetes
 
+Prism DSL:
+- https://docs.parallaxai.dev/docs/prism/overview
+- https://docs.parallaxai.dev/docs/prism/syntax
+- https://docs.parallaxai.dev/docs/prism/compilation
+
 Enterprise:
 - https://docs.parallaxai.dev/docs/enterprise/overview
 - https://docs.parallaxai.dev/docs/enterprise/high-availability
 - https://docs.parallaxai.dev/docs/enterprise/security
+
+Full index: https://docs.parallaxai.dev/llms-full.txt

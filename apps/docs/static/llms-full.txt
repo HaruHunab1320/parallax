@@ -1,49 +1,76 @@
 # Parallax Docs (Full Index) for LLMs
 
 All documentation pages:
-- https://docs.parallaxai.dev/docs/agent-runtimes/docker
-- https://docs.parallaxai.dev/docs/agent-runtimes/kubernetes
-- https://docs.parallaxai.dev/docs/agent-runtimes/local
-- https://docs.parallaxai.dev/docs/agent-runtimes/overview
-- https://docs.parallaxai.dev/docs/api/agent-protocol
-- https://docs.parallaxai.dev/docs/api/control-plane
-- https://docs.parallaxai.dev/docs/api/webhooks
-- https://docs.parallaxai.dev/docs/concepts/agents
-- https://docs.parallaxai.dev/docs/concepts/confidence-scoring
-- https://docs.parallaxai.dev/docs/concepts/consensus
-- https://docs.parallaxai.dev/docs/concepts/patterns
-- https://docs.parallaxai.dev/docs/concepts/primitives
-- https://docs.parallaxai.dev/docs/deployment/docker
-- https://docs.parallaxai.dev/docs/deployment/kubernetes
-- https://docs.parallaxai.dev/docs/deployment/local
-- https://docs.parallaxai.dev/docs/enterprise/high-availability
-- https://docs.parallaxai.dev/docs/enterprise/multi-region
-- https://docs.parallaxai.dev/docs/enterprise/overview
-- https://docs.parallaxai.dev/docs/enterprise/persistence
-- https://docs.parallaxai.dev/docs/enterprise/security
-- https://docs.parallaxai.dev/docs/getting-started/concepts
+
+## Getting Started
+- https://docs.parallaxai.dev/docs/intro
 - https://docs.parallaxai.dev/docs/getting-started/installation
 - https://docs.parallaxai.dev/docs/getting-started/quickstart
+- https://docs.parallaxai.dev/docs/getting-started/concepts
 - https://docs.parallaxai.dev/docs/getting-started/your-first-pattern
-- https://docs.parallaxai.dev/docs/intro
-- https://docs.parallaxai.dev/docs/pattern-builder/connections
-- https://docs.parallaxai.dev/docs/pattern-builder/exporting
-- https://docs.parallaxai.dev/docs/pattern-builder/nodes
-- https://docs.parallaxai.dev/docs/pattern-builder/overview
-- https://docs.parallaxai.dev/docs/patterns/advanced-composition
-- https://docs.parallaxai.dev/docs/patterns/extraction-patterns
-- https://docs.parallaxai.dev/docs/patterns/org-chart-patterns
-- https://docs.parallaxai.dev/docs/patterns/overview
-- https://docs.parallaxai.dev/docs/patterns/quality-gates
-- https://docs.parallaxai.dev/docs/patterns/verification-patterns
-- https://docs.parallaxai.dev/docs/patterns/voting-patterns
-- https://docs.parallaxai.dev/docs/patterns/yaml-syntax
-- https://docs.parallaxai.dev/docs/prism/compilation
-- https://docs.parallaxai.dev/docs/prism/overview
-- https://docs.parallaxai.dev/docs/prism/syntax
-- https://docs.parallaxai.dev/docs/prism/using-prism-directly
+
+## Core Concepts
+- https://docs.parallaxai.dev/docs/concepts/agents
+- https://docs.parallaxai.dev/docs/concepts/patterns
+- https://docs.parallaxai.dev/docs/concepts/primitives
+- https://docs.parallaxai.dev/docs/concepts/confidence-scoring
+- https://docs.parallaxai.dev/docs/concepts/consensus
+
+## Architecture
+- https://docs.parallaxai.dev/docs/architecture/overview
+- https://docs.parallaxai.dev/docs/architecture/org-chart-flow
+- https://docs.parallaxai.dev/docs/architecture/data-plane
+- https://docs.parallaxai.dev/docs/architecture/agent-lifecycle
+- https://docs.parallaxai.dev/docs/architecture/workspace-service
+
+## SDK
+- https://docs.parallaxai.dev/docs/sdk/overview
+- https://docs.parallaxai.dev/docs/sdk/typescript
+- https://docs.parallaxai.dev/docs/sdk/pattern-sdk
 - https://docs.parallaxai.dev/docs/sdk/agent-registration
 - https://docs.parallaxai.dev/docs/sdk/executing-patterns
-- https://docs.parallaxai.dev/docs/sdk/overview
-- https://docs.parallaxai.dev/docs/sdk/pattern-sdk
-- https://docs.parallaxai.dev/docs/sdk/typescript
+
+## Patterns
+- https://docs.parallaxai.dev/docs/patterns/overview
+- https://docs.parallaxai.dev/docs/patterns/yaml-syntax
+- https://docs.parallaxai.dev/docs/patterns/voting-patterns
+- https://docs.parallaxai.dev/docs/patterns/quality-gates
+- https://docs.parallaxai.dev/docs/patterns/extraction-patterns
+- https://docs.parallaxai.dev/docs/patterns/verification-patterns
+- https://docs.parallaxai.dev/docs/patterns/org-chart-patterns
+- https://docs.parallaxai.dev/docs/patterns/advanced-composition
+
+## Agent Runtimes
+- https://docs.parallaxai.dev/docs/agent-runtimes/overview
+- https://docs.parallaxai.dev/docs/agent-runtimes/local
+- https://docs.parallaxai.dev/docs/agent-runtimes/docker
+- https://docs.parallaxai.dev/docs/agent-runtimes/kubernetes
+
+## Prism DSL
+- https://docs.parallaxai.dev/docs/prism/overview
+- https://docs.parallaxai.dev/docs/prism/syntax
+- https://docs.parallaxai.dev/docs/prism/compilation
+- https://docs.parallaxai.dev/docs/prism/using-prism-directly
+
+## Pattern Builder
+- https://docs.parallaxai.dev/docs/pattern-builder/overview
+- https://docs.parallaxai.dev/docs/pattern-builder/nodes
+- https://docs.parallaxai.dev/docs/pattern-builder/connections
+- https://docs.parallaxai.dev/docs/pattern-builder/exporting
+
+## Deployment
+- https://docs.parallaxai.dev/docs/deployment/local
+- https://docs.parallaxai.dev/docs/deployment/docker
+- https://docs.parallaxai.dev/docs/deployment/kubernetes
+
+## Enterprise
+- https://docs.parallaxai.dev/docs/enterprise/overview
+- https://docs.parallaxai.dev/docs/enterprise/high-availability
+- https://docs.parallaxai.dev/docs/enterprise/persistence
+- https://docs.parallaxai.dev/docs/enterprise/multi-region
+- https://docs.parallaxai.dev/docs/enterprise/security
+
+## API Reference
+- https://docs.parallaxai.dev/docs/api/control-plane
+- https://docs.parallaxai.dev/docs/api/agent-protocol
+- https://docs.parallaxai.dev/docs/api/webhooks
