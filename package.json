@@ -15,6 +15,10 @@
     "test:setup": "./test-setup.sh",
     "test:infra": "cd packages/control-plane && docker-compose -f docker-compose.dev.yml up -d postgres etcd",
     "test:infra:stop": "cd packages/control-plane && docker-compose -f docker-compose.dev.yml down",
+    "test:runtime": "npx tsx scripts/test-runtime.ts",
+    "test:runtime:claude": "npx tsx scripts/test-runtime.ts --claude",
+    "test:runtime:verbose": "npx tsx scripts/test-runtime.ts --verbose",
+    "test:runtime:full": "npx tsx scripts/test-runtime.ts --claude --verbose",
     "clean": "turbo clean",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "type-check": "turbo run type-check",
@@ -55,13 +59,16 @@
   "devDependencies": {
     "@eslint/js": "^9.29.0",
     "@turbo/gen": "^2.3.3",
+    "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.35.0",
     "concurrently": "^9.2.0",
     "eslint": "^9.17.0",
     "prettier": "^3.4.2",
+    "tsx": "^4.19.0",
     "turbo": "^2.3.3",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "ws": "^8.18.0"
   },
   "packageManager": "pnpm@10.11.0",
   "engines": {
