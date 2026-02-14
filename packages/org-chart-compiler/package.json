@@ -1,0 +1,67 @@
+{
+  "name": "@parallax/org-chart-compiler",
+  "version": "1.0.0",
+  "description": "DSL compiler for multi-agent organizational structures and workflows",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest --coverage",
+    "test:integration": "tsx test-integration.ts",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
+  },
+  "keywords": [
+    "dsl",
+    "compiler",
+    "org-chart",
+    "workflow",
+    "multi-agent",
+    "orchestration",
+    "yaml",
+    "code-generation",
+    "typescript"
+  ],
+  "author": "Parallax AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HaruHunab1320/parallax.git",
+    "directory": "packages/org-chart-compiler"
+  },
+  "bugs": {
+    "url": "https://github.com/HaruHunab1320/parallax/issues"
+  },
+  "homepage": "https://docs.parallaxai.dev/docs/contributing/packages/org-chart-compiler",
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.14.1",
+    "tsup": "^8.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

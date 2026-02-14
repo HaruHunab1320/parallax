@@ -1,0 +1,62 @@
+{
+  "name": "@parallax/git-workspace-service",
+  "version": "0.1.0",
+  "description": "Git workspace provisioning and credential management service",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "git",
+    "workspace",
+    "provisioning",
+    "credentials",
+    "github",
+    "gitlab",
+    "bitbucket"
+  ],
+  "author": "Parallax",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.0",
+    "@octokit/auth-app": "^6.0.0"
+  },
+  "peerDependencies": {
+    "@octokit/rest": ">=20.0.0",
+    "@octokit/auth-app": ">=6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@octokit/rest": {
+      "optional": true
+    },
+    "@octokit/auth-app": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
