@@ -1,0 +1,67 @@
+{
+  "name": "@parallax/pty-agent-manager",
+  "version": "1.0.0",
+  "description": "PTY-based CLI agent manager with blocking prompt detection, auto-response rules, and pluggable adapters",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest --coverage",
+    "test:integration": "tsx test-integration.ts",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
+  },
+  "keywords": [
+    "pty",
+    "terminal",
+    "cli",
+    "agent",
+    "pseudo-terminal",
+    "node-pty",
+    "process-management",
+    "shell",
+    "cli-tools",
+    "typescript"
+  ],
+  "author": "Parallax AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HaruHunab1320/parallax.git",
+    "directory": "packages/pty-agent-manager"
+  },
+  "bugs": {
+    "url": "https://github.com/HaruHunab1320/parallax/issues"
+  },
+  "homepage": "https://docs.parallaxai.dev/docs/contributing/packages/pty-agent-manager",
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "tsup": "^8.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
