@@ -1,5 +1,5 @@
-import {themes as prismThemes} from 'prism-react-renderer';
-import type {Config} from '@docusaurus/types';
+import { themes as prismThemes } from 'prism-react-renderer';
+import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
@@ -30,7 +30,8 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/parallax-ai/parallax/tree/main/apps/docs/',
+          editUrl:
+            'https://github.com/HaruHunab1320/parallax/tree/main/apps/docs/',
           routeBasePath: 'docs',
         },
         blog: false,
@@ -85,7 +86,7 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://github.com/parallax-ai/parallax',
+          href: 'https://github.com/HaruHunab1320/parallax',
           label: 'GitHub',
           position: 'right',
         },
@@ -116,7 +117,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub Discussions',
-              href: 'https://github.com/parallax-ai/parallax/discussions',
+              href: 'https://github.com/HaruHunab1320/parallax/discussions',
             },
             {
               label: 'Discord',
@@ -133,7 +134,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/parallax-ai/parallax',
+              href: 'https://github.com/HaruHunab1320/parallax',
             },
             {
               label: 'Pattern Builder',
@@ -150,7 +151,7 @@ const config: Config = {
       additionalLanguages: ['typescript', 'yaml', 'bash', 'json'],
     },
     mermaid: {
-      theme: {light: 'base', dark: 'dark'},
+      theme: { light: 'base', dark: 'dark' },
       options: {
         themeVariables: {
           background: 'transparent',

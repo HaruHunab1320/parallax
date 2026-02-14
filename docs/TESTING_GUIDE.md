@@ -401,7 +401,7 @@ cd packages/sdk-go && go test ./...
 # Integration test
 cd apps/demo-go && go test ./...
 ```
-- [ ] SDK installation works (`go get github.com/parallax-ai/parallax/sdk-go`)
+- [ ] SDK installation works (`go get github.com/HaruHunab1320/parallax/sdk-go`)
 - [ ] gRPC channel creation
 - [ ] Agent registration
 - [ ] Agent heartbeat

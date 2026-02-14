@@ -1,41 +1,41 @@
-import Image from "next/image";
+import Image from 'next/image';
 
-const pills = ["Consensus", "Voting", "Confidence Scoring", "Quality Gates"];
+const pills = ['Consensus', 'Voting', 'Confidence Scoring', 'Quality Gates'];
 
 const highlights = [
   {
-    title: "Orchestration Patterns",
+    title: 'Orchestration Patterns',
     description:
-      "Model consensus, voting, merge, and verification flows with YAML or the visual builder.",
+      'Model consensus, voting, merge, and verification flows with YAML or the visual builder.',
   },
   {
-    title: "Agent Runtimes",
+    title: 'Agent Runtimes',
     description:
-      "Spawn and manage CLI agents locally, in Docker, or in Kubernetes.",
+      'Spawn and manage CLI agents locally, in Docker, or in Kubernetes.',
   },
   {
-    title: "Reliability by Design",
+    title: 'Reliability by Design',
     description:
-      "Route results through confidence thresholds, retries, and fallback strategies.",
+      'Route results through confidence thresholds, retries, and fallback strategies.',
   },
 ];
 
 const capabilities = [
-  "Multi-agent consensus",
-  "Confidence scoring",
-  "Pattern validation",
-  "Execution tracing",
-  "Agent lifecycle control",
-  "Enterprise-ready HA",
+  'Multi-agent consensus',
+  'Confidence scoring',
+  'Pattern validation',
+  'Execution tracing',
+  'Agent lifecycle control',
+  'Enterprise-ready HA',
 ];
 
 const useCases = [
-  "Content moderation",
-  "Code review at scale",
-  "Data extraction pipelines",
-  "Quality assurance gates",
-  "Fact-checking workflows",
-  "Agentic research",
+  'Content moderation',
+  'Code review at scale',
+  'Data extraction pipelines',
+  'Quality assurance gates',
+  'Fact-checking workflows',
+  'Agentic research',
 ];
 
 export default function Home() {
@@ -61,7 +61,7 @@ export default function Home() {
               Patterns
             </a>
             <a href="https://builder.parallaxai.dev">Builder</a>
-            <a href="https://github.com/parallax-ai/parallax">GitHub</a>
+            <a href="https://github.com/HaruHunab1320/parallax">GitHub</a>
           </nav>
           <a
             href="https://docs.parallaxai.dev/docs/getting-started/quickstart"
@@ -83,7 +83,7 @@ export default function Home() {
               </div>
               <div>
                 <h1 className="text-4xl font-semibold tracking-tight text-[#0b0f14] sm:text-5xl lg:text-6xl">
-                  Reliable multi-agent systems,{" "}
+                  Reliable multi-agent systems,{' '}
                   <span className="text-[#35b5e9]">by design</span>.
                 </h1>
                 <p className="mt-6 max-w-xl text-lg leading-relaxed text-[#526071]">
@@ -106,7 +106,7 @@ export default function Home() {
                   Launch builder
                 </a>
                 <a
-                  href="https://github.com/parallax-ai/parallax"
+                  href="https://github.com/HaruHunab1320/parallax"
                   className="rounded-full bg-transparent px-6 py-3 text-sm font-semibold text-[#475569] transition hover:text-[#0f172a]"
                 >
                   View on GitHub
@@ -325,7 +325,7 @@ export default function Home() {
               </div>
               <div className="flex flex-wrap gap-3">
                 <a
-                  href="https://github.com/parallax-ai/parallax"
+                  href="https://github.com/HaruHunab1320/parallax"
                   className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#0b0f14]"
                 >
                   Star on GitHub
@@ -413,7 +413,7 @@ export default function Home() {
             <a href="https://docs.parallaxai.dev/docs/enterprise/overview">
               Enterprise
             </a>
-            <a href="https://github.com/parallax-ai/parallax">GitHub</a>
+            <a href="https://github.com/HaruHunab1320/parallax">GitHub</a>
             <a href="https://discord.gg/jdjqvMa2">Discord</a>
             <a href="https://x.com/Parallax__AI">X</a>
           </div>

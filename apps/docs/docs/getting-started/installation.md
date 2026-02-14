@@ -41,7 +41,7 @@ docker run -p 8080:8080 parallax/control-plane:latest
 ### Option 2: From Source
 
 ```bash
-git clone https://github.com/parallax-ai/parallax.git
+git clone https://github.com/HaruHunab1320/parallax.git
 cd parallax
 pnpm install
 pnpm --filter @parallax/control-plane dev
