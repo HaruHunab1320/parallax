@@ -927,6 +927,61 @@ importers:
         specifier: ^2.1.7
         version: 2.1.9(@types/node@22.16.5)(lightningcss@1.30.2)(terser@5.46.0)
 
+  packages/parallax-agent-runtime:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.0.0
+        version: 1.26.0(zod@3.25.76)
+      '@parallax/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@parallax/runtime-interface':
+        specifier: workspace:*
+        version: link:../runtime-interface
+      '@parallax/runtime-local':
+        specifier: workspace:*
+        version: link:../runtime-local
+      '@parallax/runtime-mcp':
+        specifier: workspace:*
+        version: link:../runtime-mcp
+      jsonwebtoken:
+        specifier: ^9.0.0
+        version: 9.0.2
+      node-pty:
+        specifier: ^1.0.0
+        version: 1.1.0
+      pino:
+        specifier: ^9.5.0
+        version: 9.7.0
+      pino-pretty:
+        specifier: ^13.0.0
+        version: 13.0.0
+      uuid:
+        specifier: ^11.0.5
+        version: 11.1.0
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      '@types/jsonwebtoken':
+        specifier: ^9.0.0
+        version: 9.0.10
+      '@types/node':
+        specifier: ^22.14.1
+        version: 22.16.5
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
+      tsx:
+        specifier: ^4.19.2
+        version: 4.20.3
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
+
   packages/pattern-builder:
     dependencies:
       '@parallax/pattern-sdk':

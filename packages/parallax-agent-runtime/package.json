@@ -1,0 +1,62 @@
+{
+  "name": "parallax-agent-runtime",
+  "version": "0.1.0",
+  "description": "MCP server for AI agent orchestration - spawn, manage, and coordinate multiple AI agents",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "parallax-agent-runtime": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "node-pty": "^1.0.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0",
+    "uuid": "^11.0.5",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@parallax/auth": "workspace:*",
+    "@parallax/runtime-interface": "workspace:*",
+    "@parallax/runtime-local": "workspace:*",
+    "@parallax/runtime-mcp": "workspace:*",
+    "@types/jsonwebtoken": "^9.0.0",
+    "@types/node": "^22.14.1",
+    "@types/uuid": "^10.0.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "agent-runtime",
+    "claude",
+    "anthropic",
+    "parallax",
+    "orchestration"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anthropics/parallax"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
