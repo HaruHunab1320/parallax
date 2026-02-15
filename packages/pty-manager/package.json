@@ -1,7 +1,7 @@
 {
-  "name": "@parallax/pty-agent-manager",
+  "name": "pty-manager",
   "version": "1.0.0",
-  "description": "PTY-based CLI agent manager with blocking prompt detection, auto-response rules, and pluggable adapters",
+  "description": "PTY session manager with lifecycle management, pluggable adapters, and blocking prompt detection",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -31,26 +31,27 @@
   "keywords": [
     "pty",
     "terminal",
-    "cli",
-    "agent",
     "pseudo-terminal",
     "node-pty",
-    "process-management",
+    "session-manager",
     "shell",
-    "cli-tools",
+    "tty",
+    "process-management",
+    "docker",
+    "ssh",
     "typescript"
   ],
-  "author": "Parallax AI",
+  "author": "Jakob Grant",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/HaruHunab1320/parallax.git",
-    "directory": "packages/pty-agent-manager"
+    "directory": "packages/pty-manager"
   },
   "bugs": {
     "url": "https://github.com/HaruHunab1320/parallax/issues"
   },
-  "homepage": "https://docs.parallaxai.dev/docs/contributing/packages/pty-agent-manager",
+  "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/pty-manager#readme",
   "dependencies": {
     "node-pty": "^1.0.0"
   },

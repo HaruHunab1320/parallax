@@ -1,5 +1,5 @@
 /**
- * Integration test for @parallax/pty-agent-manager
+ * Integration test for pty-manager
  *
  * Tests that the package can be imported and used correctly.
  * Run with: npx tsx test-integration.ts
@@ -23,7 +23,7 @@ import type {
 } from './src/index';
 
 async function runTests() {
-  console.log('Running integration tests for @parallax/pty-agent-manager\n');
+  console.log('Running integration tests for pty-manager\n');
 
   let passed = 0;
   let failed = 0;

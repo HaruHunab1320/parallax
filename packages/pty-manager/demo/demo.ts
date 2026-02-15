@@ -1,5 +1,5 @@
 /**
- * PTY Agent Manager Demo
+ * pty-manager Demo
  *
  * Demonstrates spawning real shell sessions and running commands.
  * Run with: npx tsx demo/demo.ts

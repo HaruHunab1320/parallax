@@ -1,8 +1,8 @@
 /**
- * @parallax/pty-agent-manager
+ * pty-manager
  *
- * PTY-based CLI agent manager with blocking prompt detection,
- * auto-response rules, and pluggable adapters.
+ * PTY session manager with lifecycle management,
+ * pluggable adapters, and blocking prompt detection.
  */
 
 // Core classes

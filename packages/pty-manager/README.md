@@ -1,13 +1,13 @@
-# @parallax/pty-agent-manager
+# pty-manager
 
-PTY-based CLI agent manager with blocking prompt detection, auto-response rules, and pluggable adapters.
+PTY session manager with lifecycle management, pluggable adapters, and blocking prompt detection.
 
 ## Features
 
 - **Multi-session management** - Spawn and manage multiple PTY sessions concurrently
-- **Blocking prompt detection** - Detect login prompts, update prompts, confirmations, etc.
+- **Pluggable adapters** - Built-in shell adapter, easy to create custom adapters for Docker, SSH, or any CLI tool
+- **Blocking prompt detection** - Detect login prompts, confirmations, and interactive prompts
 - **Auto-response rules** - Automatically respond to known prompts
-- **Pluggable adapters** - Create custom adapters for any CLI tool
 - **Terminal attachment** - Attach to sessions for raw I/O streaming
 - **Event-driven** - Rich event system for session lifecycle
 - **TypeScript-first** - Full type definitions included
@@ -15,17 +15,26 @@ PTY-based CLI agent manager with blocking prompt detection, auto-response rules,
 ## Installation
 
 ```bash
-npm install @parallax/pty-agent-manager
-# or
-pnpm add @parallax/pty-agent-manager
+npm install pty-manager
 ```
 
-**Note:** This package requires `node-pty` which has native dependencies. On some systems you may need to install build tools.
+**Note:** This package requires `node-pty` which has native dependencies. On some systems you may need build tools:
+
+```bash
+# macOS
+xcode-select --install
+
+# Ubuntu/Debian
+sudo apt-get install build-essential
+
+# Windows
+npm install --global windows-build-tools
+```
 
 ## Quick Start
 
 ```typescript
-import { PTYManager, ShellAdapter, createAdapter } from '@parallax/pty-agent-manager';
+import { PTYManager, ShellAdapter, createAdapter } from 'pty-manager';
 
 // Create manager
 const manager = new PTYManager();
@@ -62,7 +71,7 @@ await manager.stop(handle.id);
 ### Using the Factory
 
 ```typescript
-import { createAdapter } from '@parallax/pty-agent-manager';
+import { createAdapter } from 'pty-manager';
 
 const myCliAdapter = createAdapter({
   command: 'my-cli',
@@ -87,7 +96,7 @@ manager.registerAdapter(myCliAdapter);
 ### Extending BaseCLIAdapter
 
 ```typescript
-import { BaseCLIAdapter } from '@parallax/pty-agent-manager';
+import { BaseCLIAdapter } from 'pty-manager';
 
 class MyCLIAdapter extends BaseCLIAdapter {
   readonly adapterType = 'my-cli';
@@ -232,7 +241,7 @@ interface TerminalAttachment {
 Basic shell adapter for bash/zsh sessions.
 
 ```typescript
-import { ShellAdapter } from '@parallax/pty-agent-manager';
+import { ShellAdapter } from 'pty-manager';
 
 const adapter = new ShellAdapter({
   shell: '/bin/zsh',  // default: $SHELL or /bin/bash
