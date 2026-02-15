@@ -1,0 +1,48 @@
+{
+  "name": "@parallax/runtime-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Parallax Runtime - enables AI agents to spawn and manage other agents",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "parallax-mcp": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/cli.ts",
+    "start": "node dist/cli.js",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@parallax/auth": "workspace:*",
+    "@parallax/runtime-interface": "workspace:*",
+    "@parallax/runtime-local": "workspace:*",
+    "jsonwebtoken": "^9.0.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.0",
+    "@types/node": "^22.14.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "parallax",
+    "ai-agents",
+    "runtime"
+  ],
+  "license": "MIT"
+}
