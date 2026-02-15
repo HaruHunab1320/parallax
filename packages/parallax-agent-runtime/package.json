@@ -53,8 +53,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/anthropics/parallax"
+    "url": "https://github.com/HaruHunab1320/parallax",
+    "directory": "packages/parallax-agent-runtime"
   },
+  "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/parallax-agent-runtime#readme",
   "license": "MIT",
   "engines": {
     "node": ">=18"

@@ -45,7 +45,7 @@ Claude Desktop Configuration:
     }
   }
 
-For more information, visit: https://github.com/anthropics/parallax
+For more information, visit: https://github.com/HaruHunab1320/parallax/tree/main/packages/parallax-agent-runtime
 `);
   process.exit(0);
 }
