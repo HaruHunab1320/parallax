@@ -53,7 +53,7 @@ For more information, visit: https://github.com/HaruHunab1320/parallax/tree/main
 // Handle version
 if (args.includes('--version') || args.includes('-v')) {
   // Read version from package.json at runtime
-  console.log('0.1.0');
+  console.log('0.1.1');
   process.exit(0);
 }
 
@@ -76,7 +76,7 @@ const logger = pino({
 });
 
 async function main() {
-  logger.info({ version: '0.1.0', maxAgents }, 'Starting Parallax Agent Runtime');
+  logger.info({ version: '0.1.1', maxAgents }, 'Starting Parallax Agent Runtime');
 
   // Create server
   const server = new ParallaxMcpServer({
