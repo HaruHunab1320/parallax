@@ -1,0 +1,204 @@
+name: Deploy to GCP
+
+on:
+  workflow_run:
+    workflows: ["Build and Publish Docker Images"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      skip_terraform:
+        description: 'Skip Terraform (Helm only)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: us-central1
+  GCP_ZONE: us-central1-a
+  GKE_CLUSTER: parallax-cluster
+  TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/parallax-control-plane
+
+jobs:
+  deploy:
+    name: Deploy to GKE
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    permissions:
+      contents: read
+      id-token: write  # For Workload Identity Federation
+
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }}
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GCP_ZONE }}
+
+      - name: Setup Terraform
+        if: ${{ github.event.inputs.skip_terraform != 'true' }}
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: Terraform Init
+        if: ${{ github.event.inputs.skip_terraform != 'true' }}
+        working-directory: terraform/gcp
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}"
+
+      - name: Terraform Plan
+        if: ${{ github.event.inputs.skip_terraform != 'true' }}
+        working-directory: terraform/gcp
+        run: |
+          terraform plan \
+            -var="project_id=${{ env.GCP_PROJECT_ID }}" \
+            -var="region=${{ env.GCP_REGION }}" \
+            -var="zone=${{ env.GCP_ZONE }}" \
+            -var="environment=${{ github.event.inputs.environment || 'staging' }}" \
+            -var="parallax_image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            -var="grafana_admin_password=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" \
+            -var-file="environments/${{ github.event.inputs.environment || 'staging' }}.tfvars" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        if: ${{ github.event.inputs.skip_terraform != 'true' }}
+        working-directory: terraform/gcp
+        run: terraform apply -auto-approve tfplan
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.13.0
+
+      - name: Get image tag
+        id: image-tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "tag=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy with Helm
+        id: deploy
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || 'staging' }}"
+
+          # Map environment to values file
+          case $ENVIRONMENT in
+            staging)
+              VALUES_FILE="values-dev.yaml"
+              ;;
+            production)
+              VALUES_FILE="values-production.yaml"
+              ;;
+            *)
+              VALUES_FILE="values.yaml"
+              ;;
+          esac
+
+          # Fallback to default values if file doesn't exist
+          if [ ! -f "k8s/helm/parallax/${VALUES_FILE}" ]; then
+            VALUES_FILE="values.yaml"
+          fi
+
+          helm upgrade --install parallax ./k8s/helm/parallax \
+            --namespace parallax-system \
+            --create-namespace \
+            --values "k8s/helm/parallax/${VALUES_FILE}" \
+            --set controlPlane.image.tag="${{ steps.image-tag.outputs.tag }}" \
+            --set controlPlane.image.repository="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" \
+            --set global.environment="${ENVIRONMENT}" \
+            --wait \
+            --timeout 10m
+
+          # Get the service URL
+          EXTERNAL_IP=$(kubectl get svc parallax-control-plane -n parallax-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
+          echo "url=http://${EXTERNAL_IP}:3000" >> $GITHUB_OUTPUT
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/parallax-control-plane -n parallax-system --timeout=5m
+
+          # Wait for pods to be ready
+          kubectl wait --for=condition=ready pod -l app=parallax-control-plane -n parallax-system --timeout=5m
+
+          # Check health endpoint
+          POD=$(kubectl get pod -l app=parallax-control-plane -n parallax-system -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec $POD -n parallax-system -- curl -sf http://localhost:3000/health/live || exit 1
+
+      - name: Run database migrations
+        run: |
+          POD=$(kubectl get pod -l app=parallax-control-plane -n parallax-system -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec $POD -n parallax-system -- npx prisma migrate deploy || true
+
+      - name: Post deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'staging' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Cluster:** ${{ env.GKE_CLUSTER }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${{ env.GCP_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pod Status" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n parallax-system >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    name: Notify on failure
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const run_url = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title: `Deployment failed: ${context.workflow}`,
+              body: `## Deployment Failure\n\n**Workflow:** ${context.workflow}\n**Environment:** ${{ github.event.inputs.environment || 'staging' }}\n**Run:** ${run_url}\n\nPlease investigate and fix the deployment issue.`,
+              labels: ['deployment', 'bug']
+            });

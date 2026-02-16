@@ -244,6 +244,80 @@ gcloud container clusters list
 gcloud sql instances list
 ```
 
+## GitHub Actions CI/CD Setup
+
+For automated deployments via GitHub Actions, set up Workload Identity Federation:
+
+### 1. Create Workload Identity Pool
+
+```bash
+# Create pool
+gcloud iam workload-identity-pools create "github-pool" \
+  --location="global" \
+  --display-name="GitHub Actions Pool"
+
+# Create provider
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+  --location="global" \
+  --workload-identity-pool="github-pool" \
+  --display-name="GitHub Provider" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+  --issuer-uri="https://token.actions.githubusercontent.com"
+```
+
+### 2. Create Service Account
+
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+
+# Create service account
+gcloud iam service-accounts create "github-actions-sa" \
+  --display-name="GitHub Actions Service Account"
+
+# Grant required roles
+for role in container.admin cloudsql.admin compute.admin storage.admin secretmanager.admin iam.serviceAccountUser; do
+  gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+    --role="roles/${role}"
+done
+
+# Allow GitHub to impersonate (replace with your repo)
+GITHUB_REPO="HaruHunab1320/parallax"
+PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+
+gcloud iam service-accounts add-iam-policy-binding \
+  "github-actions-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-pool/attribute.repository/${GITHUB_REPO}"
+```
+
+### 3. Get Provider Resource Name
+
+```bash
+gcloud iam workload-identity-pools providers describe "github-provider" \
+  --location="global" \
+  --workload-identity-pool="github-pool" \
+  --format="value(name)"
+```
+
+### 4. Configure GitHub Secrets
+
+In your GitHub repo → Settings → Secrets → Actions, add:
+
+| Secret | Value |
+|--------|-------|
+| `GCP_PROJECT_ID` | Your GCP project ID |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Output from step 3 |
+| `GCP_SERVICE_ACCOUNT` | `github-actions-sa@PROJECT_ID.iam.gserviceaccount.com` |
+| `TF_STATE_BUCKET` | `PROJECT_ID-terraform-state` |
+| `GRAFANA_ADMIN_PASSWORD` | Secure password (12+ chars) |
+
+### 5. Trigger Deployment
+
+- Push to `main` → Builds and deploys to staging
+- Create tag `v*` → Builds and deploys to production
+- Manual: Actions → Deploy to GCP → Run workflow
+
 ## Troubleshooting
 
 ### Pods not starting
