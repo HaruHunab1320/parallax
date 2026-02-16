@@ -9,6 +9,8 @@ PTY session manager with lifecycle management, pluggable adapters, and blocking 
 - **Blocking prompt detection** - Detect login prompts, confirmations, and interactive prompts
 - **Auto-response rules** - Automatically respond to known prompts
 - **Terminal attachment** - Attach to sessions for raw I/O streaming
+- **Special key support** - Send Ctrl, Alt, Shift, and function key combinations via `sendKeys()`
+- **Bracketed paste** - Proper paste handling with bracketed paste mode support
 - **Event-driven** - Rich event system for session lifecycle
 - **TypeScript-first** - Full type definitions included
 
@@ -232,6 +234,80 @@ interface TerminalAttachment {
   write: (data: string) => void;
   resize: (cols: number, rows: number) => void;
 }
+```
+
+## Special Keys & Paste
+
+### sendKeys()
+
+Send special key sequences to a PTY session. Useful for AI agents navigating terminal UIs.
+
+```typescript
+import { PTYSession, SPECIAL_KEYS } from 'pty-manager';
+
+// Get the underlying session
+const terminal = manager.attachTerminal(handle.id);
+
+// Send single key
+session.sendKeys('ctrl+c');  // Interrupt
+session.sendKeys('ctrl+d');  // EOF
+
+// Send multiple keys
+session.sendKeys(['up', 'up', 'enter']);  // Navigate history
+
+// Navigation
+session.sendKeys('ctrl+left');   // Word back
+session.sendKeys('ctrl+right');  // Word forward
+session.sendKeys('home');        // Start of line
+session.sendKeys('end');         // End of line
+
+// Function keys
+session.sendKeys('f1');          // Help in many CLIs
+session.sendKeys('ctrl+f5');     // Modified function key
+```
+
+**Supported Key Categories (130+ keys):**
+
+| Category | Examples |
+|----------|----------|
+| Ctrl+letter | `ctrl+a` through `ctrl+z` |
+| Alt+letter | `alt+a` through `alt+z`, `alt+backspace` |
+| Navigation | `up`, `down`, `left`, `right`, `home`, `end`, `pageup`, `pagedown` |
+| Shift+Nav | `shift+up`, `shift+down`, `shift+left`, `shift+right`, `shift+home`, `shift+end` |
+| Ctrl+Nav | `ctrl+up`, `ctrl+down`, `ctrl+left`, `ctrl+right`, `ctrl+home`, `ctrl+end` |
+| Alt+Nav | `alt+up`, `alt+down`, `alt+left`, `alt+right` |
+| Ctrl+Shift+Nav | `ctrl+shift+up`, `ctrl+shift+down`, `ctrl+shift+left`, `ctrl+shift+right` |
+| Shift+Alt+Nav | `shift+alt+up`, `shift+alt+down`, `shift+alt+left`, `shift+alt+right` |
+| Editing | `enter`, `tab`, `backspace`, `delete`, `insert`, `escape`, `space` |
+| Modified Edit | `shift+tab`, `shift+delete`, `ctrl+delete` |
+| Function | `f1` through `f12` |
+| Shift+Fn | `shift+f1` through `shift+f12` |
+| Ctrl+Fn | `ctrl+f1` through `ctrl+f12` |
+
+### paste()
+
+Paste text with optional bracketed paste mode (protects against paste injection attacks).
+
+```typescript
+// Paste with bracketed paste mode (default, recommended)
+session.paste('const x = 1;\nconst y = 2;');
+
+// Paste without bracketed paste (raw)
+session.paste('some text', false);
+```
+
+Bracketed paste mode wraps text in escape sequences (`\x1b[200~` ... `\x1b[201~`) that tell the terminal the content is pasted, not typed. Most modern shells handle this correctly.
+
+### SPECIAL_KEYS Export
+
+Access the full key mapping for reference or custom handling:
+
+```typescript
+import { SPECIAL_KEYS } from 'pty-manager';
+
+console.log(SPECIAL_KEYS['ctrl+c']);  // '\x03'
+console.log(SPECIAL_KEYS['up']);      // '\x1b[A'
+console.log(Object.keys(SPECIAL_KEYS).length);  // 130+
 ```
 
 ## Built-in Adapters
