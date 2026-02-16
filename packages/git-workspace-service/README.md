@@ -8,9 +8,12 @@ Git workspace provisioning and credential management service. Handles cloning re
 - **Credential management** - Secure credential handling with TTL and revocation
 - **Multiple providers** - Support for GitHub, GitLab, Bitbucket, Azure DevOps
 - **GitHub App support** - First-class GitHub App authentication
-- **User credentials** - Support for PAT and OAuth tokens
+- **OAuth Device Flow** - Interactive authentication for CLI/agents (RFC 8628)
+- **Token caching** - Encrypted persistent storage for OAuth tokens
+- **User credentials** - Support for PAT, OAuth tokens, and SSH
+- **Fine-grained permissions** - Control what agents can do
 - **Branch naming** - Automatic branch naming with execution context
-- **PR creation** - Create pull requests with labels and reviewers
+- **PR & Issue management** - Create PRs, manage issues, add comments
 - **Event system** - Subscribe to workspace lifecycle events
 - **TypeScript-first** - Full type definitions included
 
@@ -117,6 +120,97 @@ const workspace = await workspaceService.provision({
     token: 'ghp_xxxx...',
   },
 });
+```
+
+Or use SSH authentication (relies on system SSH agent):
+
+```typescript
+const workspace = await workspaceService.provision({
+  repo: 'git@github.com:owner/repo.git',
+  // ...
+  userCredentials: {
+    type: 'ssh',
+  },
+});
+```
+
+## OAuth Device Flow
+
+For CLI applications and AI agents, use the OAuth Device Code Flow for interactive authentication:
+
+```typescript
+import {
+  CredentialService,
+  OAuthDeviceFlow,
+  FileTokenStore,
+  DEFAULT_AGENT_PERMISSIONS,
+} from '@parallax/git-workspace-service';
+
+// Set up token store for persistent caching (with encryption)
+const tokenStore = new FileTokenStore({
+  directory: '~/.myapp/tokens',
+  encryptionKey: process.env.TOKEN_ENCRYPTION_KEY,
+});
+
+// Create credential service with OAuth support
+const credentialService = new CredentialService({
+  tokenStore,
+  oauth: {
+    clientId: process.env.GITHUB_CLIENT_ID!,
+    permissions: DEFAULT_AGENT_PERMISSIONS,
+    promptEmitter: {
+      onAuthRequired(prompt) {
+        console.log(`Visit: ${prompt.verificationUri}`);
+        console.log(`Enter code: ${prompt.userCode}`);
+      },
+      onAuthComplete(result) {
+        if (result.success) {
+          console.log('Authenticated!');
+        }
+      },
+    },
+  },
+});
+
+// Request credentials - will use cached token or trigger device flow
+const credential = await credentialService.getCredentials({
+  repo: 'https://github.com/owner/repo',
+  access: 'write',
+  context: {
+    executionId: 'exec-123',
+    taskId: 'task-456',
+    reason: 'Code review',
+  },
+});
+```
+
+### Credential Priority
+
+When requesting credentials, the service checks sources in this order:
+
+1. **User-provided** - PAT, OAuth token, or SSH credentials passed directly
+2. **Cached OAuth** - Valid token from TokenStore (with auto-refresh)
+3. **Provider** - GitHub App or other registered provider
+4. **OAuth Device Flow** - Interactive authentication (if configured)
+
+### Fine-Grained Permissions
+
+Control what agents can do with `AgentPermissions`:
+
+```typescript
+import { DEFAULT_AGENT_PERMISSIONS } from '@parallax/git-workspace-service';
+
+const permissions = {
+  repositories: { type: 'selected', repos: ['owner/repo'] },
+  contents: 'write',      // 'none' | 'read' | 'write'
+  pullRequests: 'write',
+  issues: 'read',
+  metadata: 'read',
+  canDeleteBranch: true,
+  canForcePush: false,    // Dangerous operations off by default
+  canDeleteRepository: false,
+  canAdminister: false,
+};
 ```
 
 ## Event System
@@ -255,6 +349,51 @@ class GitHubProvider implements GitProviderAdapter {
 
   // List managed branches
   listManagedBranches(owner: string, repo: string, prefix?: string): Promise<string[]>;
+}
+```
+
+### OAuthDeviceFlow
+
+```typescript
+class OAuthDeviceFlow {
+  constructor(config: OAuthDeviceFlowConfig, logger?: OAuthDeviceFlowLogger);
+
+  // Start device flow and wait for authorization
+  authorize(): Promise<OAuthToken>;
+
+  // Request a device code (step 1)
+  requestDeviceCode(): Promise<DeviceCodeResponse>;
+
+  // Poll for token (step 2)
+  pollForToken(deviceCode: DeviceCodeResponse): Promise<OAuthToken>;
+
+  // Refresh an expired token
+  refreshToken(refreshToken: string): Promise<OAuthToken>;
+}
+```
+
+### TokenStore
+
+```typescript
+// Abstract base class
+abstract class TokenStore {
+  save(provider: GitProvider, token: OAuthToken): Promise<void>;
+  get(provider: GitProvider): Promise<OAuthToken | null>;
+  clear(provider?: GitProvider): Promise<void>;
+  list(): Promise<GitProvider[]>;
+  isExpired(token: OAuthToken): boolean;
+  needsRefresh(token: OAuthToken): boolean;
+}
+
+// In-memory store (for testing)
+class MemoryTokenStore extends TokenStore { }
+
+// File-based store with encryption
+class FileTokenStore extends TokenStore {
+  constructor(options?: {
+    directory?: string;      // Default: ~/.parallax/tokens
+    encryptionKey?: string;  // AES-256-CBC encryption
+  });
 }
 ```
 

@@ -1,7 +1,7 @@
 {
   "name": "@parallax/git-workspace-service",
   "version": "0.1.0",
-  "description": "Git workspace provisioning and credential management service",
+  "description": "Git workspace provisioning and credential management service with OAuth device flow authentication",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -23,6 +23,12 @@
     "directory": "packages/git-workspace-service"
   },
   "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/git-workspace-service#readme",
+  "bugs": {
+    "url": "https://github.com/HaruHunab1320/parallax/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
@@ -30,6 +36,7 @@
     "test:integration": "tsx demo/integration-test.ts",
     "demo": "tsx demo/demo.ts",
     "demo:workflow": "tsx demo/full-workflow.ts",
+    "demo:oauth": "tsx demo/oauth-demo.ts",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
@@ -40,7 +47,12 @@
     "credentials",
     "github",
     "gitlab",
-    "bitbucket"
+    "bitbucket",
+    "oauth",
+    "device-flow",
+    "authentication",
+    "ai-agent",
+    "automation"
   ],
   "author": "Parallax",
   "license": "MIT",
