@@ -19,6 +19,7 @@ import type {
   WorkspaceEvent,
   WorkspaceEventHandler,
   WorkspaceStrategy,
+  WorkspacePhase,
 } from './types';
 import { CredentialService } from './credential-service';
 import { createBranchInfo } from './utils/branch-naming';
@@ -183,6 +184,12 @@ export class WorkspaceService {
       status: 'provisioning',
       strategy,
       parentWorkspaceId: config.parentWorkspace,
+      onComplete: config.onComplete,
+      progress: {
+        phase: 'initializing',
+        message: 'Initializing workspace',
+        updatedAt: new Date(),
+      },
     };
 
     this.workspaces.set(workspaceId, workspace);
@@ -190,8 +197,11 @@ export class WorkspaceService {
     try {
       if (strategy === 'clone') {
         // Clone repository
+        this.updateProgress(workspace, 'cloning', 'Cloning repository');
         await this.cloneRepo(workspace, credential.token);
+
         // Create and checkout branch
+        this.updateProgress(workspace, 'creating_branch', 'Creating branch');
         await this.createBranch(workspace);
       } else {
         // Add worktree from parent
@@ -215,10 +225,16 @@ export class WorkspaceService {
       }
 
       // Configure git for this workspace
+      this.updateProgress(workspace, 'configuring', 'Configuring git');
       await this.configureGit(workspace);
 
+      // Mark as ready
       workspace.status = 'ready';
+      this.updateProgress(workspace, 'ready', 'Workspace ready');
       this.workspaces.set(workspaceId, workspace);
+
+      // Execute completion hook if configured
+      await this.executeCompletionHook(workspace, 'success');
 
       this.log(
         'info',
@@ -241,9 +257,10 @@ export class WorkspaceService {
       return workspace;
     } catch (error) {
       workspace.status = 'error';
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.updateProgress(workspace, 'error', errorMessage);
       this.workspaces.set(workspaceId, workspace);
 
-      const errorMessage = error instanceof Error ? error.message : String(error);
       this.log('error', { workspaceId, error: errorMessage }, 'Failed to provision workspace');
 
       await this.emitEvent({
@@ -253,6 +270,9 @@ export class WorkspaceService {
         timestamp: new Date(),
         error: errorMessage,
       });
+
+      // Execute completion hook on error if configured
+      await this.executeCompletionHook(workspace, 'error');
 
       throw error;
     }
@@ -707,6 +727,87 @@ export class WorkspaceService {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.log('warn', { event: event.type, error: errorMessage }, 'Event handler error');
+      }
+    }
+  }
+
+  /**
+   * Update workspace progress
+   */
+  private updateProgress(workspace: Workspace, phase: WorkspacePhase, message?: string): void {
+    workspace.progress = {
+      phase,
+      message,
+      updatedAt: new Date(),
+    };
+    this.workspaces.set(workspace.id, workspace);
+
+    this.log(
+      'debug',
+      { workspaceId: workspace.id, phase, message },
+      'Progress updated'
+    );
+  }
+
+  /**
+   * Execute completion hook if configured
+   */
+  private async executeCompletionHook(
+    workspace: Workspace,
+    status: 'success' | 'error'
+  ): Promise<void> {
+    const hook = workspace.onComplete;
+    if (!hook) return;
+
+    // Check if we should run on error
+    if (status === 'error' && hook.runOnError === false) {
+      return;
+    }
+
+    // Set up environment variables for command
+    const env = {
+      ...process.env,
+      WORKSPACE_ID: workspace.id,
+      REPO: workspace.repo,
+      BRANCH: workspace.branch.name,
+      STATUS: status,
+      WORKSPACE_PATH: workspace.path,
+    };
+
+    // Execute command if configured
+    if (hook.command) {
+      try {
+        this.log('info', { workspaceId: workspace.id, command: hook.command }, 'Executing completion hook command');
+        await execAsync(hook.command, { env });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.log('warn', { workspaceId: workspace.id, error: errorMessage }, 'Completion hook command failed');
+      }
+    }
+
+    // Call webhook if configured
+    if (hook.webhook) {
+      try {
+        this.log('info', { workspaceId: workspace.id, webhook: hook.webhook }, 'Calling completion webhook');
+        const payload = {
+          workspaceId: workspace.id,
+          repo: workspace.repo,
+          branch: workspace.branch.name,
+          status,
+          timestamp: new Date().toISOString(),
+        };
+
+        await fetch(hook.webhook, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...hook.webhookHeaders,
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.log('warn', { workspaceId: workspace.id, error: errorMessage }, 'Completion webhook failed');
       }
     }
   }

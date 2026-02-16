@@ -240,6 +240,73 @@ export type WorkspaceStatus =
   | 'error';
 
 /**
+ * Granular progress phases for workspace operations
+ */
+export type WorkspacePhase =
+  | 'initializing'
+  | 'cloning'
+  | 'creating_branch'
+  | 'configuring'
+  | 'ready'
+  | 'committing'
+  | 'pushing'
+  | 'creating_pr'
+  | 'cleaning_up'
+  | 'done'
+  | 'error';
+
+/**
+ * Progress tracking for workspace operations
+ */
+export interface WorkspaceProgress {
+  /**
+   * Current phase of the operation
+   */
+  phase: WorkspacePhase;
+
+  /**
+   * Human-readable message describing current activity
+   */
+  message?: string;
+
+  /**
+   * Progress percentage (0-100) if determinable
+   */
+  percent?: number;
+
+  /**
+   * When progress was last updated
+   */
+  updatedAt: Date;
+}
+
+/**
+ * Completion hook configuration
+ */
+export interface CompletionHook {
+  /**
+   * Shell command to execute on completion
+   * Variables available: $WORKSPACE_ID, $REPO, $BRANCH, $STATUS
+   */
+  command?: string;
+
+  /**
+   * Webhook URL to POST to on completion
+   */
+  webhook?: string;
+
+  /**
+   * Custom headers for webhook request
+   */
+  webhookHeaders?: Record<string, string>;
+
+  /**
+   * Whether to run hook on error (default: true)
+   */
+  runOnError?: boolean;
+}
+
+/**
  * Configuration for provisioning a workspace
  */
 export interface WorkspaceConfig {
@@ -305,6 +372,11 @@ export interface WorkspaceConfig {
    * If provided, these are used instead of managed credentials
    */
   userCredentials?: UserProvidedCredentials;
+
+  /**
+   * Hook to run when workspace operations complete
+   */
+  onComplete?: CompletionHook;
 }
 
 /**
@@ -360,6 +432,16 @@ export interface Workspace {
    * Child worktree IDs (for clone workspaces that have worktrees)
    */
   worktreeIds?: string[];
+
+  /**
+   * Current progress of workspace operations
+   */
+  progress?: WorkspaceProgress;
+
+  /**
+   * Completion hook configuration
+   */
+  onComplete?: CompletionHook;
 }
 
 /**

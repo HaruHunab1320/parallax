@@ -69,8 +69,11 @@ export type {
   BranchInfo,
   BranchStrategy,
 
-  // Workspace strategy
+  // Workspace strategy & progress
   WorkspaceStrategy,
+  WorkspacePhase,
+  WorkspaceProgress,
+  CompletionHook,
 
   // Credentials
   UserProvidedCredentials,
