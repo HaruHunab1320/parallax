@@ -19,6 +19,13 @@ export type {
 export { GitHubProvider } from './providers/github-provider';
 export type { GitHubProviderConfig, GitHubProviderLogger } from './providers/github-provider';
 
+export { GitHubPatClient } from './providers/github-pat-client';
+export type { GitHubPatClientOptions, GitHubPatClientLogger } from './providers/github-pat-client';
+
+// OAuth
+export { OAuthDeviceFlow, TokenStore, FileTokenStore, MemoryTokenStore } from './oauth';
+export type { OAuthDeviceFlowConfig, OAuthDeviceFlowLogger, TokenStoreOptions } from './oauth';
+
 // Utilities
 export {
   generateBranchName,
@@ -42,12 +49,20 @@ export {
 } from './utils/git-credential-helper';
 export type { CredentialHelperContext } from './utils/git-credential-helper';
 
+// Permission defaults
+export {
+  DEFAULT_AGENT_PERMISSIONS,
+  READONLY_AGENT_PERMISSIONS,
+} from './types';
+
 // Types
 export type {
   // Git providers
   GitProvider,
   CredentialType,
   GitProviderAdapter,
+  TokenCredentials,
+  SshCredentials,
 
   // Branch
   BranchConfig,
@@ -70,6 +85,23 @@ export type {
 
   // Pull requests
   PullRequestInfo,
+
+  // Issues
+  IssueState,
+  IssueInfo,
+  CreateIssueOptions,
+  IssueComment,
+  IssueCommentOptions,
+
+  // Permissions & OAuth
+  PermissionLevel,
+  RepositoryScope,
+  AgentPermissions,
+  OAuthToken,
+  DeviceCodeResponse,
+  AuthPrompt,
+  AuthResult,
+  AuthPromptEmitter,
 
   // GitHub App
   GitHubAppConfig,

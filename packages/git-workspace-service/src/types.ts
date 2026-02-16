@@ -76,10 +76,9 @@ export interface BranchInfo {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * User-provided credentials passed at execution time.
- * Allows users to supply their own PAT or OAuth token.
+ * Token-based credentials (PAT or OAuth)
  */
-export interface UserProvidedCredentials {
+export interface TokenCredentials {
   /**
    * Type of credential
    */
@@ -95,6 +94,27 @@ export interface UserProvidedCredentials {
    */
   provider?: GitProvider;
 }
+
+/**
+ * SSH-based credentials using system SSH agent
+ */
+export interface SshCredentials {
+  /**
+   * Type of credential
+   */
+  type: 'ssh';
+
+  /**
+   * Git provider this credential is for (defaults to 'github')
+   */
+  provider?: GitProvider;
+}
+
+/**
+ * User-provided credentials passed at execution time.
+ * Allows users to supply their own PAT, OAuth token, or use system SSH.
+ */
+export type UserProvidedCredentials = TokenCredentials | SshCredentials;
 
 /**
  * Context for credential requests (for audit trails)
@@ -392,6 +412,401 @@ export interface PullRequestInfo {
    * Merged timestamp if merged
    */
   mergedAt?: Date;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Issues
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Issue state
+ */
+export type IssueState = 'open' | 'closed';
+
+/**
+ * Information about an issue
+ */
+export interface IssueInfo {
+  /**
+   * Issue number
+   */
+  number: number;
+
+  /**
+   * Issue URL
+   */
+  url: string;
+
+  /**
+   * Issue state
+   */
+  state: IssueState;
+
+  /**
+   * Issue title
+   */
+  title: string;
+
+  /**
+   * Issue body/description
+   */
+  body: string;
+
+  /**
+   * Labels on the issue
+   */
+  labels: string[];
+
+  /**
+   * Assignees
+   */
+  assignees: string[];
+
+  /**
+   * Created timestamp
+   */
+  createdAt: Date;
+
+  /**
+   * Closed timestamp if closed
+   */
+  closedAt?: Date;
+
+  /**
+   * Associated execution ID (if managed)
+   */
+  executionId?: string;
+}
+
+/**
+ * Options for creating an issue
+ */
+export interface CreateIssueOptions {
+  /**
+   * Issue title
+   */
+  title: string;
+
+  /**
+   * Issue body/description
+   */
+  body: string;
+
+  /**
+   * Labels to add
+   */
+  labels?: string[];
+
+  /**
+   * Assignees (usernames)
+   */
+  assignees?: string[];
+
+  /**
+   * Milestone number
+   */
+  milestone?: number;
+}
+
+/**
+ * Options for commenting on an issue
+ */
+export interface IssueCommentOptions {
+  /**
+   * Comment body
+   */
+  body: string;
+}
+
+/**
+ * Information about an issue comment
+ */
+export interface IssueComment {
+  /**
+   * Comment ID
+   */
+  id: number;
+
+  /**
+   * Comment URL
+   */
+  url: string;
+
+  /**
+   * Comment body
+   */
+  body: string;
+
+  /**
+   * Author username
+   */
+  author: string;
+
+  /**
+   * Created timestamp
+   */
+  createdAt: Date;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Agent Permissions & OAuth
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Permission level for a resource
+ */
+export type PermissionLevel = 'none' | 'read' | 'write';
+
+/**
+ * Repository access scope
+ */
+export type RepositoryScope =
+  | { type: 'all' }                    // All repositories user has access to
+  | { type: 'public' }                 // Only public repositories
+  | { type: 'selected'; repos: string[] }; // Specific repos (owner/repo format)
+
+/**
+ * Permissions that an agent can request/receive.
+ * Designed to be restrictive by default - dangerous operations require explicit opt-in.
+ */
+export interface AgentPermissions {
+  /**
+   * Which repositories the agent can access
+   */
+  repositories: RepositoryScope;
+
+  /**
+   * Permission for repository contents (code, files)
+   */
+  contents: PermissionLevel;
+
+  /**
+   * Permission for pull requests
+   */
+  pullRequests: PermissionLevel;
+
+  /**
+   * Permission for issues
+   */
+  issues: PermissionLevel;
+
+  /**
+   * Permission for metadata (repo info, branches, tags)
+   */
+  metadata: PermissionLevel;
+
+  // ─────────────────────────────────────────────────────────────
+  // Dangerous Operations - Explicit opt-in, default false
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Can delete branches (for cleanup after merge)
+   * @default false
+   */
+  canDeleteBranch?: boolean;
+
+  /**
+   * Can force push to branches
+   * @default false - Almost never needed, can destroy history
+   */
+  canForcePush?: boolean;
+
+  /**
+   * Can delete repositories
+   * @default false - Should NEVER be true for agents
+   */
+  canDeleteRepository?: boolean;
+
+  /**
+   * Can modify repository settings/webhooks
+   * @default false
+   */
+  canAdminister?: boolean;
+}
+
+/**
+ * Default safe permissions for agents
+ */
+export const DEFAULT_AGENT_PERMISSIONS: AgentPermissions = {
+  repositories: { type: 'selected', repos: [] },
+  contents: 'write',
+  pullRequests: 'write',
+  issues: 'write',
+  metadata: 'read',
+  canDeleteBranch: true,  // Needed for cleanup
+  canForcePush: false,
+  canDeleteRepository: false,
+  canAdminister: false,
+};
+
+/**
+ * Read-only permissions for agents that only need to inspect
+ */
+export const READONLY_AGENT_PERMISSIONS: AgentPermissions = {
+  repositories: { type: 'selected', repos: [] },
+  contents: 'read',
+  pullRequests: 'read',
+  issues: 'read',
+  metadata: 'read',
+  canDeleteBranch: false,
+  canForcePush: false,
+  canDeleteRepository: false,
+  canAdminister: false,
+};
+
+/**
+ * OAuth token with metadata
+ */
+export interface OAuthToken {
+  /**
+   * Access token for API calls
+   */
+  accessToken: string;
+
+  /**
+   * Token type (usually "bearer")
+   */
+  tokenType: string;
+
+  /**
+   * Scopes granted by the token
+   */
+  scopes: string[];
+
+  /**
+   * When the token expires
+   */
+  expiresAt?: Date;
+
+  /**
+   * Refresh token for obtaining new access tokens
+   */
+  refreshToken?: string;
+
+  /**
+   * Provider this token is for
+   */
+  provider: GitProvider;
+
+  /**
+   * Permissions associated with this token
+   */
+  permissions: AgentPermissions;
+
+  /**
+   * When the token was created
+   */
+  createdAt: Date;
+}
+
+/**
+ * Device code response from OAuth provider
+ */
+export interface DeviceCodeResponse {
+  /**
+   * Code to poll for authorization
+   */
+  deviceCode: string;
+
+  /**
+   * Code for user to enter
+   */
+  userCode: string;
+
+  /**
+   * URL for user to visit
+   */
+  verificationUri: string;
+
+  /**
+   * Full URL with code pre-filled (if supported)
+   */
+  verificationUriComplete?: string;
+
+  /**
+   * Seconds until codes expire
+   */
+  expiresIn: number;
+
+  /**
+   * Seconds between poll requests
+   */
+  interval: number;
+}
+
+/**
+ * Auth prompt for user interaction
+ */
+export interface AuthPrompt {
+  /**
+   * Provider requiring auth
+   */
+  provider: GitProvider;
+
+  /**
+   * URL to visit
+   */
+  verificationUri: string;
+
+  /**
+   * Code to enter
+   */
+  userCode: string;
+
+  /**
+   * Seconds until code expires
+   */
+  expiresIn: number;
+
+  /**
+   * Permissions being requested
+   */
+  requestedPermissions: AgentPermissions;
+}
+
+/**
+ * Result of auth flow
+ */
+export interface AuthResult {
+  /**
+   * Whether auth succeeded
+   */
+  success: boolean;
+
+  /**
+   * Provider that was authenticated
+   */
+  provider: GitProvider;
+
+  /**
+   * Username/identity if successful
+   */
+  username?: string;
+
+  /**
+   * Error message if failed
+   */
+  error?: string;
+}
+
+/**
+ * Callback interface for auth prompts
+ */
+export interface AuthPromptEmitter {
+  /**
+   * Called when user action is required for authentication
+   */
+  onAuthRequired(prompt: AuthPrompt): void;
+
+  /**
+   * Called when authentication completes (success or failure)
+   */
+  onAuthComplete(result: AuthResult): void;
+
+  /**
+   * Called periodically while waiting for auth (optional)
+   */
+  onAuthPending?(secondsRemaining: number): void;
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -360,13 +360,16 @@ export class WorkspaceService {
   // ─────────────────────────────────────────────────────────────
 
   private async cloneRepo(workspace: Workspace, token: string): Promise<void> {
-    // Build authenticated URL
-    const authUrl = this.buildAuthenticatedUrl(workspace.repo, token);
+    // For SSH credentials (empty token), use the URL as-is
+    // For token-based auth, build authenticated HTTPS URL
+    const cloneUrl = token
+      ? this.buildAuthenticatedUrl(workspace.repo, token)
+      : workspace.repo;
 
     // Clone with depth 1 for speed
     await this.execInDir(
       workspace.path,
-      `git clone --depth 1 --branch ${workspace.branch.baseBranch} ${authUrl} .`
+      `git clone --depth 1 --branch ${workspace.branch.baseBranch} ${cloneUrl} .`
     );
   }
 
@@ -380,7 +383,17 @@ export class WorkspaceService {
     await this.execInDir(workspace.path, 'git config user.name "Workspace Agent"');
     await this.execInDir(workspace.path, 'git config user.email "agent@workspace.local"');
 
-    // Configure credential helper
+    // Skip credential helper for SSH-based auth (no token = SSH)
+    if (!workspace.credential.token) {
+      this.log(
+        'debug',
+        { workspaceId: workspace.id },
+        'Using SSH authentication, skipping credential helper'
+      );
+      return;
+    }
+
+    // Configure credential helper for token-based auth
     const credentialContext: CredentialHelperContext = {
       workspaceId: workspace.id,
       executionId: workspace.branch.executionId,

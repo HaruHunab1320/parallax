@@ -4,7 +4,14 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CredentialService } from '../src/credential-service';
-import type { GitProviderAdapter, GitCredential, GitCredentialRequest } from '../src/types';
+import { MemoryTokenStore } from '../src/oauth';
+import type {
+  GitProviderAdapter,
+  GitCredential,
+  GitCredentialRequest,
+  OAuthToken,
+  AgentPermissions,
+} from '../src/types';
 
 // Mock provider with unique IDs
 let credentialCounter = 0;
@@ -338,6 +345,150 @@ describe('CredentialService', () => {
 
       await service.getCredentials(request);
       expect(gitlabProvider.getCredentials).toHaveBeenCalled();
+    });
+  });
+
+  describe('OAuth token caching', () => {
+    it('uses cached OAuth token when available', async () => {
+      const tokenStore = new MemoryTokenStore();
+      const mockPermissions: AgentPermissions = {
+        repositories: { type: 'all' },
+        contents: 'write',
+        pullRequests: 'write',
+        issues: 'read',
+        metadata: 'read',
+      };
+
+      const cachedToken: OAuthToken = {
+        accessToken: 'cached-oauth-token',
+        tokenType: 'bearer',
+        scopes: ['repo'],
+        expiresAt: new Date(Date.now() + 3600000), // 1 hour from now
+        provider: 'github',
+        permissions: mockPermissions,
+        createdAt: new Date(),
+      };
+
+      await tokenStore.save('github', cachedToken);
+
+      const oauthService = new CredentialService({
+        tokenStore,
+        oauth: {
+          clientId: 'test-client',
+        },
+      });
+
+      const request: GitCredentialRequest = {
+        repo: 'https://github.com/owner/repo',
+        access: 'write',
+        context: {
+          executionId: 'exec-123',
+        },
+      };
+
+      const credential = await oauthService.getCredentials(request);
+
+      expect(credential.token).toBe('cached-oauth-token');
+      expect(credential.type).toBe('oauth');
+    });
+
+    it('skips expired cached tokens', async () => {
+      const tokenStore = new MemoryTokenStore();
+      const mockPermissions: AgentPermissions = {
+        repositories: { type: 'all' },
+        contents: 'write',
+        pullRequests: 'write',
+        issues: 'read',
+        metadata: 'read',
+      };
+
+      const expiredToken: OAuthToken = {
+        accessToken: 'expired-token',
+        tokenType: 'bearer',
+        scopes: ['repo'],
+        expiresAt: new Date(Date.now() - 3600000), // 1 hour ago (expired)
+        provider: 'github',
+        permissions: mockPermissions,
+        createdAt: new Date(Date.now() - 7200000),
+      };
+
+      await tokenStore.save('github', expiredToken);
+
+      // Service without providers or OAuth - should fail to get credentials
+      const service = new CredentialService({
+        tokenStore,
+        // No oauth config, so device flow won't be triggered
+      });
+
+      const request: GitCredentialRequest = {
+        repo: 'https://github.com/owner/repo',
+        access: 'write',
+        context: {
+          executionId: 'exec-123',
+        },
+      };
+
+      // Should throw because expired token is skipped and no other source available
+      await expect(service.getCredentials(request)).rejects.toThrow(
+        'No credentials available for repository'
+      );
+    });
+
+    it('prioritizes user-provided credentials over cached OAuth', async () => {
+      const tokenStore = new MemoryTokenStore();
+      const mockPermissions: AgentPermissions = {
+        repositories: { type: 'all' },
+        contents: 'write',
+        pullRequests: 'write',
+        issues: 'read',
+        metadata: 'read',
+      };
+
+      const cachedToken: OAuthToken = {
+        accessToken: 'cached-oauth-token',
+        tokenType: 'bearer',
+        scopes: ['repo'],
+        expiresAt: new Date(Date.now() + 3600000),
+        provider: 'github',
+        permissions: mockPermissions,
+        createdAt: new Date(),
+      };
+
+      await tokenStore.save('github', cachedToken);
+
+      const service = new CredentialService({
+        tokenStore,
+        oauth: {
+          clientId: 'test-client',
+        },
+      });
+
+      const request: GitCredentialRequest = {
+        repo: 'https://github.com/owner/repo',
+        access: 'write',
+        context: {
+          executionId: 'exec-123',
+        },
+        userProvided: {
+          type: 'pat',
+          token: 'user-pat-token',
+        },
+      };
+
+      const credential = await service.getCredentials(request);
+
+      // Should use user-provided PAT, not cached OAuth
+      expect(credential.token).toBe('user-pat-token');
+      expect(credential.type).toBe('pat');
+    });
+
+    it('exposes token store via getTokenStore()', () => {
+      const tokenStore = new MemoryTokenStore();
+      const service = new CredentialService({
+        tokenStore,
+      });
+
+      expect(service.getTokenStore()).toBe(tokenStore);
     });
   });
 });

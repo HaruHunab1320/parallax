@@ -2,7 +2,13 @@
  * Git Credential Service
  *
  * Manages credentials for private repository access.
- * Supports GitHub App, OAuth, deploy keys, and PATs.
+ * Supports GitHub App, OAuth device flow, deploy keys, and PATs.
+ *
+ * Credential priority:
+ * 1. User-provided (PAT, OAuth token, SSH)
+ * 2. Cached OAuth token (from TokenStore)
+ * 3. Provider adapter (GitHub App, etc.)
+ * 4. OAuth device flow (interactive)
  */
 
 import { randomUUID } from 'crypto';
@@ -13,7 +19,11 @@ import type {
   GitProvider,
   CredentialType,
   GitProviderAdapter,
+  OAuthToken,
+  AuthPromptEmitter,
+  AgentPermissions,
 } from './types';
+import { OAuthDeviceFlow, TokenStore, MemoryTokenStore } from './oauth';
 
 export interface CredentialServiceLogger {
   info(data: Record<string, unknown>, message: string): void;
@@ -27,6 +37,28 @@ export interface CredentialGrantStore {
   findByExecutionId(executionId: string): Promise<CredentialGrant[]>;
   revoke(id: string): Promise<void>;
   revokeForExecution(executionId: string): Promise<number>;
+}
+
+export interface OAuthConfig {
+  /**
+   * OAuth Client ID (required for device flow)
+   */
+  clientId: string;
+
+  /**
+   * OAuth Client Secret (optional for public clients)
+   */
+  clientSecret?: string;
+
+  /**
+   * Default permissions to request
+   */
+  permissions?: AgentPermissions;
+
+  /**
+   * Callback for auth prompts (for PTY integration)
+   */
+  promptEmitter?: AuthPromptEmitter;
 }
 
 export interface CredentialServiceOptions {
@@ -51,6 +83,18 @@ export interface CredentialServiceOptions {
   grantStore?: CredentialGrantStore;
 
   /**
+   * Token store for cached OAuth tokens
+   * Default: MemoryTokenStore
+   */
+  tokenStore?: TokenStore;
+
+  /**
+   * OAuth configuration for device flow authentication
+   * If provided, enables interactive OAuth as a fallback
+   */
+  oauth?: OAuthConfig;
+
+  /**
    * Optional logger
    */
   logger?: CredentialServiceLogger;
@@ -62,6 +106,8 @@ export class CredentialService {
   private readonly maxTtl: number;
   private readonly providers: Map<GitProvider, GitProviderAdapter>;
   private readonly grantStore?: CredentialGrantStore;
+  private readonly tokenStore: TokenStore;
+  private readonly oauthConfig?: OAuthConfig;
   private readonly logger?: CredentialServiceLogger;
 
   constructor(options: CredentialServiceOptions = {}) {
@@ -69,7 +115,16 @@ export class CredentialService {
     this.maxTtl = options.maxTtlSeconds || 3600; // 1 hour max
     this.providers = options.providers || new Map();
     this.grantStore = options.grantStore;
+    this.tokenStore = options.tokenStore || new MemoryTokenStore();
+    this.oauthConfig = options.oauth;
     this.logger = options.logger;
+  }
+
+  /**
+   * Get the token store (for external access to cached tokens)
+   */
+  getTokenStore(): TokenStore {
+    return this.tokenStore;
   }
 
   /**
@@ -113,7 +168,7 @@ export class CredentialService {
     // Try credential sources in order of preference
     let credential: GitCredential | null = null;
 
-    // Priority 1: User-provided credentials (PAT or OAuth token)
+    // Priority 1: User-provided credentials (PAT, OAuth token, or SSH)
     if (request.userProvided) {
       credential = this.createUserProvidedCredential(request, ttlSeconds, provider);
       this.log(
@@ -122,8 +177,14 @@ export class CredentialService {
         'Using user-provided credentials'
       );
     }
-    // Priority 2: Provider-specific credentials
-    else {
+
+    // Priority 2: Cached OAuth token
+    if (!credential) {
+      credential = await this.getCachedOAuthCredential(provider, request, ttlSeconds);
+    }
+
+    // Priority 3: Provider-specific credentials (GitHub App, etc.)
+    if (!credential) {
       const providerAdapter = this.providers.get(provider);
       if (providerAdapter) {
         try {
@@ -138,9 +199,17 @@ export class CredentialService {
       }
     }
 
+    // Priority 4: Interactive OAuth device flow
+    if (!credential && this.oauthConfig) {
+      credential = await this.getOAuthCredentialViaDeviceFlow(provider, request, ttlSeconds);
+    }
+
     if (!credential) {
       throw new Error(
-        `No credentials available for repository: ${request.repo}`
+        `No credentials available for repository: ${request.repo}. ` +
+          (this.oauthConfig
+            ? 'OAuth device flow failed or was cancelled.'
+            : 'Configure OAuth to enable interactive authentication.')
       );
     }
 
@@ -352,7 +421,17 @@ export class CredentialService {
     const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
     // Map user credential type to our CredentialType
-    const credentialType: CredentialType = userCreds.type === 'pat' ? 'pat' : 'oauth';
+    let credentialType: CredentialType;
+    let token: string;
+
+    if (userCreds.type === 'ssh') {
+      // SSH credentials don't need a token - system SSH agent handles auth
+      credentialType = 'ssh_key';
+      token = ''; // No token needed for SSH
+    } else {
+      credentialType = userCreds.type === 'pat' ? 'pat' : 'oauth';
+      token = userCreds.token;
+    }
 
     // For user-provided credentials, we assume full repo access based on what they provided
     // The actual permissions are determined by the token's scope at the provider level
@@ -364,11 +443,173 @@ export class CredentialService {
     return {
       id: randomUUID(),
       type: credentialType,
-      token: userCreds.token,
+      token,
       repo: request.repo,
       permissions,
       expiresAt,
       provider: userCreds.provider || provider,
+    };
+  }
+
+  /**
+   * Check for a cached OAuth token and create credential from it
+   */
+  private async getCachedOAuthCredential(
+    provider: GitProvider,
+    request: GitCredentialRequest,
+    ttlSeconds: number
+  ): Promise<GitCredential | null> {
+    try {
+      const cachedToken = await this.tokenStore.get(provider);
+
+      if (!cachedToken) {
+        return null;
+      }
+
+      // Check if token is expired
+      if (this.tokenStore.isExpired(cachedToken)) {
+        // Try to refresh if we have a refresh token
+        if (cachedToken.refreshToken && this.oauthConfig) {
+          const refreshedToken = await this.refreshOAuthToken(provider, cachedToken.refreshToken);
+          if (refreshedToken) {
+            return this.createOAuthCredential(refreshedToken, request, ttlSeconds);
+          }
+        }
+        // Token expired and can't refresh
+        this.log('info', { provider }, 'Cached OAuth token expired');
+        return null;
+      }
+
+      // Check if token needs refresh (close to expiry)
+      if (this.tokenStore.needsRefresh(cachedToken) && cachedToken.refreshToken && this.oauthConfig) {
+        const refreshedToken = await this.refreshOAuthToken(provider, cachedToken.refreshToken);
+        if (refreshedToken) {
+          return this.createOAuthCredential(refreshedToken, request, ttlSeconds);
+        }
+        // If refresh fails, continue with existing token if still valid
+      }
+
+      this.log('info', { provider }, 'Using cached OAuth token');
+      return this.createOAuthCredential(cachedToken, request, ttlSeconds);
+    } catch (error) {
+      this.log('warn', { provider, error }, 'Failed to get cached OAuth token');
+      return null;
+    }
+  }
+
+  /**
+   * Initiate interactive OAuth device flow
+   */
+  private async getOAuthCredentialViaDeviceFlow(
+    provider: GitProvider,
+    request: GitCredentialRequest,
+    ttlSeconds: number
+  ): Promise<GitCredential | null> {
+    if (!this.oauthConfig) {
+      return null;
+    }
+
+    // Only GitHub is supported for now
+    if (provider !== 'github') {
+      this.log('warn', { provider }, 'OAuth device flow only supported for GitHub');
+      return null;
+    }
+
+    this.log('info', { repo: request.repo }, 'Starting OAuth device flow for authentication');
+
+    try {
+      const deviceFlow = new OAuthDeviceFlow({
+        clientId: this.oauthConfig.clientId,
+        clientSecret: this.oauthConfig.clientSecret,
+        provider,
+        permissions: this.oauthConfig.permissions,
+        promptEmitter: this.oauthConfig.promptEmitter,
+      });
+
+      const token = await deviceFlow.authorize();
+
+      // Cache the token for future use
+      await this.tokenStore.save(provider, token);
+
+      this.log('info', { provider }, 'OAuth device flow completed successfully');
+      return this.createOAuthCredential(token, request, ttlSeconds);
+    } catch (error) {
+      this.log('error', { provider, error }, 'OAuth device flow failed');
+      return null;
+    }
+  }
+
+  /**
+   * Refresh an OAuth token
+   */
+  private async refreshOAuthToken(
+    provider: GitProvider,
+    refreshToken: string
+  ): Promise<OAuthToken | null> {
+    if (!this.oauthConfig) {
+      return null;
+    }
+
+    try {
+      const deviceFlow = new OAuthDeviceFlow({
+        clientId: this.oauthConfig.clientId,
+        clientSecret: this.oauthConfig.clientSecret,
+        provider,
+        permissions: this.oauthConfig.permissions,
+      });
+
+      const newToken = await deviceFlow.refreshToken(refreshToken);
+
+      // Update the cache
+      await this.tokenStore.save(provider, newToken);
+
+      this.log('info', { provider }, 'OAuth token refreshed successfully');
+      return newToken;
+    } catch (error) {
+      this.log('warn', { provider, error }, 'Failed to refresh OAuth token');
+      return null;
+    }
+  }
+
+  /**
+   * Create a GitCredential from an OAuthToken
+   */
+  private createOAuthCredential(
+    token: OAuthToken,
+    request: GitCredentialRequest,
+    ttlSeconds: number
+  ): GitCredential {
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+    // Map permissions to string array
+    const permissions: string[] = [];
+    if (token.permissions.contents === 'read' || token.permissions.contents === 'write') {
+      permissions.push('contents:read');
+    }
+    if (token.permissions.contents === 'write') {
+      permissions.push('contents:write');
+    }
+    if (token.permissions.pullRequests === 'read' || token.permissions.pullRequests === 'write') {
+      permissions.push('pull_requests:read');
+    }
+    if (token.permissions.pullRequests === 'write') {
+      permissions.push('pull_requests:write');
+    }
+    if (token.permissions.issues === 'read' || token.permissions.issues === 'write') {
+      permissions.push('issues:read');
+    }
+    if (token.permissions.issues === 'write') {
+      permissions.push('issues:write');
+    }
+
+    return {
+      id: randomUUID(),
+      type: 'oauth',
+      token: token.accessToken,
+      repo: request.repo,
+      permissions,
+      expiresAt,
+      provider: token.provider,
     };
   }
 

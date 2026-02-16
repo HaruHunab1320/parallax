@@ -861,6 +861,9 @@ importers:
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
+      tsx:
+        specifier: ^4.0.0
+        version: 4.20.3
       typescript:
         specifier: ^5.3.0
         version: 5.8.3
@@ -932,18 +935,6 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.26.0(zod@3.25.76)
-      '@parallax/auth':
-        specifier: workspace:*
-        version: link:../auth
-      '@parallax/runtime-interface':
-        specifier: workspace:*
-        version: link:../runtime-interface
-      '@parallax/runtime-local':
-        specifier: workspace:*
-        version: link:../runtime-local
-      '@parallax/runtime-mcp':
-        specifier: workspace:*
-        version: link:../runtime-mcp
       jsonwebtoken:
         specifier: ^9.0.0
         version: 9.0.2
@@ -963,6 +954,18 @@ importers:
         specifier: ^3.25.0
         version: 3.25.76
     devDependencies:
+      '@parallax/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@parallax/runtime-interface':
+        specifier: workspace:*
+        version: link:../runtime-interface
+      '@parallax/runtime-local':
+        specifier: workspace:*
+        version: link:../runtime-local
+      '@parallax/runtime-mcp':
+        specifier: workspace:*
+        version: link:../runtime-mcp
       '@types/jsonwebtoken':
         specifier: ^9.0.0
         version: 9.0.10

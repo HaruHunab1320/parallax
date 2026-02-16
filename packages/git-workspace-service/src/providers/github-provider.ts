@@ -12,6 +12,11 @@ import type {
   GitCredentialRequest,
   PullRequestInfo,
   GitHubAppInstallation,
+  IssueInfo,
+  CreateIssueOptions,
+  IssueComment,
+  IssueCommentOptions,
+  IssueState,
 } from '../types';
 
 // Lazy-loaded Octokit - using any for the cache since types are dynamically loaded
@@ -545,6 +550,369 @@ export class GitHubProvider implements GitProviderAdapter {
     }
 
     return branches;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Issue Management
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Create an issue
+   */
+  async createIssue(
+    owner: string,
+    repo: string,
+    options: CreateIssueOptions
+  ): Promise<IssueInfo> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const installation = this.getInstallationForRepo(owner, repo);
+    if (!installation) {
+      throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
+    }
+
+    const octokit = await this.getInstallationOctokit(installation.installationId);
+
+    const { data: issue } = await octokit.issues.create({
+      owner,
+      repo,
+      title: options.title,
+      body: options.body,
+      labels: options.labels,
+      assignees: options.assignees,
+      milestone: options.milestone,
+    });
+
+    this.log(
+      'info',
+      { owner, repo, issueNumber: issue.number, title: options.title },
+      'Issue created'
+    );
+
+    return {
+      number: issue.number,
+      url: issue.html_url,
+      state: issue.state as IssueState,
+      title: issue.title,
+      body: issue.body || '',
+      labels: issue.labels.map((l: { name?: string } | string) =>
+        typeof l === 'string' ? l : l.name || ''
+      ),
+      assignees: issue.assignees?.map((a: { login: string }) => a.login) || [],
+      createdAt: new Date(issue.created_at),
+      closedAt: issue.closed_at ? new Date(issue.closed_at) : undefined,
+    };
+  }
+
+  /**
+   * Get an issue by number
+   */
+  async getIssue(owner: string, repo: string, issueNumber: number): Promise<IssueInfo> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const installation = this.getInstallationForRepo(owner, repo);
+    if (!installation) {
+      throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
+    }
+
+    const octokit = await this.getInstallationOctokit(installation.installationId);
+
+    const { data: issue } = await octokit.issues.get({
+      owner,
+      repo,
+      issue_number: issueNumber,
+    });
+
+    return {
+      number: issue.number,
+      url: issue.html_url,
+      state: issue.state as IssueState,
+      title: issue.title,
+      body: issue.body || '',
+      labels: issue.labels.map((l: { name?: string } | string) =>
+        typeof l === 'string' ? l : l.name || ''
+      ),
+      assignees: issue.assignees?.map((a: { login: string }) => a.login) || [],
+      createdAt: new Date(issue.created_at),
+      closedAt: issue.closed_at ? new Date(issue.closed_at) : undefined,
+    };
+  }
+
+  /**
+   * List issues with optional filters
+   */
+  async listIssues(
+    owner: string,
+    repo: string,
+    options?: {
+      state?: IssueState | 'all';
+      labels?: string[];
+      assignee?: string;
+      since?: Date;
+    }
+  ): Promise<IssueInfo[]> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const installation = this.getInstallationForRepo(owner, repo);
+    if (!installation) {
+      throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
+    }
+
+    const octokit = await this.getInstallationOctokit(installation.installationId);
+
+    const { data: issues } = await octokit.issues.listForRepo({
+      owner,
+      repo,
+      state: options?.state || 'open',
+      labels: options?.labels?.join(','),
+      assignee: options?.assignee,
+      since: options?.since?.toISOString(),
+      per_page: 100,
+    });
+
+    // Filter out pull requests (GitHub API returns PRs as issues)
+    return issues
+      .filter((issue: { pull_request?: unknown }) => !issue.pull_request)
+      .map((issue: {
+        number: number;
+        html_url: string;
+        state: string;
+        title: string;
+        body: string | null;
+        labels: Array<{ name?: string } | string>;
+        assignees?: Array<{ login: string }>;
+        created_at: string;
+        closed_at: string | null;
+      }) => ({
+        number: issue.number,
+        url: issue.html_url,
+        state: issue.state as IssueState,
+        title: issue.title,
+        body: issue.body || '',
+        labels: issue.labels.map((l: { name?: string } | string) =>
+          typeof l === 'string' ? l : l.name || ''
+        ),
+        assignees: issue.assignees?.map((a: { login: string }) => a.login) || [],
+        createdAt: new Date(issue.created_at),
+        closedAt: issue.closed_at ? new Date(issue.closed_at) : undefined,
+      }));
+  }
+
+  /**
+   * Update an issue (labels, state, assignees, etc.)
+   */
+  async updateIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    options: {
+      title?: string;
+      body?: string;
+      state?: IssueState;
+      labels?: string[];
+      assignees?: string[];
+    }
+  ): Promise<IssueInfo> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const installation = this.getInstallationForRepo(owner, repo);
+    if (!installation) {
+      throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
+    }
+
+    const octokit = await this.getInstallationOctokit(installation.installationId);
+
+    const { data: issue } = await octokit.issues.update({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      title: options.title,
+      body: options.body,
+      state: options.state,
+      labels: options.labels,
+      assignees: options.assignees,
+    });
+
+    this.log(
+      'info',
+      { owner, repo, issueNumber, updates: Object.keys(options) },
+      'Issue updated'
+    );
+
+    return {
+      number: issue.number,
+      url: issue.html_url,
+      state: issue.state as IssueState,
+      title: issue.title,
+      body: issue.body || '',
+      labels: issue.labels.map((l: { name?: string } | string) =>
+        typeof l === 'string' ? l : l.name || ''
+      ),
+      assignees: issue.assignees?.map((a: { login: string }) => a.login) || [],
+      createdAt: new Date(issue.created_at),
+      closedAt: issue.closed_at ? new Date(issue.closed_at) : undefined,
+    };
+  }
+
+  /**
+   * Add labels to an issue
+   */
+  async addLabels(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    labels: string[]
+  ): Promise<void> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const installation = this.getInstallationForRepo(owner, repo);
+    if (!installation) {
+      throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
+    }
+
+    const octokit = await this.getInstallationOctokit(installation.installationId);
+
+    await octokit.issues.addLabels({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      labels,
+    });
+
+    this.log('info', { owner, repo, issueNumber, labels }, 'Labels added to issue');
+  }
+
+  /**
+   * Remove a label from an issue
+   */
+  async removeLabel(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    label: string
+  ): Promise<void> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const installation = this.getInstallationForRepo(owner, repo);
+    if (!installation) {
+      throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
+    }
+
+    const octokit = await this.getInstallationOctokit(installation.installationId);
+
+    await octokit.issues.removeLabel({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      name: label,
+    });
+
+    this.log('info', { owner, repo, issueNumber, label }, 'Label removed from issue');
+  }
+
+  /**
+   * Add a comment to an issue
+   */
+  async addComment(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    options: IssueCommentOptions
+  ): Promise<IssueComment> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const installation = this.getInstallationForRepo(owner, repo);
+    if (!installation) {
+      throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
+    }
+
+    const octokit = await this.getInstallationOctokit(installation.installationId);
+
+    const { data: comment } = await octokit.issues.createComment({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      body: options.body,
+    });
+
+    this.log('info', { owner, repo, issueNumber, commentId: comment.id }, 'Comment added to issue');
+
+    return {
+      id: comment.id,
+      url: comment.html_url,
+      body: comment.body || '',
+      author: comment.user?.login || 'unknown',
+      createdAt: new Date(comment.created_at),
+    };
+  }
+
+  /**
+   * List comments on an issue
+   */
+  async listComments(
+    owner: string,
+    repo: string,
+    issueNumber: number
+  ): Promise<IssueComment[]> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const installation = this.getInstallationForRepo(owner, repo);
+    if (!installation) {
+      throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
+    }
+
+    const octokit = await this.getInstallationOctokit(installation.installationId);
+
+    const { data: comments } = await octokit.issues.listComments({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      per_page: 100,
+    });
+
+    return comments.map((comment: {
+      id: number;
+      html_url: string;
+      body: string | undefined;
+      user: { login: string } | null;
+      created_at: string;
+    }) => ({
+      id: comment.id,
+      url: comment.html_url,
+      body: comment.body || '',
+      author: comment.user?.login || 'unknown',
+      createdAt: new Date(comment.created_at),
+    }));
+  }
+
+  /**
+   * Close an issue
+   */
+  async closeIssue(owner: string, repo: string, issueNumber: number): Promise<IssueInfo> {
+    return this.updateIssue(owner, repo, issueNumber, { state: 'closed' });
+  }
+
+  /**
+   * Reopen an issue
+   */
+  async reopenIssue(owner: string, repo: string, issueNumber: number): Promise<IssueInfo> {
+    return this.updateIssue(owner, repo, issueNumber, { state: 'open' });
   }
 
   // ─────────────────────────────────────────────────────────────
