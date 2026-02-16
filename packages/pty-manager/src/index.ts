@@ -7,7 +7,7 @@
 
 // Core classes
 export { PTYManager } from './pty-manager';
-export { PTYSession } from './pty-session';
+export { PTYSession, SPECIAL_KEYS } from './pty-session';
 
 // Adapter system
 export {

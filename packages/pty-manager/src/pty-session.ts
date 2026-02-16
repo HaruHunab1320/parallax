@@ -84,6 +84,167 @@ function generateId(): string {
   return `pty-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
+/**
+ * Special key mappings to escape sequences
+ *
+ * Modifier codes for arrows/function keys:
+ * 2 = Shift, 3 = Alt, 4 = Shift+Alt, 5 = Ctrl, 6 = Ctrl+Shift, 7 = Ctrl+Alt, 8 = Ctrl+Alt+Shift
+ */
+export const SPECIAL_KEYS: Record<string, string> = {
+  // Control keys (Ctrl+letter = ASCII control code)
+  'ctrl+a': '\x01',
+  'ctrl+b': '\x02',
+  'ctrl+c': '\x03',
+  'ctrl+d': '\x04',
+  'ctrl+e': '\x05',
+  'ctrl+f': '\x06',
+  'ctrl+g': '\x07',
+  'ctrl+h': '\x08',
+  'ctrl+i': '\x09',
+  'ctrl+j': '\x0a',
+  'ctrl+k': '\x0b',
+  'ctrl+l': '\x0c',
+  'ctrl+m': '\x0d',
+  'ctrl+n': '\x0e',
+  'ctrl+o': '\x0f',
+  'ctrl+p': '\x10',
+  'ctrl+q': '\x11',
+  'ctrl+r': '\x12',
+  'ctrl+s': '\x13',
+  'ctrl+t': '\x14',
+  'ctrl+u': '\x15',
+  'ctrl+v': '\x16',
+  'ctrl+w': '\x17',
+  'ctrl+x': '\x18',
+  'ctrl+y': '\x19',
+  'ctrl+z': '\x1a',
+  'ctrl+[': '\x1b',
+  'ctrl+\\': '\x1c',
+  'ctrl+]': '\x1d',
+  'ctrl+^': '\x1e',
+  'ctrl+_': '\x1f',
+
+  // Alt+letter (Meta key = ESC + letter)
+  'alt+a': '\x1ba', 'alt+b': '\x1bb', 'alt+c': '\x1bc', 'alt+d': '\x1bd',
+  'alt+e': '\x1be', 'alt+f': '\x1bf', 'alt+g': '\x1bg', 'alt+h': '\x1bh',
+  'alt+i': '\x1bi', 'alt+j': '\x1bj', 'alt+k': '\x1bk', 'alt+l': '\x1bl',
+  'alt+m': '\x1bm', 'alt+n': '\x1bn', 'alt+o': '\x1bo', 'alt+p': '\x1bp',
+  'alt+q': '\x1bq', 'alt+r': '\x1br', 'alt+s': '\x1bs', 'alt+t': '\x1bt',
+  'alt+u': '\x1bu', 'alt+v': '\x1bv', 'alt+w': '\x1bw', 'alt+x': '\x1bx',
+  'alt+y': '\x1by', 'alt+z': '\x1bz',
+  'alt+backspace': '\x1b\x7f',  // Delete word backward
+
+  // Navigation - plain
+  'up': '\x1b[A',
+  'down': '\x1b[B',
+  'right': '\x1b[C',
+  'left': '\x1b[D',
+  'home': '\x1b[H',
+  'end': '\x1b[F',
+  'pageup': '\x1b[5~',
+  'pagedown': '\x1b[6~',
+
+  // Navigation - with Shift (modifier 2)
+  'shift+up': '\x1b[1;2A',
+  'shift+down': '\x1b[1;2B',
+  'shift+right': '\x1b[1;2C',
+  'shift+left': '\x1b[1;2D',
+  'shift+home': '\x1b[1;2H',
+  'shift+end': '\x1b[1;2F',
+  'shift+pageup': '\x1b[5;2~',
+  'shift+pagedown': '\x1b[6;2~',
+
+  // Navigation - with Alt (modifier 3)
+  'alt+up': '\x1b[1;3A',
+  'alt+down': '\x1b[1;3B',
+  'alt+right': '\x1b[1;3C',    // Forward word
+  'alt+left': '\x1b[1;3D',     // Backward word
+
+  // Navigation - with Ctrl (modifier 5)
+  'ctrl+up': '\x1b[1;5A',
+  'ctrl+down': '\x1b[1;5B',
+  'ctrl+right': '\x1b[1;5C',   // Forward word
+  'ctrl+left': '\x1b[1;5D',    // Backward word
+  'ctrl+home': '\x1b[1;5H',
+  'ctrl+end': '\x1b[1;5F',
+
+  // Navigation - with Ctrl+Shift (modifier 6) - select word
+  'ctrl+shift+up': '\x1b[1;6A',
+  'ctrl+shift+down': '\x1b[1;6B',
+  'ctrl+shift+right': '\x1b[1;6C',
+  'ctrl+shift+left': '\x1b[1;6D',
+  'ctrl+shift+home': '\x1b[1;6H',
+  'ctrl+shift+end': '\x1b[1;6F',
+
+  // Navigation - with Shift+Alt (modifier 4)
+  'shift+alt+up': '\x1b[1;4A',
+  'shift+alt+down': '\x1b[1;4B',
+  'shift+alt+right': '\x1b[1;4C',
+  'shift+alt+left': '\x1b[1;4D',
+
+  // Editing
+  'enter': '\r',
+  'return': '\r',
+  'tab': '\t',
+  'shift+tab': '\x1b[Z',       // Reverse tab
+  'backspace': '\x7f',
+  'delete': '\x1b[3~',
+  'shift+delete': '\x1b[3;2~',
+  'ctrl+delete': '\x1b[3;5~',  // Delete word forward
+  'insert': '\x1b[2~',
+  'escape': '\x1b',
+  'esc': '\x1b',
+  'space': ' ',
+
+  // Function keys - plain
+  'f1': '\x1bOP',
+  'f2': '\x1bOQ',
+  'f3': '\x1bOR',
+  'f4': '\x1bOS',
+  'f5': '\x1b[15~',
+  'f6': '\x1b[17~',
+  'f7': '\x1b[18~',
+  'f8': '\x1b[19~',
+  'f9': '\x1b[20~',
+  'f10': '\x1b[21~',
+  'f11': '\x1b[23~',
+  'f12': '\x1b[24~',
+
+  // Function keys - with Shift (modifier 2)
+  'shift+f1': '\x1b[1;2P',
+  'shift+f2': '\x1b[1;2Q',
+  'shift+f3': '\x1b[1;2R',
+  'shift+f4': '\x1b[1;2S',
+  'shift+f5': '\x1b[15;2~',
+  'shift+f6': '\x1b[17;2~',
+  'shift+f7': '\x1b[18;2~',
+  'shift+f8': '\x1b[19;2~',
+  'shift+f9': '\x1b[20;2~',
+  'shift+f10': '\x1b[21;2~',
+  'shift+f11': '\x1b[23;2~',
+  'shift+f12': '\x1b[24;2~',
+
+  // Function keys - with Ctrl (modifier 5)
+  'ctrl+f1': '\x1b[1;5P',
+  'ctrl+f2': '\x1b[1;5Q',
+  'ctrl+f3': '\x1b[1;5R',
+  'ctrl+f4': '\x1b[1;5S',
+  'ctrl+f5': '\x1b[15;5~',
+  'ctrl+f6': '\x1b[17;5~',
+  'ctrl+f7': '\x1b[18;5~',
+  'ctrl+f8': '\x1b[19;5~',
+  'ctrl+f9': '\x1b[20;5~',
+  'ctrl+f10': '\x1b[21;5~',
+  'ctrl+f11': '\x1b[23;5~',
+  'ctrl+f12': '\x1b[24;5~',
+};
+
+/**
+ * Bracketed paste mode escape sequences
+ */
+const BRACKETED_PASTE_START = '\x1b[200~';
+const BRACKETED_PASTE_END = '\x1b[201~';
+
 export class PTYSession extends EventEmitter {
   private ptyProcess: ptyModule.IPty | null = null;
   private outputBuffer: string = '';
@@ -437,6 +598,75 @@ export class PTYSession extends EventEmitter {
    */
   resize(cols: number, rows: number): void {
     this.ptyProcess?.resize(cols, rows);
+  }
+
+  /**
+   * Send special keys to the PTY
+   *
+   * Supported keys:
+   * - Control: ctrl+c, ctrl+d, ctrl+z, ctrl+l, ctrl+a, ctrl+e, ctrl+k, ctrl+u, ctrl+w, ctrl+r
+   * - Navigation: up, down, left, right, home, end, pageup, pagedown
+   * - Editing: enter, tab, backspace, delete, insert, escape
+   * - Function: f1-f12
+   *
+   * @param keys - Key name(s) to send, e.g. "ctrl+c" or ["up", "up", "enter"]
+   */
+  sendKeys(keys: string | string[]): void {
+    if (!this.ptyProcess) {
+      throw new Error('Session not started');
+    }
+
+    const keyList = Array.isArray(keys) ? keys : [keys];
+
+    for (const key of keyList) {
+      const normalizedKey = key.toLowerCase().trim();
+      const sequence = SPECIAL_KEYS[normalizedKey];
+
+      if (sequence) {
+        this._lastActivityAt = new Date();
+        this.ptyProcess.write(sequence);
+        this.logger.debug({ sessionId: this.id, key: normalizedKey }, 'Sent special key');
+      } else {
+        this.logger.warn(
+          { sessionId: this.id, key: normalizedKey },
+          'Unknown special key, sending as literal'
+        );
+        this.ptyProcess.write(key);
+      }
+    }
+  }
+
+  /**
+   * Paste text using bracketed paste mode
+   *
+   * Bracketed paste mode wraps the pasted text in escape sequences
+   * that tell the terminal this is pasted content, not typed input.
+   * This prevents issues with pasting text that contains special characters
+   * or looks like commands.
+   *
+   * @param text - Text to paste
+   * @param useBracketedPaste - Whether to use bracketed paste mode (default: true)
+   */
+  paste(text: string, useBracketedPaste: boolean = true): void {
+    if (!this.ptyProcess) {
+      throw new Error('Session not started');
+    }
+
+    this._lastActivityAt = new Date();
+
+    if (useBracketedPaste) {
+      this.ptyProcess.write(BRACKETED_PASTE_START + text + BRACKETED_PASTE_END);
+      this.logger.debug(
+        { sessionId: this.id, length: text.length },
+        'Pasted text with bracketed paste mode'
+      );
+    } else {
+      this.ptyProcess.write(text);
+      this.logger.debug(
+        { sessionId: this.id, length: text.length },
+        'Pasted text without bracketed paste'
+      );
+    }
   }
 
   /**
