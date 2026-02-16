@@ -18,6 +18,7 @@ import type {
   WorkspaceServiceConfig,
   WorkspaceEvent,
   WorkspaceEventHandler,
+  WorkspaceStrategy,
 } from './types';
 import { CredentialService } from './credential-service';
 import { createBranchInfo } from './utils/branch-naming';
@@ -89,6 +90,25 @@ export class WorkspaceService {
    * Provision a new workspace for a task
    */
   async provision(config: WorkspaceConfig): Promise<Workspace> {
+    const strategy: WorkspaceStrategy = config.strategy || 'clone';
+
+    // Validate worktree config
+    if (strategy === 'worktree') {
+      if (!config.parentWorkspace) {
+        throw new Error('parentWorkspace is required when strategy is "worktree"');
+      }
+      const parent = this.workspaces.get(config.parentWorkspace);
+      if (!parent) {
+        throw new Error(`Parent workspace not found: ${config.parentWorkspace}`);
+      }
+      if (parent.strategy !== 'clone') {
+        throw new Error('Parent workspace must be a clone, not a worktree');
+      }
+      if (parent.repo !== config.repo) {
+        throw new Error('Worktree must be for the same repository as parent');
+      }
+    }
+
     const workspaceId = randomUUID();
 
     this.log(
@@ -98,6 +118,7 @@ export class WorkspaceService {
         repo: config.repo,
         executionId: config.execution.id,
         role: config.task.role,
+        strategy,
       },
       'Provisioning workspace'
     );
@@ -109,31 +130,36 @@ export class WorkspaceService {
       timestamp: new Date(),
     });
 
-    // Create workspace directory
+    // Create workspace directory (for clone) or use worktree path
     const workspacePath = path.join(this.baseDir, workspaceId);
-    await fs.mkdir(workspacePath, { recursive: true });
 
-    // Get credentials
-    const credential = await this.credentialService.getCredentials({
-      repo: config.repo,
-      access: 'write',
-      context: {
+    // Get credentials (or reuse parent's for worktree)
+    let credential;
+    if (strategy === 'worktree' && config.parentWorkspace) {
+      const parent = this.workspaces.get(config.parentWorkspace)!;
+      credential = parent.credential;
+    } else {
+      await fs.mkdir(workspacePath, { recursive: true });
+      credential = await this.credentialService.getCredentials({
+        repo: config.repo,
+        access: 'write',
+        context: {
+          executionId: config.execution.id,
+          taskId: config.task.id,
+          userId: config.user?.id,
+          reason: `Workspace for ${config.task.role} in ${config.execution.patternName}`,
+        },
+        userProvided: config.userCredentials,
+      });
+
+      await this.emitEvent({
+        type: 'credential:granted',
+        workspaceId,
+        credentialId: credential.id,
         executionId: config.execution.id,
-        taskId: config.task.id,
-        userId: config.user?.id,
-        reason: `Workspace for ${config.task.role} in ${config.execution.patternName}`,
-      },
-      // Pass user-provided credentials if available
-      userProvided: config.userCredentials,
-    });
-
-    await this.emitEvent({
-      type: 'credential:granted',
-      workspaceId,
-      credentialId: credential.id,
-      executionId: config.execution.id,
-      timestamp: new Date(),
-    });
+        timestamp: new Date(),
+      });
+    }
 
     // Generate branch name
     const branchInfo = createBranchInfo(
@@ -155,16 +181,38 @@ export class WorkspaceService {
       credential,
       provisionedAt: new Date(),
       status: 'provisioning',
+      strategy,
+      parentWorkspaceId: config.parentWorkspace,
     };
 
     this.workspaces.set(workspaceId, workspace);
 
     try {
-      // Clone repository
-      await this.cloneRepo(workspace, credential.token);
+      if (strategy === 'clone') {
+        // Clone repository
+        await this.cloneRepo(workspace, credential.token);
+        // Create and checkout branch
+        await this.createBranch(workspace);
+      } else {
+        // Add worktree from parent
+        const parent = this.workspaces.get(config.parentWorkspace!)!;
+        await this.addWorktreeFromParent(parent, workspace);
 
-      // Create and checkout branch
-      await this.createBranch(workspace);
+        // Track worktree in parent
+        if (!parent.worktreeIds) {
+          parent.worktreeIds = [];
+        }
+        parent.worktreeIds.push(workspaceId);
+        this.workspaces.set(parent.id, parent);
+
+        await this.emitEvent({
+          type: 'worktree:added',
+          workspaceId,
+          executionId: config.execution.id,
+          timestamp: new Date(),
+          data: { parentWorkspaceId: parent.id },
+        });
+      }
 
       // Configure git for this workspace
       await this.configureGit(workspace);
@@ -178,6 +226,7 @@ export class WorkspaceService {
           workspaceId,
           path: workspacePath,
           branch: branchInfo.name,
+          strategy,
         },
         'Workspace provisioned'
       );
@@ -207,6 +256,67 @@ export class WorkspaceService {
 
       throw error;
     }
+  }
+
+  /**
+   * Add a worktree to an existing clone workspace (convenience method)
+   */
+  async addWorktree(
+    parentWorkspaceId: string,
+    options: {
+      branch: string;
+      execution: { id: string; patternName: string };
+      task: { id: string; role: string; slug?: string };
+    }
+  ): Promise<Workspace> {
+    const parent = this.workspaces.get(parentWorkspaceId);
+    if (!parent) {
+      throw new Error(`Parent workspace not found: ${parentWorkspaceId}`);
+    }
+
+    return this.provision({
+      repo: parent.repo,
+      strategy: 'worktree',
+      parentWorkspace: parentWorkspaceId,
+      branchStrategy: 'feature_branch',
+      baseBranch: options.branch,
+      execution: options.execution,
+      task: options.task,
+    });
+  }
+
+  /**
+   * List all worktrees for a parent workspace
+   */
+  listWorktrees(parentWorkspaceId: string): Workspace[] {
+    const parent = this.workspaces.get(parentWorkspaceId);
+    if (!parent) {
+      return [];
+    }
+
+    if (!parent.worktreeIds || parent.worktreeIds.length === 0) {
+      return [];
+    }
+
+    return parent.worktreeIds
+      .map((id) => this.workspaces.get(id))
+      .filter((w): w is Workspace => w !== undefined);
+  }
+
+  /**
+   * Remove a worktree (alias for cleanup with worktree-specific handling)
+   */
+  async removeWorktree(workspaceId: string): Promise<void> {
+    const workspace = this.workspaces.get(workspaceId);
+    if (!workspace) {
+      return;
+    }
+
+    if (workspace.strategy !== 'worktree') {
+      throw new Error('Workspace is not a worktree. Use cleanup() instead.');
+    }
+
+    await this.cleanup(workspaceId);
   }
 
   /**
@@ -304,7 +414,19 @@ export class WorkspaceService {
       return;
     }
 
-    this.log('info', { workspaceId }, 'Cleaning up workspace');
+    this.log('info', { workspaceId, strategy: workspace.strategy }, 'Cleaning up workspace');
+
+    // If this is a clone with worktrees, clean up worktrees first
+    if (workspace.strategy === 'clone' && workspace.worktreeIds?.length) {
+      this.log(
+        'info',
+        { workspaceId, worktreeCount: workspace.worktreeIds.length },
+        'Cleaning up child worktrees first'
+      );
+      for (const worktreeId of workspace.worktreeIds) {
+        await this.cleanup(worktreeId);
+      }
+    }
 
     // Clean up credential files first (securely remove tokens)
     try {
@@ -314,18 +436,48 @@ export class WorkspaceService {
       this.log('warn', { workspaceId, error: errorMessage }, 'Failed to clean up credential files');
     }
 
-    // Revoke credentials
-    await this.credentialService.revokeCredential(workspace.credential.id);
+    // Handle worktree removal via git
+    if (workspace.strategy === 'worktree' && workspace.parentWorkspaceId) {
+      const parent = this.workspaces.get(workspace.parentWorkspaceId);
+      if (parent) {
+        try {
+          // Remove worktree using git command from parent
+          await this.execInDir(parent.path, `git worktree remove "${workspace.path}" --force`);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.log('warn', { workspaceId, error: errorMessage }, 'Failed to remove worktree via git');
+        }
 
-    await this.emitEvent({
-      type: 'credential:revoked',
-      workspaceId,
-      credentialId: workspace.credential.id,
-      executionId: workspace.branch.executionId,
-      timestamp: new Date(),
-    });
+        // Remove from parent's worktreeIds
+        if (parent.worktreeIds) {
+          parent.worktreeIds = parent.worktreeIds.filter((id) => id !== workspaceId);
+          this.workspaces.set(parent.id, parent);
+        }
 
-    // Remove workspace directory
+        await this.emitEvent({
+          type: 'worktree:removed',
+          workspaceId,
+          executionId: workspace.branch.executionId,
+          timestamp: new Date(),
+          data: { parentWorkspaceId: parent.id },
+        });
+      }
+    }
+
+    // Revoke credentials (only for clone workspaces - worktrees share parent's credential)
+    if (workspace.strategy === 'clone') {
+      await this.credentialService.revokeCredential(workspace.credential.id);
+
+      await this.emitEvent({
+        type: 'credential:revoked',
+        workspaceId,
+        credentialId: workspace.credential.id,
+        executionId: workspace.branch.executionId,
+        timestamp: new Date(),
+      });
+    }
+
+    // Remove workspace directory (for clones or if worktree removal failed)
     try {
       await fs.rm(workspace.path, { recursive: true, force: true });
     } catch (error) {
@@ -376,6 +528,22 @@ export class WorkspaceService {
   private async createBranch(workspace: Workspace): Promise<void> {
     // Create and checkout the new branch
     await this.execInDir(workspace.path, `git checkout -b ${workspace.branch.name}`);
+  }
+
+  private async addWorktreeFromParent(parent: Workspace, workspace: Workspace): Promise<void> {
+    // Fetch the base branch first to ensure it's up to date
+    try {
+      await this.execInDir(parent.path, `git fetch origin ${workspace.branch.baseBranch}`);
+    } catch {
+      // May fail if already fetched or in shallow clone, continue anyway
+    }
+
+    // Create the worktree with a new branch based on the base branch
+    // Use -b to create the new branch at the same time
+    await this.execInDir(
+      parent.path,
+      `git worktree add -b ${workspace.branch.name} "${workspace.path}" origin/${workspace.branch.baseBranch}`
+    );
   }
 
   private async configureGit(workspace: Workspace): Promise<void> {

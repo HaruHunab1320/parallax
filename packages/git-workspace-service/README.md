@@ -1,10 +1,11 @@
-# @parallax/git-workspace-service
+# git-workspace-service
 
 Git workspace provisioning and credential management service. Handles cloning repositories, managing branches, credentials, and PR creation.
 
 ## Features
 
 - **Workspace provisioning** - Clone repos, create branches, configure git
+- **Git Worktrees** - Fast parallel workspaces with shared .git directory
 - **Credential management** - Secure credential handling with TTL and revocation
 - **Multiple providers** - Support for GitHub, GitLab, Bitbucket, Azure DevOps
 - **GitHub App support** - First-class GitHub App authentication
@@ -20,9 +21,9 @@ Git workspace provisioning and credential management service. Handles cloning re
 ## Installation
 
 ```bash
-npm install @parallax/git-workspace-service
+npm install git-workspace-service
 # or
-pnpm add @parallax/git-workspace-service
+pnpm add git-workspace-service
 ```
 
 For GitHub App support, also install:
@@ -37,7 +38,7 @@ import {
   WorkspaceService,
   CredentialService,
   GitHubProvider,
-} from '@parallax/git-workspace-service';
+} from 'git-workspace-service';
 
 // Set up credential service with GitHub provider
 const githubProvider = new GitHubProvider({
@@ -144,7 +145,7 @@ import {
   OAuthDeviceFlow,
   FileTokenStore,
   DEFAULT_AGENT_PERMISSIONS,
-} from '@parallax/git-workspace-service';
+} from 'git-workspace-service';
 
 // Set up token store for persistent caching (with encryption)
 const tokenStore = new FileTokenStore({
@@ -198,7 +199,7 @@ When requesting credentials, the service checks sources in this order:
 Control what agents can do with `AgentPermissions`:
 
 ```typescript
-import { DEFAULT_AGENT_PERMISSIONS } from '@parallax/git-workspace-service';
+import { DEFAULT_AGENT_PERMISSIONS } from 'git-workspace-service';
 
 const permissions = {
   repositories: { type: 'selected', repos: ['owner/repo'] },
@@ -212,6 +213,73 @@ const permissions = {
   canAdminister: false,
 };
 ```
+
+## Git Worktrees
+
+For parallel work on the same repository, use worktrees instead of clones. Worktrees share the `.git` directory, making them faster to create and using less disk space.
+
+```
+┌──────────────────────────┬────────────────────────────────────────┐
+│          Clone           │                Worktree                │
+├──────────────────────────┼────────────────────────────────────────┤
+│ Full .git copy each time │ Shared .git directory                  │
+│ Slower for same repo     │ Fast - just checkout                   │
+│ More disk space          │ Minimal disk                           │
+│ Good for different repos │ Perfect for parallel work on SAME repo │
+└──────────────────────────┴────────────────────────────────────────┘
+```
+
+### Creating a Worktree
+
+```typescript
+// First, create a clone workspace (the parent)
+const parent = await workspaceService.provision({
+  repo: 'https://github.com/owner/repo',
+  strategy: 'clone',  // explicit, but this is the default
+  branchStrategy: 'feature_branch',
+  baseBranch: 'main',
+  execution: { id: 'exec-123', patternName: 'review' },
+  task: { id: 'task-1', role: 'architect' },
+});
+
+// Then create worktrees from it for parallel agents
+const reviewerWorkspace = await workspaceService.provision({
+  repo: 'https://github.com/owner/repo',
+  strategy: 'worktree',
+  parentWorkspace: parent.id,  // Required for worktrees
+  branchStrategy: 'feature_branch',
+  baseBranch: 'main',
+  execution: { id: 'exec-123', patternName: 'review' },
+  task: { id: 'task-2', role: 'reviewer' },
+});
+
+// Or use the convenience method
+const testerWorkspace = await workspaceService.addWorktree(parent.id, {
+  branch: 'main',
+  execution: { id: 'exec-123', patternName: 'review' },
+  task: { id: 'task-3', role: 'tester' },
+});
+```
+
+### Managing Worktrees
+
+```typescript
+// List all worktrees for a parent
+const worktrees = workspaceService.listWorktrees(parent.id);
+
+// Remove a specific worktree
+await workspaceService.removeWorktree(reviewerWorkspace.id);
+
+// Cleanup parent also cleans up all its worktrees
+await workspaceService.cleanup(parent.id);
+```
+
+### Worktree Benefits for Multi-Agent Systems
+
+- **Shared credentials**: Worktrees reuse the parent's credential
+- **Faster provisioning**: No network clone, just local checkout
+- **Less disk space**: Single .git directory shared across all worktrees
+- **Isolated branches**: Each worktree can work on a different branch
 
 ## Event System
 
@@ -247,7 +315,7 @@ unsubscribe();
 Automatic branch naming with customizable prefix:
 
 ```typescript
-import { generateBranchName, parseBranchName } from '@parallax/git-workspace-service';
+import { generateBranchName, parseBranchName } from 'git-workspace-service';
 
 // Generate branch name
 const branchName = generateBranchName({
@@ -406,6 +474,8 @@ class FileTokenStore extends TokenStore {
 | `workspace:error` | Workspace provisioning failed |
 | `workspace:finalizing` | Workspace finalization started |
 | `workspace:cleaned_up` | Workspace has been cleaned up |
+| `worktree:added` | Git worktree added to parent |
+| `worktree:removed` | Git worktree removed |
 | `credential:granted` | Credential was granted |
 | `credential:revoked` | Credential was revoked |
 | `pr:created` | Pull request was created |

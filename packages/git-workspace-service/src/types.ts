@@ -224,6 +224,13 @@ export interface CredentialGrant {
 
 export type BranchStrategy = 'feature_branch' | 'fork' | 'direct';
 
+/**
+ * Workspace provisioning strategy
+ * - 'clone': Full clone of the repository (default)
+ * - 'worktree': Git worktree from an existing clone (faster, shared .git)
+ */
+export type WorkspaceStrategy = 'clone' | 'worktree';
+
 export type WorkspaceStatus =
   | 'provisioning'
   | 'ready'
@@ -245,6 +252,18 @@ export interface WorkspaceConfig {
    * Git provider
    */
   provider?: GitProvider;
+
+  /**
+   * Workspace strategy: 'clone' (default) or 'worktree'
+   * Worktrees are faster and use less disk space for parallel work on same repo
+   */
+  strategy?: WorkspaceStrategy;
+
+  /**
+   * Parent workspace ID (required when strategy is 'worktree')
+   * The parent must be a 'clone' workspace for the same repo
+   */
+  parentWorkspace?: string;
 
   /**
    * Branch strategy
@@ -326,6 +345,21 @@ export interface Workspace {
    * Current status
    */
   status: WorkspaceStatus;
+
+  /**
+   * Workspace strategy used ('clone' or 'worktree')
+   */
+  strategy: WorkspaceStrategy;
+
+  /**
+   * Parent workspace ID (for worktrees)
+   */
+  parentWorkspaceId?: string;
+
+  /**
+   * Child worktree IDs (for clone workspaces that have worktrees)
+   */
+  worktreeIds?: string[];
 }
 
 /**
@@ -946,6 +980,8 @@ export type WorkspaceEventType =
   | 'workspace:error'
   | 'workspace:finalizing'
   | 'workspace:cleaned_up'
+  | 'worktree:added'
+  | 'worktree:removed'
   | 'credential:granted'
   | 'credential:revoked'
   | 'pr:created'

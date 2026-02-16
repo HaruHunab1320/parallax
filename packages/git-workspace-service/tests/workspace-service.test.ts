@@ -498,4 +498,335 @@ describe('WorkspaceService', () => {
       ).rejects.toThrow('Workspace not found');
     });
   });
+
+  describe('worktree support', () => {
+    it('provisions a clone workspace with strategy field', async () => {
+      const config: WorkspaceConfig = {
+        repo: 'https://github.com/owner/repo',
+        strategy: 'clone',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: {
+          id: 'exec-123',
+          patternName: 'test-pattern',
+        },
+        task: {
+          id: 'task-456',
+          role: 'engineer',
+        },
+      };
+
+      const workspace = await service.provision(config);
+
+      expect(workspace.strategy).toBe('clone');
+      expect(workspace.parentWorkspaceId).toBeUndefined();
+    });
+
+    it('defaults to clone strategy when not specified', async () => {
+      const config: WorkspaceConfig = {
+        repo: 'https://github.com/owner/repo',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: {
+          id: 'exec-123',
+          patternName: 'test-pattern',
+        },
+        task: {
+          id: 'task-456',
+          role: 'engineer',
+        },
+      };
+
+      const workspace = await service.provision(config);
+
+      expect(workspace.strategy).toBe('clone');
+    });
+
+    it('provisions a worktree from a parent clone', async () => {
+      // First create a clone workspace
+      const parentConfig: WorkspaceConfig = {
+        repo: 'https://github.com/owner/repo',
+        strategy: 'clone',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: {
+          id: 'exec-123',
+          patternName: 'test-pattern',
+        },
+        task: {
+          id: 'task-parent',
+          role: 'engineer',
+        },
+      };
+
+      const parentWorkspace = await service.provision(parentConfig);
+
+      // Now create a worktree
+      const worktreeConfig: WorkspaceConfig = {
+        repo: 'https://github.com/owner/repo',
+        strategy: 'worktree',
+        parentWorkspace: parentWorkspace.id,
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: {
+          id: 'exec-123',
+          patternName: 'test-pattern',
+        },
+        task: {
+          id: 'task-worktree',
+          role: 'reviewer',
+        },
+      };
+
+      const worktree = await service.provision(worktreeConfig);
+
+      expect(worktree.strategy).toBe('worktree');
+      expect(worktree.parentWorkspaceId).toBe(parentWorkspace.id);
+
+      // Parent should track the worktree
+      const updatedParent = service.get(parentWorkspace.id);
+      expect(updatedParent?.worktreeIds).toContain(worktree.id);
+    });
+
+    it('throws when worktree is missing parentWorkspace', async () => {
+      const config: WorkspaceConfig = {
+        repo: 'https://github.com/owner/repo',
+        strategy: 'worktree',
+        // Missing parentWorkspace
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: {
+          id: 'exec-123',
+          patternName: 'test-pattern',
+        },
+        task: {
+          id: 'task-456',
+          role: 'engineer',
+        },
+      };
+
+      await expect(service.provision(config)).rejects.toThrow(
+        'parentWorkspace is required when strategy is "worktree"'
+      );
+    });
+
+    it('throws when parent workspace does not exist', async () => {
+      const config: WorkspaceConfig = {
+        repo: 'https://github.com/owner/repo',
+        strategy: 'worktree',
+        parentWorkspace: 'non-existent-parent',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: {
+          id: 'exec-123',
+          patternName: 'test-pattern',
+        },
+        task: {
+          id: 'task-456',
+          role: 'engineer',
+        },
+      };
+
+      await expect(service.provision(config)).rejects.toThrow('Parent workspace not found');
+    });
+
+    it('lists worktrees for a parent workspace', async () => {
+      // Create parent
+      const parent = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'clone',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-1', role: 'engineer' },
+      });
+
+      // Create worktrees
+      const wt1 = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'worktree',
+        parentWorkspace: parent.id,
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-2', role: 'reviewer' },
+      });
+
+      const wt2 = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'worktree',
+        parentWorkspace: parent.id,
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-3', role: 'tester' },
+      });
+
+      const worktrees = service.listWorktrees(parent.id);
+
+      expect(worktrees).toHaveLength(2);
+      expect(worktrees.map((w) => w.id)).toContain(wt1.id);
+      expect(worktrees.map((w) => w.id)).toContain(wt2.id);
+    });
+
+    it('returns empty array for listWorktrees with no worktrees', async () => {
+      const parent = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'clone',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-1', role: 'engineer' },
+      });
+
+      const worktrees = service.listWorktrees(parent.id);
+
+      expect(worktrees).toHaveLength(0);
+    });
+
+    it('emits worktree:added event when creating worktree', async () => {
+      const events: WorkspaceEvent[] = [];
+      service.onEvent((event) => events.push(event));
+
+      const parent = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'clone',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-1', role: 'engineer' },
+      });
+
+      await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'worktree',
+        parentWorkspace: parent.id,
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-2', role: 'reviewer' },
+      });
+
+      expect(events.some((e) => e.type === 'worktree:added')).toBe(true);
+    });
+
+    it('worktree shares credential with parent', async () => {
+      const parent = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'clone',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-1', role: 'engineer' },
+      });
+
+      const worktree = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'worktree',
+        parentWorkspace: parent.id,
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-2', role: 'reviewer' },
+      });
+
+      // Worktree should share the same credential as parent
+      expect(worktree.credential.id).toBe(parent.credential.id);
+    });
+
+    it('addWorktree convenience method works', async () => {
+      const parent = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'clone',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-1', role: 'engineer' },
+      });
+
+      const worktree = await service.addWorktree(parent.id, {
+        branch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-2', role: 'reviewer' },
+      });
+
+      expect(worktree.strategy).toBe('worktree');
+      expect(worktree.parentWorkspaceId).toBe(parent.id);
+    });
+
+    it('removeWorktree removes a worktree', async () => {
+      const events: WorkspaceEvent[] = [];
+      service.onEvent((event) => events.push(event));
+
+      const parent = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'clone',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-1', role: 'engineer' },
+      });
+
+      const worktree = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'worktree',
+        parentWorkspace: parent.id,
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-2', role: 'reviewer' },
+      });
+
+      await service.removeWorktree(worktree.id);
+
+      expect(service.get(worktree.id)?.status).toBe('cleaned_up');
+      expect(events.some((e) => e.type === 'worktree:removed')).toBe(true);
+
+      // Parent should no longer track the worktree
+      const updatedParent = service.get(parent.id);
+      expect(updatedParent?.worktreeIds).not.toContain(worktree.id);
+    });
+
+    it('removeWorktree throws for non-worktree workspace', async () => {
+      const clone = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'clone',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-1', role: 'engineer' },
+      });
+
+      await expect(service.removeWorktree(clone.id)).rejects.toThrow(
+        'Workspace is not a worktree'
+      );
+    });
+
+    it('cleanup of parent also cleans up worktrees', async () => {
+      const parent = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'clone',
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-1', role: 'engineer' },
+      });
+
+      const worktree = await service.provision({
+        repo: 'https://github.com/owner/repo',
+        strategy: 'worktree',
+        parentWorkspace: parent.id,
+        branchStrategy: 'feature_branch',
+        baseBranch: 'main',
+        execution: { id: 'exec-123', patternName: 'test' },
+        task: { id: 'task-2', role: 'reviewer' },
+      });
+
+      // Cleanup parent should also cleanup worktree
+      await service.cleanup(parent.id);
+
+      expect(service.get(parent.id)?.status).toBe('cleaned_up');
+      expect(service.get(worktree.id)?.status).toBe('cleaned_up');
+    });
+  });
 });

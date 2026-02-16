@@ -1,6 +1,6 @@
 {
-  "name": "@parallax/git-workspace-service",
-  "version": "0.1.0",
+  "name": "git-workspace-service",
+  "version": "0.2.0",
   "description": "Git workspace provisioning and credential management service with OAuth device flow authentication",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -26,14 +26,12 @@
   "bugs": {
     "url": "https://github.com/HaruHunab1320/parallax/issues"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "tsx demo/integration-test.ts",
+    "test:worktree": "tsx demo/worktree-integration-test.ts",
     "demo": "tsx demo/demo.ts",
     "demo:workflow": "tsx demo/full-workflow.ts",
     "demo:oauth": "tsx demo/oauth-demo.ts",

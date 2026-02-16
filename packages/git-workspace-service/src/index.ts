@@ -69,6 +69,9 @@ export type {
   BranchInfo,
   BranchStrategy,
 
+  // Workspace strategy
+  WorkspaceStrategy,
+
   // Credentials
   UserProvidedCredentials,
   CredentialContext,
