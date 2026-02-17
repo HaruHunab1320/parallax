@@ -1,0 +1,62 @@
+{
+  "name": "coding-agent-adapters",
+  "version": "0.1.0",
+  "description": "CLI adapters for AI coding agents - Claude Code, Gemini CLI, OpenAI Codex, and Aider",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HaruHunab1320/parallax",
+    "directory": "packages/coding-agent-adapters"
+  },
+  "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/coding-agent-adapters#readme",
+  "bugs": {
+    "url": "https://github.com/HaruHunab1320/parallax/issues"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "cli",
+    "adapters",
+    "claude",
+    "gemini",
+    "codex",
+    "aider",
+    "ai-agents",
+    "coding-agents",
+    "pty-manager"
+  ],
+  "author": "Parallax",
+  "license": "MIT",
+  "peerDependencies": {
+    "pty-manager": ">=1.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "pty-manager": "^1.2.1",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
