@@ -21,7 +21,18 @@ vi.mock('child_process', () => ({
     if (typeof opts === 'function') {
       cb = opts;
     }
-    // Simulate successful git commands
+
+    // Simulate authentication failure for unauthenticated clone attempts
+    // (clones that don't have x-access-token in the URL)
+    if (cmd.includes('git clone') && !cmd.includes('x-access-token:')) {
+      if (cb) {
+        const error = new Error('Authentication failed for repository');
+        cb(error, { stdout: '', stderr: 'fatal: Authentication failed' });
+      }
+      return { stdout: '', stderr: 'fatal: Authentication failed' };
+    }
+
+    // Simulate successful git commands for authenticated operations
     if (cb) {
       cb(null, { stdout: '', stderr: '' });
     }

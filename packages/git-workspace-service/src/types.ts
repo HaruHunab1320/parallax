@@ -404,9 +404,11 @@ export interface Workspace {
   branch: BranchInfo;
 
   /**
-   * Credential for this workspace
+   * Credential for this workspace.
+   * Optional for public repositories (read-only operations).
+   * Required for write operations (push, PR creation).
    */
-  credential: GitCredential;
+  credential?: GitCredential;
 
   /**
    * When the workspace was provisioned
