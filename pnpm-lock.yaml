@@ -953,18 +953,21 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.26.0(zod@3.25.76)
+      coding-agent-adapters:
+        specifier: ^0.1.0
+        version: 0.1.0(pty-manager@1.2.1)
       jsonwebtoken:
         specifier: ^9.0.0
         version: 9.0.2
-      node-pty:
-        specifier: ^1.0.0
-        version: 1.1.0
       pino:
         specifier: ^9.5.0
         version: 9.7.0
       pino-pretty:
         specifier: ^13.0.0
         version: 13.0.0
+      pty-manager:
+        specifier: ^1.2.0
+        version: 1.2.1
       uuid:
         specifier: ^11.0.5
         version: 11.1.0
@@ -972,18 +975,6 @@ importers:
         specifier: ^3.25.0
         version: 3.25.76
     devDependencies:
-      '@parallax/auth':
-        specifier: workspace:*
-        version: link:../auth
-      '@parallax/runtime-interface':
-        specifier: workspace:*
-        version: link:../runtime-interface
-      '@parallax/runtime-local':
-        specifier: workspace:*
-        version: link:../runtime-local
-      '@parallax/runtime-mcp':
-        specifier: workspace:*
-        version: link:../runtime-mcp
       '@types/jsonwebtoken':
         specifier: ^9.0.0
         version: 9.0.10
@@ -6981,6 +6972,12 @@ packages:
   cockatiel@3.2.1:
     resolution: {integrity: sha512-gfrHV6ZPkquExvMh9IOkKsBzNDk6sDuZ6DdBGUBkvFnTCqCxzpuq48RySgP0AnaqQkw2zynOFj9yly6T1Q2G5Q==}
     engines: {node: '>=16'}
+
+  coding-agent-adapters@0.1.0:
+    resolution: {integrity: sha512-LHyRybe1slm2fWmK3188uYv1HgNdLiCldzbAUz1wQf9mnidWyRVUmICAnzlfr+yaBrnatIezAWIDwZzmd6T00Q==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      pty-manager: '>=1.2.0'
 
   collapse-white-space@2.1.0:
     resolution: {integrity: sha512-loKTxY1zCOuG4j9f6EPnuyyYkf58RnhhWTvRoZEokgB+WbdXehfjFviyOVYkqzEWz1Q5kRiZdBYS5SwxbQYwzw==}
@@ -20019,6 +20016,10 @@ snapshots:
   co@4.6.0: {}
 
   cockatiel@3.2.1: {}
+
+  coding-agent-adapters@0.1.0(pty-manager@1.2.1):
+    dependencies:
+      pty-manager: 1.2.1
 
   collapse-white-space@2.1.0: {}
 

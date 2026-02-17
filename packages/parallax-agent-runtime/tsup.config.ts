@@ -9,15 +9,8 @@ export default defineConfig([
     splitting: false,
     sourcemap: true,
     clean: true,
-    external: ['node-pty'], // node-pty has native bindings, can't be bundled
-    // Bundle all @parallax/* packages inline for standalone distribution
-    noExternal: [
-      '@parallax/runtime-mcp',
-      '@parallax/runtime-local',
-      '@parallax/runtime-interface',
-      '@parallax/auth',
-      '@parallax/pty-agent-manager',
-    ],
+    // pty-manager has native bindings via node-pty, can't be bundled
+    external: ['pty-manager', 'coding-agent-adapters'],
   },
   // CLI build
   {
@@ -25,15 +18,7 @@ export default defineConfig([
     format: ['cjs'],
     splitting: false,
     sourcemap: true,
-    external: ['node-pty'],
-    // Bundle all @parallax/* packages inline for standalone distribution
-    noExternal: [
-      '@parallax/runtime-mcp',
-      '@parallax/runtime-local',
-      '@parallax/runtime-interface',
-      '@parallax/auth',
-      '@parallax/pty-agent-manager',
-    ],
+    external: ['pty-manager', 'coding-agent-adapters'],
     banner: {
       js: '#!/usr/bin/env node',
     },

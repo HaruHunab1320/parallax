@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Parallax Agent Runtime CLI
  *
@@ -14,7 +15,9 @@
  */
 
 import pino from 'pino';
-import { ParallaxMcpServer, StdioServerTransport } from '@parallax/runtime-mcp';
+import { ParallaxMcpServer, StdioServerTransport } from './mcp-server.js';
+
+const VERSION = '0.2.0';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -45,6 +48,10 @@ Claude Desktop Configuration:
     }
   }
 
+Built on:
+  - pty-manager: PTY session management
+  - coding-agent-adapters: Claude, Gemini, Codex, Aider adapters
+
 For more information, visit: https://github.com/HaruHunab1320/parallax/tree/main/packages/parallax-agent-runtime
 `);
   process.exit(0);
@@ -52,8 +59,7 @@ For more information, visit: https://github.com/HaruHunab1320/parallax/tree/main
 
 // Handle version
 if (args.includes('--version') || args.includes('-v')) {
-  // Read version from package.json at runtime
-  console.log('0.1.1');
+  console.log(VERSION);
   process.exit(0);
 }
 
@@ -76,7 +82,7 @@ const logger = pino({
 });
 
 async function main() {
-  logger.info({ version: '0.1.1', maxAgents }, 'Starting Parallax Agent Runtime');
+  logger.info({ version: VERSION, maxAgents }, 'Starting Parallax Agent Runtime');
 
   // Create server
   const server = new ParallaxMcpServer({

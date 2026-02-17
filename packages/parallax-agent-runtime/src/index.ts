@@ -2,20 +2,25 @@
  * parallax-agent-runtime
  *
  * MCP server for AI agent orchestration. Enables AI assistants like Claude
- * to spawn, manage, and coordinate multiple AI agents through the Model
- * Context Protocol.
+ * to spawn, manage, and coordinate multiple AI coding agents through the
+ * Model Context Protocol.
+ *
+ * Built on:
+ * - pty-manager: PTY session management
+ * - coding-agent-adapters: Claude, Gemini, Codex, Aider adapters
  *
  * @example
  * ```typescript
- * import { ParallaxAgentRuntime } from 'parallax-agent-runtime';
+ * import { ParallaxMcpServer, StdioServerTransport } from 'parallax-agent-runtime';
  * import pino from 'pino';
  *
- * const runtime = new ParallaxAgentRuntime({
+ * const server = new ParallaxMcpServer({
  *   logger: pino(),
  *   maxAgents: 10,
  * });
  *
- * await runtime.start();
+ * const transport = new StdioServerTransport();
+ * await server.connect(transport);
  * ```
  *
  * @example Claude Desktop Configuration
@@ -31,19 +36,42 @@
  * ```
  */
 
-// Re-export everything from runtime-mcp
+// Main server
 export {
   ParallaxMcpServer,
-  type ParallaxMcpServerOptions,
   StdioServerTransport,
-  SSEServerTransport,
+  type ParallaxMcpServerOptions,
+} from './mcp-server.js';
+
+// Agent manager (for direct usage without MCP)
+export {
+  AgentManager,
+  type AgentManagerOptions,
+  type AgentManagerEvents,
+} from './agent-manager.js';
+
+// Auth
+export {
   McpAuthHandler,
+  McpAuthError,
   type McpAuthConfig,
   type ApiKeyConfig,
   type AuthContext,
   type AuthErrorCode,
-  McpAuthError,
-  // Tool schemas
+} from './auth/index.js';
+
+// Tools
+export {
+  TOOLS,
+  TOOL_PERMISSIONS,
+  executeSpawn,
+  executeStop,
+  executeList,
+  executeGet,
+  executeSend,
+  executeLogs,
+  executeMetrics,
+  executeHealth,
   SpawnInputSchema,
   StopInputSchema,
   ListInputSchema,
@@ -60,34 +88,43 @@ export {
   type LogsInput,
   type MetricsInput,
   type HealthInput,
-  // Tool executors
-  executeSpawn,
-  executeStop,
-  executeList,
-  executeGet,
-  executeSend,
-  executeLogs,
-  executeMetrics,
-  executeHealth,
-  // Prompts
+} from './tools/index.js';
+
+// Resources
+export {
+  listAgentResources,
+  readAgentResource,
+  listLogsResources,
+  readLogsResource,
+  type Resource,
+  type ResourceContents,
+} from './resources/index.js';
+
+// Prompts
+export {
+  PROMPTS,
   generateSpawnReviewTeamPrompt,
   generateSpawnDevAgentPrompt,
   type SpawnReviewTeamArgs,
   type SpawnDevAgentArgs,
-} from '@parallax/runtime-mcp';
+  type PromptDefinition,
+  type PromptResult,
+} from './prompts/index.js';
 
-// Re-export runtime types
+// Types
 export type {
+  AgentType,
+  AgentStatus,
   AgentConfig,
   AgentHandle,
   AgentMessage,
+  AgentFilter,
   AgentMetrics,
-  AgentStatus,
-  AgentType,
-} from '@parallax/runtime-interface';
-
-// Re-export LocalRuntime for advanced usage
-export { LocalRuntime } from '@parallax/runtime-local';
+  AgentCredentials,
+  BlockingPromptInfo,
+  RuntimeEvent,
+  MessageType,
+} from './types.js';
 
 // Convenient alias
-export { ParallaxMcpServer as ParallaxAgentRuntime } from '@parallax/runtime-mcp';
+export { ParallaxMcpServer as ParallaxAgentRuntime } from './mcp-server.js';
