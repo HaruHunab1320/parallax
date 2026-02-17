@@ -135,7 +135,7 @@ export class WorkspaceService {
     const workspacePath = path.join(this.baseDir, workspaceId);
 
     // Get credentials (or reuse parent's for worktree)
-    // For public repos, we try unauthenticated clone first
+    // For public repos, credentials are optional - we'll try unauthenticated clone
     let credential;
 
     if (strategy === 'worktree' && config.parentWorkspace) {
@@ -144,21 +144,20 @@ export class WorkspaceService {
     } else {
       await fs.mkdir(workspacePath, { recursive: true });
 
-      // If user provided credentials, use them
-      if (config.userCredentials) {
-        credential = await this.credentialService.getCredentials({
-          repo: config.repo,
-          access: 'write',
-          context: {
-            executionId: config.execution.id,
-            taskId: config.task.id,
-            userId: config.user?.id,
-            reason: `Workspace for ${config.task.role} in ${config.execution.patternName}`,
-          },
-          userProvided: config.userCredentials,
-        });
-      }
-      // Otherwise, we'll try unauthenticated first (handled in cloneRepo)
+      // Try to get credentials (optional for public repos)
+      credential = await this.credentialService.getCredentials({
+        repo: config.repo,
+        access: 'write',
+        context: {
+          executionId: config.execution.id,
+          taskId: config.task.id,
+          userId: config.user?.id,
+          reason: `Workspace for ${config.task.role} in ${config.execution.patternName}`,
+        },
+        userProvided: config.userCredentials,
+        // If no userCredentials provided, allow returning null for public repos
+        optional: !config.userCredentials,
+      });
 
       if (credential) {
         await this.emitEvent({
@@ -182,13 +181,13 @@ export class WorkspaceService {
       { prefix: this.branchPrefix }
     );
 
-    // Create workspace object (credential may be set later for public repos)
+    // Create workspace object (credential is optional for public repos)
     const workspace: Workspace = {
       id: workspaceId,
       path: workspacePath,
       repo: config.repo,
       branch: branchInfo,
-      credential: credential!,  // Will be set before any write operations
+      credential: credential ?? undefined,  // Optional for public repos
       provisionedAt: new Date(),
       status: 'provisioning',
       strategy,
@@ -208,45 +207,21 @@ export class WorkspaceService {
         // Clone repository
         this.updateProgress(workspace, 'cloning', 'Cloning repository');
 
-        // Try unauthenticated clone first for public repos
+        // If no credentials, try unauthenticated clone (for public repos)
         if (!credential) {
           const cloneResult = await this.tryUnauthenticatedClone(workspace);
           if (!cloneResult.success) {
-            // Unauthenticated clone failed, need credentials
-            this.log(
-              'info',
-              { workspaceId, error: cloneResult.error },
-              'Unauthenticated clone failed, requesting credentials'
+            // Unauthenticated clone failed - this is a private repo or auth is required
+            // Throw a clear error since we already tried to get credentials above
+            throw new Error(
+              `Repository ${config.repo} requires authentication but no credentials are available. ` +
+                'Please provide credentials or configure OAuth.'
             );
-
-            credential = await this.credentialService.getCredentials({
-              repo: config.repo,
-              access: 'write',
-              context: {
-                executionId: config.execution.id,
-                taskId: config.task.id,
-                userId: config.user?.id,
-                reason: `Workspace for ${config.task.role} in ${config.execution.patternName}`,
-              },
-            });
-
-            workspace.credential = credential;
-            this.workspaces.set(workspaceId, workspace);
-
-            await this.emitEvent({
-              type: 'credential:granted',
-              workspaceId,
-              credentialId: credential.id,
-              executionId: config.execution.id,
-              timestamp: new Date(),
-            });
-
-            // Now clone with credentials
-            await this.cloneRepo(workspace, credential.token);
           }
-          // else: unauthenticated clone succeeded, credential stays undefined
+          // Unauthenticated clone succeeded - this is a public repo
+          this.log('info', { workspaceId }, 'Cloned public repository without authentication');
         } else {
-          // We have credentials (user-provided or worktree parent)
+          // We have credentials - clone with them
           await this.cloneRepo(workspace, credential.token);
         }
 

@@ -143,9 +143,11 @@ export class CredentialService {
   }
 
   /**
-   * Request credentials for a repository
+   * Request credentials for a repository.
+   * If request.optional is true, returns null when no credentials available.
+   * Otherwise throws an error.
    */
-  async getCredentials(request: GitCredentialRequest): Promise<GitCredential> {
+  async getCredentials(request: GitCredentialRequest): Promise<GitCredential | null> {
     const provider = this.detectProvider(request.repo);
 
     this.log(
@@ -205,6 +207,16 @@ export class CredentialService {
     }
 
     if (!credential) {
+      // If optional flag is set, return null instead of throwing
+      if (request.optional) {
+        this.log(
+          'info',
+          { repo: request.repo },
+          'No credentials available (optional request, returning null)'
+        );
+        return null;
+      }
+
       throw new Error(
         `No credentials available for repository: ${request.repo}. ` +
           (this.oauthConfig

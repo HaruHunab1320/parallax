@@ -156,6 +156,12 @@ export interface GitCredentialRequest {
    * If provided, these are used instead of managed credentials
    */
   userProvided?: UserProvidedCredentials;
+
+  /**
+   * If true, return null instead of throwing when no credentials available.
+   * Used for public repositories where authentication is optional.
+   */
+  optional?: boolean;
 }
 
 /**
