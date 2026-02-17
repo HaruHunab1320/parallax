@@ -136,13 +136,6 @@ import pino from 'pino';
 const runtime = new ParallaxAgentRuntime({
   logger: pino(),
   maxAgents: 10,
-  // Optional authentication
-  auth: {
-    enabled: true,
-    apiKeys: new Map([
-      ['plx_your_key', { name: 'my-app', permissions: ['*'] }]
-    ]),
-  },
 });
 
 const transport = new StdioServerTransport();
@@ -155,24 +148,32 @@ For remote deployments, enable authentication:
 
 ```typescript
 const runtime = new ParallaxAgentRuntime({
-  logger,
+  logger: pino(),
   auth: {
-    enabled: true,
-    // JWT authentication
-    jwt: {
-      secret: process.env.JWT_SECRET,
-      algorithm: 'HS256',
-    },
-    // Or API key authentication
-    apiKeys: new Map([
-      ['plx_your_api_key', {
+    // API key authentication
+    apiKeys: [
+      {
+        key: 'plx_your_api_key',
         name: 'my-integration',
         permissions: ['agents:*', 'health:check'],
-      }],
-    ]),
+      },
+    ],
+    // Or JWT authentication
+    jwtSecret: process.env.JWT_SECRET,
+    jwtIssuer: 'my-app',
   },
 });
 ```
+
+### Permission Format
+
+Permissions use a colon-separated format with wildcard support:
+
+- `*` - Full access to all operations
+- `agents:*` - All agent operations (spawn, stop, list, get, send)
+- `agents:spawn` - Only spawn agents
+- `logs:read` - Read agent logs
+- `health:check` - Health check only
 
 ## Supported Agent Types
 
