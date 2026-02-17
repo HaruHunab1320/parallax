@@ -32,8 +32,16 @@ import type { SpawnConfig, SessionHandle } from './types';
 
 interface SessionInfo {
   id: string;
-  pid: number | undefined;
+  name: string;
+  type: string;
   status: string;
+  pid: number | undefined;
+  cols: number;
+  rows: number;
+  startedAt: string;
+  lastActivityAt?: string;
+  error?: string;
+  exitCode?: number;
 }
 
 interface Command {
@@ -72,7 +80,15 @@ function ack(cmd: string, id?: string, success = true, error?: string): void {
 
 // Forward manager events
 manager.on('session_started', (handle: SessionHandle) => {
-  emit({ event: 'spawned', id: handle.id, pid: handle.pid });
+  emit({
+    event: 'spawned',
+    id: handle.id,
+    name: handle.name,
+    type: handle.type,
+    pid: handle.pid,
+    cols: 120, // Default cols
+    rows: 40,  // Default rows
+  });
 });
 
 manager.on('session_ready', (handle: SessionHandle) => {
@@ -80,7 +96,12 @@ manager.on('session_ready', (handle: SessionHandle) => {
 });
 
 manager.on('session_stopped', (handle: SessionHandle, reason: string) => {
-  emit({ event: 'exit', id: handle.id, code: handle.exitCode || 0, reason });
+  emit({
+    event: 'exit',
+    id: handle.id,
+    code: handle.exitCode || 0,
+    reason,
+  });
   attachments.delete(handle.id);
 });
 
@@ -185,8 +206,16 @@ function handleList(): void {
   const sessions = manager.list();
   const sessionList: SessionInfo[] = sessions.map((s) => ({
     id: s.id,
-    pid: s.pid,
+    name: s.name,
+    type: s.type,
     status: s.status,
+    pid: s.pid,
+    cols: 120,
+    rows: 40,
+    startedAt: s.startedAt?.toISOString() || new Date().toISOString(),
+    lastActivityAt: s.lastActivityAt?.toISOString(),
+    error: s.error,
+    exitCode: s.exitCode,
   }));
 
   emit({ event: 'list', sessions: sessionList });

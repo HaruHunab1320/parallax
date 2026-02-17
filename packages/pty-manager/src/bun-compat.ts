@@ -13,10 +13,16 @@ import type { SpawnConfig } from './types';
 
 export interface WorkerSessionHandle {
   id: string;
-  pid: number | undefined;
+  name: string;
+  type: string;
   status: 'starting' | 'ready' | 'stopped' | 'error';
+  pid: number | undefined;
   cols: number;
   rows: number;
+  startedAt?: Date;
+  lastActivityAt?: Date;
+  error?: string;
+  exitCode?: number;
 }
 
 export interface BunPTYManagerOptions {
@@ -140,27 +146,37 @@ export class BunCompatiblePTYManager extends EventEmitter {
         break;
 
       case 'spawned': {
+        // Get config from event (worker sends it back)
         const session: WorkerSessionHandle = {
           id: id!,
-          pid: event.pid as number,
+          name: (event.name as string) || id!,
+          type: (event.type as string) || 'shell',
           status: 'starting',
-          cols: 80,
-          rows: 24,
+          pid: event.pid as number,
+          cols: (event.cols as number) || 80,
+          rows: (event.rows as number) || 24,
+          startedAt: new Date(),
         };
         this.sessions.set(id!, session);
         this.emit('session_started', session);
         break;
       }
 
-      case 'output':
+      case 'output': {
+        const session = this.sessions.get(id!);
+        if (session) {
+          session.lastActivityAt = new Date();
+        }
         this.emit('data', { id, data: event.data });
         this.emit(`data:${id}`, event.data);
         break;
+      }
 
       case 'ready': {
         const session = this.sessions.get(id!);
         if (session) {
           session.status = 'ready';
+          session.lastActivityAt = new Date();
           this.emit('session_ready', session);
         }
         break;
@@ -170,6 +186,8 @@ export class BunCompatiblePTYManager extends EventEmitter {
         const session = this.sessions.get(id!);
         if (session) {
           session.status = 'stopped';
+          session.exitCode = event.code as number;
+          session.lastActivityAt = new Date();
           this.emit('session_stopped', session, event.code, event.signal);
           this.sessions.delete(id!);
         }
@@ -181,6 +199,8 @@ export class BunCompatiblePTYManager extends EventEmitter {
           const session = this.sessions.get(id);
           if (session) {
             session.status = 'error';
+            session.error = event.message as string;
+            session.lastActivityAt = new Date();
           }
           this.emit('session_error', { id, error: event.message });
         } else {
@@ -188,9 +208,16 @@ export class BunCompatiblePTYManager extends EventEmitter {
         }
         break;
 
-      case 'list':
-        this.resolvePending('list', event.sessions);
+      case 'list': {
+        // Convert date strings back to Date objects
+        const sessions = (event.sessions as Record<string, unknown>[]).map((s) => ({
+          ...s,
+          startedAt: s.startedAt ? new Date(s.startedAt as string) : undefined,
+          lastActivityAt: s.lastActivityAt ? new Date(s.lastActivityAt as string) : undefined,
+        })) as WorkerSessionHandle[];
+        this.resolvePending('list', sessions);
         break;
+      }
 
       case 'ack': {
         const cmd = event.cmd as string;
