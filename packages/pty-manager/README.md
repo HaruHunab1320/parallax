@@ -11,6 +11,7 @@ PTY session manager with lifecycle management, pluggable adapters, and blocking 
 - **Terminal attachment** - Attach to sessions for raw I/O streaming
 - **Special key support** - Send Ctrl, Alt, Shift, and function key combinations via `sendKeys()`
 - **Bracketed paste** - Proper paste handling with bracketed paste mode support
+- **Bun compatible** - Worker-based adapter for non-Node runtimes like Bun
 - **Event-driven** - Rich event system for session lifecycle
 - **TypeScript-first** - Full type definitions included
 
@@ -309,6 +310,70 @@ console.log(SPECIAL_KEYS['ctrl+c']);  // '\x03'
 console.log(SPECIAL_KEYS['up']);      // '\x1b[A'
 console.log(Object.keys(SPECIAL_KEYS).length);  // 130+
 ```
+
+## Bun Compatibility
+
+Since Bun doesn't fully support Node.js native addons like `node-pty`, this package includes a worker-based solution that spawns a Node.js child process to handle PTY operations.
+
+### BunCompatiblePTYManager
+
+```typescript
+import { BunCompatiblePTYManager, isBun } from 'pty-manager';
+
+// Create manager (works from Bun or Node.js)
+const manager = new BunCompatiblePTYManager({
+  nodePath: 'node',  // Path to Node.js executable
+});
+
+// Wait for worker to be ready
+await manager.waitForReady();
+
+// Spawn a session
+const session = await manager.spawn({
+  id: 'my-session',
+  name: 'shell',
+  type: 'shell',
+});
+
+// Listen for output
+manager.onSessionData('my-session', (data) => {
+  console.log('Output:', data);
+});
+
+// Send commands
+await manager.send('my-session', 'echo "Hello from Bun!"\n');
+
+// Send special keys
+await manager.sendKeys('my-session', 'ctrl+c');
+
+// Paste with bracketed paste mode
+await manager.paste('my-session', 'some text');
+
+// Shutdown
+await manager.shutdown();
+```
+
+### How it works
+
+1. `BunCompatiblePTYManager` spawns a Node.js child process running `pty-worker.js`
+2. Commands are sent as JSON over stdin
+3. Events (output, ready, exit) come back as JSON over stdout
+4. The worker uses the full `PTYManager` internally
+
+### Worker Protocol
+
+Commands (stdin → worker):
+- `{ "cmd": "spawn", "id": "...", "config": {...} }`
+- `{ "cmd": "send", "id": "...", "data": "..." }`
+- `{ "cmd": "sendKeys", "id": "...", "keys": ["ctrl+c"] }`
+- `{ "cmd": "kill", "id": "..." }`
+- `{ "cmd": "list" }`
+- `{ "cmd": "shutdown" }`
+
+Events (worker → stdout):
+- `{ "event": "output", "id": "...", "data": "..." }`
+- `{ "event": "ready", "id": "..." }`
+- `{ "event": "exit", "id": "...", "code": 0 }`
 
 ## Built-in Adapters
 

@@ -51,3 +51,15 @@ export type {
 // Event types
 export type { PTYManagerEvents } from './pty-manager';
 export type { PTYSessionEvents } from './pty-session';
+
+// Bun compatibility layer
+export {
+  BunCompatiblePTYManager,
+  createPTYManager,
+  isBun,
+} from './bun-compat';
+
+export type {
+  WorkerSessionHandle,
+  BunPTYManagerOptions,
+} from './bun-compat';

@@ -1,15 +1,21 @@
 {
   "name": "pty-manager",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "PTY session manager with lifecycle management, pluggable adapters, and blocking prompt detection",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "bin": {
+    "pty-worker": "./dist/pty-worker.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./worker": {
+      "require": "./dist/pty-worker.js"
     }
   },
   "files": [
@@ -41,6 +47,7 @@
     "process-management",
     "docker",
     "ssh",
+    "bun",
     "typescript"
   ],
   "author": "Jakob Grant",
