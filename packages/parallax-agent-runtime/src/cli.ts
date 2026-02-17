@@ -17,7 +17,7 @@
 import pino from 'pino';
 import { ParallaxMcpServer, StdioServerTransport } from './mcp-server.js';
 
-const VERSION = '0.2.0';
+const VERSION = '0.2.1';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
