@@ -95,6 +95,17 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   abstract getRecommendedModels(credentials?: AgentCredentials): ModelRecommendations;
 
   /**
+   * Override stripAnsi to handle TUI cursor-forward codes.
+   * TUI CLIs (Claude Code, Gemini CLI) use \x1b[<n>C (cursor forward)
+   * instead of literal spaces for word positioning. Replace with spaces
+   * before stripping other ANSI codes so regex patterns can match.
+   */
+  protected stripAnsi(str: string): string {
+    const withSpaces = str.replace(/\x1b\[\d*C/g, ' ');
+    return super.stripAnsi(withSpaces);
+  }
+
+  /**
    * Override detectExit to include installation instructions
    */
   detectExit(output: string): { exited: boolean; code?: number; error?: string } {

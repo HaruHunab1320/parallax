@@ -64,6 +64,13 @@ export class CodexAdapter extends BaseCodingAdapter {
       description: 'Skip Codex CLI update prompt',
       safe: true,
     },
+    {
+      pattern: /trust the contents of this directory/i,
+      type: 'permission',
+      response: 'y',
+      description: 'Trust directory contents to allow Codex to operate',
+      safe: true,
+    },
   ];
 
   getRecommendedModels(_credentials?: AgentCredentials): ModelRecommendations {
