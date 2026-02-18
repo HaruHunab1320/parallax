@@ -46,6 +46,20 @@ export { GeminiAdapter } from './gemini-adapter';
 export { CodexAdapter } from './codex-adapter';
 export { AiderAdapter } from './aider-adapter';
 
+// Pattern loading (dynamic patterns from adapter-monitor, with baseline fallback)
+export {
+  loadPatterns,
+  loadPatternsSync,
+  preloadAllPatterns,
+  clearPatternCache,
+  getBaselinePatterns,
+  hasDynamicPatterns,
+} from './pattern-loader';
+export type { AdapterPatterns } from './pattern-loader';
+
+// Types
+export type { AdapterType } from './types';
+
 // Convenience function to register all adapters
 import { ClaudeAdapter } from './claude-adapter';
 import { GeminiAdapter } from './gemini-adapter';
@@ -67,14 +81,14 @@ export function createAllAdapters() {
 /**
  * Adapter type to class mapping
  */
-export const ADAPTER_TYPES = {
+import type { AdapterType } from './types';
+
+export const ADAPTER_TYPES: Record<AdapterType, typeof ClaudeAdapter | typeof GeminiAdapter | typeof CodexAdapter | typeof AiderAdapter> = {
   claude: ClaudeAdapter,
   gemini: GeminiAdapter,
   codex: CodexAdapter,
   aider: AiderAdapter,
-} as const;
-
-export type AdapterType = keyof typeof ADAPTER_TYPES;
+};
 
 /**
  * Create a specific adapter by type

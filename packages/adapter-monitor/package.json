@@ -1,0 +1,48 @@
+{
+  "name": "@parallax/adapter-monitor",
+  "version": "0.1.0",
+  "description": "Automated CLI adapter monitoring - captures startup snapshots and detects pattern changes",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "adapter-monitor": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "capture": "tsx src/cli.ts capture",
+    "analyze": "tsx src/cli.ts analyze",
+    "check-versions": "tsx src/cli.ts check-versions"
+  },
+  "keywords": [
+    "cli-monitoring",
+    "adapter-patterns",
+    "startup-snapshots",
+    "claude",
+    "gemini",
+    "codex",
+    "aider"
+  ],
+  "author": "Parallax",
+  "license": "MIT",
+  "dependencies": {
+    "dockerode": "^4.0.0",
+    "semver": "^7.6.0",
+    "tar-stream": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^3.3.0",
+    "@types/node": "^20.0.0",
+    "@types/semver": "^7.5.0",
+    "@types/tar-stream": "^3.1.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
