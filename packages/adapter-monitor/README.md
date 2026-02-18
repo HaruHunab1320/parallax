@@ -1,4 +1,4 @@
-# @parallax/adapter-monitor
+# agent-adapter-monitor
 
 Automated CLI adapter monitoring - captures startup snapshots and detects pattern changes across versions.
 
@@ -150,7 +150,7 @@ npx tsx src/cli.ts diff --adapter gemini --old 0.2.0 --new 0.3.0
 The version history can be used by `coding-agent-adapters` to load the correct patterns for a specific CLI version:
 
 ```typescript
-import { getPatternsForVersion } from '@parallax/adapter-monitor';
+import { getPatternsForVersion } from 'agent-adapter-monitor';
 
 // Get patterns for a specific version
 const patterns = await getPatternsForVersion('gemini', '0.3.0');

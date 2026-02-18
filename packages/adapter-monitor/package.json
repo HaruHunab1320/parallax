@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/adapter-monitor",
+  "name": "agent-adapter-monitor",
   "version": "0.1.0",
   "description": "Automated CLI adapter monitoring - captures startup snapshots and detects pattern changes",
   "type": "module",

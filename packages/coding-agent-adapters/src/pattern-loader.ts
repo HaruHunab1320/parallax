@@ -134,7 +134,7 @@ async function tryLoadFromMonitor(
   try {
     // Dynamic import - will fail gracefully if package not installed
     // Uses string variable to avoid TypeScript trying to resolve the module
-    const moduleName = '@parallax/adapter-monitor';
+    const moduleName = 'agent-adapter-monitor';
     const monitor = await import(/* webpackIgnore: true */ moduleName) as {
       getPatternsForVersion: (
         adapter: string,
