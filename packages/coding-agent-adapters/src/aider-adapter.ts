@@ -18,6 +18,11 @@ export class AiderAdapter extends BaseCodingAdapter {
   readonly adapterType = 'aider';
   readonly displayName = 'Aider';
 
+  /**
+   * Aider uses plain text [y/n] prompts, NOT TUI arrow-key menus.
+   */
+  override readonly usesTuiMenus: boolean = false;
+
   readonly installation: InstallationInfo = {
     command: 'pip install aider-chat',
     alternatives: [
@@ -75,8 +80,8 @@ export class AiderAdapter extends BaseCodingAdapter {
     }
     if (credentials?.googleKey) {
       return {
-        powerful: 'gemini/gemini-2.5-pro',
-        fast: 'gemini/gemini-2.5-flash',
+        powerful: 'gemini/gemini-3-pro',
+        fast: 'gemini/gemini-3-flash',
       };
     }
     // Default to Anthropic
@@ -116,7 +121,7 @@ export class AiderAdapter extends BaseCodingAdapter {
     } else if (provider === 'openai') {
       args.push('--model', '4o');
     } else if (provider === 'google') {
-      args.push('--model', 'gemini/gemini-2.5-pro');
+      args.push('--model', 'gemini/gemini-3-pro');
     }
     // No provider preference → don't force a model, aider picks based on available keys
 

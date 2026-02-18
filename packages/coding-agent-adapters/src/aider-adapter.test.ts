@@ -161,7 +161,7 @@ describe('AiderAdapter', () => {
       const args = adapter.getArgs(config);
 
       const modelIndex = args.indexOf('--model');
-      expect(args[modelIndex + 1]).toBe('gemini/gemini-2.5-pro');
+      expect(args[modelIndex + 1]).toBe('gemini/gemini-3-pro');
     });
 
     it('should not override explicit model with provider alias', () => {

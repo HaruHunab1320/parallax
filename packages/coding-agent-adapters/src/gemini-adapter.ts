@@ -26,8 +26,8 @@ export class GeminiAdapter extends BaseCodingAdapter {
 
   getRecommendedModels(_credentials?: AgentCredentials): ModelRecommendations {
     return {
-      powerful: 'gemini-2.5-pro',
-      fast: 'gemini-2.5-flash',
+      powerful: 'gemini-3-pro',
+      fast: 'gemini-3-flash',
     };
   }
 
