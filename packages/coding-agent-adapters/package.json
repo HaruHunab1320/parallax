@@ -47,7 +47,13 @@
   "author": "Parallax",
   "license": "MIT",
   "peerDependencies": {
-    "pty-manager": ">=1.2.0"
+    "pty-manager": ">=1.2.0",
+    "agent-adapter-monitor": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "agent-adapter-monitor": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
