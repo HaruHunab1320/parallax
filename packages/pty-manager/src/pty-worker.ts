@@ -21,6 +21,10 @@
  *   { "event": "ready", "id": string }
  *   { "event": "exit", "id": string, "code": number, "signal"?: string }
  *   { "event": "error", "id": string, "message": string }
+ *   { "event": "blocking_prompt", "id": string, "promptInfo": BlockingPromptInfo, "autoResponded": boolean }
+ *   { "event": "login_required", "id": string, "instructions"?: string, "url"?: string }
+ *   { "event": "message", "message": SessionMessage }
+ *   { "event": "question", "id": string, "question": string }
  *   { "event": "list", "sessions": SessionInfo[] }
  *   { "event": "ack", "cmd": string, "id"?: string, "success": boolean, "error"?: string }
  */
@@ -28,7 +32,7 @@
 import * as readline from 'readline';
 import { PTYManager } from './pty-manager';
 import { ShellAdapter } from './adapters';
-import type { SpawnConfig, SessionHandle } from './types';
+import type { SpawnConfig, SessionHandle, BlockingPromptInfo, SessionMessage } from './types';
 
 interface SessionInfo {
   id: string;
@@ -107,6 +111,42 @@ manager.on('session_stopped', (handle: SessionHandle, reason: string) => {
 
 manager.on('session_error', (handle: SessionHandle, error: string) => {
   emit({ event: 'error', id: handle.id, message: error });
+});
+
+manager.on('blocking_prompt', (handle: SessionHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => {
+  emit({
+    event: 'blocking_prompt',
+    id: handle.id,
+    promptInfo,
+    autoResponded,
+  });
+});
+
+manager.on('login_required', (handle: SessionHandle, instructions?: string, url?: string) => {
+  emit({
+    event: 'login_required',
+    id: handle.id,
+    instructions,
+    url,
+  });
+});
+
+manager.on('message', (message: SessionMessage) => {
+  emit({
+    event: 'message',
+    message: {
+      ...message,
+      timestamp: message.timestamp.toISOString(),
+    },
+  });
+});
+
+manager.on('question', (handle: SessionHandle, question: string) => {
+  emit({
+    event: 'question',
+    id: handle.id,
+    question,
+  });
 });
 
 async function handleSpawn(id: string, config: SpawnConfig): Promise<void> {

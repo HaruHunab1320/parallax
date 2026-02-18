@@ -208,6 +208,40 @@ export class BunCompatiblePTYManager extends EventEmitter {
         }
         break;
 
+      case 'blocking_prompt': {
+        const session = this.sessions.get(id!);
+        if (session) {
+          this.emit('blocking_prompt', session, event.promptInfo, event.autoResponded);
+        }
+        break;
+      }
+
+      case 'login_required': {
+        const session = this.sessions.get(id!);
+        if (session) {
+          this.emit('login_required', session, event.instructions, event.url);
+        }
+        break;
+      }
+
+      case 'message': {
+        const msg = event.message as Record<string, unknown>;
+        // Convert timestamp back to Date
+        this.emit('message', {
+          ...msg,
+          timestamp: new Date(msg.timestamp as string),
+        });
+        break;
+      }
+
+      case 'question': {
+        const session = this.sessions.get(id!);
+        if (session) {
+          this.emit('question', session, event.question);
+        }
+        break;
+      }
+
       case 'list': {
         // Convert date strings back to Date objects
         const sessions = (event.sessions as Record<string, unknown>[]).map((s) => ({
