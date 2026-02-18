@@ -468,7 +468,11 @@ export class PTYSession extends EventEmitter {
       }
 
       // Try to parse output into structured message
-      this.tryParseOutput();
+      // Only parse once session is ready - during startup we need the buffer
+      // to accumulate so detectReady can see the full startup output
+      if (this._status !== 'starting' && this._status !== 'authenticating') {
+        this.tryParseOutput();
+      }
     });
 
     this.ptyProcess.onExit(({ exitCode, signal }) => {

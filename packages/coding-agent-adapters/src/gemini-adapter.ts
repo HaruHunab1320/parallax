@@ -179,6 +179,7 @@ export class GeminiAdapter extends BaseCodingAdapter {
     return (
       stripped.includes('Gemini') ||
       stripped.includes('Ready') ||
+      stripped.includes('Type your message') ||  // Actual Gemini ready prompt
       stripped.includes('How can I help') ||
       stripped.includes('What would you like') ||
       /(?:gemini|>)\s*$/i.test(stripped)

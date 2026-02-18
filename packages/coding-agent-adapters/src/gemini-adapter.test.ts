@@ -259,6 +259,10 @@ describe('GeminiAdapter', () => {
       expect(adapter.detectReady('Ready for input')).toBe(true);
     });
 
+    it('should detect Type your message prompt', () => {
+      expect(adapter.detectReady('> Type your message...')).toBe(true);
+    });
+
     it('should detect How can I help', () => {
       expect(adapter.detectReady('How can I help you?')).toBe(true);
     });
