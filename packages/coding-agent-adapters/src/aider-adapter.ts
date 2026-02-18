@@ -121,7 +121,7 @@ export class AiderAdapter extends BaseCodingAdapter {
     } else if (provider === 'openai') {
       args.push('--model', '4o');
     } else if (provider === 'google') {
-      args.push('--model', 'gemini/gemini-3-pro');
+      args.push('--model', 'gemini');
     }
     // No provider preference → don't force a model, aider picks based on available keys
 
