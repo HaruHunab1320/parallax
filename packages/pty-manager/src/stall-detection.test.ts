@@ -440,6 +440,126 @@ describe('handleStallClassification', () => {
   });
 });
 
+describe('tryAutoResponse ANSI stripping', () => {
+  it('should match auto-response rules against ANSI-stripped output', () => {
+    const adapter = createMockAdapter();
+    adapter.autoResponseRules = [
+      {
+        pattern: /update available.*\[y\/n\]/i,
+        type: 'update',
+        response: 'n',
+        description: 'Decline update',
+        safe: true,
+      },
+    ];
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+
+    // Buffer contains ANSI codes that would prevent regex match on raw text
+    internals.outputBuffer = '\x1b[33mUpdate available\x1b[0m \x1b[10C[y/n]';
+
+    const blockingHandler = vi.fn();
+    session.on('blocking_prompt', blockingHandler);
+
+    // Trigger detection by calling the private method via bracket notation
+    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+
+    expect(handled).toBe(true);
+    expect(blockingHandler).toHaveBeenCalledTimes(1);
+    expect(blockingHandler.mock.calls[0][1]).toBe(true); // autoResponded
+    expect(writeFn).toHaveBeenCalledWith('n\r');
+  });
+
+  it('should match auto-response rules against TUI box-drawing stripped output', () => {
+    const adapter = createMockAdapter();
+    adapter.autoResponseRules = [
+      {
+        pattern: /trust the contents/i,
+        type: 'permission',
+        response: 'y',
+        description: 'Trust directory',
+        safe: true,
+      },
+    ];
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+
+    // Buffer with TUI box-drawing characters mixed into the text
+    internals.outputBuffer = '│ Do you trust the contents │';
+
+    const blockingHandler = vi.fn();
+    session.on('blocking_prompt', blockingHandler);
+
+    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+
+    expect(handled).toBe(true);
+    expect(writeFn).toHaveBeenCalledWith('y\r');
+  });
+
+  it('should not match when stripped output does not contain pattern', () => {
+    const adapter = createMockAdapter();
+    adapter.autoResponseRules = [
+      {
+        pattern: /update available/i,
+        type: 'update',
+        response: 'n',
+        description: 'Decline update',
+        safe: true,
+      },
+    ];
+
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: vi.fn(),
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+
+    // Buffer has ANSI codes but no matching text
+    internals.outputBuffer = '\x1b[32mProcessing...\x1b[0m';
+
+    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+
+    expect(handled).toBe(false);
+  });
+});
+
 describe('PTYManager stall detection config', () => {
   it('should store stall config from constructor', async () => {
     // Use dynamic import to avoid module-level issues

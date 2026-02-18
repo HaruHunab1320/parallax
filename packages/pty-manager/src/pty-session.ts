@@ -755,8 +755,14 @@ export class PTYSession extends EventEmitter {
       return false;
     }
 
+    // Strip ANSI codes and TUI box-drawing chars so regex patterns match
+    // the visible text, not raw terminal escape sequences.
+    let stripped = this.stripAnsiForStall(this.outputBuffer);
+    stripped = stripped.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⏺←→↑↓]/g, ' ');
+    stripped = stripped.replace(/ {2,}/g, ' ');
+
     for (const rule of allRules) {
-      if (rule.pattern.test(this.outputBuffer)) {
+      if (rule.pattern.test(stripped)) {
         // Check if it's safe to auto-respond (default: true)
         const safe = rule.safe !== false;
         const isSessionRule = this.sessionRules.includes(rule);
