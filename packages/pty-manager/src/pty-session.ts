@@ -692,6 +692,11 @@ export class PTYSession extends EventEmitter {
 
   /**
    * Send a task/message to the session
+   *
+   * Text and Enter are sent as separate writes with a small delay.
+   * This is required for TUI-based CLIs (Gemini CLI, ink/React-based tools)
+   * which drop the trailing \r if it arrives in the same write buffer
+   * during a render cycle.
    */
   send(message: string): SessionMessage {
     this._status = 'busy';
@@ -705,7 +710,15 @@ export class PTYSession extends EventEmitter {
       timestamp: new Date(),
     };
 
-    this.write(message);
+    // Write formatted text without Enter
+    const formatted = this.adapter.formatInput(message);
+    this.writeRaw(formatted);
+
+    // Send Enter separately after a brief delay
+    // TUI-based CLIs need this as a discrete event to register the submission
+    setTimeout(() => this.sendKeys('enter'), 50);
+
+    this.logger.debug({ sessionId: this.id, input: message }, 'Sent input to session');
 
     return msg;
   }
