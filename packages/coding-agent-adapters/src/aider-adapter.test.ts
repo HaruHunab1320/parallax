@@ -161,7 +161,7 @@ describe('AiderAdapter', () => {
       const args = adapter.getArgs(config);
 
       const modelIndex = args.indexOf('--model');
-      expect(args[modelIndex + 1]).toBe('gemini');
+      expect(args[modelIndex + 1]).toBe('gemini/gemini-2.5-pro');
     });
 
     it('should not override explicit model with provider alias', () => {
@@ -196,6 +196,19 @@ describe('AiderAdapter', () => {
       expect(args).toContain('--api-key');
       expect(args).toContain('anthropic=sk-ant-test');
       expect(args).toContain('openai=sk-openai-test');
+    });
+
+    it('should pass google key as gemini provider for litellm', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          googleKey: 'google-test-key',
+        },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('gemini=google-test-key');
     });
   });
 

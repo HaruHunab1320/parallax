@@ -111,7 +111,7 @@ export class AiderAdapter extends BaseCodingAdapter {
     } else if (provider === 'openai') {
       args.push('--model', '4o');
     } else if (provider === 'google') {
-      args.push('--model', 'gemini');
+      args.push('--model', 'gemini/gemini-2.5-pro');
     }
     // No provider preference → don't force a model, aider picks based on available keys
 
@@ -119,7 +119,7 @@ export class AiderAdapter extends BaseCodingAdapter {
     const credentials = this.getCredentials(config);
     if (credentials.anthropicKey) args.push('--api-key', `anthropic=${credentials.anthropicKey}`);
     if (credentials.openaiKey) args.push('--api-key', `openai=${credentials.openaiKey}`);
-    if (credentials.googleKey) args.push('--api-key', `google=${credentials.googleKey}`);
+    if (credentials.googleKey) args.push('--api-key', `gemini=${credentials.googleKey}`);
 
     return args;
   }

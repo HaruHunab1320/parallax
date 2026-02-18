@@ -57,6 +57,13 @@ export class CodexAdapter extends BaseCodingAdapter {
       description: 'Decline beta features',
       safe: true,
     },
+    {
+      pattern: /Update (available|now)|Skip until next version/i,
+      type: 'config',
+      response: '2',
+      description: 'Skip Codex CLI update prompt',
+      safe: true,
+    },
   ];
 
   getRecommendedModels(_credentials?: AgentCredentials): ModelRecommendations {
