@@ -6,21 +6,31 @@
  *
  * @example
  * ```typescript
- * import { PTYManager, AdapterRegistry } from 'pty-manager';
+ * import { PTYManager } from 'pty-manager';
  * import { ClaudeAdapter, GeminiAdapter } from 'coding-agent-adapters';
  *
- * const registry = new AdapterRegistry();
- * registry.register(new ClaudeAdapter());
- * registry.register(new GeminiAdapter());
+ * const manager = new PTYManager();
+ * manager.registerAdapter(new ClaudeAdapter());
+ * manager.registerAdapter(new GeminiAdapter());
  *
- * const manager = new PTYManager({ adapters: registry });
- *
+ * // Non-interactive mode (default) - for automation
  * const session = await manager.spawn({
  *   name: 'my-agent',
  *   type: 'claude',
  *   workdir: '/path/to/project',
  *   adapterConfig: {
  *     anthropicKey: process.env.ANTHROPIC_API_KEY,
+ *   },
+ * });
+ *
+ * // Interactive mode - full CLI experience
+ * const interactiveSession = await manager.spawn({
+ *   name: 'my-interactive-agent',
+ *   type: 'claude',
+ *   workdir: '/path/to/project',
+ *   adapterConfig: {
+ *     anthropicKey: process.env.ANTHROPIC_API_KEY,
+ *     interactive: true, // Skip --print/--quiet/--non-interactive flags
  *   },
  * });
  * ```

@@ -48,11 +48,22 @@ describe('ClaudeAdapter', () => {
   });
 
   describe('getArgs()', () => {
-    it('should include --print flag', () => {
+    it('should include --print flag by default', () => {
       const config: SpawnConfig = { name: 'test', type: 'claude' };
       const args = adapter.getArgs(config);
 
       expect(args).toContain('--print');
+    });
+
+    it('should NOT include --print flag when interactive: true', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'claude',
+        adapterConfig: { interactive: true },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).not.toContain('--print');
     });
 
     it('should include --cwd when workdir specified', () => {
@@ -72,6 +83,19 @@ describe('ClaudeAdapter', () => {
       const args = adapter.getArgs(config);
 
       expect(args).not.toContain('--cwd');
+    });
+
+    it('should still include --cwd in interactive mode', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'claude',
+        workdir: '/my/project',
+        adapterConfig: { interactive: true },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('--cwd');
+      expect(args).toContain('/my/project');
     });
   });
 
@@ -102,11 +126,37 @@ describe('ClaudeAdapter', () => {
       expect(env.ANTHROPIC_MODEL).toBe('claude-3-opus');
     });
 
-    it('should disable interactive mode', () => {
+    it('should disable interactive mode by default', () => {
       const config: SpawnConfig = { name: 'test', type: 'claude' };
       const env = adapter.getEnv(config);
 
       expect(env.CLAUDE_CODE_DISABLE_INTERACTIVE).toBe('true');
+    });
+
+    it('should NOT disable interactive mode when interactive: true', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'claude',
+        adapterConfig: { interactive: true },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.CLAUDE_CODE_DISABLE_INTERACTIVE).toBeUndefined();
+    });
+
+    it('should still set API key in interactive mode', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'claude',
+        adapterConfig: {
+          anthropicKey: 'sk-ant-test-key',
+          interactive: true,
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.ANTHROPIC_API_KEY).toBe('sk-ant-test-key');
+      expect(env.CLAUDE_CODE_DISABLE_INTERACTIVE).toBeUndefined();
     });
   });
 

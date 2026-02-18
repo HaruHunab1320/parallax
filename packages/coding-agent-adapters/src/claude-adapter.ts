@@ -76,8 +76,10 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   getArgs(config: SpawnConfig): string[] {
     const args: string[] = [];
 
-    // Print mode for non-interactive usage
-    args.push('--print');
+    // Print mode for non-interactive usage (skip if interactive mode)
+    if (!this.isInteractive(config)) {
+      args.push('--print');
+    }
 
     // Set working directory if specified
     if (config.workdir) {
@@ -101,8 +103,10 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       env.ANTHROPIC_MODEL = config.env.ANTHROPIC_MODEL;
     }
 
-    // Disable interactive features for automation
-    env.CLAUDE_CODE_DISABLE_INTERACTIVE = 'true';
+    // Disable interactive features for automation (skip if interactive mode)
+    if (!this.isInteractive(config)) {
+      env.CLAUDE_CODE_DISABLE_INTERACTIVE = 'true';
+    }
 
     return env;
   }

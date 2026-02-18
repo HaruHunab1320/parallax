@@ -55,18 +55,41 @@ describe('AiderAdapter', () => {
       expect(args).toContain('--auto-commits');
     });
 
-    it('should include --no-pretty flag', () => {
+    it('should include --no-pretty flag by default', () => {
       const config: SpawnConfig = { name: 'test', type: 'aider' };
       const args = adapter.getArgs(config);
 
       expect(args).toContain('--no-pretty');
     });
 
-    it('should include --no-show-diffs flag', () => {
+    it('should include --no-show-diffs flag by default', () => {
       const config: SpawnConfig = { name: 'test', type: 'aider' };
       const args = adapter.getArgs(config);
 
       expect(args).toContain('--no-show-diffs');
+    });
+
+    it('should NOT include --no-pretty when interactive: true', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: { interactive: true },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).not.toContain('--no-pretty');
+      expect(args).not.toContain('--no-show-diffs');
+    });
+
+    it('should still include --auto-commits in interactive mode', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: { interactive: true },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('--auto-commits');
     });
 
     it('should include model from config env', () => {
@@ -156,11 +179,37 @@ describe('AiderAdapter', () => {
       expect(env.GOOGLE_API_KEY).toBe('google-test-key');
     });
 
-    it('should disable color output', () => {
+    it('should disable color output by default', () => {
       const config: SpawnConfig = { name: 'test', type: 'aider' };
       const env = adapter.getEnv(config);
 
       expect(env.NO_COLOR).toBe('1');
+    });
+
+    it('should NOT disable color when interactive: true', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: { interactive: true },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.NO_COLOR).toBeUndefined();
+    });
+
+    it('should still set API keys in interactive mode', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          anthropicKey: 'sk-ant-test-key',
+          interactive: true,
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.ANTHROPIC_API_KEY).toBe('sk-ant-test-key');
+      expect(env.NO_COLOR).toBeUndefined();
     });
 
     it('should pass through AIDER_NO_GIT setting', () => {

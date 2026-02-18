@@ -34,10 +34,16 @@ export interface InstallationInfo {
 }
 
 /**
- * Extended config with credentials support
+ * Extended config with credentials and mode support
  */
 export interface CodingAgentConfig extends SpawnConfig {
-  adapterConfig?: AgentCredentials & Record<string, unknown>;
+  adapterConfig?: AgentCredentials & {
+    /**
+     * Run in interactive mode (skip --print/--quiet/--non-interactive flags).
+     * Use this when you want the full interactive CLI experience.
+     */
+    interactive?: boolean;
+  } & Record<string, unknown>;
 }
 
 /**
@@ -55,6 +61,15 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   protected getCredentials(config: SpawnConfig): AgentCredentials {
     const adapterConfig = config.adapterConfig as AgentCredentials | undefined;
     return adapterConfig || {};
+  }
+
+  /**
+   * Check if interactive mode is enabled.
+   * When true, skip non-interactive flags (--print, --quiet, etc.)
+   */
+  protected isInteractive(config: SpawnConfig): boolean {
+    const adapterConfig = config.adapterConfig as { interactive?: boolean } | undefined;
+    return adapterConfig?.interactive === true;
   }
 
   /**

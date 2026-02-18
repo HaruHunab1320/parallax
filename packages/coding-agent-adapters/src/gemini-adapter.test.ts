@@ -36,19 +36,31 @@ describe('GeminiAdapter', () => {
   });
 
   describe('getArgs()', () => {
-    it('should include --non-interactive flag', () => {
+    it('should include --non-interactive flag by default', () => {
       const config: SpawnConfig = { name: 'test', type: 'gemini' };
       const args = adapter.getArgs(config);
 
       expect(args).toContain('--non-interactive');
     });
 
-    it('should include --output-format text', () => {
+    it('should include --output-format text by default', () => {
       const config: SpawnConfig = { name: 'test', type: 'gemini' };
       const args = adapter.getArgs(config);
 
       expect(args).toContain('--output-format');
       expect(args).toContain('text');
+    });
+
+    it('should NOT include --non-interactive when interactive: true', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'gemini',
+        adapterConfig: { interactive: true },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).not.toContain('--non-interactive');
+      expect(args).not.toContain('--output-format');
     });
 
     it('should include --cwd when workdir specified', () => {
@@ -61,6 +73,19 @@ describe('GeminiAdapter', () => {
 
       expect(args).toContain('--cwd');
       expect(args).toContain('/my/project');
+    });
+
+    it('should still include --cwd in interactive mode', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'gemini',
+        workdir: '/my/project',
+        adapterConfig: { interactive: true },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('--cwd');
+      expect(args).not.toContain('--non-interactive');
     });
   });
 
@@ -104,11 +129,37 @@ describe('GeminiAdapter', () => {
       expect(env.GEMINI_MODEL).toBe('gemini-pro');
     });
 
-    it('should disable color output', () => {
+    it('should disable color output by default', () => {
       const config: SpawnConfig = { name: 'test', type: 'gemini' };
       const env = adapter.getEnv(config);
 
       expect(env.NO_COLOR).toBe('1');
+    });
+
+    it('should NOT disable color when interactive: true', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'gemini',
+        adapterConfig: { interactive: true },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.NO_COLOR).toBeUndefined();
+    });
+
+    it('should still set API key in interactive mode', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'gemini',
+        adapterConfig: {
+          googleKey: 'google-test-key',
+          interactive: true,
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.GOOGLE_API_KEY).toBe('google-test-key');
+      expect(env.NO_COLOR).toBeUndefined();
     });
   });
 

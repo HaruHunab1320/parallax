@@ -37,11 +37,22 @@ describe('CodexAdapter', () => {
   });
 
   describe('getArgs()', () => {
-    it('should include --quiet flag', () => {
+    it('should include --quiet flag by default', () => {
       const config: SpawnConfig = { name: 'test', type: 'codex' };
       const args = adapter.getArgs(config);
 
       expect(args).toContain('--quiet');
+    });
+
+    it('should NOT include --quiet when interactive: true', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'codex',
+        adapterConfig: { interactive: true },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).not.toContain('--quiet');
     });
 
     it('should include --cwd when workdir specified', () => {
@@ -54,6 +65,19 @@ describe('CodexAdapter', () => {
 
       expect(args).toContain('--cwd');
       expect(args).toContain('/my/project');
+    });
+
+    it('should still include --cwd in interactive mode', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'codex',
+        workdir: '/my/project',
+        adapterConfig: { interactive: true },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('--cwd');
+      expect(args).not.toContain('--quiet');
     });
   });
 
@@ -84,11 +108,37 @@ describe('CodexAdapter', () => {
       expect(env.OPENAI_MODEL).toBe('gpt-4');
     });
 
-    it('should disable color output', () => {
+    it('should disable color output by default', () => {
       const config: SpawnConfig = { name: 'test', type: 'codex' };
       const env = adapter.getEnv(config);
 
       expect(env.NO_COLOR).toBe('1');
+    });
+
+    it('should NOT disable color when interactive: true', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'codex',
+        adapterConfig: { interactive: true },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.NO_COLOR).toBeUndefined();
+    });
+
+    it('should still set API key in interactive mode', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'codex',
+        adapterConfig: {
+          openaiKey: 'sk-openai-test-key',
+          interactive: true,
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.OPENAI_API_KEY).toBe('sk-openai-test-key');
+      expect(env.NO_COLOR).toBeUndefined();
     });
   });
 

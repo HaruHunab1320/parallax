@@ -31,16 +31,17 @@ export class GeminiAdapter extends BaseCodingAdapter {
   getArgs(config: SpawnConfig): string[] {
     const args: string[] = [];
 
-    // Non-interactive mode
-    args.push('--non-interactive');
+    // Non-interactive mode (skip if interactive mode)
+    if (!this.isInteractive(config)) {
+      args.push('--non-interactive');
+      // Text output for easier parsing (only in non-interactive mode)
+      args.push('--output-format', 'text');
+    }
 
     // Set working directory if specified
     if (config.workdir) {
       args.push('--cwd', config.workdir);
     }
-
-    // Text output for easier parsing
-    args.push('--output-format', 'text');
 
     return args;
   }
@@ -60,8 +61,10 @@ export class GeminiAdapter extends BaseCodingAdapter {
       env.GEMINI_MODEL = config.env.GEMINI_MODEL;
     }
 
-    // Disable color for parsing
-    env.NO_COLOR = '1';
+    // Disable color for parsing (skip if interactive mode)
+    if (!this.isInteractive(config)) {
+      env.NO_COLOR = '1';
+    }
 
     return env;
   }

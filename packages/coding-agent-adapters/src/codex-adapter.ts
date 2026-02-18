@@ -66,8 +66,10 @@ export class CodexAdapter extends BaseCodingAdapter {
   getArgs(config: SpawnConfig): string[] {
     const args: string[] = [];
 
-    // Quiet mode for less verbose output
-    args.push('--quiet');
+    // Quiet mode for less verbose output (skip if interactive mode)
+    if (!this.isInteractive(config)) {
+      args.push('--quiet');
+    }
 
     // Set working directory if specified
     if (config.workdir) {
@@ -91,8 +93,10 @@ export class CodexAdapter extends BaseCodingAdapter {
       env.OPENAI_MODEL = config.env.OPENAI_MODEL;
     }
 
-    // Disable color output for easier parsing
-    env.NO_COLOR = '1';
+    // Disable color output for easier parsing (skip if interactive mode)
+    if (!this.isInteractive(config)) {
+      env.NO_COLOR = '1';
+    }
 
     return env;
   }

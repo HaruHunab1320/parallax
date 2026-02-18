@@ -65,11 +65,12 @@ export class AiderAdapter extends BaseCodingAdapter {
     // Use auto-commits to avoid manual git operations
     args.push('--auto-commits');
 
-    // Disable pretty output for easier parsing
-    args.push('--no-pretty');
-
-    // Don't show diffs (we'll handle this separately if needed)
-    args.push('--no-show-diffs');
+    // Disable pretty output for easier parsing (skip if interactive mode)
+    if (!this.isInteractive(config)) {
+      args.push('--no-pretty');
+      // Don't show diffs (we'll handle this separately if needed)
+      args.push('--no-show-diffs');
+    }
 
     // Set working directory via --file flag prefix
     // Aider uses current directory, so we rely on PTY cwd
@@ -105,8 +106,10 @@ export class AiderAdapter extends BaseCodingAdapter {
       env.GOOGLE_API_KEY = credentials.googleKey;
     }
 
-    // Disable color for parsing
-    env.NO_COLOR = '1';
+    // Disable color for parsing (skip if interactive mode)
+    if (!this.isInteractive(config)) {
+      env.NO_COLOR = '1';
+    }
 
     // Disable git integration if not wanted
     if (config.env?.AIDER_NO_GIT === 'true') {
