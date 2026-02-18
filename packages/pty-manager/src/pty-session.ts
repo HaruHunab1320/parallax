@@ -13,6 +13,7 @@ import type {
   SessionHandle,
   SessionMessage,
   BlockingPromptInfo,
+  AutoResponseRule,
   Logger,
 } from './types';
 
@@ -253,6 +254,7 @@ export class PTYSession extends EventEmitter {
   private _lastActivityAt: Date | null = null;
   private messageCounter: number = 0;
   private logger: Logger;
+  private sessionRules: AutoResponseRule[] = [];
 
   public readonly id: string;
   public readonly config: SpawnConfig;
@@ -283,6 +285,86 @@ export class PTYSession extends EventEmitter {
   get lastActivityAt(): Date | undefined {
     return this._lastActivityAt ?? undefined;
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Runtime Auto-Response Rules API
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Add an auto-response rule to this session.
+   * Session rules are checked before adapter rules.
+   */
+  addAutoResponseRule(rule: AutoResponseRule): void {
+    // Check for duplicate pattern
+    const existingIndex = this.sessionRules.findIndex(
+      (r) => r.pattern.source === rule.pattern.source && r.pattern.flags === rule.pattern.flags
+    );
+
+    if (existingIndex >= 0) {
+      // Replace existing rule with same pattern
+      this.sessionRules[existingIndex] = rule;
+      this.logger.debug(
+        { sessionId: this.id, pattern: rule.pattern.source, type: rule.type },
+        'Replaced existing auto-response rule'
+      );
+    } else {
+      this.sessionRules.push(rule);
+      this.logger.debug(
+        { sessionId: this.id, pattern: rule.pattern.source, type: rule.type },
+        'Added auto-response rule'
+      );
+    }
+  }
+
+  /**
+   * Remove an auto-response rule by pattern.
+   * Returns true if a rule was removed.
+   */
+  removeAutoResponseRule(pattern: RegExp): boolean {
+    const initialLength = this.sessionRules.length;
+    this.sessionRules = this.sessionRules.filter(
+      (r) => !(r.pattern.source === pattern.source && r.pattern.flags === pattern.flags)
+    );
+
+    const removed = this.sessionRules.length < initialLength;
+    if (removed) {
+      this.logger.debug(
+        { sessionId: this.id, pattern: pattern.source },
+        'Removed auto-response rule'
+      );
+    }
+    return removed;
+  }
+
+  /**
+   * Set all session auto-response rules, replacing existing ones.
+   */
+  setAutoResponseRules(rules: AutoResponseRule[]): void {
+    this.sessionRules = [...rules];
+    this.logger.debug(
+      { sessionId: this.id, count: rules.length },
+      'Set auto-response rules'
+    );
+  }
+
+  /**
+   * Get all session auto-response rules.
+   */
+  getAutoResponseRules(): AutoResponseRule[] {
+    return [...this.sessionRules];
+  }
+
+  /**
+   * Clear all session auto-response rules.
+   */
+  clearAutoResponseRules(): void {
+    this.sessionRules = [];
+    this.logger.debug({ sessionId: this.id }, 'Cleared auto-response rules');
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Lifecycle
+  // ─────────────────────────────────────────────────────────────────────────────
 
   /**
    * Start the PTY session
@@ -462,18 +544,23 @@ export class PTYSession extends EventEmitter {
   }
 
   /**
-   * Try to match and apply auto-response rules
+   * Try to match and apply auto-response rules.
+   * Session rules are checked first, then adapter rules.
    */
   private tryAutoResponse(): boolean {
-    const rules = this.adapter.autoResponseRules;
-    if (!rules || rules.length === 0) {
+    // Combine session rules (higher priority) with adapter rules
+    const adapterRules = this.adapter.autoResponseRules || [];
+    const allRules = [...this.sessionRules, ...adapterRules];
+
+    if (allRules.length === 0) {
       return false;
     }
 
-    for (const rule of rules) {
+    for (const rule of allRules) {
       if (rule.pattern.test(this.outputBuffer)) {
         // Check if it's safe to auto-respond (default: true)
         const safe = rule.safe !== false;
+        const isSessionRule = this.sessionRules.includes(rule);
 
         if (safe) {
           this.logger.info(
@@ -482,6 +569,7 @@ export class PTYSession extends EventEmitter {
               promptType: rule.type,
               description: rule.description,
               response: rule.response,
+              source: isSessionRule ? 'session' : 'adapter',
             },
             'Applying auto-response rule'
           );

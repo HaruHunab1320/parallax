@@ -126,15 +126,71 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
       };
     }
 
-    // Check for generic y/n prompts that look like they're blocking
-    if (/\[y\/n\]|\(y\/n\)|\[Y\/n\]|\[y\/N\]/i.test(stripped) && stripped.includes('?')) {
+    // Check for generic y/n prompts - multiple formats
+    // [y/n], (y/n), [Y/n], [y/N], (Y)es/(N)o, Yes/No
+    if (/\[y\/n\]|\(y\/n\)|\[Y\/n\]|\[y\/N\]|\(Y\)es\/\(N\)o|Yes\/No\??/i.test(stripped)) {
       return {
         detected: true,
         type: 'unknown',
         prompt: stripped.slice(-200), // Last 200 chars for context
         options: ['y', 'n'],
         canAutoRespond: false,
-        instructions: 'Unknown confirmation prompt detected',
+        instructions: 'Confirmation prompt detected',
+      };
+    }
+
+    // Check for numbered menu prompts (1. Yes / 2. No, or › 1. Yes)
+    if (/^\s*[›>]?\s*[1-9]\.\s+\w+/m.test(stripped) && /\?\s*$/m.test(stripped)) {
+      // Extract numbered options
+      const optionMatches = stripped.match(/[›>]?\s*([1-9])\.\s+([^\n]+)/g);
+      const options = optionMatches
+        ? optionMatches.map((m) => m.replace(/^[›>\s]*/, '').trim())
+        : [];
+
+      return {
+        detected: true,
+        type: 'unknown',
+        prompt: stripped.slice(-300),
+        options: options.length > 0 ? options : undefined,
+        canAutoRespond: false,
+        instructions: 'Menu selection prompt detected',
+      };
+    }
+
+    // Check for "Enter to confirm" / "Press enter to continue" style prompts
+    if (/press enter|hit enter|enter to (confirm|continue|proceed)|press return/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'unknown',
+        prompt: stripped.slice(-200),
+        suggestedResponse: '\n',
+        canAutoRespond: false,
+        instructions: 'Enter/confirm prompt detected',
+      };
+    }
+
+    // Check for trust/permission prompts (Claude Code style)
+    if (/trust|allow|permission|grant access/i.test(stripped) && /\?\s*$/m.test(stripped)) {
+      return {
+        detected: true,
+        type: 'permission',
+        prompt: stripped.slice(-200),
+        canAutoRespond: false,
+        instructions: 'Permission/trust prompt detected',
+      };
+    }
+
+    // Fallback: any line ending with ? that wasn't caught above
+    // Only trigger if it looks like a standalone prompt (short, ends with ?)
+    const lines = stripped.split('\n').filter((l) => l.trim());
+    const lastLine = lines[lines.length - 1] || '';
+    if (/\?\s*$/.test(lastLine) && lastLine.length < 200) {
+      return {
+        detected: true,
+        type: 'unknown',
+        prompt: lastLine.trim(),
+        canAutoRespond: false,
+        instructions: 'Question prompt detected',
       };
     }
 

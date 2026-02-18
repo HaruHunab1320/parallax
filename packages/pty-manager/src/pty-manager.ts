@@ -15,6 +15,7 @@ import type {
   SessionFilter,
   SessionStatus,
   BlockingPromptInfo,
+  AutoResponseRule,
   StopOptions,
   LogOptions,
   TerminalAttachment,
@@ -383,5 +384,66 @@ export class PTYManager extends EventEmitter {
    */
   getSession(sessionId: string): PTYSession | undefined {
     return this.sessions.get(sessionId);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Runtime Auto-Response Rules API
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Add an auto-response rule to a session.
+   * Session rules are checked before adapter rules.
+   */
+  addAutoResponseRule(sessionId: string, rule: AutoResponseRule): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    session.addAutoResponseRule(rule);
+  }
+
+  /**
+   * Remove an auto-response rule from a session by pattern.
+   * Returns true if a rule was removed.
+   */
+  removeAutoResponseRule(sessionId: string, pattern: RegExp): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    return session.removeAutoResponseRule(pattern);
+  }
+
+  /**
+   * Set all auto-response rules for a session, replacing existing ones.
+   */
+  setAutoResponseRules(sessionId: string, rules: AutoResponseRule[]): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    session.setAutoResponseRules(rules);
+  }
+
+  /**
+   * Get all auto-response rules for a session.
+   */
+  getAutoResponseRules(sessionId: string): AutoResponseRule[] {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    return session.getAutoResponseRules();
+  }
+
+  /**
+   * Clear all auto-response rules for a session.
+   */
+  clearAutoResponseRules(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+    session.clearAutoResponseRules();
   }
 }

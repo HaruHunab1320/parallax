@@ -9,7 +9,19 @@ import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as readline from 'readline';
-import type { SpawnConfig } from './types';
+import type { SpawnConfig, AutoResponseRule, BlockingPromptType } from './types';
+
+/**
+ * Serialized auto-response rule for IPC (pattern as string instead of RegExp)
+ */
+export interface SerializedRule {
+  pattern: string;
+  flags?: string;
+  type: BlockingPromptType;
+  response: string;
+  description: string;
+  safe?: boolean;
+}
 
 export interface WorkerSessionHandle {
   id: string;
@@ -265,6 +277,20 @@ export class BunCompatiblePTYManager extends EventEmitter {
         break;
       }
 
+      case 'rules': {
+        // Convert serialized rules back to AutoResponseRule objects
+        const serializedRules = event.rules as SerializedRule[];
+        const rules = serializedRules.map((r) => ({
+          pattern: new RegExp(r.pattern, r.flags || ''),
+          type: r.type,
+          response: r.response,
+          description: r.description,
+          safe: r.safe,
+        })) as AutoResponseRule[];
+        this.resolvePending(`getRules:${id}`, rules);
+        break;
+      }
+
       case 'ack': {
         const cmd = event.cmd as string;
         const success = event.success as boolean;
@@ -437,6 +463,91 @@ export class BunCompatiblePTYManager extends EventEmitter {
     const handler = (data: string) => callback(data);
     this.on(`data:${id}`, handler);
     return () => this.off(`data:${id}`, handler);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Runtime Auto-Response Rules API
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  private serializeRule(rule: AutoResponseRule): SerializedRule {
+    return {
+      pattern: rule.pattern.source,
+      flags: rule.pattern.flags || undefined,
+      type: rule.type,
+      response: rule.response,
+      description: rule.description,
+      safe: rule.safe,
+    };
+  }
+
+  /**
+   * Add an auto-response rule to a session.
+   * Session rules are checked before adapter rules.
+   */
+  async addAutoResponseRule(sessionId: string, rule: AutoResponseRule): Promise<void> {
+    await this.waitForReady();
+
+    const serialized = this.serializeRule(rule);
+    this.sendCommand({ cmd: 'addRule', id: sessionId, rule: serialized });
+
+    await this.createPending(`addRule:${sessionId}`);
+  }
+
+  /**
+   * Remove an auto-response rule from a session by pattern.
+   * Returns true if a rule was removed.
+   */
+  async removeAutoResponseRule(sessionId: string, pattern: RegExp): Promise<boolean> {
+    await this.waitForReady();
+
+    this.sendCommand({
+      cmd: 'removeRule',
+      id: sessionId,
+      pattern: pattern.source,
+      flags: pattern.flags || undefined,
+    });
+
+    try {
+      await this.createPending(`removeRule:${sessionId}`);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Set all auto-response rules for a session, replacing existing ones.
+   */
+  async setAutoResponseRules(sessionId: string, rules: AutoResponseRule[]): Promise<void> {
+    await this.waitForReady();
+
+    const serialized = rules.map((r) => this.serializeRule(r));
+    this.sendCommand({ cmd: 'setRules', id: sessionId, rules: serialized });
+
+    await this.createPending(`setRules:${sessionId}`);
+  }
+
+  /**
+   * Get all auto-response rules for a session.
+   */
+  async getAutoResponseRules(sessionId: string): Promise<AutoResponseRule[]> {
+    await this.waitForReady();
+
+    this.sendCommand({ cmd: 'getRules', id: sessionId });
+
+    const rules = (await this.createPending(`getRules:${sessionId}`)) as AutoResponseRule[];
+    return rules;
+  }
+
+  /**
+   * Clear all auto-response rules for a session.
+   */
+  async clearAutoResponseRules(sessionId: string): Promise<void> {
+    await this.waitForReady();
+
+    this.sendCommand({ cmd: 'clearRules', id: sessionId });
+
+    await this.createPending(`clearRules:${sessionId}`);
   }
 
   /**

@@ -13,7 +13,12 @@
  *   { "cmd": "kill", "id": string, "signal"?: string }
  *   { "cmd": "list" }
  *   { "cmd": "shutdown" }
- *   { "cmd": "registerAdapters", "modules": string[] }  // Load adapter modules dynamically
+ *   { "cmd": "registerAdapters", "modules": string[] }
+ *   { "cmd": "addRule", "id": string, "rule": SerializedRule }
+ *   { "cmd": "removeRule", "id": string, "pattern": string, "flags"?: string }
+ *   { "cmd": "setRules", "id": string, "rules": SerializedRule[] }
+ *   { "cmd": "getRules", "id": string }
+ *   { "cmd": "clearRules", "id": string }
  *
  * Events (stdout):
  *   { "event": "spawned", "id": string, "pid": number }
@@ -26,13 +31,14 @@
  *   { "event": "message", "message": SessionMessage }
  *   { "event": "question", "id": string, "question": string }
  *   { "event": "list", "sessions": SessionInfo[] }
+ *   { "event": "rules", "id": string, "rules": SerializedRule[] }
  *   { "event": "ack", "cmd": string, "id"?: string, "success": boolean, "error"?: string }
  */
 
 import * as readline from 'readline';
 import { PTYManager } from './pty-manager';
 import { ShellAdapter } from './adapters';
-import type { SpawnConfig, SessionHandle, BlockingPromptInfo, SessionMessage } from './types';
+import type { SpawnConfig, SessionHandle, BlockingPromptInfo, SessionMessage, AutoResponseRule, BlockingPromptType } from './types';
 
 interface SessionInfo {
   id: string;
@@ -48,6 +54,18 @@ interface SessionInfo {
   exitCode?: number;
 }
 
+/**
+ * Serialized auto-response rule for IPC (pattern as string instead of RegExp)
+ */
+interface SerializedRule {
+  pattern: string;
+  flags?: string;
+  type: BlockingPromptType;
+  response: string;
+  description: string;
+  safe?: boolean;
+}
+
 interface Command {
   cmd: string;
   id?: string;
@@ -60,6 +78,11 @@ interface Command {
   rows?: number;
   signal?: string;
   modules?: string[];
+  // Auto-response rule commands
+  rule?: SerializedRule;
+  rules?: SerializedRule[];
+  pattern?: string;
+  flags?: string;
 }
 
 interface Event {
@@ -307,6 +330,80 @@ function handleRegisterAdapters(modules: string[]): void {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Auto-Response Rule Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+function deserializeRule(serialized: SerializedRule): AutoResponseRule {
+  return {
+    pattern: new RegExp(serialized.pattern, serialized.flags || ''),
+    type: serialized.type,
+    response: serialized.response,
+    description: serialized.description,
+    safe: serialized.safe,
+  };
+}
+
+function serializeRule(rule: AutoResponseRule): SerializedRule {
+  return {
+    pattern: rule.pattern.source,
+    flags: rule.pattern.flags || undefined,
+    type: rule.type,
+    response: rule.response,
+    description: rule.description,
+    safe: rule.safe,
+  };
+}
+
+function handleAddRule(id: string, serializedRule: SerializedRule): void {
+  try {
+    const rule = deserializeRule(serializedRule);
+    manager.addAutoResponseRule(id, rule);
+    ack('addRule', id, true);
+  } catch (err) {
+    ack('addRule', id, false, err instanceof Error ? err.message : String(err));
+  }
+}
+
+function handleRemoveRule(id: string, pattern: string, flags?: string): void {
+  try {
+    const regex = new RegExp(pattern, flags || '');
+    const removed = manager.removeAutoResponseRule(id, regex);
+    ack('removeRule', id, removed, removed ? undefined : 'Rule not found');
+  } catch (err) {
+    ack('removeRule', id, false, err instanceof Error ? err.message : String(err));
+  }
+}
+
+function handleSetRules(id: string, serializedRules: SerializedRule[]): void {
+  try {
+    const rules = serializedRules.map(deserializeRule);
+    manager.setAutoResponseRules(id, rules);
+    ack('setRules', id, true);
+  } catch (err) {
+    ack('setRules', id, false, err instanceof Error ? err.message : String(err));
+  }
+}
+
+function handleGetRules(id: string): void {
+  try {
+    const rules = manager.getAutoResponseRules(id);
+    const serialized = rules.map(serializeRule);
+    emit({ event: 'rules', id, rules: serialized });
+  } catch (err) {
+    emit({ event: 'error', id, message: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+function handleClearRules(id: string): void {
+  try {
+    manager.clearAutoResponseRules(id);
+    ack('clearRules', id, true);
+  } catch (err) {
+    ack('clearRules', id, false, err instanceof Error ? err.message : String(err));
+  }
+}
+
 function processCommand(line: string): void {
   let command: Command;
 
@@ -380,6 +477,46 @@ function processCommand(line: string): void {
         return;
       }
       handleRegisterAdapters(command.modules);
+      break;
+
+    case 'addRule':
+      if (!command.id || !command.rule) {
+        ack('addRule', command.id, false, 'Missing id or rule');
+        return;
+      }
+      handleAddRule(command.id, command.rule);
+      break;
+
+    case 'removeRule':
+      if (!command.id || !command.pattern) {
+        ack('removeRule', command.id, false, 'Missing id or pattern');
+        return;
+      }
+      handleRemoveRule(command.id, command.pattern, command.flags);
+      break;
+
+    case 'setRules':
+      if (!command.id || !command.rules) {
+        ack('setRules', command.id, false, 'Missing id or rules');
+        return;
+      }
+      handleSetRules(command.id, command.rules);
+      break;
+
+    case 'getRules':
+      if (!command.id) {
+        ack('getRules', command.id, false, 'Missing id');
+        return;
+      }
+      handleGetRules(command.id);
+      break;
+
+    case 'clearRules':
+      if (!command.id) {
+        ack('clearRules', command.id, false, 'Missing id');
+        return;
+      }
+      handleClearRules(command.id);
       break;
 
     default:
