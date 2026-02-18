@@ -64,7 +64,12 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
    * Subclasses should override for CLI-specific detection.
    */
   detectBlockingPrompt(output: string): BlockingPromptDetection {
-    const stripped = this.stripAnsi(output);
+    let stripped = this.stripAnsi(output);
+
+    // Strip TUI box-drawing/chrome characters so patterns work for ink/React CLIs
+    // (Gemini CLI, Claude Code TUI mode, etc.)
+    stripped = stripped.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⏺←→↑↓]/g, ' ');
+    stripped = stripped.replace(/ {2,}/g, ' ');
 
     // Check for login/auth first (highest priority)
     const loginDetection = this.detectLogin(output);
