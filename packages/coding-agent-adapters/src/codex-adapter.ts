@@ -69,11 +69,12 @@ export class CodexAdapter extends BaseCodingAdapter {
     // Quiet mode for less verbose output (skip if interactive mode)
     if (!this.isInteractive(config)) {
       args.push('--quiet');
-    }
 
-    // Set working directory if specified
-    if (config.workdir) {
-      args.push('--cwd', config.workdir);
+      // Set working directory in non-interactive mode
+      // In interactive/PTY mode, the PTY's cwd is already set by spawn config
+      if (config.workdir) {
+        args.push('--cwd', config.workdir);
+      }
     }
 
     return args;

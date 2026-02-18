@@ -67,7 +67,7 @@ describe('CodexAdapter', () => {
       expect(args).toContain('/my/project');
     });
 
-    it('should still include --cwd in interactive mode', () => {
+    it('should NOT include --cwd in interactive mode (PTY sets cwd)', () => {
       const config: SpawnConfig = {
         name: 'test',
         type: 'codex',
@@ -76,7 +76,7 @@ describe('CodexAdapter', () => {
       };
       const args = adapter.getArgs(config);
 
-      expect(args).toContain('--cwd');
+      expect(args).not.toContain('--cwd');
       expect(args).not.toContain('--quiet');
     });
   });

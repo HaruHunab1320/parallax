@@ -79,11 +79,12 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     // Print mode for non-interactive usage (skip if interactive mode)
     if (!this.isInteractive(config)) {
       args.push('--print');
-    }
 
-    // Set working directory if specified
-    if (config.workdir) {
-      args.push('--cwd', config.workdir);
+      // Set working directory in non-interactive mode
+      // In interactive/PTY mode, the PTY's cwd is already set by spawn config
+      if (config.workdir) {
+        args.push('--cwd', config.workdir);
+      }
     }
 
     return args;

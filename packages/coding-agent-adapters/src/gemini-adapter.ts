@@ -36,11 +36,12 @@ export class GeminiAdapter extends BaseCodingAdapter {
       args.push('--non-interactive');
       // Text output for easier parsing (only in non-interactive mode)
       args.push('--output-format', 'text');
-    }
 
-    // Set working directory if specified
-    if (config.workdir) {
-      args.push('--cwd', config.workdir);
+      // Set working directory in non-interactive mode
+      // In interactive/PTY mode, the PTY's cwd is already set by spawn config
+      if (config.workdir) {
+        args.push('--cwd', config.workdir);
+      }
     }
 
     return args;
