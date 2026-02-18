@@ -12,7 +12,7 @@ import type {
   BlockingPromptDetection,
   AutoResponseRule,
 } from 'pty-manager';
-import { BaseCodingAdapter, type InstallationInfo } from './base-coding-adapter';
+import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials } from './base-coding-adapter';
 
 export class AiderAdapter extends BaseCodingAdapter {
   readonly adapterType = 'aider';
@@ -55,6 +55,32 @@ export class AiderAdapter extends BaseCodingAdapter {
     },
   ];
 
+  getRecommendedModels(credentials?: AgentCredentials): ModelRecommendations {
+    if (credentials?.anthropicKey) {
+      return {
+        powerful: 'anthropic/claude-sonnet-4-20250514',
+        fast: 'anthropic/claude-haiku-4-5-20251001',
+      };
+    }
+    if (credentials?.openaiKey) {
+      return {
+        powerful: 'openai/o3',
+        fast: 'openai/gpt-4o-mini',
+      };
+    }
+    if (credentials?.googleKey) {
+      return {
+        powerful: 'gemini/gemini-2.5-pro',
+        fast: 'gemini/gemini-2.5-flash',
+      };
+    }
+    // Default to Anthropic
+    return {
+      powerful: 'anthropic/claude-sonnet-4-20250514',
+      fast: 'anthropic/claude-haiku-4-5-20251001',
+    };
+  }
+
   getCommand(): string {
     return 'aider';
   }
@@ -75,36 +101,32 @@ export class AiderAdapter extends BaseCodingAdapter {
     // Set working directory via --file flag prefix
     // Aider uses current directory, so we rely on PTY cwd
 
-    // Model can be specified via env or config
-    const credentials = this.getCredentials(config);
+    // Model: explicit > provider default alias > let aider pick
+    // Aliases (sonnet, 4o, gemini) are maintained by Aider and auto-update
+    const provider = (config.adapterConfig as { provider?: string } | undefined)?.provider;
     if (config.env?.AIDER_MODEL) {
       args.push('--model', config.env.AIDER_MODEL);
+    } else if (provider === 'anthropic') {
+      args.push('--model', 'sonnet');
+    } else if (provider === 'openai') {
+      args.push('--model', '4o');
+    } else if (provider === 'google') {
+      args.push('--model', 'gemini');
     }
+    // No provider preference → don't force a model, aider picks based on available keys
 
-    // Default to Claude if anthropic key is available
-    if (credentials.anthropicKey && !config.env?.AIDER_MODEL) {
-      args.push('--model', 'claude-3-5-sonnet-20241022');
-    }
+    // API keys via --api-key flag (no env vars needed)
+    const credentials = this.getCredentials(config);
+    if (credentials.anthropicKey) args.push('--api-key', `anthropic=${credentials.anthropicKey}`);
+    if (credentials.openaiKey) args.push('--api-key', `openai=${credentials.openaiKey}`);
+    if (credentials.googleKey) args.push('--api-key', `google=${credentials.googleKey}`);
 
     return args;
   }
 
   getEnv(config: SpawnConfig): Record<string, string> {
+    // API keys are passed via --api-key args, not env vars
     const env: Record<string, string> = {};
-    const credentials = this.getCredentials(config);
-
-    // Aider supports multiple backends
-    if (credentials.anthropicKey) {
-      env.ANTHROPIC_API_KEY = credentials.anthropicKey;
-    }
-
-    if (credentials.openaiKey) {
-      env.OPENAI_API_KEY = credentials.openaiKey;
-    }
-
-    if (credentials.googleKey) {
-      env.GOOGLE_API_KEY = credentials.googleKey;
-    }
 
     // Disable color for parsing (skip if interactive mode)
     if (!this.isInteractive(config)) {

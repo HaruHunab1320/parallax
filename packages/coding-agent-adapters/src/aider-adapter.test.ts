@@ -106,7 +106,7 @@ describe('AiderAdapter', () => {
       expect(args).toContain('gpt-4-turbo');
     });
 
-    it('should default to Claude model when anthropic key provided', () => {
+    it('should not pass --model when no provider or explicit model set', () => {
       const config: SpawnConfig = {
         name: 'test',
         type: 'aider',
@@ -116,11 +116,55 @@ describe('AiderAdapter', () => {
       };
       const args = adapter.getArgs(config);
 
-      expect(args).toContain('--model');
-      expect(args.some(a => a.includes('claude'))).toBe(true);
+      expect(args).not.toContain('--model');
     });
 
-    it('should not override explicit model with default', () => {
+    it('should use sonnet alias when provider is anthropic', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          anthropicKey: 'sk-ant-test',
+          provider: 'anthropic',
+        },
+      };
+      const args = adapter.getArgs(config);
+
+      const modelIndex = args.indexOf('--model');
+      expect(args[modelIndex + 1]).toBe('sonnet');
+    });
+
+    it('should use 4o alias when provider is openai', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          openaiKey: 'sk-openai-test',
+          provider: 'openai',
+        },
+      };
+      const args = adapter.getArgs(config);
+
+      const modelIndex = args.indexOf('--model');
+      expect(args[modelIndex + 1]).toBe('4o');
+    });
+
+    it('should use gemini alias when provider is google', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          googleKey: 'google-test',
+          provider: 'google',
+        },
+      };
+      const args = adapter.getArgs(config);
+
+      const modelIndex = args.indexOf('--model');
+      expect(args[modelIndex + 1]).toBe('gemini');
+    });
+
+    it('should not override explicit model with provider alias', () => {
       const config: SpawnConfig = {
         name: 'test',
         type: 'aider',
@@ -129,54 +173,47 @@ describe('AiderAdapter', () => {
         },
         adapterConfig: {
           anthropicKey: 'sk-ant-test',
+          provider: 'anthropic',
         },
       };
       const args = adapter.getArgs(config);
 
-      // Model should be gpt-4, not claude
       const modelIndex = args.indexOf('--model');
       expect(args[modelIndex + 1]).toBe('gpt-4');
+    });
+
+    it('should pass API keys via --api-key flag', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          anthropicKey: 'sk-ant-test',
+          openaiKey: 'sk-openai-test',
+        },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('--api-key');
+      expect(args).toContain('anthropic=sk-ant-test');
+      expect(args).toContain('openai=sk-openai-test');
     });
   });
 
   describe('getEnv()', () => {
-    it('should set ANTHROPIC_API_KEY from credentials', () => {
+    it('should not pass API keys via env (uses --api-key args instead)', () => {
       const config: SpawnConfig = {
         name: 'test',
         type: 'aider',
         adapterConfig: {
           anthropicKey: 'sk-ant-test-key',
-        },
-      };
-      const env = adapter.getEnv(config);
-
-      expect(env.ANTHROPIC_API_KEY).toBe('sk-ant-test-key');
-    });
-
-    it('should set OPENAI_API_KEY from credentials', () => {
-      const config: SpawnConfig = {
-        name: 'test',
-        type: 'aider',
-        adapterConfig: {
           openaiKey: 'sk-openai-test-key',
         },
       };
       const env = adapter.getEnv(config);
 
-      expect(env.OPENAI_API_KEY).toBe('sk-openai-test-key');
-    });
-
-    it('should set GOOGLE_API_KEY from credentials', () => {
-      const config: SpawnConfig = {
-        name: 'test',
-        type: 'aider',
-        adapterConfig: {
-          googleKey: 'google-test-key',
-        },
-      };
-      const env = adapter.getEnv(config);
-
-      expect(env.GOOGLE_API_KEY).toBe('google-test-key');
+      expect(env.ANTHROPIC_API_KEY).toBeUndefined();
+      expect(env.OPENAI_API_KEY).toBeUndefined();
+      expect(env.GOOGLE_API_KEY).toBeUndefined();
     });
 
     it('should disable color output by default', () => {
@@ -194,21 +231,6 @@ describe('AiderAdapter', () => {
       };
       const env = adapter.getEnv(config);
 
-      expect(env.NO_COLOR).toBeUndefined();
-    });
-
-    it('should still set API keys in interactive mode', () => {
-      const config: SpawnConfig = {
-        name: 'test',
-        type: 'aider',
-        adapterConfig: {
-          anthropicKey: 'sk-ant-test-key',
-          interactive: true,
-        },
-      };
-      const env = adapter.getEnv(config);
-
-      expect(env.ANTHROPIC_API_KEY).toBe('sk-ant-test-key');
       expect(env.NO_COLOR).toBeUndefined();
     });
 

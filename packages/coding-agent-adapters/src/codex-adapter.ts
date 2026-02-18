@@ -11,7 +11,7 @@ import type {
   BlockingPromptDetection,
   AutoResponseRule,
 } from 'pty-manager';
-import { BaseCodingAdapter, type InstallationInfo } from './base-coding-adapter';
+import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials } from './base-coding-adapter';
 
 export class CodexAdapter extends BaseCodingAdapter {
   readonly adapterType = 'codex';
@@ -58,6 +58,13 @@ export class CodexAdapter extends BaseCodingAdapter {
       safe: true,
     },
   ];
+
+  getRecommendedModels(_credentials?: AgentCredentials): ModelRecommendations {
+    return {
+      powerful: 'o3',
+      fast: 'gpt-4o-mini',
+    };
+  }
 
   getCommand(): string {
     return 'codex';

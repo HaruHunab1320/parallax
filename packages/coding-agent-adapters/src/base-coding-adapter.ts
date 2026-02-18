@@ -34,6 +34,16 @@ export interface InstallationInfo {
 }
 
 /**
+ * Model tier recommendations for an adapter
+ */
+export interface ModelRecommendations {
+  /** Most capable model for complex tasks */
+  powerful: string;
+  /** Fastest/cheapest model for simple tasks */
+  fast: string;
+}
+
+/**
  * Extended config with credentials and mode support
  */
 export interface CodingAgentConfig extends SpawnConfig {
@@ -43,6 +53,12 @@ export interface CodingAgentConfig extends SpawnConfig {
      * Use this when you want the full interactive CLI experience.
      */
     interactive?: boolean;
+    /**
+     * Preferred provider for multi-provider adapters (e.g., Aider).
+     * Only the API key for this provider is passed, letting the CLI
+     * pick its best model for that provider automatically.
+     */
+    provider?: 'anthropic' | 'openai' | 'google';
   } & Record<string, unknown>;
 }
 
@@ -71,6 +87,12 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
     const adapterConfig = config.adapterConfig as { interactive?: boolean } | undefined;
     return adapterConfig?.interactive === true;
   }
+
+  /**
+   * Get recommended models for this adapter.
+   * Returns powerful (most capable) and fast (cheapest/fastest) model names.
+   */
+  abstract getRecommendedModels(credentials?: AgentCredentials): ModelRecommendations;
 
   /**
    * Override detectExit to include installation instructions

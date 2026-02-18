@@ -10,7 +10,7 @@ import type {
   LoginDetection,
   BlockingPromptDetection,
 } from 'pty-manager';
-import { BaseCodingAdapter, type InstallationInfo } from './base-coding-adapter';
+import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials } from './base-coding-adapter';
 
 export class GeminiAdapter extends BaseCodingAdapter {
   readonly adapterType = 'gemini';
@@ -23,6 +23,13 @@ export class GeminiAdapter extends BaseCodingAdapter {
     ],
     docsUrl: 'https://github.com/anthropics/gemini-cli#installation',
   };
+
+  getRecommendedModels(_credentials?: AgentCredentials): ModelRecommendations {
+    return {
+      powerful: 'gemini-2.5-pro',
+      fast: 'gemini-2.5-flash',
+    };
+  }
 
   getCommand(): string {
     return 'gemini';
@@ -132,6 +139,17 @@ export class GeminiAdapter extends BaseCodingAdapter {
         url: loginDetection.url,
         canAutoRespond: false,
         instructions: loginDetection.instructions,
+      };
+    }
+
+    // Gemini-specific: Tool execution confirmation (WriteFile, Shell, etc.)
+    if (/Apply this change\?/i.test(stripped) || /Waiting for user confirmation/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'permission',
+        prompt: 'Gemini tool execution confirmation',
+        canAutoRespond: false,
+        instructions: 'Gemini is asking to apply a change (file write, shell command, etc.)',
       };
     }
 

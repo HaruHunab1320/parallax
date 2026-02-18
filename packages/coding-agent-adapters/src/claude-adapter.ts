@@ -11,7 +11,7 @@ import type {
   BlockingPromptDetection,
   AutoResponseRule,
 } from 'pty-manager';
-import { BaseCodingAdapter, type InstallationInfo } from './base-coding-adapter';
+import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials } from './base-coding-adapter';
 
 export class ClaudeAdapter extends BaseCodingAdapter {
   readonly adapterType = 'claude';
@@ -68,6 +68,13 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       safe: true,
     },
   ];
+
+  getRecommendedModels(_credentials?: AgentCredentials): ModelRecommendations {
+    return {
+      powerful: 'claude-sonnet-4-20250514',
+      fast: 'claude-haiku-4-5-20251001',
+    };
+  }
 
   getCommand(): string {
     return 'claude';
@@ -163,6 +170,17 @@ export class ClaudeAdapter extends BaseCodingAdapter {
         url: loginDetection.url,
         canAutoRespond: false,
         instructions: loginDetection.instructions,
+      };
+    }
+
+    // Claude-specific: Tool permission prompt
+    if (/Do you want to|wants? (your )?permission|needs your permission/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'permission',
+        prompt: 'Claude tool permission',
+        canAutoRespond: false,
+        instructions: 'Claude is asking permission to use a tool',
       };
     }
 
