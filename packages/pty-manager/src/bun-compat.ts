@@ -32,6 +32,12 @@ export interface BunPTYManagerOptions {
   workerPath?: string;
   /** Environment variables for worker process */
   env?: Record<string, string>;
+  /**
+   * Adapter modules to load in the worker process.
+   * Each module should export a `createAllAdapters()` function that returns an array of adapters.
+   * Example: ['coding-agent-adapters']
+   */
+  adapterModules?: string[];
 }
 
 interface PendingOperation {
@@ -54,6 +60,7 @@ export class BunCompatiblePTYManager extends EventEmitter {
   private nodePath: string;
   private workerPath: string;
   private env: Record<string, string>;
+  private adapterModules: string[];
 
   constructor(options: BunPTYManagerOptions = {}) {
     super();
@@ -61,6 +68,7 @@ export class BunCompatiblePTYManager extends EventEmitter {
     this.nodePath = options.nodePath || 'node';
     this.workerPath = options.workerPath || this.findWorkerPath();
     this.env = options.env || {};
+    this.adapterModules = options.adapterModules || [];
 
     this.readyPromise = new Promise((resolve) => {
       this.readyResolve = resolve;
@@ -140,6 +148,10 @@ export class BunCompatiblePTYManager extends EventEmitter {
 
     switch (eventType) {
       case 'worker_ready':
+        // Register adapter modules before marking as ready
+        if (this.adapterModules.length > 0) {
+          this.sendCommand({ cmd: 'registerAdapters', modules: this.adapterModules });
+        }
         this.ready = true;
         this.readyResolve();
         this.emit('ready');

@@ -13,6 +13,7 @@
  *   { "cmd": "kill", "id": string, "signal"?: string }
  *   { "cmd": "list" }
  *   { "cmd": "shutdown" }
+ *   { "cmd": "registerAdapters", "modules": string[] }  // Load adapter modules dynamically
  *
  * Events (stdout):
  *   { "event": "spawned", "id": string, "pid": number }
@@ -58,6 +59,7 @@ interface Command {
   cols?: number;
   rows?: number;
   signal?: string;
+  modules?: string[];
 }
 
 interface Event {
@@ -272,6 +274,39 @@ async function handleShutdown(): Promise<void> {
   setTimeout(() => process.exit(0), 100);
 }
 
+function handleRegisterAdapters(modules: string[]): void {
+  try {
+    for (const modulePath of modules) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod = require(modulePath);
+
+      // Try createAllAdapters() first (coding-agent-adapters pattern)
+      if (typeof mod.createAllAdapters === 'function') {
+        const adapters = mod.createAllAdapters();
+        for (const adapter of adapters) {
+          manager.registerAdapter(adapter);
+        }
+      }
+      // Fall back to default export if it's an array of adapters
+      else if (Array.isArray(mod.default)) {
+        for (const adapter of mod.default) {
+          manager.registerAdapter(adapter);
+        }
+      }
+      // Or if default is a single adapter
+      else if (mod.default && typeof mod.default.adapterType === 'string') {
+        manager.registerAdapter(mod.default);
+      }
+      else {
+        throw new Error(`Module ${modulePath} does not export createAllAdapters() or adapters`);
+      }
+    }
+    ack('registerAdapters', undefined, true);
+  } catch (err) {
+    ack('registerAdapters', undefined, false, err instanceof Error ? err.message : String(err));
+  }
+}
+
 function processCommand(line: string): void {
   let command: Command;
 
@@ -337,6 +372,14 @@ function processCommand(line: string): void {
 
     case 'shutdown':
       handleShutdown();
+      break;
+
+    case 'registerAdapters':
+      if (!command.modules || !Array.isArray(command.modules)) {
+        ack('registerAdapters', undefined, false, 'Missing modules array');
+        return;
+      }
+      handleRegisterAdapters(command.modules);
       break;
 
     default:
