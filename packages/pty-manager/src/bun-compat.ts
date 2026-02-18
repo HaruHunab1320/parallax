@@ -428,7 +428,8 @@ export class BunCompatiblePTYManager extends EventEmitter {
  * Detect if running in Bun
  */
 export function isBun(): boolean {
-  return typeof process !== 'undefined' && 'Bun' in process.versions;
+  // Bun 1.1.24+ sets process.versions.bun (lowercase)
+  return typeof process !== 'undefined' && 'bun' in process.versions;
 }
 
 /**
