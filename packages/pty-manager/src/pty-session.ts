@@ -436,28 +436,30 @@ export class PTYSession extends EventEmitter {
       // Emit raw output
       this.emit('output', data);
 
-      // Ready detection takes priority during startup/auth — check BEFORE blocking prompts
-      // This ensures that once the CLI shows a ready prompt, it takes priority over
-      // stale auth text that may still be in the buffer
+      // Ready detection — only during startup/auth
+      // When transitioning to ready, clear the buffer to remove stale startup/auth text
       if (
         (this._status === 'starting' || this._status === 'authenticating') &&
         this.adapter.detectReady(this.outputBuffer)
       ) {
         this._status = 'ready';
         this._lastBlockingPromptHash = null; // Clear stale blocking prompt state
+        this.outputBuffer = ''; // Clear stale startup text so it can't cause false detections
         this.emit('ready');
         this.logger.info({ sessionId: this.id }, 'Session ready');
+        return; // Skip processing the stale buffer
       }
 
-      // Only process blocking prompts / login detection if not yet ready
-      if (this._status !== 'ready') {
-        // Check for blocking prompts
-        const blockingPrompt = this.detectAndHandleBlockingPrompt();
-        if (blockingPrompt) {
-          return;
-        }
+      // Blocking prompt detection — ALL states (not just startup)
+      // Blocking prompts happen throughout the session lifecycle:
+      // permission prompts, confirmation dialogs, apply changes, etc.
+      const blockingPrompt = this.detectAndHandleBlockingPrompt();
+      if (blockingPrompt) {
+        return;
+      }
 
-        // Fallback: Check for login required (legacy support)
+      // Login detection — only during startup/auth (not after ready/busy)
+      if (this._status !== 'ready' && this._status !== 'busy') {
         const loginDetection = this.adapter.detectLogin(this.outputBuffer);
         if (loginDetection.required && this._status !== 'authenticating') {
           this._status = 'authenticating';
