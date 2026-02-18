@@ -176,13 +176,15 @@ export class GeminiAdapter extends BaseCodingAdapter {
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
 
+    // Specific ready indicators - avoid broad patterns like "Gemini" which
+    // appears in banners alongside auth errors
     return (
-      stripped.includes('Gemini') ||
       stripped.includes('Ready') ||
-      stripped.includes('Type your message') ||  // Actual Gemini ready prompt
+      stripped.includes('Type your message') ||
       stripped.includes('How can I help') ||
       stripped.includes('What would you like') ||
-      /(?:gemini|>)\s*$/i.test(stripped)
+      // Match "gemini> " prompt specifically, not bare ">"
+      /gemini>\s*$/i.test(stripped)
     );
   }
 
@@ -213,7 +215,8 @@ export class GeminiAdapter extends BaseCodingAdapter {
   }
 
   getPromptPattern(): RegExp {
-    return /(?:gemini|>)\s*$/i;
+    // Match "gemini> " specifically, not bare ">" which is too broad
+    return /gemini>\s*$/i;
   }
 
   getHealthCheckCommand(): string {

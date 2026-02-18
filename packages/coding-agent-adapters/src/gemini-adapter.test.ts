@@ -251,10 +251,6 @@ describe('GeminiAdapter', () => {
   });
 
   describe('detectReady()', () => {
-    it('should detect Gemini mention', () => {
-      expect(adapter.detectReady('Gemini v1.0.0')).toBe(true);
-    });
-
     it('should detect Ready indicator', () => {
       expect(adapter.detectReady('Ready for input')).toBe(true);
     });
@@ -269,6 +265,16 @@ describe('GeminiAdapter', () => {
 
     it('should detect gemini> prompt', () => {
       expect(adapter.detectReady('gemini> ')).toBe(true);
+    });
+
+    it('should NOT detect bare "Gemini" mention (too broad)', () => {
+      // "Gemini" appears in banners alongside auth errors - should not trigger ready
+      expect(adapter.detectReady('Gemini CLI v1.0.0')).toBe(false);
+    });
+
+    it('should NOT detect bare > prompt (too broad)', () => {
+      // Bare ">" could match "Enter API key>" - should not trigger ready
+      expect(adapter.detectReady('Enter value> ')).toBe(false);
     });
 
     it('should return false for loading output', () => {
@@ -305,14 +311,14 @@ describe('GeminiAdapter', () => {
   });
 
   describe('getPromptPattern()', () => {
-    it('should match gemini prompt', () => {
+    it('should match gemini> prompt', () => {
       const pattern = adapter.getPromptPattern();
       expect('gemini> '.match(pattern)).toBeTruthy();
     });
 
-    it('should match > prompt', () => {
+    it('should NOT match bare > prompt (too broad)', () => {
       const pattern = adapter.getPromptPattern();
-      expect('> '.match(pattern)).toBeTruthy();
+      expect('> '.match(pattern)).toBeFalsy();
     });
   });
 

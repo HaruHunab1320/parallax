@@ -199,13 +199,9 @@ async function handleSpawn(id: string, config: SpawnConfig): Promise<void> {
 
 function handleSend(id: string, data: string): void {
   try {
-    const attachment = attachments.get(id);
-    if (!attachment) {
-      ack('send', id, false, `Session ${id} not found or not attached`);
-      return;
-    }
-
-    attachment.write(data);
+    // Use manager.send() which goes through session.send() → session.write()
+    // This properly formats input via adapter and appends \r
+    manager.send(id, data);
     ack('send', id, true);
   } catch (err) {
     ack('send', id, false, err instanceof Error ? err.message : String(err));

@@ -268,12 +268,17 @@ describe('ClaudeAdapter', () => {
       expect(adapter.detectReady('What would you like me to do?')).toBe(true);
     });
 
-    it('should detect > prompt', () => {
+    it('should detect claude> prompt', () => {
       expect(adapter.detectReady('claude> ')).toBe(true);
     });
 
     it('should detect Ready indicator', () => {
       expect(adapter.detectReady('Ready for input')).toBe(true);
+    });
+
+    it('should NOT detect bare > prompt (too broad)', () => {
+      // Bare ">" could match prompts like "Enter value>" - should not trigger ready
+      expect(adapter.detectReady('Enter value> ')).toBe(false);
     });
 
     it('should return false for loading output', () => {
@@ -313,14 +318,14 @@ describe('ClaudeAdapter', () => {
   });
 
   describe('getPromptPattern()', () => {
-    it('should match claude prompt', () => {
+    it('should match claude> prompt', () => {
       const pattern = adapter.getPromptPattern();
       expect('claude> '.match(pattern)).toBeTruthy();
     });
 
-    it('should match > prompt', () => {
+    it('should NOT match bare > prompt (too broad)', () => {
       const pattern = adapter.getPromptPattern();
-      expect('> '.match(pattern)).toBeTruthy();
+      expect('> '.match(pattern)).toBeFalsy();
     });
   });
 

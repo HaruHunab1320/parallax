@@ -222,14 +222,14 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     const stripped = this.stripAnsi(output);
 
     // Claude Code shows a prompt when ready
+    // Avoid overly broad patterns that could match during auth
     return (
       stripped.includes('Claude Code') ||
       stripped.includes('How can I help') ||
       stripped.includes('What would you like') ||
-      // Check for the typical prompt pattern
-      />\s*$/.test(stripped) ||
-      // Or a clear ready indicator
-      stripped.includes('Ready')
+      stripped.includes('Ready') ||
+      // Match "claude> " or similar specific prompts, not bare ">"
+      /claude>\s*$/i.test(stripped)
     );
   }
 
@@ -262,7 +262,8 @@ export class ClaudeAdapter extends BaseCodingAdapter {
 
   getPromptPattern(): RegExp {
     // Claude Code prompt patterns
-    return /(?:claude|>)\s*$/i;
+    // Match "claude> " specifically, not bare ">" which is too broad
+    return /claude>\s*$/i;
   }
 
   getHealthCheckCommand(): string {

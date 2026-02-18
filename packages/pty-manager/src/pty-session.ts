@@ -255,6 +255,7 @@ export class PTYSession extends EventEmitter {
   private messageCounter: number = 0;
   private logger: Logger;
   private sessionRules: AutoResponseRule[] = [];
+  private _lastBlockingPromptHash: string | null = null;
 
   public readonly id: string;
   public readonly config: SpawnConfig;
@@ -435,29 +436,38 @@ export class PTYSession extends EventEmitter {
       // Emit raw output
       this.emit('output', data);
 
-      // Check for blocking prompts
-      const blockingPrompt = this.detectAndHandleBlockingPrompt();
-      if (blockingPrompt) {
-        return;
-      }
-
-      // Fallback: Check for login required (legacy support)
-      const loginDetection = this.adapter.detectLogin(this.outputBuffer);
-      if (loginDetection.required && this._status !== 'authenticating') {
-        this._status = 'authenticating';
-        this.emit('login_required', loginDetection.instructions, loginDetection.url);
-        this.logger.warn(
-          { sessionId: this.id, loginType: loginDetection.type },
-          'Login required'
-        );
-        return;
-      }
-
-      // Check for ready state
-      if (this._status === 'starting' && this.adapter.detectReady(this.outputBuffer)) {
+      // Ready detection takes priority during startup/auth — check BEFORE blocking prompts
+      // This ensures that once the CLI shows a ready prompt, it takes priority over
+      // stale auth text that may still be in the buffer
+      if (
+        (this._status === 'starting' || this._status === 'authenticating') &&
+        this.adapter.detectReady(this.outputBuffer)
+      ) {
         this._status = 'ready';
+        this._lastBlockingPromptHash = null; // Clear stale blocking prompt state
         this.emit('ready');
         this.logger.info({ sessionId: this.id }, 'Session ready');
+      }
+
+      // Only process blocking prompts / login detection if not yet ready
+      if (this._status !== 'ready') {
+        // Check for blocking prompts
+        const blockingPrompt = this.detectAndHandleBlockingPrompt();
+        if (blockingPrompt) {
+          return;
+        }
+
+        // Fallback: Check for login required (legacy support)
+        const loginDetection = this.adapter.detectLogin(this.outputBuffer);
+        if (loginDetection.required && this._status !== 'authenticating') {
+          this._status = 'authenticating';
+          this.emit('login_required', loginDetection.instructions, loginDetection.url);
+          this.logger.warn(
+            { sessionId: this.id, loginType: loginDetection.type },
+            'Login required'
+          );
+          return;
+        }
       }
 
       // Check for exit
@@ -486,7 +496,8 @@ export class PTYSession extends EventEmitter {
   }
 
   /**
-   * Detect blocking prompts and handle them with auto-responses or user notification
+   * Detect blocking prompts and handle them with auto-responses or user notification.
+   * Deduplicates emissions - won't re-emit the same blocking prompt repeatedly.
    */
   private detectAndHandleBlockingPrompt(): boolean {
     // First, check adapter's auto-response rules
@@ -500,6 +511,14 @@ export class PTYSession extends EventEmitter {
       const detection = this.adapter.detectBlockingPrompt(this.outputBuffer);
 
       if (detection.detected) {
+        // Deduplicate: don't re-emit the same blocking prompt
+        const promptHash = `${detection.type}:${detection.prompt || ''}`;
+        if (promptHash === this._lastBlockingPromptHash) {
+          // Still blocked by same prompt, but don't spam events
+          return true;
+        }
+        this._lastBlockingPromptHash = promptHash;
+
         const promptInfo: BlockingPromptInfo = {
           type: detection.type || 'unknown',
           prompt: detection.prompt,
@@ -521,6 +540,7 @@ export class PTYSession extends EventEmitter {
           );
 
           this.writeRaw(detection.suggestedResponse + '\r');
+          this._lastBlockingPromptHash = null; // Clear after auto-response
           this.emit('blocking_prompt', promptInfo, true);
           return true;
         }
@@ -541,6 +561,9 @@ export class PTYSession extends EventEmitter {
 
         this.emit('blocking_prompt', promptInfo, false);
         return true;
+      } else {
+        // No blocking prompt detected - clear the hash
+        this._lastBlockingPromptHash = null;
       }
     }
 
