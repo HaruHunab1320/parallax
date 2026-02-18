@@ -29,13 +29,15 @@ export class ClaudeAdapter extends BaseCodingAdapter {
 
   /**
    * Auto-response rules for Claude Code CLI.
-   * These handle common prompts that can be safely auto-responded.
+   * These handle common text-based [y/n] prompts that can be safely auto-responded.
+   * Explicit responseType: 'text' prevents the usesTuiMenus default from kicking in.
    */
   readonly autoResponseRules: AutoResponseRule[] = [
     {
       pattern: /update available.*\[y\/n\]/i,
       type: 'update',
       response: 'n',
+      responseType: 'text',
       description: 'Decline Claude Code update to continue execution',
       safe: true,
     },
@@ -43,6 +45,7 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       pattern: /new version.*available.*\[y\/n\]/i,
       type: 'update',
       response: 'n',
+      responseType: 'text',
       description: 'Decline version upgrade prompt',
       safe: true,
     },
@@ -50,6 +53,7 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       pattern: /would you like to enable.*telemetry.*\[y\/n\]/i,
       type: 'config',
       response: 'n',
+      responseType: 'text',
       description: 'Decline telemetry prompt',
       safe: true,
     },
@@ -57,6 +61,7 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       pattern: /send anonymous usage data.*\[y\/n\]/i,
       type: 'config',
       response: 'n',
+      responseType: 'text',
       description: 'Decline anonymous usage data',
       safe: true,
     },
@@ -64,6 +69,7 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       pattern: /continue without.*\[y\/n\]/i,
       type: 'config',
       response: 'y',
+      responseType: 'text',
       description: 'Continue without optional feature',
       safe: true,
     },
@@ -173,13 +179,14 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       };
     }
 
-    // Claude-specific: Tool permission prompt
+    // Claude-specific: Tool permission prompt (TUI menu — use keys:enter)
     if (/Do you want to|wants? (your )?permission|needs your permission/i.test(stripped)) {
       return {
         detected: true,
         type: 'permission',
         prompt: 'Claude tool permission',
-        canAutoRespond: false,
+        suggestedResponse: 'keys:enter',
+        canAutoRespond: true,
         instructions: 'Claude is asking permission to use a tool',
       };
     }

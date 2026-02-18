@@ -407,32 +407,41 @@ describe('AiderAdapter', () => {
   });
 
   describe('autoResponseRules', () => {
-    it('should have file add rule', () => {
+    it('should have file add rule with responseType text', () => {
       const rule = adapter.autoResponseRules.find(r =>
         r.description.toLowerCase().includes('add files')
       );
 
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('y');
+      expect(rule?.responseType).toBe('text');
       expect(rule?.safe).toBe(true);
     });
 
-    it('should have file create rule', () => {
+    it('should have file create rule with responseType text', () => {
       const rule = adapter.autoResponseRules.find(r =>
         r.description.toLowerCase().includes('create')
       );
 
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('y');
+      expect(rule?.responseType).toBe('text');
     });
 
-    it('should have apply changes rule', () => {
+    it('should have apply changes rule with responseType text', () => {
       const rule = adapter.autoResponseRules.find(r =>
         r.description.toLowerCase().includes('apply')
       );
 
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('y');
+      expect(rule?.responseType).toBe('text');
+    });
+
+    it('should have all rules with explicit responseType text', () => {
+      for (const rule of adapter.autoResponseRules) {
+        expect(rule.responseType).toBe('text');
+      }
     });
 
     it('should match add to chat prompt', () => {

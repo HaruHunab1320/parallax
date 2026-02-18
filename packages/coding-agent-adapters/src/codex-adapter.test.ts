@@ -274,29 +274,30 @@ describe('CodexAdapter', () => {
   });
 
   describe('autoResponseRules', () => {
-    it('should have update decline rule', () => {
-      const rule = adapter.autoResponseRules.find(r => r.type === 'update');
+    it('should have update skip rule with key sequence', () => {
+      const rule = adapter.autoResponseRules.find(r => r.type === 'config');
 
       expect(rule).toBeDefined();
-      expect(rule?.response).toBe('n');
+      expect(rule?.responseType).toBe('keys');
+      expect(rule?.keys).toEqual(['down', 'enter']);
     });
 
-    it('should have telemetry decline rule', () => {
-      const rule = adapter.autoResponseRules.find(r =>
-        r.description.toLowerCase().includes('telemetry')
-      );
+    it('should have trust directory rule with key sequence', () => {
+      const rule = adapter.autoResponseRules.find(r => r.type === 'permission');
 
       expect(rule).toBeDefined();
-      expect(rule?.response).toBe('n');
+      expect(rule?.responseType).toBe('keys');
+      expect(rule?.keys).toEqual(['enter']);
     });
 
-    it('should decline beta features', () => {
-      const rule = adapter.autoResponseRules.find(r =>
-        r.description.toLowerCase().includes('beta')
-      );
+    it('should match update prompt', () => {
+      const rule = adapter.autoResponseRules.find(r => r.type === 'config');
+      expect(rule?.pattern.test('Update available - Skip until next version')).toBe(true);
+    });
 
-      expect(rule).toBeDefined();
-      expect(rule?.response).toBe('n');
+    it('should match trust directory prompt', () => {
+      const rule = adapter.autoResponseRules.find(r => r.type === 'permission');
+      expect(rule?.pattern.test('Do you trust the contents of this directory?')).toBe(true);
     });
   });
 

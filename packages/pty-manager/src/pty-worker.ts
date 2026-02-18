@@ -19,6 +19,7 @@
  *   { "cmd": "setRules", "id": string, "rules": SerializedRule[] }
  *   { "cmd": "getRules", "id": string }
  *   { "cmd": "clearRules", "id": string }
+ *   { "cmd": "selectMenuOption", "id": string, "optionIndex": number }
  *
  * Events (stdout):
  *   { "event": "spawned", "id": string, "pid": number }
@@ -62,6 +63,8 @@ interface SerializedRule {
   flags?: string;
   type: BlockingPromptType;
   response: string;
+  responseType?: 'text' | 'keys';
+  keys?: string[];
   description: string;
   safe?: boolean;
 }
@@ -83,6 +86,8 @@ interface Command {
   rules?: SerializedRule[];
   pattern?: string;
   flags?: string;
+  // selectMenuOption command
+  optionIndex?: number;
   // Stall detection commands
   enabled?: boolean;
   timeoutMs?: number;
@@ -348,6 +353,8 @@ function deserializeRule(serialized: SerializedRule): AutoResponseRule {
     pattern: new RegExp(serialized.pattern, serialized.flags || ''),
     type: serialized.type,
     response: serialized.response,
+    responseType: serialized.responseType,
+    keys: serialized.keys,
     description: serialized.description,
     safe: serialized.safe,
   };
@@ -359,6 +366,8 @@ function serializeRule(rule: AutoResponseRule): SerializedRule {
     flags: rule.pattern.flags || undefined,
     type: rule.type,
     response: rule.response,
+    responseType: rule.responseType,
+    keys: rule.keys,
     description: rule.description,
     safe: rule.safe,
   };
@@ -424,6 +433,17 @@ function handleConfigureStallDetection(enabled: boolean, timeoutMs?: number): vo
   } catch (err) {
     ack('configureStallDetection', undefined, false, err instanceof Error ? err.message : String(err));
   }
+}
+
+function handleSelectMenuOption(id: string, optionIndex: number): void {
+  const session = manager.getSession(id);
+  if (!session) {
+    ack('selectMenuOption', id, false, `Session ${id} not found`);
+    return;
+  }
+  session.selectMenuOption(optionIndex)
+    .then(() => ack('selectMenuOption', id, true))
+    .catch(err => ack('selectMenuOption', id, false, err instanceof Error ? err.message : String(err)));
 }
 
 function handleClassifyStallResult(id: string, classification: StallClassification | null): void {
@@ -553,6 +573,14 @@ function processCommand(line: string): void {
         return;
       }
       handleClearRules(command.id);
+      break;
+
+    case 'selectMenuOption':
+      if (!command.id || command.optionIndex === undefined) {
+        ack('selectMenuOption', command.id, false, 'Missing id or optionIndex');
+        return;
+      }
+      handleSelectMenuOption(command.id, command.optionIndex);
       break;
 
     case 'configureStallDetection':

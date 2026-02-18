@@ -81,6 +81,12 @@ class TestAdapter extends BaseCodingAdapter {
 describe('BaseCodingAdapter', () => {
   const adapter = new TestAdapter();
 
+  describe('usesTuiMenus', () => {
+    it('should return true for coding agent adapters', () => {
+      expect(adapter.usesTuiMenus).toBe(true);
+    });
+  });
+
   describe('installation info', () => {
     it('should have installation command', () => {
       expect(adapter.installation.command).toBe('npm install -g test-cli');

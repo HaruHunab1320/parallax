@@ -27,47 +27,24 @@ export class CodexAdapter extends BaseCodingAdapter {
 
   /**
    * Auto-response rules for OpenAI Codex CLI.
+   * Codex uses TUI menus (Ink/React) — rules use key sequences.
    */
   readonly autoResponseRules: AutoResponseRule[] = [
     {
-      pattern: /update available.*\[y\/n\]/i,
-      type: 'update',
-      response: 'n',
-      description: 'Decline Codex update to continue execution',
-      safe: true,
-    },
-    {
-      pattern: /new version.*\[y\/n\]/i,
-      type: 'update',
-      response: 'n',
-      description: 'Decline version upgrade',
-      safe: true,
-    },
-    {
-      pattern: /send.*telemetry.*\[y\/n\]/i,
-      type: 'config',
-      response: 'n',
-      description: 'Decline telemetry',
-      safe: true,
-    },
-    {
-      pattern: /enable.*beta.*features.*\[y\/n\]/i,
-      type: 'config',
-      response: 'n',
-      description: 'Decline beta features',
-      safe: true,
-    },
-    {
       pattern: /Update (available|now)|Skip until next version/i,
       type: 'config',
-      response: '2',
-      description: 'Skip Codex CLI update prompt',
+      response: '',
+      responseType: 'keys',
+      keys: ['down', 'enter'],
+      description: 'Skip Codex CLI update prompt (select "Skip")',
       safe: true,
     },
     {
       pattern: /trust the contents of this directory/i,
       type: 'permission',
-      response: 'y',
+      response: '',
+      responseType: 'keys',
+      keys: ['enter'],
       description: 'Trust directory contents to allow Codex to operate',
       safe: true,
     },

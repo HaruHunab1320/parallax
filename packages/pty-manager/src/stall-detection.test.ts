@@ -560,6 +560,305 @@ describe('tryAutoResponse ANSI stripping', () => {
   });
 });
 
+describe('TUI key-sequence auto-response', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should send Enter via sendKeys for rule with keys: ["enter"]', () => {
+    const adapter = createMockAdapter();
+    adapter.autoResponseRules = [
+      {
+        pattern: /trust the contents/i,
+        type: 'permission',
+        response: '',
+        responseType: 'keys',
+        keys: ['enter'],
+        description: 'Trust directory',
+        safe: true,
+      },
+    ];
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+    internals.outputBuffer = 'Do you trust the contents of this directory?';
+
+    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+
+    expect(handled).toBe(true);
+    // Key sent immediately (0ms delay for first key)
+    vi.advanceTimersByTime(0);
+    expect(writeFn).toHaveBeenCalledWith('\r'); // Enter key escape sequence
+  });
+
+  it('should send Down then Enter for rule with keys: ["down", "enter"]', () => {
+    const adapter = createMockAdapter();
+    adapter.autoResponseRules = [
+      {
+        pattern: /Update available/i,
+        type: 'config',
+        response: '',
+        responseType: 'keys',
+        keys: ['down', 'enter'],
+        description: 'Skip update',
+        safe: true,
+      },
+    ];
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+    internals.outputBuffer = 'Update available. 1. Update now 2. Skip';
+
+    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+
+    expect(handled).toBe(true);
+    // First key (down) at 0ms
+    vi.advanceTimersByTime(0);
+    expect(writeFn).toHaveBeenCalledWith('\x1b[B'); // Down arrow
+
+    // Second key (enter) at 50ms
+    vi.advanceTimersByTime(50);
+    expect(writeFn).toHaveBeenCalledWith('\r'); // Enter
+  });
+
+  it('should send text via writeRaw for rule with responseType: "text"', () => {
+    const adapter = createMockAdapter();
+    adapter.autoResponseRules = [
+      {
+        pattern: /continue\? \[y\/n\]/i,
+        type: 'config',
+        response: 'y',
+        responseType: 'text',
+        description: 'Continue',
+        safe: true,
+      },
+    ];
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+    internals.outputBuffer = 'Do you want to continue? [y/n]';
+
+    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+
+    expect(handled).toBe(true);
+    expect(writeFn).toHaveBeenCalledWith('y\r');
+  });
+
+  it('should default to sendKeys Enter for TUI adapter with no explicit responseType', () => {
+    const adapter = createMockAdapter();
+    (adapter as unknown as { usesTuiMenus: boolean }).usesTuiMenus = true;
+    adapter.autoResponseRules = [
+      {
+        pattern: /confirm action/i,
+        type: 'permission',
+        response: 'y',
+        description: 'Confirm action',
+        safe: true,
+      },
+    ];
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+    internals.outputBuffer = 'Please confirm action';
+
+    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+
+    expect(handled).toBe(true);
+    // Should use sendKeys('enter') → writes '\r' via ptyProcess.write
+    expect(writeFn).toHaveBeenCalledWith('\r');
+    // Should NOT have written 'y\r' (text response)
+    expect(writeFn).not.toHaveBeenCalledWith('y\r');
+  });
+
+  it('selectMenuOption(0) should send Enter only', async () => {
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      createMockAdapter(),
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+
+    await session.selectMenuOption(0);
+
+    // Should only send Enter (no Down presses for index 0)
+    expect(writeFn).toHaveBeenCalledTimes(1);
+    expect(writeFn).toHaveBeenCalledWith('\r');
+  });
+
+  it('selectMenuOption(2) should send Down, Down, Enter with delays', async () => {
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      createMockAdapter(),
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+
+    const promise = session.selectMenuOption(2);
+
+    // First Down at 0ms
+    expect(writeFn).toHaveBeenCalledTimes(1);
+    expect(writeFn).toHaveBeenNthCalledWith(1, '\x1b[B');
+
+    // After 50ms delay, second Down
+    vi.advanceTimersByTime(50);
+    await Promise.resolve(); // Flush microtasks
+    expect(writeFn).toHaveBeenCalledTimes(2);
+    expect(writeFn).toHaveBeenNthCalledWith(2, '\x1b[B');
+
+    // After another 50ms delay, Enter
+    vi.advanceTimersByTime(50);
+    await Promise.resolve();
+    await promise;
+    expect(writeFn).toHaveBeenCalledTimes(3);
+    expect(writeFn).toHaveBeenNthCalledWith(3, '\r');
+  });
+
+  it('stall classification with "keys:down,enter" should parse and send key sequence', () => {
+    const { session, writeFn } = createBusySession({ timeoutMs: 3000 });
+    const blockingHandler = vi.fn();
+    session.on('blocking_prompt', blockingHandler);
+
+    simulateOutput(session, 'Select an option:');
+    vi.advanceTimersByTime(3000);
+
+    const classification: StallClassification = {
+      state: 'waiting_for_input',
+      prompt: 'Menu selection',
+      suggestedResponse: 'keys:down,enter',
+    };
+
+    session.handleStallClassification(classification);
+
+    expect(blockingHandler).toHaveBeenCalledTimes(1);
+    const [promptInfo, autoResponded] = blockingHandler.mock.calls[0];
+    expect(promptInfo.canAutoRespond).toBe(true);
+    expect(autoResponded).toBe(true);
+
+    // First key (down) at 0ms
+    vi.advanceTimersByTime(0);
+    expect(writeFn).toHaveBeenCalledWith('\x1b[B');
+
+    // Second key (enter) at 50ms
+    vi.advanceTimersByTime(50);
+    expect(writeFn).toHaveBeenCalledWith('\r');
+  });
+
+  it('detectBlockingPrompt suggestedResponse "keys:enter" should parse and send correctly', () => {
+    const adapter = createMockAdapter();
+    adapter.detectBlockingPrompt = () => ({
+      detected: true,
+      type: 'permission',
+      prompt: 'Apply changes?',
+      suggestedResponse: 'keys:enter',
+      canAutoRespond: true,
+    });
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+    internals.outputBuffer = 'Apply changes?';
+
+    const blockingHandler = vi.fn();
+    session.on('blocking_prompt', blockingHandler);
+
+    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+
+    expect(handled).toBe(true);
+    expect(blockingHandler).toHaveBeenCalledTimes(1);
+    expect(blockingHandler.mock.calls[0][1]).toBe(true); // autoResponded
+
+    // Should have sent Enter via sendKeys (setTimeout scheduling)
+    vi.advanceTimersByTime(0);
+    expect(writeFn).toHaveBeenCalledWith('\r');
+    // Should NOT have sent 'keys:enter\r' as raw text
+    expect(writeFn).not.toHaveBeenCalledWith('keys:enter\r');
+  });
+});
+
 describe('PTYManager stall detection config', () => {
   it('should store stall config from constructor', async () => {
     // Use dynamic import to avoid module-level issues

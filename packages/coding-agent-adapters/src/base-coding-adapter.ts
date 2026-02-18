@@ -67,6 +67,11 @@ export interface CodingAgentConfig extends SpawnConfig {
  */
 export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   /**
+   * Coding agent CLIs use TUI menus that require arrow-key navigation.
+   */
+  override readonly usesTuiMenus: boolean = true;
+
+  /**
    * Installation information for this CLI tool
    */
   abstract readonly installation: InstallationInfo;

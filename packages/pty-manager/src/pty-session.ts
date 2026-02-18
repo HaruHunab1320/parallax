@@ -450,6 +450,13 @@ export class PTYSession extends EventEmitter {
   }
 
   /**
+   * Promise-based delay helper.
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
    * Simple string hash for deduplication.
    */
   private simpleHash(str: string): string {
@@ -500,7 +507,13 @@ export class PTYSession extends EventEmitter {
             { sessionId: this.id, response: classification.suggestedResponse },
             'Auto-responding to stall-classified prompt'
           );
-          this.writeRaw(classification.suggestedResponse + '\r');
+          const resp = classification.suggestedResponse;
+          if (resp.startsWith('keys:')) {
+            const keys = resp.slice(5).split(',').map(k => k.trim());
+            this.sendKeySequence(keys);
+          } else {
+            this.writeRaw(resp + '\r');
+          }
           this.emit('blocking_prompt', promptInfo, true);
         } else {
           this.emit('blocking_prompt', promptInfo, false);
@@ -711,7 +724,13 @@ export class PTYSession extends EventEmitter {
             'Auto-responding to blocking prompt'
           );
 
-          this.writeRaw(detection.suggestedResponse + '\r');
+          const resp = detection.suggestedResponse;
+          if (resp.startsWith('keys:')) {
+            const keys = resp.slice(5).split(',').map(k => k.trim());
+            this.sendKeySequence(keys);
+          } else {
+            this.writeRaw(resp + '\r');
+          }
           this._lastBlockingPromptHash = null; // Clear after auto-response
           this.emit('blocking_prompt', promptInfo, true);
           return true;
@@ -779,7 +798,20 @@ export class PTYSession extends EventEmitter {
             'Applying auto-response rule'
           );
 
-          this.writeRaw(rule.response + '\r');
+          // Determine how to send the response
+          const useKeys = rule.keys && rule.keys.length > 0;
+          const isTuiDefault = !rule.responseType && !rule.keys && this.adapter.usesTuiMenus;
+
+          if (useKeys) {
+            // Explicit key sequence
+            this.sendKeySequence(rule.keys!);
+          } else if (isTuiDefault) {
+            // TUI adapter with no explicit responseType — default to Enter
+            this.sendKeys('enter');
+          } else {
+            // Text response (backward compat)
+            this.writeRaw(rule.response + '\r');
+          }
 
           // Clear the matched portion from buffer to prevent re-matching
           this.outputBuffer = this.outputBuffer.replace(rule.pattern, '');
@@ -941,6 +973,28 @@ export class PTYSession extends EventEmitter {
         this.ptyProcess.write(key);
       }
     }
+  }
+
+  /**
+   * Select a TUI menu option by index (0-based).
+   * Sends Down arrow `optionIndex` times, then Enter, with 50ms delays.
+   */
+  async selectMenuOption(optionIndex: number): Promise<void> {
+    for (let i = 0; i < optionIndex; i++) {
+      this.sendKeys('down');
+      await this.delay(50);
+    }
+    this.sendKeys('enter');
+  }
+
+  /**
+   * Send a sequence of keys with staggered timing.
+   * Each key is sent 50ms apart using setTimeout to keep the caller synchronous.
+   */
+  private sendKeySequence(keys: string[]): void {
+    keys.forEach((key, i) => {
+      setTimeout(() => this.sendKeys(key), i * 50);
+    });
   }
 
   /**

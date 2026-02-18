@@ -29,6 +29,13 @@ export interface CLIAdapter {
   readonly autoResponseRules?: AutoResponseRule[];
 
   /**
+   * Whether this CLI uses TUI menus that require arrow-key navigation.
+   * When true, auto-response rules without an explicit responseType
+   * default to sending Enter via sendKeys instead of writeRaw.
+   */
+  readonly usesTuiMenus?: boolean;
+
+  /**
    * Get the CLI command to execute
    */
   getCommand(): string;

@@ -143,12 +143,14 @@ export class GeminiAdapter extends BaseCodingAdapter {
     }
 
     // Gemini-specific: Tool execution confirmation (WriteFile, Shell, etc.)
+    // TUI menu — use keys:enter to confirm
     if (/Apply this change\?/i.test(stripped) || /Waiting for user confirmation/i.test(stripped)) {
       return {
         detected: true,
         type: 'permission',
         prompt: 'Gemini tool execution confirmation',
-        canAutoRespond: false,
+        suggestedResponse: 'keys:enter',
+        canAutoRespond: true,
         instructions: 'Gemini is asking to apply a change (file write, shell command, etc.)',
       };
     }

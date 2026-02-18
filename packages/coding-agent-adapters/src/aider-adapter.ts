@@ -30,12 +30,15 @@ export class AiderAdapter extends BaseCodingAdapter {
 
   /**
    * Auto-response rules for Aider CLI.
+   * Aider uses plain text [y/n] prompts, NOT TUI menus.
+   * Explicit responseType: 'text' prevents the usesTuiMenus default from kicking in.
    */
   readonly autoResponseRules: AutoResponseRule[] = [
     {
       pattern: /Add .+ to the chat\?.*\[y\/n\]/i,
       type: 'permission',
       response: 'y',
+      responseType: 'text',
       description: 'Allow Aider to add files to chat context',
       safe: true,
     },
@@ -43,6 +46,7 @@ export class AiderAdapter extends BaseCodingAdapter {
       pattern: /Create new file.*\[y\/n\]/i,
       type: 'permission',
       response: 'y',
+      responseType: 'text',
       description: 'Allow Aider to create new files',
       safe: true,
     },
@@ -50,6 +54,7 @@ export class AiderAdapter extends BaseCodingAdapter {
       pattern: /Apply.*changes.*\[y\/n\]/i,
       type: 'permission',
       response: 'y',
+      responseType: 'text',
       description: 'Apply proposed changes',
       safe: true,
     },

@@ -183,6 +183,12 @@ export interface AutoResponseRule {
   /** Response to send automatically */
   response: string;
 
+  /** How to deliver the response: 'text' writes raw text + CR, 'keys' sends key sequences (default: 'text') */
+  responseType?: 'text' | 'keys';
+
+  /** Key names to send when responseType is 'keys' (e.g. ['down', 'enter']) */
+  keys?: string[];
+
   /** Human-readable description of what this does */
   description: string;
 

@@ -19,6 +19,8 @@ export interface SerializedRule {
   flags?: string;
   type: BlockingPromptType;
   response: string;
+  responseType?: 'text' | 'keys';
+  keys?: string[];
   description: string;
   safe?: boolean;
 }
@@ -346,6 +348,8 @@ export class BunCompatiblePTYManager extends EventEmitter {
           pattern: new RegExp(r.pattern, r.flags || ''),
           type: r.type,
           response: r.response,
+          responseType: r.responseType,
+          keys: r.keys,
           description: r.description,
           safe: r.safe,
         })) as AutoResponseRule[];
@@ -537,6 +541,8 @@ export class BunCompatiblePTYManager extends EventEmitter {
       flags: rule.pattern.flags || undefined,
       type: rule.type,
       response: rule.response,
+      responseType: rule.responseType,
+      keys: rule.keys,
       description: rule.description,
       safe: rule.safe,
     };
@@ -599,6 +605,17 @@ export class BunCompatiblePTYManager extends EventEmitter {
 
     const rules = (await this.createPending(`getRules:${sessionId}`)) as AutoResponseRule[];
     return rules;
+  }
+
+  /**
+   * Select a TUI menu option by index (0-based) in a session.
+   */
+  async selectMenuOption(id: string, optionIndex: number): Promise<void> {
+    await this.waitForReady();
+
+    this.sendCommand({ cmd: 'selectMenuOption', id, optionIndex });
+
+    await this.createPending(`selectMenuOption:${id}`);
   }
 
   /**

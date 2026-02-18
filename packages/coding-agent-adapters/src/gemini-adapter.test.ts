@@ -243,6 +243,24 @@ describe('GeminiAdapter', () => {
       expect(result.prompt).toContain('Safety filter');
     });
 
+    it('should auto-respond to Apply this change with keys:enter', () => {
+      const result = adapter.detectBlockingPrompt('Apply this change?');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('permission');
+      expect(result.canAutoRespond).toBe(true);
+      expect(result.suggestedResponse).toBe('keys:enter');
+    });
+
+    it('should auto-respond to Waiting for user confirmation with keys:enter', () => {
+      const result = adapter.detectBlockingPrompt('Waiting for user confirmation');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('permission');
+      expect(result.canAutoRespond).toBe(true);
+      expect(result.suggestedResponse).toBe('keys:enter');
+    });
+
     it('should return not detected for normal output', () => {
       const result = adapter.detectBlockingPrompt('Processing your request...');
 

@@ -27,6 +27,12 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
    */
   readonly autoResponseRules: AutoResponseRule[] = [];
 
+  /**
+   * Whether this CLI uses TUI menus requiring arrow-key navigation.
+   * Defaults to false; coding agent adapters override to true.
+   */
+  readonly usesTuiMenus: boolean = false;
+
   abstract getCommand(): string;
   abstract getArgs(config: SpawnConfig): string[];
   abstract getEnv(config: SpawnConfig): Record<string, string>;

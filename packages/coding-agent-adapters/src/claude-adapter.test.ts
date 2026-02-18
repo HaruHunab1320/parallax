@@ -330,26 +330,52 @@ describe('ClaudeAdapter', () => {
   });
 
   describe('autoResponseRules', () => {
-    it('should have update decline rule', () => {
+    it('should have update decline rule with responseType text', () => {
       const rule = adapter.autoResponseRules.find(r => r.type === 'update');
 
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('n');
+      expect(rule?.responseType).toBe('text');
       expect(rule?.safe).toBe(true);
     });
 
-    it('should have telemetry decline rule', () => {
+    it('should have telemetry decline rule with responseType text', () => {
       const rule = adapter.autoResponseRules.find(r =>
         r.description.toLowerCase().includes('telemetry')
       );
 
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('n');
+      expect(rule?.responseType).toBe('text');
+    });
+
+    it('should have all rules with explicit responseType text', () => {
+      for (const rule of adapter.autoResponseRules) {
+        expect(rule.responseType).toBe('text');
+      }
     });
 
     it('should match update prompt', () => {
       const rule = adapter.autoResponseRules.find(r => r.type === 'update');
       expect(rule?.pattern.test('A new update available! [y/n]')).toBe(true);
+    });
+  });
+
+  describe('detectBlockingPrompt() permission with keys:enter', () => {
+    it('should return keys:enter suggestedResponse for tool permission prompt', () => {
+      const result = adapter.detectBlockingPrompt('Claude wants permission to read file.txt');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('permission');
+      expect(result.canAutoRespond).toBe(true);
+      expect(result.suggestedResponse).toBe('keys:enter');
+    });
+
+    it('should return keys:enter for "Do you want to" prompt', () => {
+      const result = adapter.detectBlockingPrompt('Do you want to allow this action?');
+
+      expect(result.detected).toBe(true);
+      expect(result.suggestedResponse).toBe('keys:enter');
     });
   });
 

@@ -296,4 +296,52 @@ describe('Rule serialization for IPC', () => {
     expect(deserialized.pattern.test('Update available [y/n]')).toBe(true);
     expect(deserialized.pattern.test('No match here')).toBe(false);
   });
+
+  it('should correctly round-trip rules with responseType and keys fields', () => {
+    const originalRule: AutoResponseRule = {
+      pattern: /Update available|Skip until next/i,
+      type: 'config' as BlockingPromptType,
+      response: '',
+      responseType: 'keys',
+      keys: ['down', 'enter'],
+      description: 'Skip update via TUI menu',
+      safe: true,
+    };
+
+    // Serialize
+    const serialized = {
+      pattern: originalRule.pattern.source,
+      flags: originalRule.pattern.flags,
+      type: originalRule.type,
+      response: originalRule.response,
+      responseType: originalRule.responseType,
+      keys: originalRule.keys,
+      description: originalRule.description,
+      safe: originalRule.safe,
+    };
+
+    // Deserialize
+    const deserialized: AutoResponseRule = {
+      pattern: new RegExp(serialized.pattern, serialized.flags || ''),
+      type: serialized.type,
+      response: serialized.response,
+      responseType: serialized.responseType,
+      keys: serialized.keys,
+      description: serialized.description,
+      safe: serialized.safe,
+    };
+
+    expect(deserialized.pattern.source).toBe(originalRule.pattern.source);
+    expect(deserialized.pattern.flags).toBe(originalRule.pattern.flags);
+    expect(deserialized.type).toBe(originalRule.type);
+    expect(deserialized.response).toBe(originalRule.response);
+    expect(deserialized.responseType).toBe('keys');
+    expect(deserialized.keys).toEqual(['down', 'enter']);
+    expect(deserialized.description).toBe(originalRule.description);
+    expect(deserialized.safe).toBe(originalRule.safe);
+
+    // Pattern should still work
+    expect(deserialized.pattern.test('Update available')).toBe(true);
+    expect(deserialized.pattern.test('Skip until next version')).toBe(true);
+  });
 });

@@ -701,13 +701,17 @@ importers:
         version: 5.8.3
 
   packages/coding-agent-adapters:
+    dependencies:
+      agent-adapter-monitor:
+        specifier: workspace:^
+        version: link:../adapter-monitor
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.9
       pty-manager:
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: workspace:*
+        version: link:../pty-manager
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
@@ -991,8 +995,8 @@ importers:
         specifier: ^1.0.0
         version: 1.26.0(zod@3.25.76)
       coding-agent-adapters:
-        specifier: ^0.1.0
-        version: 0.1.0(pty-manager@1.2.1)
+        specifier: workspace:*
+        version: link:../coding-agent-adapters
       jsonwebtoken:
         specifier: ^9.0.0
         version: 9.0.2
@@ -1003,8 +1007,8 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       pty-manager:
-        specifier: ^1.2.0
-        version: 1.2.1
+        specifier: workspace:*
+        version: link:../pty-manager
       uuid:
         specifier: ^11.0.5
         version: 11.1.0
@@ -7016,12 +7020,6 @@ packages:
     resolution: {integrity: sha512-gfrHV6ZPkquExvMh9IOkKsBzNDk6sDuZ6DdBGUBkvFnTCqCxzpuq48RySgP0AnaqQkw2zynOFj9yly6T1Q2G5Q==}
     engines: {node: '>=16'}
 
-  coding-agent-adapters@0.1.0:
-    resolution: {integrity: sha512-LHyRybe1slm2fWmK3188uYv1HgNdLiCldzbAUz1wQf9mnidWyRVUmICAnzlfr+yaBrnatIezAWIDwZzmd6T00Q==}
-    engines: {node: '>=18.0.0'}
-    peerDependencies:
-      pty-manager: '>=1.2.0'
-
   collapse-white-space@2.1.0:
     resolution: {integrity: sha512-loKTxY1zCOuG4j9f6EPnuyyYkf58RnhhWTvRoZEokgB+WbdXehfjFviyOVYkqzEWz1Q5kRiZdBYS5SwxbQYwzw==}
 
@@ -11385,11 +11383,6 @@ packages:
 
   proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
-
-  pty-manager@1.2.1:
-    resolution: {integrity: sha512-3XpRFfgoXnK4dfUVOXU9NYfBjGHvJCLt3YTFF5as9twv443Lmkdj9cRQ6oLZfwGSMpNI9KYcO+PTfLMG8DExHA==}
-    engines: {node: '>=18'}
-    hasBin: true
 
   pump@3.0.3:
     resolution: {integrity: sha512-todwxLMY7/heScKmntwQG8CXVkWUOdYxIvY2s0VWAAMh/nd8SoYiRaKjlr7+iCs984f2P8zvrfWcDDYVb73NfA==}
@@ -20066,10 +20059,6 @@ snapshots:
 
   cockatiel@3.2.1: {}
 
-  coding-agent-adapters@0.1.0(pty-manager@1.2.1):
-    dependencies:
-      pty-manager: 1.2.1
-
   collapse-white-space@2.1.0: {}
 
   collect-v8-coverage@1.0.2: {}
@@ -25467,10 +25456,6 @@ snapshots:
       - supports-color
 
   proxy-from-env@1.1.0: {}
-
-  pty-manager@1.2.1:
-    dependencies:
-      node-pty: 1.1.0
 
   pump@3.0.3:
     dependencies:
