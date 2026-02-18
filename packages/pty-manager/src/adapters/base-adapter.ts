@@ -286,7 +286,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
    * Helper to strip ANSI escape codes from output
    */
   protected stripAnsi(str: string): string {
+    // Replace cursor-forward sequences (\x1b[<n>C) with spaces before stripping.
+    // TUI CLIs use these instead of literal spaces for word positioning.
+    const withSpaces = str.replace(/\x1b\[\d*C/g, ' ');
     // eslint-disable-next-line no-control-regex
-    return str.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+    return withSpaces.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
   }
 }

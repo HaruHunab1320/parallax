@@ -14,6 +14,7 @@ import type {
   SessionMessage,
   BlockingPromptInfo,
   AutoResponseRule,
+  StallClassification,
   Logger,
 } from './types';
 
@@ -42,6 +43,7 @@ export interface PTYSessionEvents {
   question: (question: string) => void;
   exit: (code: number) => void;
   error: (error: Error) => void;
+  stall_detected: (recentOutput: string, stallDurationMs: number) => void;
 }
 
 /**
@@ -257,18 +259,29 @@ export class PTYSession extends EventEmitter {
   private sessionRules: AutoResponseRule[] = [];
   private _lastBlockingPromptHash: string | null = null;
 
+  // Stall detection
+  private _stallTimer: ReturnType<typeof setTimeout> | null = null;
+  private _stallTimeoutMs: number;
+  private _stallDetectionEnabled: boolean;
+  private _lastStallHash: string | null = null;
+  private _stallStartedAt: number | null = null;
+
   public readonly id: string;
   public readonly config: SpawnConfig;
 
   constructor(
     private adapter: CLIAdapter,
     config: SpawnConfig,
-    logger?: Logger
+    logger?: Logger,
+    stallDetectionEnabled?: boolean,
+    defaultStallTimeoutMs?: number,
   ) {
     super();
     this.id = config.id || generateId();
     this.config = { ...config, id: this.id };
     this.logger = logger || consoleLogger;
+    this._stallDetectionEnabled = stallDetectionEnabled ?? false;
+    this._stallTimeoutMs = config.stallTimeoutMs ?? defaultStallTimeoutMs ?? 8000;
   }
 
   get status(): SessionStatus {
@@ -364,6 +377,154 @@ export class PTYSession extends EventEmitter {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Stall Detection
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Start or reset the stall detection timer.
+   * Only active when status is "busy" and stall detection is enabled.
+   */
+  private resetStallTimer(): void {
+    this.clearStallTimer();
+
+    if (!this._stallDetectionEnabled || this._status !== 'busy') {
+      return;
+    }
+
+    this._stallStartedAt = Date.now();
+    this._lastStallHash = null; // New output arrived, reset dedup hash
+
+    this._stallTimer = setTimeout(() => {
+      this.onStallTimerFired();
+    }, this._stallTimeoutMs);
+  }
+
+  /**
+   * Clear the stall detection timer.
+   */
+  private clearStallTimer(): void {
+    if (this._stallTimer) {
+      clearTimeout(this._stallTimer);
+      this._stallTimer = null;
+    }
+    this._stallStartedAt = null;
+  }
+
+  /**
+   * Called when the stall timer fires (no output for stallTimeoutMs).
+   */
+  private onStallTimerFired(): void {
+    if (this._status !== 'busy') {
+      return; // Status changed while timer was running
+    }
+
+    // Compute dedup hash from last 500 chars of outputBuffer
+    const tail = this.outputBuffer.slice(-500);
+    const hash = this.simpleHash(tail);
+
+    if (hash === this._lastStallHash) {
+      // Buffer tail unchanged since last stall emission — don't re-emit.
+      // Schedule another check.
+      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallTimeoutMs);
+      return;
+    }
+    this._lastStallHash = hash;
+
+    // Compute recent output: last 2000 chars, ANSI-stripped
+    const recentRaw = this.outputBuffer.slice(-2000);
+    const recentOutput = this.stripAnsiForStall(recentRaw);
+
+    const stallDurationMs = this._stallStartedAt
+      ? Date.now() - this._stallStartedAt
+      : this._stallTimeoutMs;
+
+    this.logger.debug(
+      { sessionId: this.id, stallDurationMs, bufferTailLength: tail.length },
+      'Stall detected'
+    );
+
+    this.emit('stall_detected', recentOutput, stallDurationMs);
+
+    // Schedule next check in case classifier says "still_working"
+    this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallTimeoutMs);
+  }
+
+  /**
+   * Simple string hash for deduplication.
+   */
+  private simpleHash(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return hash.toString(36);
+  }
+
+  /**
+   * Strip ANSI codes for stall detection output.
+   * Replaces cursor-forward sequences with spaces first.
+   */
+  private stripAnsiForStall(str: string): string {
+    const withSpaces = str.replace(/\x1b\[\d*C/g, ' ');
+    // eslint-disable-next-line no-control-regex
+    return withSpaces.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+  }
+
+  /**
+   * Handle external stall classification result.
+   * Called by the manager after onStallClassify resolves.
+   */
+  handleStallClassification(classification: StallClassification | null): void {
+    // Guard against async race — session may no longer be busy
+    if (this._status !== 'busy') {
+      return;
+    }
+
+    if (!classification || classification.state === 'still_working') {
+      this.resetStallTimer();
+      return;
+    }
+
+    switch (classification.state) {
+      case 'waiting_for_input': {
+        const promptInfo: BlockingPromptInfo = {
+          type: 'stall_classified',
+          prompt: classification.prompt,
+          canAutoRespond: !!classification.suggestedResponse,
+        };
+
+        if (classification.suggestedResponse) {
+          this.logger.info(
+            { sessionId: this.id, response: classification.suggestedResponse },
+            'Auto-responding to stall-classified prompt'
+          );
+          this.writeRaw(classification.suggestedResponse + '\r');
+          this.emit('blocking_prompt', promptInfo, true);
+        } else {
+          this.emit('blocking_prompt', promptInfo, false);
+        }
+        break;
+      }
+
+      case 'task_complete':
+        this._status = 'ready';
+        this._lastBlockingPromptHash = null;
+        this.outputBuffer = '';
+        this.clearStallTimer();
+        this.emit('ready');
+        this.logger.info({ sessionId: this.id }, 'Stall classified as task_complete, transitioning to ready');
+        break;
+
+      case 'error':
+        this.clearStallTimer();
+        this.emit('error', new Error(classification.prompt || 'Stall classified as error'));
+        break;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Lifecycle
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -433,6 +594,11 @@ export class PTYSession extends EventEmitter {
       this._lastActivityAt = new Date();
       this.outputBuffer += data;
 
+      // Reset stall timer on any new output while busy
+      if (this._status === 'busy') {
+        this.resetStallTimer();
+      }
+
       // Emit raw output
       this.emit('output', data);
 
@@ -445,6 +611,7 @@ export class PTYSession extends EventEmitter {
         this._status = 'ready';
         this._lastBlockingPromptHash = null; // Clear stale blocking prompt state
         this.outputBuffer = ''; // Clear stale startup text so it can't cause false detections
+        this.clearStallTimer();
         this.emit('ready');
         this.logger.info({ sessionId: this.id }, 'Session ready');
         return; // Skip processing the stale buffer
@@ -463,6 +630,7 @@ export class PTYSession extends EventEmitter {
         const loginDetection = this.adapter.detectLogin(this.outputBuffer);
         if (loginDetection.required && this._status !== 'authenticating') {
           this._status = 'authenticating';
+          this.clearStallTimer();
           this.emit('login_required', loginDetection.instructions, loginDetection.url);
           this.logger.warn(
             { sessionId: this.id, loginType: loginDetection.type },
@@ -476,6 +644,7 @@ export class PTYSession extends EventEmitter {
       const exitDetection = this.adapter.detectExit(this.outputBuffer);
       if (exitDetection.exited) {
         this._status = 'stopped';
+        this.clearStallTimer();
         this.emit('exit', exitDetection.code || 0);
       }
 
@@ -489,6 +658,7 @@ export class PTYSession extends EventEmitter {
 
     this.ptyProcess.onExit(({ exitCode, signal }) => {
       this._status = 'stopped';
+      this.clearStallTimer();
       this.logger.info(
         { sessionId: this.id, exitCode, signal },
         'PTY session exited'
@@ -700,6 +870,7 @@ export class PTYSession extends EventEmitter {
    */
   send(message: string): SessionMessage {
     this._status = 'busy';
+    this.resetStallTimer();
 
     const msg: SessionMessage = {
       id: `${this.id}-msg-${++this.messageCounter}`,
@@ -805,6 +976,7 @@ export class PTYSession extends EventEmitter {
   kill(signal?: string): void {
     if (this.ptyProcess) {
       this._status = 'stopping';
+      this.clearStallTimer();
       this.ptyProcess.kill(signal);
       this.logger.info({ sessionId: this.id, signal }, 'Killing PTY session');
     }

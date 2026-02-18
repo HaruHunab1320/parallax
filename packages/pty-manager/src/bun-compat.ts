@@ -9,7 +9,7 @@ import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as readline from 'readline';
-import type { SpawnConfig, AutoResponseRule, BlockingPromptType } from './types';
+import type { SpawnConfig, AutoResponseRule, BlockingPromptType, StallClassification } from './types';
 
 /**
  * Serialized auto-response rule for IPC (pattern as string instead of RegExp)
@@ -50,6 +50,20 @@ export interface BunPTYManagerOptions {
    * Example: ['coding-agent-adapters']
    */
   adapterModules?: string[];
+
+  /** Enable stall detection (default: false) */
+  stallDetectionEnabled?: boolean;
+  /** Default stall timeout in ms (default: 8000) */
+  stallTimeoutMs?: number;
+  /**
+   * External classification callback invoked when a stall is detected.
+   * The worker emits stall_detected; this callback runs on the parent side.
+   */
+  onStallClassify?: (
+    sessionId: string,
+    recentOutput: string,
+    stallDurationMs: number,
+  ) => Promise<StallClassification | null>;
 }
 
 interface PendingOperation {
@@ -73,6 +87,13 @@ export class BunCompatiblePTYManager extends EventEmitter {
   private workerPath: string;
   private env: Record<string, string>;
   private adapterModules: string[];
+  private _stallDetectionEnabled: boolean;
+  private _stallTimeoutMs: number;
+  private _onStallClassify?: (
+    sessionId: string,
+    recentOutput: string,
+    stallDurationMs: number,
+  ) => Promise<StallClassification | null>;
 
   constructor(options: BunPTYManagerOptions = {}) {
     super();
@@ -81,6 +102,9 @@ export class BunCompatiblePTYManager extends EventEmitter {
     this.workerPath = options.workerPath || this.findWorkerPath();
     this.env = options.env || {};
     this.adapterModules = options.adapterModules || [];
+    this._stallDetectionEnabled = options.stallDetectionEnabled ?? false;
+    this._stallTimeoutMs = options.stallTimeoutMs ?? 8000;
+    this._onStallClassify = options.onStallClassify;
 
     this.readyPromise = new Promise((resolve) => {
       this.readyResolve = resolve;
@@ -163,6 +187,14 @@ export class BunCompatiblePTYManager extends EventEmitter {
         // Register adapter modules before marking as ready
         if (this.adapterModules.length > 0) {
           this.sendCommand({ cmd: 'registerAdapters', modules: this.adapterModules });
+        }
+        // Send stall detection config to worker
+        if (this._stallDetectionEnabled) {
+          this.sendCommand({
+            cmd: 'configureStallDetection',
+            enabled: true,
+            timeoutMs: this._stallTimeoutMs,
+          });
         }
         this.ready = true;
         this.readyResolve();
@@ -262,6 +294,36 @@ export class BunCompatiblePTYManager extends EventEmitter {
         const session = this.sessions.get(id!);
         if (session) {
           this.emit('question', session, event.question);
+        }
+        break;
+      }
+
+      case 'stall_detected': {
+        const session = this.sessions.get(id!);
+        if (session) {
+          const recentOutput = event.recentOutput as string;
+          const stallDurationMs = event.stallDurationMs as number;
+          this.emit('stall_detected', session, recentOutput, stallDurationMs);
+
+          // Call external classifier on parent side, send result back to worker
+          if (this._onStallClassify) {
+            this._onStallClassify(id!, recentOutput, stallDurationMs)
+              .then((classification) => {
+                this.sendCommand({
+                  cmd: 'classifyStallResult',
+                  id: id!,
+                  classification,
+                });
+              })
+              .catch(() => {
+                // On error, send null to reset the timer
+                this.sendCommand({
+                  cmd: 'classifyStallResult',
+                  id: id!,
+                  classification: null,
+                });
+              });
+          }
         }
         break;
       }

@@ -62,6 +62,9 @@ export interface SpawnConfig {
 
   /** Custom adapter configuration */
   adapterConfig?: Record<string, unknown>;
+
+  /** Per-session stall timeout in ms. Overrides PTYManagerConfig.stallTimeoutMs. */
+  stallTimeoutMs?: number;
 }
 
 /**
@@ -200,6 +203,24 @@ export interface BlockingPromptInfo {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Stall Detection Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Classification result from external stall analysis
+ */
+export interface StallClassification {
+  /** What the external classifier determined */
+  state: 'waiting_for_input' | 'still_working' | 'task_complete' | 'error';
+
+  /** Description of the detected prompt (for waiting_for_input) */
+  prompt?: string;
+
+  /** Suggested response to send (for waiting_for_input with auto-respond) */
+  suggestedResponse?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Manager Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -259,6 +280,25 @@ export interface PTYManagerConfig {
 
   /** Maximum output log lines per session (default: 1000) */
   maxLogLines?: number;
+
+  /** Enable stall detection (default: false) */
+  stallDetectionEnabled?: boolean;
+
+  /** Default stall timeout in ms (default: 8000). Can be overridden per-session via SpawnConfig. */
+  stallTimeoutMs?: number;
+
+  /**
+   * External classification callback invoked when a stall is detected.
+   * Return null or { state: 'still_working' } to reset the timer.
+   * Return { state: 'waiting_for_input', suggestedResponse } to auto-respond.
+   * Return { state: 'task_complete' } to transition session to ready.
+   * Return { state: 'error' } to emit session_error.
+   */
+  onStallClassify?: (
+    sessionId: string,
+    recentOutput: string,
+    stallDurationMs: number
+  ) => Promise<StallClassification | null>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

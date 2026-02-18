@@ -37,6 +37,9 @@ export type {
   AutoResponseRule,
   BlockingPromptInfo,
 
+  // Stall detection types
+  StallClassification,
+
   // Manager types
   Logger,
   StopOptions,

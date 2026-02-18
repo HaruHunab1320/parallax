@@ -38,7 +38,7 @@
 import * as readline from 'readline';
 import { PTYManager } from './pty-manager';
 import { ShellAdapter } from './adapters';
-import type { SpawnConfig, SessionHandle, BlockingPromptInfo, SessionMessage, AutoResponseRule, BlockingPromptType } from './types';
+import type { SpawnConfig, SessionHandle, BlockingPromptInfo, SessionMessage, AutoResponseRule, BlockingPromptType, StallClassification } from './types';
 
 interface SessionInfo {
   id: string;
@@ -83,6 +83,10 @@ interface Command {
   rules?: SerializedRule[];
   pattern?: string;
   flags?: string;
+  // Stall detection commands
+  enabled?: boolean;
+  timeoutMs?: number;
+  classification?: StallClassification | null;
 }
 
 interface Event {
@@ -170,6 +174,15 @@ manager.on('question', (handle: SessionHandle, question: string) => {
     event: 'question',
     id: handle.id,
     question,
+  });
+});
+
+manager.on('stall_detected', (handle: SessionHandle, recentOutput: string, stallDurationMs: number) => {
+  emit({
+    event: 'stall_detected',
+    id: handle.id,
+    recentOutput,
+    stallDurationMs,
   });
 });
 
@@ -400,6 +413,33 @@ function handleClearRules(id: string): void {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Stall Detection Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+function handleConfigureStallDetection(enabled: boolean, timeoutMs?: number): void {
+  try {
+    manager.configureStallDetection(enabled, timeoutMs);
+    ack('configureStallDetection', undefined, true);
+  } catch (err) {
+    ack('configureStallDetection', undefined, false, err instanceof Error ? err.message : String(err));
+  }
+}
+
+function handleClassifyStallResult(id: string, classification: StallClassification | null): void {
+  try {
+    const session = manager.getSession(id);
+    if (!session) {
+      ack('classifyStallResult', id, false, `Session ${id} not found`);
+      return;
+    }
+    session.handleStallClassification(classification);
+    ack('classifyStallResult', id, true);
+  } catch (err) {
+    ack('classifyStallResult', id, false, err instanceof Error ? err.message : String(err));
+  }
+}
+
 function processCommand(line: string): void {
   let command: Command;
 
@@ -513,6 +553,18 @@ function processCommand(line: string): void {
         return;
       }
       handleClearRules(command.id);
+      break;
+
+    case 'configureStallDetection':
+      handleConfigureStallDetection(command.enabled ?? false, command.timeoutMs);
+      break;
+
+    case 'classifyStallResult':
+      if (!command.id) {
+        ack('classifyStallResult', command.id, false, 'Missing id');
+        return;
+      }
+      handleClassifyStallResult(command.id, command.classification ?? null);
       break;
 
     default:

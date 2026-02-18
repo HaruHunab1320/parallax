@@ -16,6 +16,7 @@ import type {
   SessionStatus,
   BlockingPromptInfo,
   AutoResponseRule,
+  StallClassification,
   StopOptions,
   LogOptions,
   TerminalAttachment,
@@ -32,6 +33,7 @@ export interface PTYManagerEvents {
   blocking_prompt: (session: SessionHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => void;
   message: (message: SessionMessage) => void;
   question: (session: SessionHandle, question: string) => void;
+  stall_detected: (session: SessionHandle, recentOutput: string, stallDurationMs: number) => void;
 }
 
 /**
@@ -75,11 +77,23 @@ export class PTYManager extends EventEmitter {
   private logger: Logger;
   public readonly adapters: AdapterRegistry;
 
+  // Stall detection config
+  private _stallDetectionEnabled: boolean;
+  private _stallTimeoutMs: number;
+  private _onStallClassify?: (
+    sessionId: string,
+    recentOutput: string,
+    stallDurationMs: number
+  ) => Promise<StallClassification | null>;
+
   constructor(config: PTYManagerConfig = {}) {
     super();
     this.adapters = new AdapterRegistry();
     this.logger = config.logger || consoleLogger;
     this.maxLogLines = config.maxLogLines || 1000;
+    this._stallDetectionEnabled = config.stallDetectionEnabled ?? false;
+    this._stallTimeoutMs = config.stallTimeoutMs ?? 8000;
+    this._onStallClassify = config.onStallClassify;
   }
 
   /**
@@ -110,7 +124,13 @@ export class PTYManager extends EventEmitter {
     );
 
     // Create session
-    const session = new PTYSession(adapter, config, this.logger);
+    const session = new PTYSession(
+      adapter,
+      config,
+      this.logger,
+      this._stallDetectionEnabled,
+      this._stallTimeoutMs,
+    );
 
     // Set up event forwarding
     this.setupSessionEvents(session);
@@ -172,6 +192,27 @@ export class PTYManager extends EventEmitter {
 
     session.on('error', (error: Error) => {
       this.emit('session_error', session.toHandle(), error.message);
+    });
+
+    session.on('stall_detected', (recentOutput: string, stallDurationMs: number) => {
+      const handle = session.toHandle();
+      this.emit('stall_detected', handle, recentOutput, stallDurationMs);
+
+      // Call external classifier if configured
+      if (this._onStallClassify) {
+        this._onStallClassify(session.id, recentOutput, stallDurationMs)
+          .then((classification) => {
+            session.handleStallClassification(classification);
+          })
+          .catch((err) => {
+            this.logger.error(
+              { sessionId: session.id, error: err },
+              'Stall classification callback failed'
+            );
+            // Reset timer so detection continues
+            session.handleStallClassification(null);
+          });
+      }
     });
   }
 
@@ -384,6 +425,28 @@ export class PTYManager extends EventEmitter {
    */
   getSession(sessionId: string): PTYSession | undefined {
     return this.sessions.get(sessionId);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Stall Detection Configuration
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Configure stall detection at runtime.
+   * Affects newly spawned sessions only — existing sessions keep their config.
+   */
+  configureStallDetection(
+    enabled: boolean,
+    timeoutMs?: number,
+    classify?: (sessionId: string, recentOutput: string, stallDurationMs: number) => Promise<StallClassification | null>,
+  ): void {
+    this._stallDetectionEnabled = enabled;
+    if (timeoutMs !== undefined) {
+      this._stallTimeoutMs = timeoutMs;
+    }
+    if (classify !== undefined) {
+      this._onStallClassify = classify;
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
