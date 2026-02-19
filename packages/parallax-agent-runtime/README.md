@@ -54,6 +54,11 @@ parallax-agent-runtime
 | `logs` | Get agent terminal output |
 | `metrics` | Get agent resource metrics |
 | `health` | Check runtime health status |
+| `provision_workspace` | Provision a git workspace (clone repo, create branch) |
+| `finalize_workspace` | Finalize a workspace (push, create PR, cleanup) |
+| `cleanup_workspace` | Clean up a provisioned workspace |
+| `get_workspace_files` | Get workspace file descriptors for an agent type (e.g. CLAUDE.md, GEMINI.md) |
+| `write_workspace_file` | Write an agent instruction/memory file into a workspace |
 
 ## MCP Resources
 
@@ -174,6 +179,10 @@ Permissions use a colon-separated format with wildcard support:
 - `agents:spawn` - Only spawn agents
 - `logs:read` - Read agent logs
 - `health:check` - Health check only
+- `workspace:*` - All workspace operations
+- `workspace:provision` - Provision workspaces
+- `workspace:read` - Read workspace file descriptors
+- `workspace:write` - Write workspace files
 
 ## Supported Agent Types
 
