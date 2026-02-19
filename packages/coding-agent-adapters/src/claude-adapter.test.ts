@@ -264,8 +264,16 @@ describe('ClaudeAdapter', () => {
       expect(adapter.detectReady('What would you like me to do?')).toBe(true);
     });
 
+    it('should detect "for shortcuts" hint (v2.1+)', () => {
+      expect(adapter.detectReady('Press ? for shortcuts')).toBe(true);
+    });
+
     it('should detect claude> prompt', () => {
       expect(adapter.detectReady('claude> ')).toBe(true);
+    });
+
+    it('should detect ❯ prompt (v2.1+)', () => {
+      expect(adapter.detectReady('❯ ')).toBe(true);
     });
 
     it('should NOT detect bare > prompt (too broad)', () => {
@@ -338,6 +346,31 @@ describe('ClaudeAdapter', () => {
   });
 
   describe('autoResponseRules', () => {
+    it('should have trust prompt rule with keys: ["enter"]', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust')
+      );
+
+      expect(rule).toBeDefined();
+      expect(rule?.responseType).toBe('keys');
+      expect(rule?.keys).toEqual(['enter']);
+      expect(rule?.safe).toBe(true);
+    });
+
+    it('should match trust folder prompt', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust')
+      );
+      expect(rule?.pattern.test('Do you trust this folder?')).toBe(true);
+    });
+
+    it('should match safety check prompt', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust')
+      );
+      expect(rule?.pattern.test('Running safety check...')).toBe(true);
+    });
+
     it('should have update decline rule with responseType text', () => {
       const rule = adapter.autoResponseRules.find(r => r.type === 'update');
 
@@ -357,8 +390,10 @@ describe('ClaudeAdapter', () => {
       expect(rule?.responseType).toBe('text');
     });
 
-    it('should have all rules with explicit responseType text', () => {
-      for (const rule of adapter.autoResponseRules) {
+    it('should have all text rules with explicit responseType text', () => {
+      const textRules = adapter.autoResponseRules.filter(r => r.responseType === 'text');
+      expect(textRules.length).toBeGreaterThanOrEqual(5);
+      for (const rule of textRules) {
         expect(rule.responseType).toBe('text');
       }
     });

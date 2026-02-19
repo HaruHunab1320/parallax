@@ -265,6 +265,7 @@ export class PTYSession extends EventEmitter {
   private _stallDetectionEnabled: boolean;
   private _lastStallHash: string | null = null;
   private _stallStartedAt: number | null = null;
+  private _lastContentHash: string | null = null;
 
   public readonly id: string;
   public readonly config: SpawnConfig;
@@ -383,16 +384,36 @@ export class PTYSession extends EventEmitter {
   /**
    * Start or reset the stall detection timer.
    * Active when status is "busy" or "authenticating" and stall detection is enabled.
+   *
+   * Content-based: hashes the ANSI-stripped buffer tail and only resets the
+   * timer when visible content actually changes. This prevents TUI spinners
+   * (which produce new ANSI sequences but no new visible text) from endlessly
+   * resetting the timer.
    */
   private resetStallTimer(): void {
-    this.clearStallTimer();
-
     if (!this._stallDetectionEnabled || (this._status !== 'busy' && this._status !== 'authenticating')) {
+      this.clearStallTimer();
       return;
     }
 
+    // Hash the stripped buffer tail — only reset timer when content actually changes
+    const tail = this.outputBuffer.slice(-500);
+    const stripped = this.stripAnsiForStall(tail);
+    const hash = this.simpleHash(stripped);
+
+    if (hash === this._lastContentHash) {
+      // Content unchanged (e.g., spinner animation) — don't reset the timer
+      return;
+    }
+    this._lastContentHash = hash;
+
+    // Content changed — clear and restart the timer
+    if (this._stallTimer) {
+      clearTimeout(this._stallTimer);
+      this._stallTimer = null;
+    }
     this._stallStartedAt = Date.now();
-    this._lastStallHash = null; // New output arrived, reset dedup hash
+    this._lastStallHash = null; // New content, reset dedup hash for emissions
 
     this._stallTimer = setTimeout(() => {
       this.onStallTimerFired();
@@ -408,6 +429,7 @@ export class PTYSession extends EventEmitter {
       this._stallTimer = null;
     }
     this._stallStartedAt = null;
+    this._lastContentHash = null;
   }
 
   /**
@@ -490,6 +512,9 @@ export class PTYSession extends EventEmitter {
     }
 
     if (!classification || classification.state === 'still_working') {
+      // Force timer restart — classifier said "still working" so we should
+      // check again later, even if buffer content hasn't changed.
+      this._lastContentHash = null;
       this.resetStallTimer();
       return;
     }

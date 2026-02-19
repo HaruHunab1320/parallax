@@ -34,6 +34,15 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    */
   readonly autoResponseRules: AutoResponseRule[] = [
     {
+      pattern: /trust.*folder|safety check/i,
+      type: 'permission',
+      response: '',
+      responseType: 'keys',
+      keys: ['enter'],
+      description: 'Accept trust prompt for working directory',
+      safe: true,
+    },
+    {
       pattern: /update available.*\[y\/n\]/i,
       type: 'update',
       response: 'n',
@@ -258,8 +267,12 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     return (
       stripped.includes('How can I help') ||
       stripped.includes('What would you like') ||
+      // v2.1+ shows "for shortcuts" hint when ready
+      stripped.includes('for shortcuts') ||
       // Match "claude> " or similar specific prompts, not bare ">"
-      /claude>\s*$/i.test(stripped)
+      /claude>\s*$/i.test(stripped) ||
+      // v2.1+ uses ❯ as the input prompt
+      /❯\s*$/.test(stripped)
     );
   }
 

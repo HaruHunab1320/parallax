@@ -54,6 +54,7 @@ type SessionInternals = {
   _stallTimer: ReturnType<typeof setTimeout> | null;
   _stallStartedAt: number | null;
   _lastStallHash: string | null;
+  _lastContentHash: string | null;
   _lastBlockingPromptHash: string | null;
   outputBuffer: string;
   ptyProcess: {
@@ -112,11 +113,11 @@ function simulateOutput(session: PTYSession, data: string): void {
   const internals = getInternals(session);
   internals.outputBuffer += data;
 
-  // In real PTYSession, onData calls resetStallTimer when busy
+  // In real PTYSession, onData calls resetStallTimer when busy or authenticating
   // We call send() to trigger it, but since we're testing the timer directly,
   // we need to invoke the private resetStallTimer. We do this by calling
   // the method via bracket notation.
-  if (internals._status === 'busy' && internals._stallDetectionEnabled) {
+  if ((internals._status === 'busy' || internals._status === 'authenticating') && internals._stallDetectionEnabled) {
     (session as unknown as { resetStallTimer: () => void }).resetStallTimer();
   }
 }
@@ -273,6 +274,35 @@ describe('PTYSession Stall Detection', () => {
     // Content should be preserved
     expect(recentOutput).toContain('Green text');
     expect(recentOutput).toContain('spaced out');
+  });
+
+  it('should NOT reset timer when only ANSI spinner data arrives (content unchanged)', () => {
+    const { session } = createBusySession({ timeoutMs: 5000 });
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    // Real content output
+    simulateOutput(session, 'Processing your request...');
+
+    // Advance 3s — no stall yet
+    vi.advanceTimersByTime(3000);
+    expect(stallHandler).not.toHaveBeenCalled();
+
+    // Spinner-only data: ANSI cursor movement and color changes that
+    // produce NO new visible characters after stripping.
+    // This simulates TUI spinners that redraw the same line.
+    const internals = getInternals(session);
+    internals.outputBuffer += '\x1b[1G\x1b[2K\x1b[33m\x1b[0m';
+    // Call resetStallTimer — content hash hasn't changed (stripped text is the same)
+    (session as unknown as { resetStallTimer: () => void }).resetStallTimer();
+
+    // More spinner frames (still just ANSI, no new visible text)
+    internals.outputBuffer += '\x1b[1G\x1b[K\x1b[36m\x1b[0m';
+    (session as unknown as { resetStallTimer: () => void }).resetStallTimer();
+
+    // Timer should still fire at 5s from original content, not reset by spinners
+    vi.advanceTimersByTime(2000); // 5s total from "Processing..." output
+    expect(stallHandler).toHaveBeenCalledTimes(1);
   });
 
   it('should respect per-session stallTimeoutMs override', () => {
