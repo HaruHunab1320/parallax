@@ -261,6 +261,16 @@ describe('GeminiAdapter', () => {
       expect(result.suggestedResponse).toBe('keys:enter');
     });
 
+    it('should prioritize permission prompt over login-like text in same output', () => {
+      // When Gemini shows a permission prompt, the banner may contain API key text
+      const result = adapter.detectBlockingPrompt('GEMINI_API_KEY set\nApply this change?');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('permission');
+      expect(result.canAutoRespond).toBe(true);
+      expect(result.suggestedResponse).toBe('keys:enter');
+    });
+
     it('should return not detected for normal output', () => {
       const result = adapter.detectBlockingPrompt('Processing your request...');
 

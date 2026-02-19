@@ -129,20 +129,9 @@ export class GeminiAdapter extends BaseCodingAdapter {
   detectBlockingPrompt(output: string): BlockingPromptDetection {
     const stripped = this.stripAnsi(output);
 
-    // First check for login
-    const loginDetection = this.detectLogin(output);
-    if (loginDetection.required) {
-      return {
-        detected: true,
-        type: 'login',
-        prompt: loginDetection.instructions,
-        url: loginDetection.url,
-        canAutoRespond: false,
-        instructions: loginDetection.instructions,
-      };
-    }
-
     // Gemini-specific: Tool execution confirmation (WriteFile, Shell, etc.)
+    // Check BEFORE login — permission prompts contain "API key" banner text
+    // that would otherwise false-positive the login detector.
     // TUI menu — use keys:enter to confirm
     if (/Apply this change\?/i.test(stripped) || /Waiting for user confirmation/i.test(stripped)) {
       return {
@@ -152,6 +141,19 @@ export class GeminiAdapter extends BaseCodingAdapter {
         suggestedResponse: 'keys:enter',
         canAutoRespond: true,
         instructions: 'Gemini is asking to apply a change (file write, shell command, etc.)',
+      };
+    }
+
+    // Login check — after permission prompts
+    const loginDetection = this.detectLogin(output);
+    if (loginDetection.required) {
+      return {
+        detected: true,
+        type: 'login',
+        prompt: loginDetection.instructions,
+        url: loginDetection.url,
+        canAutoRespond: false,
+        instructions: loginDetection.instructions,
       };
     }
 

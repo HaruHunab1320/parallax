@@ -382,12 +382,12 @@ export class PTYSession extends EventEmitter {
 
   /**
    * Start or reset the stall detection timer.
-   * Only active when status is "busy" and stall detection is enabled.
+   * Active when status is "busy" or "authenticating" and stall detection is enabled.
    */
   private resetStallTimer(): void {
     this.clearStallTimer();
 
-    if (!this._stallDetectionEnabled || this._status !== 'busy') {
+    if (!this._stallDetectionEnabled || (this._status !== 'busy' && this._status !== 'authenticating')) {
       return;
     }
 
@@ -414,7 +414,7 @@ export class PTYSession extends EventEmitter {
    * Called when the stall timer fires (no output for stallTimeoutMs).
    */
   private onStallTimerFired(): void {
-    if (this._status !== 'busy') {
+    if (this._status !== 'busy' && this._status !== 'authenticating') {
       return; // Status changed while timer was running
     }
 
@@ -484,8 +484,8 @@ export class PTYSession extends EventEmitter {
    * Called by the manager after onStallClassify resolves.
    */
   handleStallClassification(classification: StallClassification | null): void {
-    // Guard against async race — session may no longer be busy
-    if (this._status !== 'busy') {
+    // Guard against async race — session may no longer be busy/authenticating
+    if (this._status !== 'busy' && this._status !== 'authenticating') {
       return;
     }
 
@@ -607,13 +607,23 @@ export class PTYSession extends EventEmitter {
       this._lastActivityAt = new Date();
       this.outputBuffer += data;
 
-      // Reset stall timer on any new output while busy
-      if (this._status === 'busy') {
+      // Reset stall timer on any new output while busy or authenticating
+      if (this._status === 'busy' || this._status === 'authenticating') {
         this.resetStallTimer();
       }
 
       // Emit raw output
       this.emit('output', data);
+
+      // Auto-response / blocking prompt detection — check BEFORE detectReady.
+      // This ensures that prompts like trust confirmations are auto-responded
+      // before detectReady sees banner text and prematurely marks the session ready.
+      // Blocking prompts happen throughout the session lifecycle:
+      // permission prompts, confirmation dialogs, apply changes, etc.
+      const blockingPrompt = this.detectAndHandleBlockingPrompt();
+      if (blockingPrompt) {
+        return;
+      }
 
       // Ready detection — only during startup/auth
       // When transitioning to ready, clear the buffer to remove stale startup/auth text
@@ -628,14 +638,6 @@ export class PTYSession extends EventEmitter {
         this.emit('ready');
         this.logger.info({ sessionId: this.id }, 'Session ready');
         return; // Skip processing the stale buffer
-      }
-
-      // Blocking prompt detection — ALL states (not just startup)
-      // Blocking prompts happen throughout the session lifecycle:
-      // permission prompts, confirmation dialogs, apply changes, etc.
-      const blockingPrompt = this.detectAndHandleBlockingPrompt();
-      if (blockingPrompt) {
-        return;
       }
 
       // Login detection — only during startup/auth (not after ready/busy)

@@ -256,10 +256,6 @@ describe('ClaudeAdapter', () => {
   });
 
   describe('detectReady()', () => {
-    it('should detect Claude Code mention', () => {
-      expect(adapter.detectReady('Claude Code v1.0.0')).toBe(true);
-    });
-
     it('should detect How can I help', () => {
       expect(adapter.detectReady('How can I help you today?')).toBe(true);
     });
@@ -272,13 +268,25 @@ describe('ClaudeAdapter', () => {
       expect(adapter.detectReady('claude> ')).toBe(true);
     });
 
-    it('should detect Ready indicator', () => {
-      expect(adapter.detectReady('Ready for input')).toBe(true);
-    });
-
     it('should NOT detect bare > prompt (too broad)', () => {
       // Bare ">" could match prompts like "Enter value>" - should not trigger ready
       expect(adapter.detectReady('Enter value> ')).toBe(false);
+    });
+
+    it('should NOT detect "Claude Code" mention (too broad, appears in banner)', () => {
+      expect(adapter.detectReady('Claude Code v1.0.0')).toBe(false);
+    });
+
+    it('should NOT detect bare "Ready" (too broad)', () => {
+      expect(adapter.detectReady('Ready for input')).toBe(false);
+    });
+
+    it('should NOT detect ready when trust prompt is present', () => {
+      expect(adapter.detectReady('Claude Code\nDo you want to trust this directory?')).toBe(false);
+    });
+
+    it('should NOT detect ready when permission prompt is present', () => {
+      expect(adapter.detectReady('How can I help\nClaude needs your permission to write file.txt')).toBe(false);
     });
 
     it('should return false for loading output', () => {

@@ -246,13 +246,18 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
 
+    // Guard: if the output contains a trust prompt, we're NOT ready yet —
+    // the user (or auto-response) still needs to confirm.
+    if (/trust.*directory|do you want to|needs? your permission/i.test(stripped)) {
+      return false;
+    }
+
     // Claude Code shows a prompt when ready
-    // Avoid overly broad patterns that could match during auth
+    // Only match specific interactive prompts, not banner text like "Claude Code"
+    // or generic words like "Ready" which appear alongside auth/trust screens
     return (
-      stripped.includes('Claude Code') ||
       stripped.includes('How can I help') ||
       stripped.includes('What would you like') ||
-      stripped.includes('Ready') ||
       // Match "claude> " or similar specific prompts, not bare ">"
       /claude>\s*$/i.test(stripped)
     );
