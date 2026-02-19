@@ -871,8 +871,9 @@ export class PTYSession extends EventEmitter {
             this._firedOnceRules.add(ruleKey);
           }
 
-          // Clear the matched portion from buffer to prevent re-matching
-          this.outputBuffer = this.outputBuffer.replace(rule.pattern, '');
+          // Clear the entire buffer — the prompt has been handled and leftover
+          // text (e.g. "Press enter to continue") would block detectReady().
+          this.outputBuffer = '';
 
           const promptInfo: BlockingPromptInfo = {
             type: rule.type,
