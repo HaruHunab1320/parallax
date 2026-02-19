@@ -23,7 +23,7 @@ export const MONITORED_CLIS: Record<AdapterType, CLIVersionSource> = {
     type: 'gemini',
     registry: 'npm',
     package: '@anthropic-ai/gemini-cli', // Placeholder - update when actual package known
-    githubRepo: 'anthropics/gemini-cli',
+    githubRepo: 'google-gemini/gemini-cli',
     command: 'gemini',
     installCommand: 'npm install -g @anthropic-ai/gemini-cli',
   },
@@ -32,7 +32,7 @@ export const MONITORED_CLIS: Record<AdapterType, CLIVersionSource> = {
     type: 'codex',
     registry: 'npm',
     package: '@openai/codex', // Placeholder - update when actual package known
-    githubRepo: 'openai/codex-cli',
+    githubRepo: 'openai/codex',
     command: 'codex',
     installCommand: 'npm install -g @openai/codex',
   },
@@ -41,7 +41,7 @@ export const MONITORED_CLIS: Record<AdapterType, CLIVersionSource> = {
     type: 'aider',
     registry: 'pip',
     package: 'aider-chat',
-    githubRepo: 'paul-gauthier/aider',
+    githubRepo: 'Aider-AI/aider',
     command: 'aider',
     installCommand: 'pip install aider-chat',
   },

@@ -18,6 +18,9 @@ export type {
   VersionCheckResult,
   CaptureOptions,
   AnalysisResult,
+  WatchedFile,
+  WatchedFileConfig,
+  FileChangeResult,
 } from './types';
 
 // Configuration
@@ -42,3 +45,9 @@ export {
   getPatternsForVersion,
   listCapturedVersions,
 } from './snapshot-storage';
+
+// Watched files
+export { WATCHED_FILES, getWatchedFiles, getWatchedFilesByCategory } from './watched-files';
+
+// File change checking
+export { checkFileChanges, checkAllFileChanges, listWatchedFiles } from './file-change-checker';

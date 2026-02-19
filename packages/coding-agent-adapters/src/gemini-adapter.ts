@@ -9,6 +9,7 @@ import type {
   ParsedOutput,
   LoginDetection,
   BlockingPromptDetection,
+  AutoResponseRule,
 } from 'pty-manager';
 import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials } from './base-coding-adapter';
 
@@ -23,6 +24,44 @@ export class GeminiAdapter extends BaseCodingAdapter {
     ],
     docsUrl: 'https://github.com/anthropics/gemini-cli#installation',
   };
+
+  /**
+   * Auto-response rules for Gemini CLI.
+   * Gemini uses Ink/React TUI with arrow-key radio menus.
+   * Source: FolderTrustDialog.tsx, MultiFolderTrustDialog.tsx, CloudFreePrivacyNotice.tsx
+   */
+  readonly autoResponseRules: AutoResponseRule[] = [
+    {
+      pattern: /do.?you.?trust.?this.?folder|trust.?folder|trust.?parent.?folder/i,
+      type: 'permission',
+      response: '',
+      responseType: 'keys',
+      keys: ['enter'],
+      description: 'Trust current folder (default selection in radio menu)',
+      safe: true,
+      once: true,
+    },
+    {
+      pattern: /trust.?the.?following.?folders.*(added|workspace)/i,
+      type: 'permission',
+      response: '',
+      responseType: 'keys',
+      keys: ['enter'],
+      description: 'Trust multiple folders being added to workspace',
+      safe: true,
+      once: true,
+    },
+    {
+      pattern: /allow.?google.?to.?use.?this.?data/i,
+      type: 'config',
+      response: '',
+      responseType: 'keys',
+      keys: ['down', 'enter'],
+      description: 'Decline Google data collection (select "No")',
+      safe: true,
+      once: true,
+    },
+  ];
 
   getRecommendedModels(_credentials?: AgentCredentials): ModelRecommendations {
     return {
@@ -96,6 +135,34 @@ export class GeminiAdapter extends BaseCodingAdapter {
       };
     }
 
+    // Gemini API key entry dialog (ApiAuthDialog.tsx)
+    if (/enter.?gemini.?api.?key/i.test(stripped)) {
+      return {
+        required: true,
+        type: 'api_key',
+        instructions: 'Enter a Gemini API key or set GEMINI_API_KEY environment variable',
+      };
+    }
+
+    // Auth dialog — initial auth choice (AuthDialog.tsx)
+    if (/how.?would.?you.?like.?to.?authenticate/i.test(stripped) ||
+        (/get.?started/i.test(stripped) && /login.?with.?google|use.?gemini.?api.?key|vertex/i.test(stripped))) {
+      return {
+        required: true,
+        type: 'oauth',
+        instructions: 'Gemini CLI authentication required — select an auth method',
+      };
+    }
+
+    // OAuth in-progress (AuthInProgress.tsx)
+    if (/waiting.?for.?auth/i.test(stripped)) {
+      return {
+        required: true,
+        type: 'oauth',
+        instructions: 'Waiting for browser authentication to complete',
+      };
+    }
+
     // Check for OAuth flow
     if (
       stripped.includes('Sign in with Google') ||
@@ -129,11 +196,14 @@ export class GeminiAdapter extends BaseCodingAdapter {
   detectBlockingPrompt(output: string): BlockingPromptDetection {
     const stripped = this.stripAnsi(output);
 
-    // Gemini-specific: Tool execution confirmation (WriteFile, Shell, etc.)
+    // Tool permission / execution confirmation (ToolConfirmationMessage.tsx)
     // Check BEFORE login — permission prompts contain "API key" banner text
     // that would otherwise false-positive the login detector.
-    // TUI menu — use keys:enter to confirm
-    if (/Apply this change\?/i.test(stripped) || /Waiting for user confirmation/i.test(stripped)) {
+    // TUI arrow-key menu — use keys:enter to select "Allow once" (default)
+    if (/apply.?this.?change\??/i.test(stripped) ||
+        /allow.?execution.?of/i.test(stripped) ||
+        /do.?you.?want.?to.?proceed\??/i.test(stripped) ||
+        /waiting.?for.?user.?confirmation/i.test(stripped)) {
       return {
         detected: true,
         type: 'permission',
@@ -157,7 +227,20 @@ export class GeminiAdapter extends BaseCodingAdapter {
       };
     }
 
-    // Gemini-specific: Model selection
+    // Account validation required (ValidationDialog.tsx)
+    if (/further.?action.?is.?required/i.test(stripped) ||
+        /verify.?your.?account/i.test(stripped) ||
+        /waiting.?for.?verification/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'config',
+        prompt: 'Account verification required',
+        canAutoRespond: false,
+        instructions: 'Your Gemini account requires verification before continuing',
+      };
+    }
+
+    // Model selection
     if (/select.*model|choose.*model|gemini-/i.test(stripped) &&
         /\d+\)/i.test(stripped)) {
       return {
@@ -169,7 +252,7 @@ export class GeminiAdapter extends BaseCodingAdapter {
       };
     }
 
-    // Gemini-specific: Project selection
+    // Project selection
     if (/select.*project|choose.*project|google cloud project/i.test(stripped)) {
       return {
         detected: true,
@@ -180,7 +263,7 @@ export class GeminiAdapter extends BaseCodingAdapter {
       };
     }
 
-    // Gemini-specific: Safety filter triggered
+    // Safety filter triggered
     if (/safety.*filter|content.*blocked|unsafe.*content/i.test(stripped)) {
       return {
         detected: true,
@@ -198,11 +281,25 @@ export class GeminiAdapter extends BaseCodingAdapter {
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
 
-    // Specific ready indicators - avoid broad patterns like "Gemini" which
-    // appears in banners alongside auth errors
+    // Guard: if output contains a trust or auth prompt, we're NOT ready
+    if (/do.?you.?trust.?this.?folder/i.test(stripped) ||
+        /how.?would.?you.?like.?to.?authenticate/i.test(stripped) ||
+        /waiting.?for.?auth/i.test(stripped) ||
+        /allow.?google.?to.?use.?this.?data/i.test(stripped)) {
+      return false;
+    }
+
+    // Composer placeholder (Composer.tsx:446)
+    if (/type.?your.?message/i.test(stripped)) {
+      return true;
+    }
+
+    // InputPrompt glyph — >, !, *, (r:) (InputPrompt.tsx:1450)
+    if (/^\s*[>!*]\s+/m.test(stripped) || /\(r:\)/.test(stripped)) {
+      return true;
+    }
+
     return (
-      stripped.includes('Ready') ||
-      stripped.includes('Type your message') ||
       stripped.includes('How can I help') ||
       stripped.includes('What would you like') ||
       // Match "gemini> " prompt specifically, not bare ">"
@@ -234,6 +331,31 @@ export class GeminiAdapter extends BaseCodingAdapter {
         raw: output,
       },
     };
+  }
+
+  /**
+   * Detect exit conditions specific to Gemini CLI.
+   * Source: FolderTrustDialog.tsx:127, LogoutConfirmationDialog.tsx:64
+   */
+  override detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+    const stripped = this.stripAnsi(output);
+
+    if (/folder.?trust.?level.?must.?be.?selected.*exiting/i.test(stripped)) {
+      return {
+        exited: true,
+        code: 1,
+        error: 'Gemini CLI exited because no folder trust level was selected',
+      };
+    }
+
+    if (/you are now logged out/i.test(stripped)) {
+      return {
+        exited: true,
+        code: 0,
+      };
+    }
+
+    return super.detectExit(output);
   }
 
   getPromptPattern(): RegExp {

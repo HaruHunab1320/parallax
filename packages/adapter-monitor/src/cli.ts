@@ -4,6 +4,8 @@
  *
  * Commands:
  *   check-versions  - Check for new CLI versions
+ *   check-changes   - Check watched source files for changes between versions
+ *   watched-files   - List watched source files for an adapter
  *   capture         - Capture startup snapshot
  *   analyze         - Analyze patterns from snapshots
  *   diff            - Compare patterns between versions
@@ -19,7 +21,9 @@ import {
   comparePatterns,
   extractPatterns,
 } from './snapshot-storage';
+import { checkFileChanges, listWatchedFiles } from './file-change-checker';
 import { MONITORED_CLIS } from './config';
+import { WATCHED_FILES } from './watched-files';
 import type { AdapterType } from './types';
 
 const args = process.argv.slice(2);
@@ -255,6 +259,76 @@ async function main() {
       break;
     }
 
+    case 'check-changes': {
+      const adapter = options.adapter as AdapterType;
+      const oldVersion = options.old as string;
+      const newVersion = options.new as string;
+
+      if (!adapter || !oldVersion || !newVersion) {
+        console.error('Usage: check-changes --adapter <type> --old <version> --new <version> [--json]');
+        process.exit(1);
+      }
+
+      if (!WATCHED_FILES[adapter]) {
+        console.error(`Unknown adapter: ${adapter}`);
+        console.error(`Valid adapters: ${Object.keys(WATCHED_FILES).join(', ')}`);
+        process.exit(1);
+      }
+
+      console.error(`Checking watched file changes for ${adapter}: ${oldVersion} -> ${newVersion}...\n`);
+
+      const result = await checkFileChanges(adapter, oldVersion, newVersion);
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(result.summary);
+        if (result.adapterUpdateNeeded) {
+          console.log('\nAction required: Review and update adapter patterns.');
+        }
+      }
+      break;
+    }
+
+    case 'watched-files': {
+      const adapter = options.adapter as AdapterType | undefined;
+      const all = options.all === true;
+
+      const adaptersToList = all
+        ? (Object.keys(WATCHED_FILES) as AdapterType[])
+        : adapter
+          ? [adapter]
+          : [];
+
+      if (adaptersToList.length === 0) {
+        console.error('Usage: watched-files --adapter <type> | --all [--json]');
+        process.exit(1);
+      }
+
+      const results: Record<string, Record<string, string[]>> = {};
+
+      for (const a of adaptersToList) {
+        const grouped = listWatchedFiles(a);
+        results[a] = grouped;
+
+        if (!options.json) {
+          const config = WATCHED_FILES[a];
+          console.log(`\n${a} (${config.githubRepo}):`);
+          for (const [category, files] of Object.entries(grouped)) {
+            console.log(`  [${category}]`);
+            for (const file of files) {
+              console.log(`    ${file}`);
+            }
+          }
+        }
+      }
+
+      if (options.json) {
+        console.log(JSON.stringify(results, null, 2));
+      }
+      break;
+    }
+
     case 'help':
     default:
       console.log(`
@@ -262,6 +336,17 @@ Adapter Monitor CLI
 
 Commands:
   check-versions          Check for new CLI versions
+    --json                Output as JSON
+
+  check-changes           Check watched source files for changes between versions
+    --adapter <type>      Adapter type (claude, gemini, codex, aider)
+    --old <version>       Old version tag
+    --new <version>       New version tag
+    --json                Output as JSON
+
+  watched-files           List watched source files for an adapter
+    --adapter <type>      Specific adapter
+    --all                 List all adapters
     --json                Output as JSON
 
   capture                 Capture startup snapshot

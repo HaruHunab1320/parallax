@@ -192,6 +192,34 @@ describe('GeminiAdapter', () => {
       expect(result.type).toBe('oauth');
     });
 
+    it('should detect auth dialog (AuthDialog.tsx)', () => {
+      const result = adapter.detectLogin('How would you like to authenticate for this project?');
+
+      expect(result.required).toBe(true);
+      expect(result.type).toBe('oauth');
+    });
+
+    it('should detect auth dialog with Get started + login options', () => {
+      const result = adapter.detectLogin('Get started\nLogin with Google\nUse Gemini API Key\nVertex AI');
+
+      expect(result.required).toBe(true);
+      expect(result.type).toBe('oauth');
+    });
+
+    it('should detect Gemini API key entry dialog (ApiAuthDialog.tsx)', () => {
+      const result = adapter.detectLogin('Enter Gemini API Key');
+
+      expect(result.required).toBe(true);
+      expect(result.type).toBe('api_key');
+    });
+
+    it('should detect auth in-progress (AuthInProgress.tsx)', () => {
+      const result = adapter.detectLogin('Waiting for auth... (Press ESC or CTRL+C to cancel)');
+
+      expect(result.required).toBe(true);
+      expect(result.type).toBe('oauth');
+    });
+
     it('should detect gcloud auth requirement', () => {
       const result = adapter.detectLogin('Run gcloud auth application-default login');
 
@@ -252,6 +280,24 @@ describe('GeminiAdapter', () => {
       expect(result.suggestedResponse).toBe('keys:enter');
     });
 
+    it('should auto-respond to "Allow execution of" with keys:enter', () => {
+      const result = adapter.detectBlockingPrompt('Allow execution of: \'ls -la\'?');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('permission');
+      expect(result.canAutoRespond).toBe(true);
+      expect(result.suggestedResponse).toBe('keys:enter');
+    });
+
+    it('should auto-respond to "Do you want to proceed?" with keys:enter', () => {
+      const result = adapter.detectBlockingPrompt('Do you want to proceed?');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('permission');
+      expect(result.canAutoRespond).toBe(true);
+      expect(result.suggestedResponse).toBe('keys:enter');
+    });
+
     it('should auto-respond to Waiting for user confirmation with keys:enter', () => {
       const result = adapter.detectBlockingPrompt('Waiting for user confirmation');
 
@@ -261,8 +307,29 @@ describe('GeminiAdapter', () => {
       expect(result.suggestedResponse).toBe('keys:enter');
     });
 
+    it('should detect account validation (ValidationDialog.tsx)', () => {
+      const result = adapter.detectBlockingPrompt('Further action is required to use this service.');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('config');
+      expect(result.canAutoRespond).toBe(false);
+    });
+
+    it('should detect account verification prompt', () => {
+      const result = adapter.detectBlockingPrompt('Verify your account');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('config');
+    });
+
+    it('should detect verification wait', () => {
+      const result = adapter.detectBlockingPrompt('Waiting for verification... (Press ESC or CTRL+C to cancel)');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('config');
+    });
+
     it('should prioritize permission prompt over login-like text in same output', () => {
-      // When Gemini shows a permission prompt, the banner may contain API key text
       const result = adapter.detectBlockingPrompt('GEMINI_API_KEY set\nApply this change?');
 
       expect(result.detected).toBe(true);
@@ -279,12 +346,24 @@ describe('GeminiAdapter', () => {
   });
 
   describe('detectReady()', () => {
-    it('should detect Ready indicator', () => {
-      expect(adapter.detectReady('Ready for input')).toBe(true);
+    it('should detect Type your message prompt (Composer.tsx)', () => {
+      expect(adapter.detectReady('> Type your message or @path/to/file')).toBe(true);
     });
 
-    it('should detect Type your message prompt', () => {
-      expect(adapter.detectReady('> Type your message...')).toBe(true);
+    it('should detect > input prompt glyph (InputPrompt.tsx)', () => {
+      expect(adapter.detectReady('> What would you like to do?')).toBe(true);
+    });
+
+    it('should detect ! prompt glyph', () => {
+      expect(adapter.detectReady('! Enter your command')).toBe(true);
+    });
+
+    it('should detect * prompt glyph', () => {
+      expect(adapter.detectReady('* Ready for input')).toBe(true);
+    });
+
+    it('should detect (r:) prompt mode', () => {
+      expect(adapter.detectReady('some output (r:)')).toBe(true);
     });
 
     it('should detect How can I help', () => {
@@ -296,13 +375,23 @@ describe('GeminiAdapter', () => {
     });
 
     it('should NOT detect bare "Gemini" mention (too broad)', () => {
-      // "Gemini" appears in banners alongside auth errors - should not trigger ready
       expect(adapter.detectReady('Gemini CLI v1.0.0')).toBe(false);
     });
 
-    it('should NOT detect bare > prompt (too broad)', () => {
-      // Bare ">" could match "Enter API key>" - should not trigger ready
-      expect(adapter.detectReady('Enter value> ')).toBe(false);
+    it('should NOT detect ready when trust prompt is present', () => {
+      expect(adapter.detectReady('Do you trust this folder?\n> Type your message')).toBe(false);
+    });
+
+    it('should NOT detect ready when auth dialog is present', () => {
+      expect(adapter.detectReady('How would you like to authenticate for this project?')).toBe(false);
+    });
+
+    it('should NOT detect ready when waiting for auth', () => {
+      expect(adapter.detectReady('Waiting for auth...')).toBe(false);
+    });
+
+    it('should NOT detect ready when privacy consent is shown', () => {
+      expect(adapter.detectReady('Allow Google to use this data')).toBe(false);
     });
 
     it('should return false for loading output', () => {
@@ -347,6 +436,100 @@ describe('GeminiAdapter', () => {
     it('should NOT match bare > prompt (too broad)', () => {
       const pattern = adapter.getPromptPattern();
       expect('> '.match(pattern)).toBeFalsy();
+    });
+  });
+
+  describe('autoResponseRules', () => {
+    it('should have trust folder rule with keys: ["enter"] and once: true', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust current folder')
+      );
+
+      expect(rule).toBeDefined();
+      expect(rule?.responseType).toBe('keys');
+      expect(rule?.keys).toEqual(['enter']);
+      expect(rule?.once).toBe(true);
+      expect(rule?.safe).toBe(true);
+    });
+
+    it('should match "Do you trust this folder?" (FolderTrustDialog.tsx)', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust current folder')
+      );
+      expect(rule?.pattern.test('Do you trust this folder?')).toBe(true);
+    });
+
+    it('should match trust folder/parent folder variants', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust current folder')
+      );
+      expect(rule?.pattern.test('Trust folder (/my/project)')).toBe(true);
+      expect(rule?.pattern.test('Trust parent folder (/my)')).toBe(true);
+    });
+
+    it('should have multi-folder trust rule with once: true', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('multiple folders')
+      );
+
+      expect(rule).toBeDefined();
+      expect(rule?.responseType).toBe('keys');
+      expect(rule?.keys).toEqual(['enter']);
+      expect(rule?.once).toBe(true);
+    });
+
+    it('should match multi-folder trust prompt (MultiFolderTrustDialog.tsx)', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('multiple folders')
+      );
+      expect(rule?.pattern.test('Do you trust the following folders being added to this workspace?')).toBe(true);
+    });
+
+    it('should have privacy consent rule that declines (Down+Enter)', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('data collection')
+      );
+
+      expect(rule).toBeDefined();
+      expect(rule?.responseType).toBe('keys');
+      expect(rule?.keys).toEqual(['down', 'enter']);
+      expect(rule?.once).toBe(true);
+    });
+
+    it('should match privacy consent prompt (CloudFreePrivacyNotice.tsx)', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('data collection')
+      );
+      expect(rule?.pattern.test('Allow Google to use this data to develop and improve our products?')).toBe(true);
+    });
+  });
+
+  describe('detectExit()', () => {
+    it('should detect folder trust rejection exit (FolderTrustDialog.tsx)', () => {
+      const result = adapter.detectExit('A folder trust level must be selected to continue. Exiting');
+
+      expect(result.exited).toBe(true);
+      expect(result.code).toBe(1);
+    });
+
+    it('should detect logout exit', () => {
+      const result = adapter.detectExit('You are now logged out');
+
+      expect(result.exited).toBe(true);
+      expect(result.code).toBe(0);
+    });
+
+    it('should not detect exit for normal output', () => {
+      const result = adapter.detectExit('Processing...');
+
+      expect(result.exited).toBe(false);
+    });
+
+    it('should detect command not found exit (from base)', () => {
+      const result = adapter.detectExit('Command not found: gemini');
+
+      expect(result.exited).toBe(true);
+      expect(result.code).toBe(127);
     });
   });
 

@@ -7,7 +7,9 @@ PTY session manager with lifecycle management, pluggable adapters, and blocking 
 - **Multi-session management** - Spawn and manage multiple PTY sessions concurrently
 - **Pluggable adapters** - Built-in shell adapter, easy to create custom adapters for Docker, SSH, or any CLI tool
 - **Blocking prompt detection** - Detect login prompts, confirmations, and interactive prompts
-- **Auto-response rules** - Automatically respond to known prompts
+- **Auto-response rules** - Automatically respond to known prompts with text or key sequences
+- **TUI menu navigation** - Navigate arrow-key menus via `selectMenuOption()` and key-sequence rules
+- **Stall detection** - Content-based stall detection with pluggable external classifiers
 - **Terminal attachment** - Attach to sessions for raw I/O streaming
 - **Special key support** - Send Ctrl, Alt, Shift, and function key combinations via `sendKeys()`
 - **Bracketed paste** - Proper paste handling with bracketed paste mode support
@@ -366,6 +368,9 @@ Commands (stdin → worker):
 - `{ "cmd": "spawn", "id": "...", "config": {...} }`
 - `{ "cmd": "send", "id": "...", "data": "..." }`
 - `{ "cmd": "sendKeys", "id": "...", "keys": ["ctrl+c"] }`
+- `{ "cmd": "selectMenuOption", "id": "...", "optionIndex": 2 }`
+- `{ "cmd": "addRules", "id": "...", "rules": [...] }`
+- `{ "cmd": "clearRules", "id": "..." }`
 - `{ "cmd": "kill", "id": "..." }`
 - `{ "cmd": "list" }`
 - `{ "cmd": "shutdown" }`
@@ -374,6 +379,8 @@ Events (worker → stdout):
 - `{ "event": "output", "id": "...", "data": "..." }`
 - `{ "event": "ready", "id": "..." }`
 - `{ "event": "exit", "id": "...", "code": 0 }`
+- `{ "event": "blocking_prompt", "id": "...", "promptInfo": {...}, "autoResponded": true }`
+- `{ "event": "login_required", "id": "...", "instructions": "..." }`
 
 ## Built-in Adapters
 
@@ -387,6 +394,69 @@ import { ShellAdapter } from 'pty-manager';
 const adapter = new ShellAdapter({
   shell: '/bin/zsh',  // default: $SHELL or /bin/bash
   prompt: 'pty> ',    // default: 'pty> '
+});
+```
+
+## Auto-Response Rules
+
+Auto-response rules let adapters automatically handle known prompts. Rules support two response modes: **text** (for traditional `[y/n]` prompts) and **keys** (for TUI arrow-key menus).
+
+```typescript
+interface AutoResponseRule {
+  pattern: RegExp;              // Pattern to match in output
+  type: BlockingPromptType;     // Prompt category
+  response: string;             // Text to send (for responseType: 'text')
+  responseType?: 'text' | 'keys';  // How to deliver (default: 'text')
+  keys?: string[];              // Key names for responseType: 'keys'
+  description: string;          // Human-readable description
+  safe?: boolean;               // Whether safe to auto-respond (default: true)
+  once?: boolean;               // Fire at most once per session
+}
+```
+
+**Text response** — sends `response + '\r'` via raw write (for CLIs like Aider that use `[y/n]` prompts):
+
+```typescript
+{ pattern: /create new file\?/i, type: 'permission', response: 'y', responseType: 'text', description: 'Allow file creation', safe: true }
+```
+
+**Key sequence response** — sends key presses via `sendKeys()` (for TUI menus in Codex, Gemini, Claude):
+
+```typescript
+{ pattern: /update available/i, type: 'config', response: '', responseType: 'keys', keys: ['down', 'enter'], description: 'Skip update (select second option)', safe: true, once: true }
+```
+
+### TUI Menu Navigation
+
+Adapters can declare `usesTuiMenus: true` to indicate they use arrow-key menus instead of text prompts. When set, rules without an explicit `responseType` default to sending Enter via `sendKeys()` instead of raw text.
+
+```typescript
+// Navigate to the Nth option in a TUI menu (0-indexed)
+await session.selectMenuOption(2);  // Sends Down, Down, Enter with 50ms delays
+```
+
+## Stall Detection
+
+Content-based stall detection monitors sessions for output that stops changing. When a stall is detected, the session emits a `stall_detected` event with the buffered output for external classification.
+
+```typescript
+// Enable stall detection with a pluggable classifier
+const session = await manager.spawn({
+  name: 'agent',
+  type: 'claude',
+  stallDetection: {
+    enabled: true,
+    timeoutMs: 15000,
+    classify: async (output, stallDurationMs) => {
+      // Use an LLM or heuristics to classify the stalled output
+      return {
+        type: 'blocking_prompt',
+        confidence: 0.9,
+        suggestedResponse: 'keys:enter',  // or plain text like 'y'
+        reasoning: 'Trust folder dialog detected',
+      };
+    },
+  },
 });
 ```
 

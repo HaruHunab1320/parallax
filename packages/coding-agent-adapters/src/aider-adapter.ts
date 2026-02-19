@@ -35,12 +35,42 @@ export class AiderAdapter extends BaseCodingAdapter {
 
   /**
    * Auto-response rules for Aider CLI.
-   * Aider uses plain text [y/n] prompts, NOT TUI menus.
-   * Explicit responseType: 'text' prevents the usesTuiMenus default from kicking in.
+   * Aider uses plain text prompts via io.py:832 with (Y)es/(N)o format.
+   * All rules are responseType: 'text' — Aider never uses TUI menus.
+   *
+   * Decline rules come first to override the generic accept patterns.
    */
   readonly autoResponseRules: AutoResponseRule[] = [
+    // ── Decline rules (specific, checked first) ────────────────────────
     {
-      pattern: /Add .+ to the chat\?.*(\[y\/n\]|\[Yes\]|\(Y\)es)/i,
+      pattern: /allow collection of anonymous analytics/i,
+      type: 'config',
+      response: 'n',
+      responseType: 'text',
+      description: 'Decline Aider telemetry opt-in',
+      safe: true,
+      once: true,
+    },
+    {
+      pattern: /would you like to see what.?s new in this version/i,
+      type: 'config',
+      response: 'n',
+      responseType: 'text',
+      description: 'Decline release notes offer',
+      safe: true,
+      once: true,
+    },
+    {
+      pattern: /open a github issue pre-filled/i,
+      type: 'config',
+      response: 'n',
+      responseType: 'text',
+      description: 'Decline automatic bug report',
+      safe: true,
+    },
+    // ── File / edit operations ──────────────────────────────────────────
+    {
+      pattern: /add .+ to the chat\?/i,
       type: 'permission',
       response: 'y',
       responseType: 'text',
@@ -48,7 +78,15 @@ export class AiderAdapter extends BaseCodingAdapter {
       safe: true,
     },
     {
-      pattern: /Create new file.*(\[y\/n\]|\[Yes\]|\(Y\)es)/i,
+      pattern: /add url to the chat\?/i,
+      type: 'permission',
+      response: 'y',
+      responseType: 'text',
+      description: 'Allow Aider to add URL content to chat',
+      safe: true,
+    },
+    {
+      pattern: /create new file\?/i,
       type: 'permission',
       response: 'y',
       responseType: 'text',
@@ -56,11 +94,96 @@ export class AiderAdapter extends BaseCodingAdapter {
       safe: true,
     },
     {
-      pattern: /Apply.*changes.*(\[y\/n\]|\[Yes\]|\(Y\)es)/i,
+      pattern: /allow edits to file/i,
       type: 'permission',
       response: 'y',
       responseType: 'text',
-      description: 'Apply proposed changes',
+      description: 'Allow edits to file not yet in chat',
+      safe: true,
+    },
+    {
+      pattern: /edit the files\?/i,
+      type: 'permission',
+      response: 'y',
+      responseType: 'text',
+      description: 'Accept architect mode edits',
+      safe: true,
+    },
+    // ── Shell operations ────────────────────────────────────────────────
+    {
+      pattern: /run shell commands?\?/i,
+      type: 'permission',
+      response: 'y',
+      responseType: 'text',
+      description: 'Allow Aider to run shell commands',
+      safe: true,
+    },
+    {
+      pattern: /add command output to the chat\?/i,
+      type: 'permission',
+      response: 'y',
+      responseType: 'text',
+      description: 'Add shell command output to chat context',
+      safe: true,
+    },
+    {
+      pattern: /add \d+.*tokens of command output to the chat\?/i,
+      type: 'permission',
+      response: 'y',
+      responseType: 'text',
+      description: 'Add /run command output to chat context',
+      safe: true,
+    },
+    // ── Setup / maintenance ─────────────────────────────────────────────
+    {
+      pattern: /no git repo found.*create one/i,
+      type: 'config',
+      response: 'y',
+      responseType: 'text',
+      description: 'Create git repo for change tracking',
+      safe: true,
+      once: true,
+    },
+    {
+      pattern: /add .+ to \.gitignore/i,
+      type: 'config',
+      response: 'y',
+      responseType: 'text',
+      description: 'Update .gitignore with Aider patterns',
+      safe: true,
+      once: true,
+    },
+    {
+      pattern: /run pip install\?/i,
+      type: 'config',
+      response: 'y',
+      responseType: 'text',
+      description: 'Install missing Python dependencies',
+      safe: true,
+    },
+    {
+      pattern: /install playwright\?/i,
+      type: 'config',
+      response: 'y',
+      responseType: 'text',
+      description: 'Install Playwright for web scraping',
+      safe: true,
+    },
+    // ── Other safe confirmations ────────────────────────────────────────
+    {
+      pattern: /fix lint errors in/i,
+      type: 'permission',
+      response: 'y',
+      responseType: 'text',
+      description: 'Accept lint error fix suggestion',
+      safe: true,
+    },
+    {
+      pattern: /try to proceed anyway\?/i,
+      type: 'config',
+      response: 'y',
+      responseType: 'text',
+      description: 'Continue despite context limit warning',
       safe: true,
     },
   ];
@@ -182,25 +305,51 @@ export class AiderAdapter extends BaseCodingAdapter {
       };
     }
 
+    // OpenRouter OAuth login offer (onboarding.py:94)
+    if (/login to openrouter or create a free account/i.test(stripped)) {
+      return {
+        required: true,
+        type: 'oauth',
+        instructions: 'Aider offering OpenRouter OAuth login — provide API keys to skip',
+      };
+    }
+
+    // OpenRouter OAuth browser flow in progress (onboarding.py:311)
+    if (/please open this url in your browser to connect aider with openrouter/i.test(stripped) ||
+        /waiting up to 5 minutes for you to finish in the browser/i.test(stripped)) {
+      const urlMatch = stripped.match(/https?:\/\/[^\s]+/);
+      return {
+        required: true,
+        type: 'browser',
+        url: urlMatch ? urlMatch[0] : undefined,
+        instructions: 'Complete OpenRouter authentication in browser',
+      };
+    }
+
     return { required: false };
   }
 
+  /**
+   * Detect blocking prompts specific to Aider CLI.
+   * Source: io.py, onboarding.py, base_coder.py, report.py
+   */
   detectBlockingPrompt(output: string): BlockingPromptDetection {
     const stripped = this.stripAnsi(output);
 
-    // First check for login
+    // First check for login / auth
     const loginDetection = this.detectLogin(output);
     if (loginDetection.required) {
       return {
         detected: true,
         type: 'login',
         prompt: loginDetection.instructions,
+        url: loginDetection.url,
         canAutoRespond: false,
         instructions: loginDetection.instructions,
       };
     }
 
-    // Aider-specific: Model selection
+    // Model selection
     if (/select.*model|choose.*model|which model/i.test(stripped)) {
       return {
         detected: true,
@@ -211,19 +360,20 @@ export class AiderAdapter extends BaseCodingAdapter {
       };
     }
 
-    // Aider-specific: Git repo not found
-    if (/not.*git.*repo|git.*not.*found|initialize.*git/i.test(stripped)) {
+    // Confirmation validation error — re-prompt loop (io.py:897)
+    if (/please answer with one of:/i.test(stripped)) {
       return {
         detected: true,
-        type: 'config',
-        prompt: 'Git repository required',
+        type: 'unknown',
+        prompt: 'Invalid confirmation input',
         canAutoRespond: false,
-        instructions: 'Aider requires a git repository. Run git init or use --no-git',
+        instructions: 'Aider received an invalid response to a confirmation prompt',
       };
     }
 
-    // Aider-specific: Confirm file operations (that aren't auto-responded)
-    if (/delete|remove|overwrite/i.test(stripped) && /\[y\/n\]/i.test(stripped)) {
+    // Destructive operations — NOT auto-responded
+    if (/delete|remove|overwrite/i.test(stripped) &&
+        (/\[y\/n\]/i.test(stripped) || /\(Y\)es\/\(N\)o/i.test(stripped))) {
       return {
         detected: true,
         type: 'permission',
@@ -241,13 +391,33 @@ export class AiderAdapter extends BaseCodingAdapter {
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
 
+    // Guard: if output contains an auth/OAuth prompt, we're NOT ready
+    if (/login to openrouter/i.test(stripped) ||
+        /open this url in your browser/i.test(stripped) ||
+        /waiting up to 5 minutes/i.test(stripped)) {
+      return false;
+    }
+
+    // Edit-format mode prompts (io.py:545): ask>, code>, architect>, help>, multi>
+    if (/(?:ask|code|architect|help)(?:\s+multi)?>\s*$/m.test(stripped) ||
+        /^multi>\s*$/m.test(stripped)) {
+      return true;
+    }
+
+    // Startup banner indicates Aider launched (base_coder.py:209)
+    if (/^Aider v\d+/m.test(stripped)) {
+      return true;
+    }
+
+    // File list display means chat context is ready
+    if (/^(?:Readonly|Editable):/m.test(stripped)) {
+      return true;
+    }
+
     return (
+      // Legacy prompt patterns
       stripped.includes('aider>') ||
-      stripped.includes('Aider') ||
-      /aider.*ready/i.test(stripped) ||
-      // Aider shows file list when ready
       /Added.*to the chat/i.test(stripped) ||
-      // Or the prompt
       />\s*$/.test(stripped)
     );
   }
@@ -280,8 +450,35 @@ export class AiderAdapter extends BaseCodingAdapter {
     };
   }
 
+  /**
+   * Detect exit conditions specific to Aider.
+   * Source: base_coder.py:994, base_coder.py:998, report.py:77, versioncheck.py:58
+   */
+  override detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+    const stripped = this.stripAnsi(output);
+
+    // Ctrl+C exit (base_coder.py:994-998)
+    if (/\^C again to exit/i.test(stripped) ||
+        /\^C KeyboardInterrupt/i.test(stripped)) {
+      return { exited: true, code: 130 };
+    }
+
+    // Version update completed (versioncheck.py:58)
+    if (/re-run aider to use new version/i.test(stripped)) {
+      return {
+        exited: true,
+        code: 0,
+        error: 'Aider updated — restart required',
+      };
+    }
+
+    return super.detectExit(output);
+  }
+
   getPromptPattern(): RegExp {
-    return /(?:aider>|>)\s*$/i;
+    // Match edit-format prompts: ask>, code>, architect>, help>, multi>
+    // Also legacy aider> and bare >
+    return /(?:ask|code|architect|help|aider|multi)(?:\s+multi)?>\s*$/i;
   }
 
   getHealthCheckCommand(): string {

@@ -237,3 +237,61 @@ export interface AnalysisResult {
   /** Notes/warnings about the analysis */
   notes: string[];
 }
+
+/**
+ * A source file to watch for changes in a CLI's repository.
+ * Derived from deep-research analysis of the CLI's source code.
+ */
+export interface WatchedFile {
+  /** Repo-relative path (e.g. "packages/cli/src/ui/auth/AuthDialog.tsx") */
+  path: string;
+
+  /** What this file controls */
+  category: 'blocking_prompt' | 'ready_detection' | 'exit_detection' | 'auth' | 'framework' | 'startup';
+}
+
+/**
+ * Per-CLI watched file configuration
+ */
+export interface WatchedFileConfig {
+  /** Adapter type */
+  adapter: AdapterType;
+
+  /** GitHub repo in owner/repo format */
+  githubRepo: string;
+
+  /** Files to monitor for prompt/pattern changes */
+  watchedFiles: WatchedFile[];
+}
+
+/**
+ * Result of checking file changes between versions
+ */
+export interface FileChangeResult {
+  /** Adapter type */
+  adapter: AdapterType;
+
+  /** Old version (tag) */
+  oldVersion: string;
+
+  /** New version (tag) */
+  newVersion: string;
+
+  /** Files that changed between versions */
+  changedFiles: Array<{
+    /** Repo-relative path */
+    path: string;
+
+    /** What this file controls */
+    category: WatchedFile['category'];
+
+    /** Change type from GitHub */
+    status: 'added' | 'modified' | 'removed' | 'renamed';
+  }>;
+
+  /** Whether adapter updates are likely needed */
+  adapterUpdateNeeded: boolean;
+
+  /** Human-readable summary */
+  summary: string;
+}
