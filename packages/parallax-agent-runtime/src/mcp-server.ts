@@ -101,7 +101,7 @@ export class ParallaxMcpServer {
     this.server = new Server(
       {
         name: 'parallax-agent-runtime',
-        version: '0.3.0',
+        version: '0.4.0',
       },
       {
         capabilities: {
