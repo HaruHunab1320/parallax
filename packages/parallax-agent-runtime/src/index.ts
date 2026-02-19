@@ -76,6 +76,8 @@ export {
   executeProvisionWorkspace,
   executeFinalizeWorkspace,
   executeCleanupWorkspace,
+  executeGetWorkspaceFiles,
+  executeWriteWorkspaceFile,
   SpawnInputSchema,
   StopInputSchema,
   ListInputSchema,
@@ -87,6 +89,8 @@ export {
   ProvisionWorkspaceInputSchema,
   FinalizeWorkspaceInputSchema,
   CleanupWorkspaceInputSchema,
+  GetWorkspaceFilesInputSchema,
+  WriteWorkspaceFileInputSchema,
   type SpawnInput,
   type StopInput,
   type ListInput,
@@ -98,6 +102,8 @@ export {
   type ProvisionWorkspaceInput,
   type FinalizeWorkspaceInput,
   type CleanupWorkspaceInput,
+  type GetWorkspaceFilesInput,
+  type WriteWorkspaceFileInput,
 } from './tools/index.js';
 
 // Resources

@@ -19,7 +19,10 @@ import {
   CodexAdapter,
   AiderAdapter,
   checkAdapters,
+  createAdapter,
   type PreflightResult,
+  type AgentFileDescriptor,
+  type WriteMemoryOptions,
 } from 'coding-agent-adapters';
 import {
   WorkspaceService,
@@ -31,6 +34,7 @@ import {
 } from 'git-workspace-service';
 import type { Logger } from 'pino';
 import type {
+  AgentType,
   AgentConfig,
   AgentHandle,
   AgentMessage,
@@ -452,6 +456,37 @@ export class AgentManager extends EventEmitter {
    */
   hasWorkspaceService(): boolean {
     return this.workspaceService !== null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Workspace Files (coding-agent-adapters)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Get workspace file descriptors for an agent type.
+   * Static lookup — no running agent needed.
+   */
+  getWorkspaceFiles(agentType: AgentType): AgentFileDescriptor[] {
+    if (agentType === 'custom') return [];
+    const adapter = createAdapter(agentType as 'claude' | 'gemini' | 'codex' | 'aider');
+    return adapter.getWorkspaceFiles();
+  }
+
+  /**
+   * Write a workspace/memory file for an agent type.
+   * Creates a temporary adapter and delegates to writeMemoryFile().
+   */
+  async writeWorkspaceFile(
+    agentType: AgentType,
+    workspacePath: string,
+    content: string,
+    options?: WriteMemoryOptions,
+  ): Promise<string> {
+    if (agentType === 'custom') {
+      throw new Error('Custom agents have no default workspace files');
+    }
+    const adapter = createAdapter(agentType as 'claude' | 'gemini' | 'codex' | 'aider');
+    return adapter.writeMemoryFile(workspacePath, content, options);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

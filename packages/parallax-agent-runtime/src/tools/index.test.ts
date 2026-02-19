@@ -146,8 +146,8 @@ describe('Tool schemas', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('TOOLS', () => {
-  it('defines 11 tools', () => {
-    expect(TOOLS).toHaveLength(11);
+  it('defines 13 tools', () => {
+    expect(TOOLS).toHaveLength(13);
   });
 
   it('includes spawn with ruleOverrides and stallTimeoutMs properties', () => {

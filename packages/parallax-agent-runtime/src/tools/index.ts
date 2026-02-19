@@ -102,6 +102,18 @@ export const CleanupWorkspaceInputSchema = z.object({
   workspaceId: z.string().describe('ID of the workspace to clean up'),
 });
 
+export const GetWorkspaceFilesInputSchema = z.object({
+  agentType: z.enum(['claude', 'codex', 'gemini', 'aider']).describe('Agent type to get workspace files for'),
+});
+
+export const WriteWorkspaceFileInputSchema = z.object({
+  agentType: z.enum(['claude', 'codex', 'gemini', 'aider']).describe('Agent type to write workspace file for'),
+  workspacePath: z.string().describe('Absolute path to the workspace directory'),
+  content: z.string().describe('Content to write to the file'),
+  fileName: z.string().optional().describe('Custom file name override (default: agent primary memory file)'),
+  append: z.boolean().optional().describe('Append to existing file instead of overwriting'),
+});
+
 // Types
 export type SpawnInput = z.infer<typeof SpawnInputSchema>;
 export type StopInput = z.infer<typeof StopInputSchema>;
@@ -114,6 +126,8 @@ export type HealthInput = z.infer<typeof HealthInputSchema>;
 export type ProvisionWorkspaceInput = z.infer<typeof ProvisionWorkspaceInputSchema>;
 export type FinalizeWorkspaceInput = z.infer<typeof FinalizeWorkspaceInputSchema>;
 export type CleanupWorkspaceInput = z.infer<typeof CleanupWorkspaceInputSchema>;
+export type GetWorkspaceFilesInput = z.infer<typeof GetWorkspaceFilesInputSchema>;
+export type WriteWorkspaceFileInput = z.infer<typeof WriteWorkspaceFileInputSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tool Definitions (JSON Schema format for MCP)
@@ -291,6 +305,32 @@ export const TOOLS = [
         workspaceId: { type: 'string', description: 'ID of the workspace to clean up' },
       },
       required: ['workspaceId'],
+    },
+  },
+  {
+    name: 'get_workspace_files',
+    description: 'Get workspace file descriptors for an agent type. Returns the files the agent CLI reads automatically (e.g. CLAUDE.md, GEMINI.md, .aider.conventions.md).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider'], description: 'Agent type' },
+      },
+      required: ['agentType'],
+    },
+  },
+  {
+    name: 'write_workspace_file',
+    description: 'Write a workspace/memory file for an agent type. Creates the agent-specific instruction file (e.g. CLAUDE.md) in the given workspace directory.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider'], description: 'Agent type' },
+        workspacePath: { type: 'string', description: 'Absolute path to the workspace directory' },
+        content: { type: 'string', description: 'Content to write to the file' },
+        fileName: { type: 'string', description: 'Custom file name override' },
+        append: { type: 'boolean', description: 'Append to existing file instead of overwriting' },
+      },
+      required: ['agentType', 'workspacePath', 'content'],
     },
   },
 ];
@@ -479,6 +519,37 @@ export async function executeCleanupWorkspace(manager: AgentManager, input: Clea
   return { success: true, workspaceId: validated.workspaceId };
 }
 
+export function executeGetWorkspaceFiles(manager: AgentManager, input: GetWorkspaceFilesInput) {
+  const validated = GetWorkspaceFilesInputSchema.parse(input);
+  const files = manager.getWorkspaceFiles(validated.agentType);
+  const memoryFile = files.find(f => f.type === 'memory');
+
+  return {
+    success: true,
+    agentType: validated.agentType,
+    files,
+    memoryFilePath: memoryFile?.relativePath ?? null,
+  };
+}
+
+export async function executeWriteWorkspaceFile(manager: AgentManager, input: WriteWorkspaceFileInput) {
+  const validated = WriteWorkspaceFileInputSchema.parse(input);
+  const path = await manager.writeWorkspaceFile(
+    validated.agentType,
+    validated.workspacePath,
+    validated.content,
+    {
+      fileName: validated.fileName,
+      append: validated.append,
+    },
+  );
+
+  return {
+    success: true,
+    path,
+  };
+}
+
 // Tool permission mapping
 export const TOOL_PERMISSIONS: Record<string, string> = {
   spawn: 'agents:spawn',
@@ -492,4 +563,6 @@ export const TOOL_PERMISSIONS: Record<string, string> = {
   provision_workspace: 'workspace:provision',
   finalize_workspace: 'workspace:finalize',
   cleanup_workspace: 'workspace:cleanup',
+  get_workspace_files: 'workspace:read',
+  write_workspace_file: 'workspace:write',
 };

@@ -38,6 +38,8 @@ import {
   executeProvisionWorkspace,
   executeFinalizeWorkspace,
   executeCleanupWorkspace,
+  executeGetWorkspaceFiles,
+  executeWriteWorkspaceFile,
   type SpawnInput,
   type StopInput,
   type ListInput,
@@ -48,6 +50,8 @@ import {
   type ProvisionWorkspaceInput,
   type FinalizeWorkspaceInput,
   type CleanupWorkspaceInput,
+  type GetWorkspaceFilesInput,
+  type WriteWorkspaceFileInput,
 } from './tools/index.js';
 import {
   listAgentResources,
@@ -206,6 +210,12 @@ export class ParallaxMcpServer {
             break;
           case 'cleanup_workspace':
             result = await executeCleanupWorkspace(this.manager, args as CleanupWorkspaceInput);
+            break;
+          case 'get_workspace_files':
+            result = await executeGetWorkspaceFiles(this.manager, args as GetWorkspaceFilesInput);
+            break;
+          case 'write_workspace_file':
+            result = await executeWriteWorkspaceFile(this.manager, args as WriteWorkspaceFileInput);
             break;
           default:
             throw new Error(`Unknown tool: ${name}`);

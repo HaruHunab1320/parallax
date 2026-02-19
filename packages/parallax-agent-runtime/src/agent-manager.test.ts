@@ -55,12 +55,22 @@ const mockCheckAdapters = vi.fn().mockResolvedValue([
   { adapter: 'Aider', installed: false, error: 'not found', installCommand: 'pip install aider', docsUrl: '' },
 ]);
 
+const mockGetWorkspaceFiles = vi.fn();
+const mockWriteMemoryFile = vi.fn();
+const mockMemoryFilePath = 'CLAUDE.md';
+const mockCreateAdapter = vi.fn().mockReturnValue({
+  getWorkspaceFiles: mockGetWorkspaceFiles,
+  writeMemoryFile: mockWriteMemoryFile,
+  memoryFilePath: mockMemoryFilePath,
+});
+
 vi.mock('coding-agent-adapters', () => ({
   ClaudeAdapter: vi.fn(),
   GeminiAdapter: vi.fn(),
   CodexAdapter: vi.fn(),
   AiderAdapter: vi.fn(),
   checkAdapters: (...args: unknown[]) => mockCheckAdapters(...args),
+  createAdapter: (...args: unknown[]) => mockCreateAdapter(...args),
 }));
 
 // Mock git-workspace-service
@@ -455,6 +465,79 @@ describe('AgentManager', () => {
         'some output text',
         8000
       );
+    });
+  });
+
+  describe('getWorkspaceFiles', () => {
+    it('returns file descriptors for claude', () => {
+      const manager = new AgentManager(logger);
+      const claudeFiles = [
+        { relativePath: 'CLAUDE.md', description: 'Claude memory file', autoLoaded: true, type: 'memory', format: 'markdown' },
+      ];
+      mockGetWorkspaceFiles.mockReturnValue(claudeFiles);
+
+      const files = manager.getWorkspaceFiles('claude');
+
+      expect(mockCreateAdapter).toHaveBeenCalledWith('claude');
+      expect(files).toEqual(claudeFiles);
+    });
+
+    it('returns file descriptors for aider', () => {
+      const manager = new AgentManager(logger);
+      const aiderFiles = [
+        { relativePath: '.aider.conventions.md', description: 'Aider conventions', autoLoaded: true, type: 'memory', format: 'markdown' },
+      ];
+      mockGetWorkspaceFiles.mockReturnValue(aiderFiles);
+
+      const files = manager.getWorkspaceFiles('aider');
+
+      expect(mockCreateAdapter).toHaveBeenCalledWith('aider');
+      expect(files).toEqual(aiderFiles);
+    });
+
+    it('returns empty array for custom agent type', () => {
+      const manager = new AgentManager(logger);
+
+      const files = manager.getWorkspaceFiles('custom');
+
+      expect(mockCreateAdapter).not.toHaveBeenCalled();
+      expect(files).toEqual([]);
+    });
+  });
+
+  describe('writeWorkspaceFile', () => {
+    it('writes memory file and returns path', async () => {
+      const manager = new AgentManager(logger);
+      mockWriteMemoryFile.mockResolvedValue('/tmp/workspace/CLAUDE.md');
+
+      const path = await manager.writeWorkspaceFile('claude', '/tmp/workspace', '# Instructions');
+
+      expect(mockCreateAdapter).toHaveBeenCalledWith('claude');
+      expect(mockWriteMemoryFile).toHaveBeenCalledWith('/tmp/workspace', '# Instructions', undefined);
+      expect(path).toBe('/tmp/workspace/CLAUDE.md');
+    });
+
+    it('passes options through to writeMemoryFile', async () => {
+      const manager = new AgentManager(logger);
+      mockWriteMemoryFile.mockResolvedValue('/tmp/workspace/custom.md');
+
+      await manager.writeWorkspaceFile('gemini', '/tmp/workspace', 'content', {
+        fileName: 'custom.md',
+        append: true,
+      });
+
+      expect(mockWriteMemoryFile).toHaveBeenCalledWith('/tmp/workspace', 'content', {
+        fileName: 'custom.md',
+        append: true,
+      });
+    });
+
+    it('throws for custom agent type', async () => {
+      const manager = new AgentManager(logger);
+
+      await expect(
+        manager.writeWorkspaceFile('custom', '/tmp', 'content')
+      ).rejects.toThrow('Custom agents have no default workspace files');
     });
   });
 

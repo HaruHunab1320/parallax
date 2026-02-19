@@ -68,6 +68,10 @@ const mockFinalizeWorkspace = vi.fn().mockResolvedValue({
   number: 42, url: 'https://github.com/test/repo/pull/42',
 });
 const mockCleanupWorkspace = vi.fn().mockResolvedValue(undefined);
+const mockGetWorkspaceFiles = vi.fn().mockReturnValue([
+  { relativePath: 'CLAUDE.md', description: 'Claude memory file', autoLoaded: true, type: 'memory', format: 'markdown' },
+]);
+const mockWriteWorkspaceFile = vi.fn().mockResolvedValue('/tmp/workspace/CLAUDE.md');
 const mockHasWorkspaceService = vi.fn().mockReturnValue(false);
 const mockInitialize = vi.fn().mockResolvedValue(undefined);
 const mockShutdown = vi.fn().mockResolvedValue(undefined);
@@ -86,6 +90,8 @@ vi.mock('./agent-manager.js', () => ({
     provisionWorkspace: mockProvisionWorkspace,
     finalizeWorkspace: mockFinalizeWorkspace,
     cleanupWorkspace: mockCleanupWorkspace,
+    getWorkspaceFiles: mockGetWorkspaceFiles,
+    writeWorkspaceFile: mockWriteWorkspaceFile,
     hasWorkspaceService: mockHasWorkspaceService,
     initialize: mockInitialize,
     shutdown: mockShutdown,
@@ -243,7 +249,7 @@ describe('ParallaxMcpServer', () => {
 
       expect(listToolsHandler).not.toBeNull();
       const result = await listToolsHandler!();
-      expect((result as { tools: unknown[] }).tools).toHaveLength(11);
+      expect((result as { tools: unknown[] }).tools).toHaveLength(13);
     });
 
     it('routes spawn tool', async () => {
@@ -366,6 +372,51 @@ describe('ParallaxMcpServer', () => {
       });
 
       expect(mockCleanupWorkspace).toHaveBeenCalled();
+    });
+
+    it('routes get_workspace_files tool', async () => {
+      new ParallaxMcpServer({ logger });
+
+      const result = await callToolHandler!({
+        params: {
+          name: 'get_workspace_files',
+          arguments: { agentType: 'claude' },
+        },
+      });
+
+      expect(mockGetWorkspaceFiles).toHaveBeenCalledWith('claude');
+      const content = (result as { content: { text: string }[] }).content[0].text;
+      const parsed = JSON.parse(content);
+      expect(parsed.success).toBe(true);
+      expect(parsed.agentType).toBe('claude');
+      expect(parsed.files).toHaveLength(1);
+      expect(parsed.memoryFilePath).toBe('CLAUDE.md');
+    });
+
+    it('routes write_workspace_file tool', async () => {
+      new ParallaxMcpServer({ logger });
+
+      const result = await callToolHandler!({
+        params: {
+          name: 'write_workspace_file',
+          arguments: {
+            agentType: 'claude',
+            workspacePath: '/tmp/workspace',
+            content: '# Instructions\nBe helpful.',
+          },
+        },
+      });
+
+      expect(mockWriteWorkspaceFile).toHaveBeenCalledWith(
+        'claude',
+        '/tmp/workspace',
+        '# Instructions\nBe helpful.',
+        { fileName: undefined, append: undefined },
+      );
+      const content = (result as { content: { text: string }[] }).content[0].text;
+      const parsed = JSON.parse(content);
+      expect(parsed.success).toBe(true);
+      expect(parsed.path).toBe('/tmp/workspace/CLAUDE.md');
     });
 
     it('returns error for unknown tool', async () => {
