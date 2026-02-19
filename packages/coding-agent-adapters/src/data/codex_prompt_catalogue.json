@@ -1,0 +1,299 @@
+{
+  "generated_at": "2026-02-19",
+  "base_dir": "/Users/jakobgrant/Workspaces",
+  "normalization_assumptions": {
+    "ansi_escape_sequences_removed": true,
+    "cursor_positioning_replaced_with_spaces": true,
+    "box_drawing_replaced_with_spaces": true,
+    "spinner_chars_replaced_with_spaces": true,
+    "consecutive_spaces_collapsed": true
+  },
+  "cli": {
+    "name": "codex",
+    "repo_path": "/Users/jakobgrant/Workspaces/codex",
+    "framework": {
+      "ui_library": "ratatui + crossterm (Rust)",
+      "rendering": "full-screen TUI + overlays; alternate screen used by several flows",
+      "spinner_chars": [
+        "•",
+        "◦"
+      ],
+      "sources": [
+        "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/exec_cell/render.rs:180",
+        "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/oss_selection.rs:15",
+        "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/model_migration.rs:363"
+      ]
+    },
+    "startup_flow": [
+      {
+        "step": 1,
+        "pattern": "Welcome to Codex, OpenAI's command-line coding agent",
+        "source": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/onboarding/welcome.rs:88"
+      },
+      {
+        "step": 2,
+        "pattern": "Sign in with ChatGPT / Sign in with Device Code / Provide your own API key",
+        "source": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/onboarding/auth.rs:313"
+      },
+      {
+        "step": 3,
+        "pattern": "Do you trust the contents of this directory? ... prompt injection.",
+        "source": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/onboarding/trust_directory.rs:56"
+      },
+      {
+        "step": 4,
+        "pattern": "Ready prompt glyph `›` with placeholder suggestions",
+        "source": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/bottom_pane/chat_composer.rs:3697"
+      }
+    ],
+    "blocking_prompts": [
+      {
+        "type": "trust",
+        "trigger": "first-run in undecided-trust directory",
+        "exact_text": [
+          "Do you trust the contents of this directory? Working with untrusted contents comes with higher risk of prompt injection.",
+          "Yes, continue",
+          "No, quit"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/onboarding/trust_directory.rs:56",
+        "input_method": "arrow-key menu + Enter (also y/n, 1/2 shortcuts)",
+        "options": [
+          "Yes, continue",
+          "No, quit"
+        ],
+        "default": "Yes, continue",
+        "can_be_skipped": "no (must choose or quit)",
+        "regex_pattern": "(?i)do you trust the contents of this directory.*prompt injection|yes, continue|no, quit"
+      },
+      {
+        "type": "auth",
+        "trigger": "onboarding when unauthenticated",
+        "exact_text": [
+          "Sign in with ChatGPT",
+          "Sign in with Device Code",
+          "Provide your own API key",
+          "Press Enter to continue",
+          "Press Esc to cancel"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/onboarding/auth.rs:313",
+        "input_method": "menu + text input",
+        "options": [
+          "ChatGPT",
+          "Device Code",
+          "API key"
+        ],
+        "default": "ChatGPT (unless forced)",
+        "can_be_skipped": "Esc on some states",
+        "regex_pattern": "(?i)sign in with chatgpt|sign in with device code|provide your own api key|press esc to cancel"
+      },
+      {
+        "type": "device_code",
+        "trigger": "headless/device-code login",
+        "exact_text": [
+          "Preparing device code login",
+          "Open this link in your browser and sign in",
+          "Enter this one-time code",
+          "Press Esc to cancel"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/onboarding/auth/headless_chatgpt_login.rs:140",
+        "input_method": "out-of-band browser + Esc",
+        "options": [
+          "continue waiting",
+          "cancel"
+        ],
+        "default": "continue waiting",
+        "can_be_skipped": "yes (Esc)",
+        "regex_pattern": "(?i)preparing device code login|open this link in your browser|enter this one-time code|press esc to cancel"
+      },
+      {
+        "type": "permission_exec_patch_network_mcp",
+        "trigger": "tool approval required",
+        "exact_text": [
+          "Would you like to run the following command?",
+          "Do you want to approve access to \"<host>\"?",
+          "Would you like to make the following edits?",
+          "Press enter to confirm or esc to cancel"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/bottom_pane/approval_overlay.rs:122",
+        "input_method": "arrow-key list + Enter/Esc",
+        "options": [
+          "Yes, proceed",
+          "Yes, and don't ask again for commands that start with ...",
+          "Yes, just this once",
+          "Yes, and allow this host for this session",
+          "Yes, and don't ask again for these files",
+          "No, and tell Codex what to do differently",
+          "Yes, provide the requested info",
+          "No, but continue without it",
+          "Cancel this request"
+        ],
+        "default": "first option",
+        "can_be_skipped": "yes (Esc deny/cancel)",
+        "regex_pattern": "(?i)would you like to run the following command|approve access to|make the following edits|don.?t ask again|tell codex what to do differently"
+      },
+      {
+        "type": "update",
+        "trigger": "startup update availability",
+        "exact_text": [
+          "Update available! <current> -> <latest>",
+          "Update now (runs `...`)",
+          "Skip",
+          "Skip until next version",
+          "Press Enter to continue"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/update_prompt.rs:193",
+        "input_method": "arrow-key menu + Enter",
+        "options": [
+          "Update now",
+          "Skip",
+          "Skip until next version"
+        ],
+        "default": "Update now",
+        "can_be_skipped": "yes (Esc/Ctrl+C => Skip)",
+        "regex_pattern": "(?i)update available.*->|update now|skip until next version"
+      },
+      {
+        "type": "cwd_selection",
+        "trigger": "resume/fork with cwd mismatch",
+        "exact_text": [
+          "Choose working directory to resume this session",
+          "Use session directory (...)",
+          "Use current directory (...)"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/cwd_prompt.rs:205",
+        "input_method": "arrow-key menu + Enter",
+        "options": [
+          "Use session directory",
+          "Use current directory"
+        ],
+        "default": "Use session directory",
+        "can_be_skipped": "Esc selects session; Ctrl+C/Ctrl+D exits",
+        "regex_pattern": "(?i)choose working directory to (resume|fork) this session|use session directory|use current directory"
+      },
+      {
+        "type": "model_migration",
+        "trigger": "deprecated model upgrade prompt",
+        "exact_text": [
+          "Choose how you'd like Codex to proceed.",
+          "Try new model",
+          "Use existing model",
+          "Use Up/Down to move, press Enter to confirm"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/model_migration.rs:333",
+        "input_method": "arrow-key menu + Enter",
+        "options": [
+          "Try new model",
+          "Use existing model"
+        ],
+        "default": "Try new model",
+        "can_be_skipped": "Ctrl+C/Ctrl+D exits",
+        "regex_pattern": "(?i)choose how you.?d like codex to proceed|try new model|use existing model"
+      },
+      {
+        "type": "full_access_confirmation",
+        "trigger": "selecting full-access permission preset",
+        "exact_text": [
+          "Enable full access?",
+          "Yes, continue anyway",
+          "Yes, and don't ask again",
+          "Cancel"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/chatwidget.rs:5565",
+        "input_method": "selection list + Enter",
+        "options": [
+          "Yes, continue anyway",
+          "Yes, and don't ask again",
+          "Cancel"
+        ],
+        "default": "Yes, continue anyway",
+        "can_be_skipped": "yes (Cancel)",
+        "regex_pattern": "(?i)enable full access|yes, continue anyway|yes, and don.?t ask again|cancel"
+      },
+      {
+        "type": "windows_sandbox_setup",
+        "trigger": "windows sandbox NUX/fallback",
+        "exact_text": [
+          "Set up default sandbox (requires Administrator permissions)",
+          "Use non-admin sandbox (higher risk if prompt injected)",
+          "Quit"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/chatwidget.rs:5818",
+        "input_method": "selection list + Enter",
+        "options": [
+          "Set up default sandbox",
+          "Use non-admin sandbox",
+          "Quit"
+        ],
+        "default": "Set up default sandbox",
+        "can_be_skipped": "yes (Quit)",
+        "regex_pattern": "(?i)set up default sandbox|use non-admin sandbox|higher risk if prompt injected|quit"
+      },
+      {
+        "type": "request_user_input_multistep",
+        "trigger": "model asks structured user questions",
+        "exact_text": [
+          "Type your answer (optional)",
+          "Select an option to add notes",
+          "None of the above",
+          "Submit with unanswered questions?",
+          "Proceed",
+          "Go back"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/bottom_pane/request_user_input/mod.rs:41",
+        "input_method": "option list + notes composer + Enter/Tab/Esc",
+        "options": [
+          "question-defined options",
+          "None of the above (if enabled)",
+          "unanswered confirmation: Proceed / Go back"
+        ],
+        "default": "first option selected when options exist",
+        "can_be_skipped": "yes (go back/cancel paths)",
+        "regex_pattern": "(?i)type your answer|select an option to add notes|none of the above|submit with unanswered questions|proceed|go back"
+      },
+      {
+        "type": "dumb_term_confirmation",
+        "trigger": "TERM=dumb with TTY",
+        "exact_text": "Continue anyway? [y/N]:",
+        "source_file": "/Users/jakobgrant/Workspaces/codex/codex-rs/cli/src/main.rs:911",
+        "input_method": "text y/n",
+        "options": [
+          "y/yes",
+          "default no"
+        ],
+        "default": "No",
+        "can_be_skipped": "yes (press Enter => no)",
+        "regex_pattern": "(?i)continue anyway\\? \\[y/N\\]:"
+      }
+    ],
+    "ready_detection": {
+      "patterns": [
+        "^\\s*›\\s+",
+        "(?i)(explain this codebase|summarize recent commits|implement \\{feature\\}|find and fix a bug in @filename|write tests for @filename)"
+      ],
+      "sources": [
+        "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/bottom_pane/chat_composer.rs:3697",
+        "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/chatwidget.rs:7228"
+      ],
+      "notes": "Placeholder text is randomly selected from a constant list."
+    },
+    "exit_detection": {
+      "patterns": [
+        "To continue this session, run",
+        "ERROR:",
+        "Update ran successfully! Please restart Codex."
+      ],
+      "sources": [
+        "/Users/jakobgrant/Workspaces/codex/codex-rs/cli/src/main.rs:404",
+        "/Users/jakobgrant/Workspaces/codex/codex-rs/cli/src/main.rs:414",
+        "/Users/jakobgrant/Workspaces/codex/codex-rs/cli/src/main.rs:461"
+      ]
+    },
+    "auth_env_vars": [
+      "OPENAI_API_KEY"
+    ],
+    "auth_env_var_sources": [
+      "/Users/jakobgrant/Workspaces/codex/codex-rs/tui/src/onboarding/auth.rs:470",
+      "/Users/jakobgrant/Workspaces/codex/codex-rs/cli/src/login.rs:107"
+    ]
+  }
+}

@@ -65,6 +65,12 @@ export interface SpawnConfig {
 
   /** Per-session stall timeout in ms. Overrides PTYManagerConfig.stallTimeoutMs. */
   stallTimeoutMs?: number;
+
+  /** Override or disable specific adapter auto-response rules for this session.
+   *  Keys are regex source strings (from rule.pattern.source).
+   *  - null value disables that rule entirely
+   *  - Object value merges fields into the matching adapter rule */
+  ruleOverrides?: Record<string, Partial<Omit<AutoResponseRule, 'pattern'>> | null>;
 }
 
 /**

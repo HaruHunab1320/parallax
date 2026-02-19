@@ -259,6 +259,8 @@ export class PTYSession extends EventEmitter {
   private sessionRules: AutoResponseRule[] = [];
   private _firedOnceRules: Set<string> = new Set();
   private _lastBlockingPromptHash: string | null = null;
+  private _ruleOverrides: Map<string, Partial<AutoResponseRule>> = new Map();
+  private _disabledRulePatterns: Set<string> = new Set();
 
   // Stall detection
   private _stallTimer: ReturnType<typeof setTimeout> | null = null;
@@ -284,6 +286,17 @@ export class PTYSession extends EventEmitter {
     this.logger = logger || consoleLogger;
     this._stallDetectionEnabled = stallDetectionEnabled ?? false;
     this._stallTimeoutMs = config.stallTimeoutMs ?? defaultStallTimeoutMs ?? 8000;
+
+    // Process rule overrides from spawn config
+    if (config.ruleOverrides) {
+      for (const [key, value] of Object.entries(config.ruleOverrides)) {
+        if (value === null) {
+          this._disabledRulePatterns.add(key);
+        } else {
+          this._ruleOverrides.set(key, value);
+        }
+      }
+    }
   }
 
   get status(): SessionStatus {
@@ -559,6 +572,7 @@ export class PTYSession extends EventEmitter {
             this.writeRaw(resp + '\r');
           }
           this.emit('blocking_prompt', promptInfo, true);
+          this.outputBuffer = ''; // Prevent stale text from triggering false detections
         } else {
           this.emit('blocking_prompt', promptInfo, false);
         }
@@ -778,6 +792,7 @@ export class PTYSession extends EventEmitter {
             this.writeRaw(resp + '\r');
           }
           this._lastBlockingPromptHash = null; // Clear after auto-response
+          this.outputBuffer = ''; // Prevent stale text from triggering false detections
           this.emit('blocking_prompt', promptInfo, true);
           return true;
         }
@@ -812,8 +827,13 @@ export class PTYSession extends EventEmitter {
    * Session rules are checked first, then adapter rules.
    */
   private tryAutoResponse(): boolean {
-    // Combine session rules (higher priority) with adapter rules
-    const adapterRules = this.adapter.autoResponseRules || [];
+    // Combine session rules (higher priority) with adapter rules (filtered/merged by overrides)
+    const adapterRules = (this.adapter.autoResponseRules || [])
+      .filter(r => !this._disabledRulePatterns.has(r.pattern.source))
+      .map(r => {
+        const override = this._ruleOverrides.get(r.pattern.source);
+        return override ? { ...r, ...override } : r;
+      });
     const allRules = [...this.sessionRules, ...adapterRules];
 
     if (allRules.length === 0) {

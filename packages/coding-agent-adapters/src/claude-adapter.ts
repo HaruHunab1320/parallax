@@ -174,6 +174,13 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    * Detect blocking prompts specific to Claude Code CLI
    */
   detectBlockingPrompt(output: string): BlockingPromptDetection {
+    // Guard: if the output looks like a ready state, don't flag as blocking.
+    // This prevents residual prompt text in the buffer from being misinterpreted
+    // after the CLI has already moved past the blocking state.
+    if (this.detectReady(output)) {
+      return { detected: false };
+    }
+
     const stripped = this.stripAnsi(output);
 
     // First check for login (highest priority)

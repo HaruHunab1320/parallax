@@ -1,0 +1,425 @@
+{
+  "generated_at": "2026-02-19",
+  "base_dir": "/Users/jakobgrant/Workspaces",
+  "normalization_assumptions": {
+    "ansi_escape_sequences_removed": true,
+    "cursor_positioning_replaced_with_spaces": true,
+    "box_drawing_replaced_with_spaces": true,
+    "spinner_chars_replaced_with_spaces": true,
+    "consecutive_spaces_collapsed": true
+  },
+  "cli": {
+    "name": "aider",
+    "repo_path": "/Users/jakobgrant/Workspaces/aider",
+    "framework": {
+      "ui_library": "prompt_toolkit + rich (plus raw stdout for spinner)",
+      "rendering": "inline REPL (not alternate-screen full-screen TUI)",
+      "spinner_chars": [
+        "#",
+        "=",
+        "░",
+        "█"
+      ],
+      "spinner_sources": [
+        "/Users/jakobgrant/Workspaces/aider/aider/waiting.py:43",
+        "/Users/jakobgrant/Workspaces/aider/aider/waiting.py:64"
+      ],
+      "ansi_notes": "Spinner uses carriage return and backspaces (\\r, \\b) and cursor hide/show.",
+      "ansi_sources": [
+        "/Users/jakobgrant/Workspaces/aider/aider/waiting.py:117",
+        "/Users/jakobgrant/Workspaces/aider/aider/waiting.py:144",
+        "/Users/jakobgrant/Workspaces/aider/aider/waiting.py:159",
+        "/Users/jakobgrant/Workspaces/aider/aider/waiting.py:167"
+      ]
+    },
+    "startup_flow": [
+      {
+        "step": 1,
+        "pattern": "Aider v{version}",
+        "source": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:209"
+      },
+      {
+        "step": 2,
+        "pattern": "Model: {model} with {edit_format} edit format",
+        "source": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:220"
+      },
+      {
+        "step": 3,
+        "pattern": "Git repo: {dir} with {n} files | Git repo: none",
+        "source": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:255"
+      },
+      {
+        "step": 4,
+        "pattern": "Repo-map: using {tokens} tokens, {refresh} refresh | Repo-map: disabled",
+        "source": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:269"
+      },
+      {
+        "step": 5,
+        "pattern": "optional first-run release notes prompt: Would you like to see what's new in this version?",
+        "source": "/Users/jakobgrant/Workspaces/aider/aider/main.py:1107"
+      },
+      {
+        "step": 6,
+        "pattern": "Ready prompt prefix: {edit_format?}{ multi?}> ",
+        "source": "/Users/jakobgrant/Workspaces/aider/aider/io.py:545"
+      }
+    ],
+    "blocking_prompts": [
+      {
+        "type": "confirmation_generic",
+        "trigger": "all yes/no confirmations via IO helper",
+        "exact_text": " (Y)es/(N)o[/(A)ll][/(S)kip all][/(D)on't ask again] [Yes|No|default]: ",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/io.py:832",
+        "input_method": "text prompt (prompt_toolkit or input())",
+        "options": [
+          "yes",
+          "no",
+          "all (group mode)",
+          "skip (group mode)",
+          "don't ask again (if allow_never)"
+        ],
+        "default": "configurable (usually Yes)",
+        "can_be_skipped": "yes via --yes-always/--no flags and 'don't ask again' session memory",
+        "regex_pattern": "(?i)\\(Y\\)es/\\(N\\)o(?:/\\(A\\)ll)?(?:/\\(S\\)kip all)?(?:/\\(D\\)on'?t ask again)?\\s*\\[(?:Yes|No|[^\\]]+)\\]:"
+      },
+      {
+        "type": "confirmation_validation_error",
+        "trigger": "invalid confirmation input",
+        "exact_text": "Please answer with one of: yes, no, skip, all",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/io.py:897",
+        "input_method": "re-prompt loop",
+        "options": [],
+        "default": null,
+        "can_be_skipped": "no",
+        "regex_pattern": "(?i)please answer with one of:"
+      },
+      {
+        "type": "git_init",
+        "trigger": "running outside git repo",
+        "exact_text": "No git repo found, create one to track aider's changes (recommended)?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/main.py:123",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes via --no-git",
+        "regex_pattern": "(?i)no git repo found, create one to track aider.?s changes"
+      },
+      {
+        "type": "gitignore_update",
+        "trigger": "repo missing .aider* or .env ignore entries",
+        "exact_text": "Add {patterns} to .gitignore (recommended)?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/main.py:191",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes via --no-gitignore",
+        "regex_pattern": "(?i)add .+ to \\.gitignore \\(recommended\\)\\?"
+      },
+      {
+        "type": "telemetry_opt_in",
+        "trigger": "analytics decision not yet recorded",
+        "exact_text": "Allow collection of anonymous analytics to help improve aider?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/main.py:650",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes via --analytics/--analytics-disable",
+        "regex_pattern": "(?i)allow collection of anonymous analytics to help improve aider\\?"
+      },
+      {
+        "type": "release_notes_offer",
+        "trigger": "first run of new version when show-release-notes unset",
+        "exact_text": "Would you like to see what's new in this version?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/main.py:1107",
+        "input_method": "yes/no (offer_url)",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes via --show-release-notes false",
+        "regex_pattern": "(?i)would you like to see what.?s new in this version\\?"
+      },
+      {
+        "type": "oauth_login_offer",
+        "trigger": "no model set and no API keys, or openrouter model without OPENROUTER_API_KEY",
+        "exact_text": "Login to OpenRouter or create a free account?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/onboarding.py:94",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes (decline), then CLI errors if no usable key",
+        "regex_pattern": "(?i)login to openrouter or create a free account\\?"
+      },
+      {
+        "type": "oauth_browser_flow",
+        "trigger": "user accepted OpenRouter OAuth",
+        "exact_text": [
+          "Please open this URL in your browser to connect Aider with OpenRouter:",
+          "Waiting up to 5 minutes for you to finish in the browser...",
+          "Use Control-C to interrupt.",
+          "Completing authentication..."
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/onboarding.py:311",
+        "input_method": "browser callback + wait; Ctrl+C interrupt",
+        "options": [
+          "complete in browser",
+          "Ctrl+C interrupt"
+        ],
+        "default": "wait for callback",
+        "can_be_skipped": "yes (Ctrl+C or decline OAuth earlier)",
+        "regex_pattern": "(?i)please open this url in your browser to connect aider with openrouter|waiting up to 5 minutes|use control-c to interrupt|completing authentication"
+      },
+      {
+        "type": "dependency_install",
+        "trigger": "optional extras/dependency missing (playwright, boto3, vertex, upgrades)",
+        "exact_text": "Run pip install?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/utils.py:317",
+        "input_method": "yes/no with command shown in subject",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes (decline), but feature remains unavailable",
+        "regex_pattern": "(?i)run pip install\\?"
+      },
+      {
+        "type": "playwright_install",
+        "trigger": "web scraping requested and playwright incomplete",
+        "exact_text": "Install playwright?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/scrape.py:62",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes via --disable-playwright or declining prompt",
+        "regex_pattern": "(?i)install playwright\\?"
+      },
+      {
+        "type": "add_file_context",
+        "trigger": "message mentions files not currently in chat",
+        "exact_text": "Add file to the chat?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:1773",
+        "input_method": "group yes/no/all/skip/don't-ask-again",
+        "options": [
+          "yes",
+          "no",
+          "all",
+          "skip all",
+          "don't ask again"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes via skip/all/don't-ask-again",
+        "regex_pattern": "(?i)add file to the chat\\?"
+      },
+      {
+        "type": "add_url_context",
+        "trigger": "URL detected in user message",
+        "exact_text": "Add URL to the chat?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:977",
+        "input_method": "group yes/no/all/skip/don't-ask-again",
+        "options": [
+          "yes",
+          "no",
+          "all",
+          "skip all",
+          "don't ask again"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes",
+        "regex_pattern": "(?i)add url to the chat\\?"
+      },
+      {
+        "type": "edit_permission",
+        "trigger": "LLM tries to edit file not yet added to chat",
+        "exact_text": "Allow edits to file that has not been added to the chat?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:2227",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes via --yes-always",
+        "regex_pattern": "(?i)allow edits to file that has not been added to the chat\\?"
+      },
+      {
+        "type": "new_file_permission",
+        "trigger": "LLM proposes editing a non-existent file",
+        "exact_text": "Create new file?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:2207",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes via --yes-always",
+        "regex_pattern": "(?i)create new file\\?"
+      },
+      {
+        "type": "shell_command_execution",
+        "trigger": "model suggests shell commands",
+        "exact_text": [
+          "Run shell command?",
+          "Run shell commands?"
+        ],
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:2455",
+        "input_method": "explicit yes required; group mode with all/skip/don't-ask",
+        "options": [
+          "yes",
+          "no",
+          "all",
+          "skip all",
+          "don't ask again"
+        ],
+        "default": "No effective default when explicit_yes_required=true",
+        "can_be_skipped": "yes",
+        "regex_pattern": "(?i)run shell command[s]?\\?"
+      },
+      {
+        "type": "shell_output_to_chat",
+        "trigger": "after running suggested commands",
+        "exact_text": "Add command output to the chat?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:2480",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no",
+          "don't ask again"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes",
+        "regex_pattern": "(?i)add command output to the chat\\?"
+      },
+      {
+        "type": "run_command_output_to_chat",
+        "trigger": "/run command (manual command execution path)",
+        "exact_text": "Add {k_tokens}k tokens of command output to the chat?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/commands.py:1029",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes",
+        "regex_pattern": "(?i)add\\s+\\d+(?:\\.\\d+)?k\\s+tokens of command output to the chat\\?"
+      },
+      {
+        "type": "lint_fix_confirm",
+        "trigger": "/lint found errors",
+        "exact_text": "Fix lint errors in {fname}?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/commands.py:389",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes",
+        "regex_pattern": "(?i)fix lint errors in .+\\?"
+      },
+      {
+        "type": "context_limit_continue",
+        "trigger": "estimated context exceeds model max_input_tokens",
+        "exact_text": "Try to proceed anyway?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:1415",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes",
+        "regex_pattern": "(?i)try to proceed anyway\\?"
+      },
+      {
+        "type": "architect_apply_confirm",
+        "trigger": "architect mode produced plan/edits and auto-accept disabled",
+        "exact_text": "Edit the files?",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/coders/architect_coder.py:17",
+        "input_method": "yes/no",
+        "options": [
+          "yes",
+          "no"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes via --auto-accept-architect",
+        "regex_pattern": "(?i)edit the files\\?"
+      },
+      {
+        "type": "bug_report_confirm",
+        "trigger": "uncaught exception handler in report module",
+        "exact_text": "Open a GitHub Issue pre-filled with the above error in your browser? (Y/n)",
+        "source_file": "/Users/jakobgrant/Workspaces/aider/aider/report.py:70",
+        "input_method": "raw input() y/n",
+        "options": [
+          "Y",
+          "n"
+        ],
+        "default": "Yes",
+        "can_be_skipped": "yes",
+        "regex_pattern": "(?i)open a github issue pre-filled with the above error in your browser\\? \\(Y/n\\)"
+      }
+    ],
+    "ready_detection": {
+      "patterns": [
+        "(?m)^(?:Readonly:|Editable:).*$",
+        "(?m)^[^\\n]*>\\s*$",
+        "(?m)^(?:ask|code|architect|help)(?:\\s+multi)?\\>\\s*$",
+        "(?m)^multi>\\s*$"
+      ],
+      "sources": [
+        "/Users/jakobgrant/Workspaces/aider/aider/io.py:545",
+        "/Users/jakobgrant/Workspaces/aider/aider/io.py:550",
+        "/Users/jakobgrant/Workspaces/aider/aider/io.py:1149"
+      ],
+      "notes": "Prompt prefix is dynamic: optional edit-format + optional 'multi' + '> '. After each response, ready state is generally signaled by this prompt reappearing."
+    },
+    "exit_detection": {
+      "patterns": [
+        "(?i)\\^C again to exit",
+        "(?i)\\^C KeyboardInterrupt",
+        "(?i)Attempting to open the issue URL in your default web browser",
+        "(?i)Re-run aider to use new version\\."
+      ],
+      "sources": [
+        "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:994",
+        "/Users/jakobgrant/Workspaces/aider/aider/coders/base_coder.py:998",
+        "/Users/jakobgrant/Workspaces/aider/aider/report.py:77",
+        "/Users/jakobgrant/Workspaces/aider/aider/versioncheck.py:58"
+      ]
+    },
+    "auth_env_vars": [
+      "OPENROUTER_API_KEY",
+      "OPENAI_API_KEY",
+      "ANTHROPIC_API_KEY",
+      "GEMINI_API_KEY",
+      "DEEPSEEK_API_KEY",
+      "VERTEXAI_PROJECT",
+      "GROQ_API_KEY",
+      "FIREWORKS_API_KEY"
+    ],
+    "auth_env_var_sources": [
+      "/Users/jakobgrant/Workspaces/aider/aider/onboarding.py:64",
+      "/Users/jakobgrant/Workspaces/aider/aider/models.py:709",
+      "/Users/jakobgrant/Workspaces/aider/aider/models.py:1154"
+    ]
+  }
+}
