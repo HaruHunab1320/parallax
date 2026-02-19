@@ -106,13 +106,52 @@ describe('AiderAdapter', () => {
       expect(args).toContain('gpt-4-turbo');
     });
 
-    it('should not pass --model when no provider or explicit model set', () => {
+    it('should infer --model sonnet from anthropicKey when no provider set', () => {
       const config: SpawnConfig = {
         name: 'test',
         type: 'aider',
         adapterConfig: {
           anthropicKey: 'sk-ant-test',
         },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('--model');
+      expect(args).toContain('sonnet');
+    });
+
+    it('should infer --model 4o from openaiKey when no provider set', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          openaiKey: 'sk-test',
+        },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('--model');
+      expect(args).toContain('4o');
+    });
+
+    it('should infer --model gemini from googleKey when no provider set', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          googleKey: 'gk-test',
+        },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('--model');
+      expect(args).toContain('gemini');
+    });
+
+    it('should not pass --model when no provider and no keys', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
       };
       const args = adapter.getArgs(config);
 

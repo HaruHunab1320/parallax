@@ -234,9 +234,10 @@ export class AiderAdapter extends BaseCodingAdapter {
     // Set working directory via --file flag prefix
     // Aider uses current directory, so we rely on PTY cwd
 
-    // Model: explicit > provider default alias > let aider pick
+    // Model: explicit > provider metadata > inferred from API keys > aider default
     // Aliases (sonnet, 4o, gemini) are maintained by Aider and auto-update
     const provider = (config.adapterConfig as { provider?: string } | undefined)?.provider;
+    const credentials = this.getCredentials(config);
     if (config.env?.AIDER_MODEL) {
       args.push('--model', config.env.AIDER_MODEL);
     } else if (provider === 'anthropic') {
@@ -245,11 +246,17 @@ export class AiderAdapter extends BaseCodingAdapter {
       args.push('--model', '4o');
     } else if (provider === 'google') {
       args.push('--model', 'gemini');
+    } else if (credentials.anthropicKey) {
+      // No explicit provider — infer from available API keys
+      args.push('--model', 'sonnet');
+    } else if (credentials.openaiKey) {
+      args.push('--model', '4o');
+    } else if (credentials.googleKey) {
+      args.push('--model', 'gemini');
     }
-    // No provider preference → don't force a model, aider picks based on available keys
+    // No keys at all → don't force a model, let aider use its own default
 
     // API keys via --api-key flag (no env vars needed)
-    const credentials = this.getCredentials(config);
     if (credentials.anthropicKey) args.push('--api-key', `anthropic=${credentials.anthropicKey}`);
     if (credentials.openaiKey) args.push('--api-key', `openai=${credentials.openaiKey}`);
     if (credentials.googleKey) args.push('--api-key', `gemini=${credentials.googleKey}`);

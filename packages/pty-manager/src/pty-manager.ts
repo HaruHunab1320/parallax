@@ -34,6 +34,8 @@ export interface PTYManagerEvents {
   message: (message: SessionMessage) => void;
   question: (session: SessionHandle, question: string) => void;
   stall_detected: (session: SessionHandle, recentOutput: string, stallDurationMs: number) => void;
+  session_status_changed: (session: SessionHandle) => void;
+  task_complete: (session: SessionHandle) => void;
 }
 
 /**
@@ -192,6 +194,15 @@ export class PTYManager extends EventEmitter {
 
     session.on('error', (error: Error) => {
       this.emit('session_error', session.toHandle(), error.message);
+    });
+
+    session.on('status_changed', () => {
+      // Refresh the handle so the parent sees the updated status
+      this.emit('session_status_changed', session.toHandle());
+    });
+
+    session.on('task_complete', () => {
+      this.emit('task_complete', session.toHandle());
     });
 
     session.on('stall_detected', (recentOutput: string, stallDurationMs: number) => {

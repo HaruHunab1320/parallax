@@ -281,17 +281,21 @@ export class GeminiAdapter extends BaseCodingAdapter {
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
 
+    // Definitive positive indicators — always win, even if stale auth/trust
+    // dialog text is still in the buffer from a TUI re-render.
+    // "Type your message" is the Composer placeholder (Composer.tsx:446)
+    // and is unambiguous — the CLI is ready to accept input.
+    if (/type.?your.?message/i.test(stripped)) {
+      return true;
+    }
+
     // Guard: if output contains a trust or auth prompt, we're NOT ready
+    // (only checked when no definitive positive indicator is present)
     if (/do.?you.?trust.?this.?folder/i.test(stripped) ||
         /how.?would.?you.?like.?to.?authenticate/i.test(stripped) ||
         /waiting.?for.?auth/i.test(stripped) ||
         /allow.?google.?to.?use.?this.?data/i.test(stripped)) {
       return false;
-    }
-
-    // Composer placeholder (Composer.tsx:446)
-    if (/type.?your.?message/i.test(stripped)) {
-      return true;
     }
 
     // InputPrompt glyph — >, !, *, (r:) (InputPrompt.tsx:1450)

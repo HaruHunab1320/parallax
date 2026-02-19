@@ -302,6 +302,26 @@ export class BunCompatiblePTYManager extends EventEmitter {
         break;
       }
 
+      case 'status_changed': {
+        const session = this.sessions.get(id!);
+        if (session) {
+          session.status = event.status as SessionStatus;
+          session.lastActivityAt = new Date();
+          this.emit('session_status_changed', session);
+        }
+        break;
+      }
+
+      case 'task_complete': {
+        const session = this.sessions.get(id!);
+        if (session) {
+          session.status = 'ready';
+          session.lastActivityAt = new Date();
+          this.emit('task_complete', session);
+        }
+        break;
+      }
+
       case 'stall_detected': {
         const session = this.sessions.get(id!);
         if (session) {

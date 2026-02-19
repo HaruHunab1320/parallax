@@ -378,8 +378,15 @@ describe('GeminiAdapter', () => {
       expect(adapter.detectReady('Gemini CLI v1.0.0')).toBe(false);
     });
 
-    it('should NOT detect ready when trust prompt is present', () => {
-      expect(adapter.detectReady('Do you trust this folder?\n> Type your message')).toBe(false);
+    it('should detect ready when "Type your message" present even with stale trust text', () => {
+      // "Type your message" is a definitive positive indicator that overrides negative guards.
+      // After auth/trust completes, TUI re-renders may include stale dialog text alongside
+      // the ready prompt. The positive match should always win.
+      expect(adapter.detectReady('Do you trust this folder?\n> Type your message')).toBe(true);
+    });
+
+    it('should NOT detect ready when ONLY trust prompt is present (no ready indicator)', () => {
+      expect(adapter.detectReady('Do you trust this folder?')).toBe(false);
     });
 
     it('should NOT detect ready when auth dialog is present', () => {

@@ -183,6 +183,21 @@ manager.on('question', (handle: SessionHandle, question: string) => {
   });
 });
 
+manager.on('session_status_changed', (handle: SessionHandle) => {
+  emit({
+    event: 'status_changed',
+    id: handle.id,
+    status: handle.status,
+  });
+});
+
+manager.on('task_complete', (handle: SessionHandle) => {
+  emit({
+    event: 'task_complete',
+    id: handle.id,
+  });
+});
+
 manager.on('stall_detected', (handle: SessionHandle, recentOutput: string, stallDurationMs: number) => {
   emit({
     event: 'stall_detected',

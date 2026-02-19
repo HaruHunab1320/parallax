@@ -44,6 +44,8 @@ export interface PTYSessionEvents {
   exit: (code: number) => void;
   error: (error: Error) => void;
   stall_detected: (recentOutput: string, stallDurationMs: number) => void;
+  status_changed: (status: SessionStatus) => void;
+  task_complete: () => void;
 }
 
 /**
@@ -269,6 +271,10 @@ export class PTYSession extends EventEmitter {
   private _lastStallHash: string | null = null;
   private _stallStartedAt: number | null = null;
   private _lastContentHash: string | null = null;
+
+  // Task completion detection (idle detection when busy)
+  private _taskCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private static readonly TASK_COMPLETE_DEBOUNCE_MS = 1500;
 
   public readonly id: string;
   public readonly config: SpawnConfig;
@@ -514,18 +520,25 @@ export class PTYSession extends EventEmitter {
    * word boundaries — e.g. "Do\x1b[5Cyou" becomes "Do you", not "Doyou".
    */
   private stripAnsiForStall(str: string): string {
-    // Replace ALL cursor movement codes with a space:
+    // Replace ALL cursor movement/positioning codes with a space to preserve word boundaries:
     // \x1b[nC (forward), \x1b[nD (back), \x1b[nA (up), \x1b[nB (down), \x1b[nG (column)
     // \x1b[n;mH and \x1b[n;mf (absolute positioning)
-    let result = str.replace(/\x1b\[\d*[CDABG]/g, ' ');
+    // \x1b[nJ (erase display), \x1b[nK (erase line) — also space to keep words apart
+    // \x1b[nd (vertical position), \x1b[nE/nF (cursor next/prev line)
+    let result = str.replace(/\x1b\[\d*[CDABGdEF]/g, ' ');
     result = result.replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ');
+    result = result.replace(/\x1b\[\d*[JK]/g, ' ');
 
-    // Strip remaining ANSI escape sequences
+    // Strip remaining ANSI escape sequences (SGR, cursor show/hide, etc.)
     // eslint-disable-next-line no-control-regex
     result = result.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
 
-    // Strip TUI box-drawing and spinner characters
-    result = result.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓]/g, ' ');
+    // Strip bare control characters (carriage return, backspace, bell, etc.)
+    // eslint-disable-next-line no-control-regex
+    result = result.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+
+    // Strip TUI box-drawing, spinner, and decorative Unicode characters
+    result = result.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓⬆⬇◆◇▪▫■□▲△▼▽◈⟨⟩⌘⏎⏏⌫⌦⇧⇪⌥]/g, ' ');
 
     // Collapse multiple spaces
     result = result.replace(/ {2,}/g, ' ');
@@ -592,6 +605,47 @@ export class PTYSession extends EventEmitter {
         this.clearStallTimer();
         this.emit('error', new Error(classification.prompt || 'Stall classified as error'));
         break;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Task Completion Detection
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Schedule a task_complete transition after a debounce period.
+   * If new non-whitespace output arrives before the timer fires,
+   * the timer is cancelled (by cancelTaskComplete in onData).
+   */
+  private scheduleTaskComplete(): void {
+    // Already scheduled — let the existing timer run
+    if (this._taskCompleteTimer) return;
+
+    this._taskCompleteTimer = setTimeout(() => {
+      this._taskCompleteTimer = null;
+
+      // Re-check: still busy and ready indicator still present?
+      if (this._status !== 'busy') return;
+      if (!this.adapter.detectReady(this.outputBuffer)) return;
+
+      this._status = 'ready';
+      this._lastBlockingPromptHash = null;
+      this.outputBuffer = '';
+      this.clearStallTimer();
+      this.emit('status_changed', 'ready');
+      this.emit('task_complete');
+      this.logger.info({ sessionId: this.id }, 'Task complete — agent returned to idle prompt');
+    }, PTYSession.TASK_COMPLETE_DEBOUNCE_MS);
+  }
+
+  /**
+   * Cancel a pending task_complete timer (new output arrived that
+   * doesn't match the idle prompt, so the agent is still working).
+   */
+  private cancelTaskComplete(): void {
+    if (this._taskCompleteTimer) {
+      clearTimeout(this._taskCompleteTimer);
+      this._taskCompleteTimer = null;
     }
   }
 
@@ -673,18 +727,12 @@ export class PTYSession extends EventEmitter {
       // Emit raw output
       this.emit('output', data);
 
-      // Auto-response / blocking prompt detection — check BEFORE detectReady.
-      // This ensures that prompts like trust confirmations are auto-responded
-      // before detectReady sees banner text and prematurely marks the session ready.
-      // Blocking prompts happen throughout the session lifecycle:
-      // permission prompts, confirmation dialogs, apply changes, etc.
-      const blockingPrompt = this.detectAndHandleBlockingPrompt();
-      if (blockingPrompt) {
-        return;
-      }
-
-      // Ready detection — only during startup/auth
-      // When transitioning to ready, clear the buffer to remove stale startup/auth text
+      // Ready detection — check FIRST, before blocking prompt detection.
+      // After an auto-response (e.g. trust prompt), the buffer may contain
+      // leftover prompt text that would falsely trigger detectBlockingPrompt
+      // and block detectReady from ever running. Adapter detectReady
+      // implementations have negative guards for trust/auth prompts, so
+      // this is safe — it won't prematurely mark the session as ready.
       if (
         (this._status === 'starting' || this._status === 'authenticating') &&
         this.adapter.detectReady(this.outputBuffer)
@@ -696,6 +744,23 @@ export class PTYSession extends EventEmitter {
         this.emit('ready');
         this.logger.info({ sessionId: this.id }, 'Session ready');
         return; // Skip processing the stale buffer
+      }
+
+      // Task completion detection — when busy and the agent returns to its idle prompt.
+      // Uses a debounce to avoid false positives during mid-task output that
+      // happens to contain the prompt string.
+      if (this._status === 'busy' && this.adapter.detectReady(this.outputBuffer)) {
+        this.scheduleTaskComplete();
+      } else {
+        this.cancelTaskComplete();
+      }
+
+      // Auto-response / blocking prompt detection — runs after detectReady.
+      // Handles trust confirmations, permission prompts, apply changes, etc.
+      // throughout the entire session lifecycle.
+      const blockingPrompt = this.detectAndHandleBlockingPrompt();
+      if (blockingPrompt) {
+        return;
       }
 
       // Login detection — only during startup/auth (not after ready/busy)
@@ -987,6 +1052,7 @@ export class PTYSession extends EventEmitter {
    */
   send(message: string): SessionMessage {
     this._status = 'busy';
+    this.emit('status_changed', 'busy');
     this.resetStallTimer();
 
     const msg: SessionMessage = {
@@ -1116,6 +1182,7 @@ export class PTYSession extends EventEmitter {
     if (this.ptyProcess) {
       this._status = 'stopping';
       this.clearStallTimer();
+      this.cancelTaskComplete();
       this.ptyProcess.kill(signal);
       this.logger.info({ sessionId: this.id, signal }, 'Killing PTY session');
     }
