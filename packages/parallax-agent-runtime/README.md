@@ -94,6 +94,21 @@ Claude uses the spawn tool:
 }
 ```
 
+### Interactive vs Non-Interactive Mode
+
+By default, agents spawn in **interactive mode** (`interactive: true`), which is required for PTY sessions. This skips flags like `--print` (Claude), `--non-interactive` (Gemini), and `--quiet` (Codex) that are incompatible with PTY.
+
+```
+{
+  "name": "headless-worker",
+  "type": "claude",
+  "capabilities": ["code"],
+  "interactive": false
+}
+```
+
+Set `interactive: false` only for piped/headless usage outside a PTY.
+
 ### Spawn with an Approval Preset
 
 ```
