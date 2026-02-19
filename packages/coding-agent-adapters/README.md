@@ -103,7 +103,7 @@ Each adapter implements `detectTaskComplete(output)` to recognize when the CLI h
 | Claude | Turn duration (`Cooked for 3m 12s`, custom verb) + `❯` prompt (tolerates trailing status bar) | `claude_completed_turn_duration` |
 | Gemini | `◇ Ready` window title, `Type your message` composer | `gemini_ready_title` |
 | Codex | `Worked for 1m 05s` separator + `›` prompt | `codex_completed_worked_for_separator`, `codex_ready_prompt` |
-| Aider | `Aider is waiting for your input`, mode prompts with edit/cost markers | `aider_completed_llm_response_ready` |
+| Aider | `Aider is waiting for your input`, mode prompts (including plain `>`) with edit/cost markers | `aider_completed_llm_response_ready` |
 
 ```typescript
 const claude = new ClaudeAdapter();

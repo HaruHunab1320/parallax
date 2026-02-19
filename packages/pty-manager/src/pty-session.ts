@@ -423,11 +423,14 @@ export class PTYSession extends EventEmitter {
       return;
     }
 
-    // Hash the stripped buffer tail — only reset timer when content actually changes
-    // Trim to ignore trailing whitespace from cursor-movement-to-space replacements
-    const tail = this.outputBuffer.slice(-500);
-    const stripped = this.stripAnsiForStall(tail).trim();
-    const hash = this.simpleHash(stripped);
+    // Strip the full buffer FIRST, then slice the tail of the normalized text.
+    // Stripping before slicing ensures the 500-char window covers the same
+    // visible content regardless of how many raw escape sequences surround it.
+    // (Slicing raw first caused different cursor-positioning codes at the
+    // truncation boundary to produce different stripped text each TUI redraw.)
+    const stripped = this.stripAnsiForStall(this.outputBuffer).trim();
+    const tail = stripped.slice(-500);
+    const hash = this.simpleHash(tail);
 
     if (hash === this._lastContentHash) {
       // Content unchanged (e.g., spinner animation) — don't reset the timer

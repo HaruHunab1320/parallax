@@ -448,7 +448,9 @@ export class AiderAdapter extends BaseCodingAdapter {
     // Mode prompt at end of output after visible response content.
     // Only count as task-complete if there's substantial output above the prompt
     // (not just a bare prompt which could be startup).
-    const hasPrompt = /(?:ask|code|architect)(?:\s+multi)?>\s*$/m.test(stripped);
+    // Match named prompts (ask>, code>, architect>, multi>) AND plain >
+    // Aider shows plain > in some modes.
+    const hasPrompt = /(?:(?:ask|code|architect)(?:\s+multi)?)?>\s*$/m.test(stripped);
     if (hasPrompt) {
       // Check for signs of completed work above the prompt
       const hasEditMarkers = /Applied edit to|Commit [a-f0-9]+|wrote to|Updated/i.test(stripped);

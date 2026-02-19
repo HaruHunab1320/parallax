@@ -392,6 +392,22 @@ describe('ClaudeAdapter', () => {
       expect(rule?.pattern.test('This is a project you created')).toBe(true);
     });
 
+    it('should match "trust directory" prompt', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust')
+      );
+      expect(rule?.pattern.test('Do you trust this directory?')).toBe(true);
+    });
+
+    it('should match TUI menu options when question has scrolled off', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust')
+      );
+      // When the trust question scrolls off, only the menu options remain visible
+      expect(rule?.pattern.test('Yes  No  Enter')).toBe(true);
+      expect(rule?.pattern.test('Allow this  Deny  Return')).toBe(true);
+    });
+
     it('should have update decline rule with responseType text', () => {
       const rule = adapter.autoResponseRules.find(r => r.type === 'update');
 

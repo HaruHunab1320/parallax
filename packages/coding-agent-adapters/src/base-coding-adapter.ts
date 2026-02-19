@@ -154,14 +154,20 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   abstract getRecommendedModels(credentials?: AgentCredentials): ModelRecommendations;
 
   /**
-   * Override stripAnsi to handle TUI cursor-forward codes.
-   * TUI CLIs (Claude Code, Gemini CLI) use \x1b[<n>C (cursor forward)
-   * instead of literal spaces for word positioning. Replace with spaces
-   * before stripping other ANSI codes so regex patterns can match.
+   * Override stripAnsi to handle TUI cursor movement codes.
+   * TUI CLIs (Claude Code, Gemini CLI, Codex) use cursor positioning
+   * sequences instead of literal spaces. Replace ALL cursor movement
+   * codes with spaces before stripping other ANSI codes so regex
+   * patterns can match the visible text.
    */
   protected stripAnsi(str: string): string {
-    const withSpaces = str.replace(/\x1b\[\d*C/g, ' ');
-    return super.stripAnsi(withSpaces);
+    // Cursor forward/back/up/down, column positioning, line movement
+    let result = str.replace(/\x1b\[\d*[CDABGdEF]/g, ' ');
+    // Absolute positioning: \x1b[r;cH and \x1b[r;cf
+    result = result.replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ');
+    // Erase display/line (preserve word boundaries)
+    result = result.replace(/\x1b\[\d*[JK]/g, ' ');
+    return super.stripAnsi(result);
   }
 
   /**

@@ -183,6 +183,17 @@ describe('AiderAdapter.detectTaskComplete', () => {
     expect(adapter.detectTaskComplete(output)).toBe(true);
   });
 
+  it('detects plain > prompt with edit markers', () => {
+    // Aider shows plain > in some modes
+    const output = 'Applied edit to src/main.ts\nTokens: 1234\n> ';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
+  it('detects plain > prompt with commit hash', () => {
+    const output = 'Commit abc1234\n> ';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
   it('rejects bare mode prompt without work indicators', () => {
     // Bare prompt could be startup, not task completion
     const output = 'code> ';

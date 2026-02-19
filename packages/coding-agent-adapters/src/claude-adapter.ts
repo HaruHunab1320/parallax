@@ -34,7 +34,7 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    */
   readonly autoResponseRules: AutoResponseRule[] = [
     {
-      pattern: /trust.*folder|safety.?check|project.you.created/i,
+      pattern: /trust.*(?:folder|directory)|safety.?check|project.you.created|(?:Yes|Allow).*(?:No|Deny).*(?:Enter|Return)/i,
       type: 'permission',
       response: '',
       responseType: 'keys',

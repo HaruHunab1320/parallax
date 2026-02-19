@@ -1,6 +1,6 @@
 {
   "name": "parallax-agent-runtime",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "MCP server for AI agent orchestration - spawn, manage, and coordinate multiple AI agents",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
