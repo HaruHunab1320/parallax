@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Parallax Agent Runtime CLI
  *
