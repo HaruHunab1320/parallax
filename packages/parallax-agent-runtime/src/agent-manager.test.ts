@@ -64,6 +64,16 @@ const mockCreateAdapter = vi.fn().mockReturnValue({
   memoryFilePath: mockMemoryFilePath,
 });
 
+const mockGenerateApprovalConfig = vi.fn().mockReturnValue({
+  preset: 'standard',
+  cliFlags: [],
+  workspaceFiles: [
+    { relativePath: '.claude/settings.json', content: '{}', format: 'json' },
+  ],
+  envVars: {},
+  summary: 'Claude Code: Standard dev',
+});
+
 vi.mock('coding-agent-adapters', () => ({
   ClaudeAdapter: vi.fn(),
   GeminiAdapter: vi.fn(),
@@ -71,6 +81,7 @@ vi.mock('coding-agent-adapters', () => ({
   AiderAdapter: vi.fn(),
   checkAdapters: (...args: unknown[]) => mockCheckAdapters(...args),
   createAdapter: (...args: unknown[]) => mockCreateAdapter(...args),
+  generateApprovalConfig: (...args: unknown[]) => mockGenerateApprovalConfig(...args),
 }));
 
 // Mock git-workspace-service
@@ -221,6 +232,90 @@ describe('AgentManager', () => {
       await expect(
         manager.spawn({ name: 'test', type: 'claude', capabilities: [] })
       ).rejects.toThrow('Maximum agents (2) reached');
+    });
+
+    it('passes approvalPreset through to adapterConfig', async () => {
+      const manager = new AgentManager(logger);
+      mockSpawn.mockResolvedValue({
+        id: 'agent-1',
+        name: 'test',
+        type: 'claude',
+        status: 'starting',
+      });
+
+      await manager.spawn({
+        name: 'test',
+        type: 'claude',
+        capabilities: ['code'],
+        approvalPreset: 'permissive',
+      });
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          adapterConfig: expect.objectContaining({
+            approvalPreset: 'permissive',
+          }),
+        })
+      );
+    });
+
+    it('writes approval config files to workspace before spawn', async () => {
+      const manager = new AgentManager(logger);
+      mockSpawn.mockResolvedValue({
+        id: 'agent-1',
+        name: 'test',
+        type: 'claude',
+        status: 'starting',
+      });
+
+      await manager.spawn({
+        name: 'test',
+        type: 'claude',
+        capabilities: ['code'],
+        workdir: '/tmp/test-workspace',
+        approvalPreset: 'standard',
+      });
+
+      expect(mockGenerateApprovalConfig).toHaveBeenCalledWith('claude', 'standard');
+    });
+
+    it('does not write approval config files when no preset is set', async () => {
+      const manager = new AgentManager(logger);
+      mockSpawn.mockResolvedValue({
+        id: 'agent-1',
+        name: 'test',
+        type: 'claude',
+        status: 'starting',
+      });
+
+      await manager.spawn({
+        name: 'test',
+        type: 'claude',
+        capabilities: ['code'],
+        workdir: '/tmp/test-workspace',
+      });
+
+      expect(mockGenerateApprovalConfig).not.toHaveBeenCalled();
+    });
+
+    it('does not write approval config files for custom agent type', async () => {
+      const manager = new AgentManager(logger);
+      mockSpawn.mockResolvedValue({
+        id: 'agent-1',
+        name: 'test',
+        type: 'custom',
+        status: 'starting',
+      });
+
+      await manager.spawn({
+        name: 'test',
+        type: 'custom',
+        capabilities: ['code'],
+        workdir: '/tmp/test-workspace',
+        approvalPreset: 'standard',
+      });
+
+      expect(mockGenerateApprovalConfig).not.toHaveBeenCalled();
     });
 
     it('returns AgentHandle with role and capabilities from config', async () => {

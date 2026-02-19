@@ -287,6 +287,12 @@ export class AiderAdapter extends BaseCodingAdapter {
     if (credentials.openaiKey) args.push('--api-key', `openai=${credentials.openaiKey}`);
     if (credentials.googleKey) args.push('--api-key', `gemini=${credentials.googleKey}`);
 
+    // Append approval preset CLI flags
+    const approvalConfig = this.getApprovalConfig(config);
+    if (approvalConfig) {
+      args.push(...approvalConfig.cliFlags);
+    }
+
     return args;
   }
 

@@ -40,6 +40,8 @@ import {
   executeCleanupWorkspace,
   executeGetWorkspaceFiles,
   executeWriteWorkspaceFile,
+  executeListPresets,
+  executeGetPresetConfig,
   type SpawnInput,
   type StopInput,
   type ListInput,
@@ -52,6 +54,7 @@ import {
   type CleanupWorkspaceInput,
   type GetWorkspaceFilesInput,
   type WriteWorkspaceFileInput,
+  type GetPresetConfigInput,
 } from './tools/index.js';
 import {
   listAgentResources,
@@ -216,6 +219,12 @@ export class ParallaxMcpServer {
             break;
           case 'write_workspace_file':
             result = await executeWriteWorkspaceFile(this.manager, args as WriteWorkspaceFileInput);
+            break;
+          case 'list_presets':
+            result = executeListPresets();
+            break;
+          case 'get_preset_config':
+            result = executeGetPresetConfig(args as GetPresetConfigInput);
             break;
           default:
             throw new Error(`Unknown tool: ${name}`);

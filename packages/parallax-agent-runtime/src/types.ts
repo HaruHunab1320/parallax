@@ -4,6 +4,8 @@
  * Core type definitions for agent management.
  */
 
+import type { ApprovalPreset } from 'coding-agent-adapters';
+
 /**
  * Supported AI agent types
  */
@@ -57,6 +59,9 @@ export interface AgentConfig {
 
   /** Per-agent stall timeout in ms. Overrides the manager-level default. */
   stallTimeoutMs?: number;
+
+  /** Approval preset controlling tool permissions for the spawned agent. */
+  approvalPreset?: ApprovalPreset;
 }
 
 /**

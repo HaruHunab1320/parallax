@@ -9,6 +9,7 @@ import { writeFile, appendFile, mkdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { BaseCLIAdapter } from 'pty-manager';
 import type { SpawnConfig } from 'pty-manager';
+import { generateApprovalConfig, type ApprovalPreset, type ApprovalConfig } from './approval-presets';
 
 /**
  * Credentials that can be passed via SpawnConfig.adapterConfig
@@ -88,6 +89,11 @@ export interface CodingAgentConfig extends SpawnConfig {
      * pick its best model for that provider automatically.
      */
     provider?: 'anthropic' | 'openai' | 'google';
+    /**
+     * Approval preset controlling tool permissions.
+     * Translates to CLI-specific config files and flags.
+     */
+    approvalPreset?: ApprovalPreset;
   } & Record<string, unknown>;
 }
 
@@ -234,6 +240,45 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
     content = content.trim();
 
     return content;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Approval Presets
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Extract the approval preset from a spawn config, if set.
+   */
+  protected getApprovalPreset(config: SpawnConfig): ApprovalPreset | undefined {
+    const adapterConfig = config.adapterConfig as { approvalPreset?: ApprovalPreset } | undefined;
+    return adapterConfig?.approvalPreset;
+  }
+
+  /**
+   * Generate the approval config for this adapter, if a preset is set.
+   */
+  getApprovalConfig(config: SpawnConfig): ApprovalConfig | null {
+    const preset = this.getApprovalPreset(config);
+    if (!preset) return null;
+    return generateApprovalConfig(this.adapterType as 'claude' | 'gemini' | 'codex' | 'aider', preset);
+  }
+
+  /**
+   * Write approval config files to a workspace directory.
+   * Returns the list of files written (absolute paths).
+   */
+  async writeApprovalConfig(workspacePath: string, config: SpawnConfig): Promise<string[]> {
+    const approvalConfig = this.getApprovalConfig(config);
+    if (!approvalConfig) return [];
+
+    const written: string[] = [];
+    for (const file of approvalConfig.workspaceFiles) {
+      const fullPath = join(workspacePath, file.relativePath);
+      await mkdir(dirname(fullPath), { recursive: true });
+      await writeFile(fullPath, file.content, 'utf-8');
+      written.push(fullPath);
+    }
+    return written;
   }
 
   /**

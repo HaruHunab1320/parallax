@@ -13,6 +13,8 @@ import {
   executeProvisionWorkspace,
   executeFinalizeWorkspace,
   executeCleanupWorkspace,
+  executeListPresets,
+  executeGetPresetConfig,
   TOOLS,
   TOOL_PERMISSIONS,
 } from './index.js';
@@ -95,6 +97,22 @@ describe('Tool schemas', () => {
       expect(parsed.stallTimeoutMs).toBe(15000);
     });
 
+    it('accepts approvalPreset', () => {
+      const input = {
+        name: 'test', type: 'claude', capabilities: ['code'],
+        approvalPreset: 'permissive',
+      };
+      const parsed = SpawnInputSchema.parse(input);
+      expect(parsed.approvalPreset).toBe('permissive');
+    });
+
+    it('rejects invalid approvalPreset', () => {
+      expect(() => SpawnInputSchema.parse({
+        name: 'test', type: 'claude', capabilities: [],
+        approvalPreset: 'invalid_preset',
+      })).toThrow();
+    });
+
     it('rejects invalid agent type', () => {
       expect(() => SpawnInputSchema.parse({
         name: 'test', type: 'invalid_type', capabilities: [],
@@ -146,8 +164,8 @@ describe('Tool schemas', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('TOOLS', () => {
-  it('defines 13 tools', () => {
-    expect(TOOLS).toHaveLength(13);
+  it('defines 15 tools', () => {
+    expect(TOOLS).toHaveLength(15);
   });
 
   it('includes spawn with ruleOverrides and stallTimeoutMs properties', () => {
@@ -163,6 +181,17 @@ describe('TOOLS', () => {
     expect(names).toContain('finalize_workspace');
     expect(names).toContain('cleanup_workspace');
   });
+
+  it('includes preset tools', () => {
+    const names = TOOLS.map(t => t.name);
+    expect(names).toContain('list_presets');
+    expect(names).toContain('get_preset_config');
+  });
+
+  it('includes approvalPreset property in spawn tool', () => {
+    const spawn = TOOLS.find(t => t.name === 'spawn');
+    expect(spawn!.inputSchema.properties).toHaveProperty('approvalPreset');
+  });
 });
 
 describe('TOOL_PERMISSIONS', () => {
@@ -170,6 +199,11 @@ describe('TOOL_PERMISSIONS', () => {
     expect(TOOL_PERMISSIONS.provision_workspace).toBe('workspace:provision');
     expect(TOOL_PERMISSIONS.finalize_workspace).toBe('workspace:finalize');
     expect(TOOL_PERMISSIONS.cleanup_workspace).toBe('workspace:cleanup');
+  });
+
+  it('maps preset tools to presets: permissions', () => {
+    expect(TOOL_PERMISSIONS.list_presets).toBe('presets:list');
+    expect(TOOL_PERMISSIONS.get_preset_config).toBe('presets:read');
   });
 });
 
@@ -315,6 +349,65 @@ describe('Tool executors', () => {
       expect(result.success).toBe(true);
       expect(result.workspaceId).toBe('ws-1');
       expect((manager as any).cleanupWorkspace).toHaveBeenCalledWith('ws-1');
+    });
+  });
+
+  describe('executeSpawn with approvalPreset', () => {
+    it('passes approvalPreset to manager.spawn', async () => {
+      const manager = createMockManager();
+
+      await executeSpawn(manager, {
+        name: 'test',
+        type: 'claude',
+        capabilities: ['code'],
+        waitForReady: true,
+        approvalPreset: 'permissive',
+      });
+
+      expect((manager as any).spawn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          approvalPreset: 'permissive',
+        })
+      );
+    });
+  });
+
+  describe('executeListPresets', () => {
+    it('returns all preset definitions', () => {
+      const result = executeListPresets();
+      expect(result.success).toBe(true);
+      expect(result.presets).toHaveLength(4);
+      expect(result.presets.map((p: { preset: string }) => p.preset)).toEqual([
+        'readonly', 'standard', 'permissive', 'autonomous',
+      ]);
+    });
+  });
+
+  describe('executeGetPresetConfig', () => {
+    it('returns config for claude/standard', () => {
+      const result = executeGetPresetConfig({ agentType: 'claude', preset: 'standard' });
+      expect(result.success).toBe(true);
+      expect(result.config.preset).toBe('standard');
+      expect(result.config.summary).toContain('Claude');
+      expect(result.config.workspaceFiles.length).toBeGreaterThan(0);
+    });
+
+    it('returns config for gemini/autonomous', () => {
+      const result = executeGetPresetConfig({ agentType: 'gemini', preset: 'autonomous' });
+      expect(result.success).toBe(true);
+      expect(result.config.cliFlags).toContain('-y');
+    });
+
+    it('returns config for codex/readonly', () => {
+      const result = executeGetPresetConfig({ agentType: 'codex', preset: 'readonly' });
+      expect(result.success).toBe(true);
+      expect(result.config.cliFlags).toContain('--sandbox');
+    });
+
+    it('returns config for aider/permissive', () => {
+      const result = executeGetPresetConfig({ agentType: 'aider', preset: 'permissive' });
+      expect(result.success).toBe(true);
+      expect(result.config.cliFlags).toContain('--yes-always');
     });
   });
 });

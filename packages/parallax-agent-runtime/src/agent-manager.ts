@@ -20,9 +20,11 @@ import {
   AiderAdapter,
   checkAdapters,
   createAdapter,
+  generateApprovalConfig,
   type PreflightResult,
   type AgentFileDescriptor,
   type WriteMemoryOptions,
+  type ApprovalPreset,
 } from 'coding-agent-adapters';
 import {
   WorkspaceService,
@@ -257,11 +259,35 @@ export class AgentManager extends EventEmitter {
     const id = config.id ?? `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.agentConfigs.set(id, { ...config, id });
 
+    // Write approval config files to workspace before spawning
+    if (config.approvalPreset && config.workdir && config.type !== 'custom') {
+      const approvalConfig = generateApprovalConfig(
+        config.type as 'claude' | 'gemini' | 'codex' | 'aider',
+        config.approvalPreset,
+      );
+      const { writeFile: fsWriteFile, mkdir: fsMkdir } = await import('node:fs/promises');
+      const { join, dirname } = await import('node:path');
+
+      const writtenFiles: string[] = [];
+      for (const file of approvalConfig.workspaceFiles) {
+        const fullPath = join(config.workdir, file.relativePath);
+        await fsMkdir(dirname(fullPath), { recursive: true });
+        await fsWriteFile(fullPath, file.content, 'utf-8');
+        writtenFiles.push(file.relativePath);
+      }
+      this.logger.info(
+        { agentId: id, preset: config.approvalPreset, files: writtenFiles },
+        'Wrote approval config files to workspace',
+      );
+    }
+
     // Map to pty-manager spawn config
     // Convert credentials to adapter config (Record<string, unknown>)
-    const adapterConfig: Record<string, unknown> | undefined = config.credentials
-      ? { ...config.credentials }
-      : undefined;
+    // Include approvalPreset so the adapter's getArgs() can add CLI flags
+    const adapterConfig: Record<string, unknown> = {
+      ...(config.credentials ?? {}),
+      ...(config.approvalPreset ? { approvalPreset: config.approvalPreset } : {}),
+    };
 
     const spawnConfig = {
       id,
@@ -269,7 +295,7 @@ export class AgentManager extends EventEmitter {
       type: config.type,
       workdir: config.workdir,
       env: config.env,
-      adapterConfig,
+      adapterConfig: Object.keys(adapterConfig).length > 0 ? adapterConfig : undefined,
       // Pass through new pty-manager features
       ruleOverrides: config.ruleOverrides as Record<string, Record<string, unknown> | null> | undefined,
       stallTimeoutMs: config.stallTimeoutMs,

@@ -244,12 +244,12 @@ describe('ParallaxMcpServer', () => {
   });
 
   describe('tool routing', () => {
-    it('lists all 11 tools', async () => {
+    it('lists all tools', async () => {
       new ParallaxMcpServer({ logger });
 
       expect(listToolsHandler).not.toBeNull();
       const result = await listToolsHandler!();
-      expect((result as { tools: unknown[] }).tools).toHaveLength(13);
+      expect((result as { tools: unknown[] }).tools).toHaveLength(15);
     });
 
     it('routes spawn tool', async () => {
@@ -417,6 +417,36 @@ describe('ParallaxMcpServer', () => {
       const parsed = JSON.parse(content);
       expect(parsed.success).toBe(true);
       expect(parsed.path).toBe('/tmp/workspace/CLAUDE.md');
+    });
+
+    it('routes list_presets tool', async () => {
+      new ParallaxMcpServer({ logger });
+
+      const result = await callToolHandler!({
+        params: { name: 'list_presets', arguments: {} },
+      });
+
+      const content = (result as { content: { text: string }[] }).content[0].text;
+      const parsed = JSON.parse(content);
+      expect(parsed.success).toBe(true);
+      expect(parsed.presets).toHaveLength(4);
+    });
+
+    it('routes get_preset_config tool', async () => {
+      new ParallaxMcpServer({ logger });
+
+      const result = await callToolHandler!({
+        params: {
+          name: 'get_preset_config',
+          arguments: { agentType: 'claude', preset: 'standard' },
+        },
+      });
+
+      const content = (result as { content: { text: string }[] }).content[0].text;
+      const parsed = JSON.parse(content);
+      expect(parsed.success).toBe(true);
+      expect(parsed.config.preset).toBe('standard');
+      expect(parsed.config.summary).toContain('Claude');
     });
 
     it('returns error for unknown tool', async () => {

@@ -78,6 +78,8 @@ export {
   executeCleanupWorkspace,
   executeGetWorkspaceFiles,
   executeWriteWorkspaceFile,
+  executeListPresets,
+  executeGetPresetConfig,
   SpawnInputSchema,
   StopInputSchema,
   ListInputSchema,
@@ -91,6 +93,9 @@ export {
   CleanupWorkspaceInputSchema,
   GetWorkspaceFilesInputSchema,
   WriteWorkspaceFileInputSchema,
+  ListPresetsInputSchema,
+  GetPresetConfigInputSchema,
+  ApprovalPresetSchema,
   type SpawnInput,
   type StopInput,
   type ListInput,
@@ -104,6 +109,8 @@ export {
   type CleanupWorkspaceInput,
   type GetWorkspaceFilesInput,
   type WriteWorkspaceFileInput,
+  type ListPresetsInput,
+  type GetPresetConfigInput,
 } from './tools/index.js';
 
 // Resources

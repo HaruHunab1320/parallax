@@ -3,6 +3,13 @@
  */
 
 import { z } from 'zod';
+import {
+  generateApprovalConfig,
+  listPresets,
+  type ApprovalPreset,
+  type PresetDefinition,
+  type ApprovalConfig,
+} from 'coding-agent-adapters';
 import type { AgentManager } from '../agent-manager.js';
 import type { AgentType, AgentStatus } from '../types.js';
 
@@ -30,6 +37,8 @@ export const SpawnInputSchema = z.object({
     .describe('Override or disable adapter auto-response rules. Keys are regex source strings; null disables the rule, objects merge into it.'),
   stallTimeoutMs: z.number().optional()
     .describe('Per-agent stall timeout in ms. Overrides manager default.'),
+  approvalPreset: z.enum(['readonly', 'standard', 'permissive', 'autonomous']).optional()
+    .describe('Approval preset controlling tool permissions for the agent'),
 });
 
 export const StopInputSchema = z.object({
@@ -114,7 +123,18 @@ export const WriteWorkspaceFileInputSchema = z.object({
   append: z.boolean().optional().describe('Append to existing file instead of overwriting'),
 });
 
+export const ApprovalPresetSchema = z.enum(['readonly', 'standard', 'permissive', 'autonomous']);
+
+export const ListPresetsInputSchema = z.object({});
+
+export const GetPresetConfigInputSchema = z.object({
+  agentType: z.enum(['claude', 'codex', 'gemini', 'aider']).describe('Agent type to generate config for'),
+  preset: ApprovalPresetSchema.describe('Approval preset level'),
+});
+
 // Types
+export type ListPresetsInput = z.infer<typeof ListPresetsInputSchema>;
+export type GetPresetConfigInput = z.infer<typeof GetPresetConfigInputSchema>;
 export type SpawnInput = z.infer<typeof SpawnInputSchema>;
 export type StopInput = z.infer<typeof StopInputSchema>;
 export type ListInput = z.infer<typeof ListInputSchema>;
@@ -156,6 +176,7 @@ export const TOOLS = [
           description: 'Override or disable adapter auto-response rules. Keys are regex source strings (e.g. "update available.*\\\\[y\\\\/n\\\\]"); null disables the rule, objects merge fields into it.',
         },
         stallTimeoutMs: { type: 'number', description: 'Per-agent stall timeout in ms. Overrides manager default.' },
+        approvalPreset: { type: 'string', enum: ['readonly', 'standard', 'permissive', 'autonomous'], description: 'Approval preset controlling tool permissions for the agent' },
       },
       required: ['name', 'type', 'capabilities'],
     },
@@ -333,6 +354,26 @@ export const TOOLS = [
       required: ['agentType', 'workspacePath', 'content'],
     },
   },
+  {
+    name: 'list_presets',
+    description: 'List all available approval presets with their descriptions and tool category permissions.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'get_preset_config',
+    description: 'Generate the CLI-specific approval config for a given agent type and preset. Returns CLI flags, workspace files to write, and environment variables.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider'], description: 'Agent type' },
+        preset: { type: 'string', enum: ['readonly', 'standard', 'permissive', 'autonomous'], description: 'Approval preset level' },
+      },
+      required: ['agentType', 'preset'],
+    },
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -353,6 +394,7 @@ export async function executeSpawn(manager: AgentManager, input: SpawnInput) {
     idleTimeout: validated.idleTimeout,
     ruleOverrides: validated.ruleOverrides as Record<string, Record<string, unknown> | null> | undefined,
     stallTimeoutMs: validated.stallTimeoutMs,
+    approvalPreset: validated.approvalPreset as ApprovalPreset | undefined,
   });
 
   return {
@@ -550,6 +592,20 @@ export async function executeWriteWorkspaceFile(manager: AgentManager, input: Wr
   };
 }
 
+export function executeListPresets() {
+  const presets = listPresets();
+  return { success: true, presets };
+}
+
+export function executeGetPresetConfig(input: GetPresetConfigInput) {
+  const validated = GetPresetConfigInputSchema.parse(input);
+  const config = generateApprovalConfig(
+    validated.agentType as 'claude' | 'codex' | 'gemini' | 'aider',
+    validated.preset,
+  );
+  return { success: true, config };
+}
+
 // Tool permission mapping
 export const TOOL_PERMISSIONS: Record<string, string> = {
   spawn: 'agents:spawn',
@@ -565,4 +621,6 @@ export const TOOL_PERMISSIONS: Record<string, string> = {
   cleanup_workspace: 'workspace:cleanup',
   get_workspace_files: 'workspace:read',
   write_workspace_file: 'workspace:write',
+  list_presets: 'presets:list',
+  get_preset_config: 'presets:read',
 };

@@ -57,6 +57,31 @@ export {
 } from './pattern-loader';
 export type { AdapterPatterns } from './pattern-loader';
 
+// Approval presets
+export {
+  generateApprovalConfig,
+  generateClaudeApprovalConfig,
+  generateGeminiApprovalConfig,
+  generateCodexApprovalConfig,
+  generateAiderApprovalConfig,
+  listPresets,
+  getPresetDefinition,
+  TOOL_CATEGORIES,
+  PRESET_DEFINITIONS,
+  CLAUDE_TOOL_CATEGORIES,
+  GEMINI_TOOL_CATEGORIES,
+  CODEX_TOOL_CATEGORIES,
+  AIDER_COMMAND_CATEGORIES,
+} from './approval-presets';
+export type {
+  ToolCategory,
+  RiskLevel,
+  ApprovalPreset,
+  ToolCategoryInfo,
+  PresetDefinition,
+  ApprovalConfig,
+} from './approval-presets';
+
 // Types
 export type { AdapterType } from './types';
 

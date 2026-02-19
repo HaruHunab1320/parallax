@@ -217,6 +217,78 @@ await adapter.writeMemoryFile('/path/to/workspace', '# Task-Specific Context\n..
 });
 ```
 
+## Approval Presets
+
+Each coding agent CLI has its own config format for controlling tool permissions. The approval preset system provides 4 named levels that translate to the correct per-CLI config files and CLI flags.
+
+### Preset Levels
+
+| Preset | Description | Auto-approve | Require approval | Blocked |
+|--------|-------------|-------------|-----------------|---------|
+| `readonly` | Read-only. Safe for auditing. | file_read, planning, user_interaction | — | file_write, shell, web, agent |
+| `standard` | Standard dev. Reads + web auto, writes/shell prompt. | file_read, planning, user_interaction, web | file_write, shell, agent | — |
+| `permissive` | File ops auto-approved, shell still prompts. | file_read, file_write, planning, user_interaction, web, agent | shell | — |
+| `autonomous` | Everything auto-approved. Use with sandbox. | all categories | — | — |
+
+### Generating Configs
+
+```typescript
+import { generateApprovalConfig, listPresets, getPresetDefinition } from 'coding-agent-adapters';
+
+// List all available presets
+const presets = listPresets();
+
+// Generate CLI-specific config for a preset
+const config = generateApprovalConfig('claude', 'permissive');
+// {
+//   preset: 'permissive',
+//   cliFlags: [],
+//   workspaceFiles: [{ relativePath: '.claude/settings.json', content: '...', format: 'json' }],
+//   envVars: {},
+//   summary: 'Claude Code: File ops auto-approved, shell still prompts.',
+// }
+
+// Each CLI gets its own config format
+generateApprovalConfig('gemini', 'readonly');   // → .gemini/settings.json + --approval-mode plan
+generateApprovalConfig('codex', 'autonomous');  // → .codex/config.json + --full-auto
+generateApprovalConfig('aider', 'permissive');  // → .aider.conf.yml + --yes-always
+```
+
+### Using Presets with Adapters
+
+When `approvalPreset` is set in `adapterConfig`, the adapter's `getArgs()` automatically appends the correct CLI flags:
+
+```typescript
+const session = await manager.spawn({
+  name: 'sandboxed-agent',
+  type: 'claude',
+  workdir: '/path/to/project',
+  adapterConfig: {
+    anthropicKey: process.env.ANTHROPIC_API_KEY,
+    approvalPreset: 'autonomous',
+  },
+});
+```
+
+You can also write the config files to a workspace manually using `writeApprovalConfig()`:
+
+```typescript
+const adapter = new ClaudeAdapter();
+const writtenFiles = await adapter.writeApprovalConfig('/path/to/workspace', {
+  adapterConfig: { approvalPreset: 'permissive' },
+});
+// writtenFiles: ['/path/to/workspace/.claude/settings.json']
+```
+
+### Per-CLI Output
+
+| CLI | Config File | Key Controls |
+|-----|------------|--------------|
+| Claude Code | `.claude/settings.json` | `permissions.allow`, `permissions.deny`, `sandbox.*` |
+| Gemini CLI | `.gemini/settings.json` | `general.defaultApprovalMode`, `tools.allowed`, `tools.exclude` |
+| Codex | `.codex/config.json` | `approval_policy`, `sandbox_mode`, `tools.web_search` |
+| Aider | `.aider.conf.yml` | `yes-always`, `no-auto-commits` |
+
 ## Preflight Check
 
 Before spawning agents, check if the required CLIs are installed:

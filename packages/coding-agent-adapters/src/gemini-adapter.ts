@@ -116,6 +116,12 @@ export class GeminiAdapter extends BaseCodingAdapter {
       }
     }
 
+    // Append approval preset CLI flags
+    const approvalConfig = this.getApprovalConfig(config);
+    if (approvalConfig) {
+      args.push(...approvalConfig.cliFlags);
+    }
+
     return args;
   }
 

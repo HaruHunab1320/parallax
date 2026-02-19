@@ -37,6 +37,7 @@ parallax-agent-runtime
 ## Features
 
 - **Spawn AI Agents** - Create Claude, Codex, Gemini, or Aider agents
+- **Approval Presets** - Unified tool permission control across all CLIs (`readonly`, `standard`, `permissive`, `autonomous`)
 - **Multi-Agent Coordination** - Agents can communicate and collaborate
 - **Real-time Logs** - Stream agent terminal output
 - **Metrics & Health** - Monitor agent resource usage
@@ -59,6 +60,8 @@ parallax-agent-runtime
 | `cleanup_workspace` | Clean up a provisioned workspace |
 | `get_workspace_files` | Get workspace file descriptors for an agent type (e.g. CLAUDE.md, GEMINI.md) |
 | `write_workspace_file` | Write an agent instruction/memory file into a workspace |
+| `list_presets` | List available approval presets with descriptions and permissions |
+| `get_preset_config` | Generate CLI-specific approval config for an agent type and preset |
 
 ## MCP Resources
 
@@ -88,6 +91,36 @@ Claude uses the spawn tool:
   "capabilities": ["code_review"],
   "workdir": "/path/to/project"
 }
+```
+
+### Spawn with an Approval Preset
+
+```
+User: "Spawn an autonomous agent in a sandbox"
+
+Claude uses the spawn tool:
+{
+  "name": "sandboxed-worker",
+  "type": "claude",
+  "capabilities": ["code", "test"],
+  "workdir": "/path/to/project",
+  "approvalPreset": "autonomous"
+}
+
+This writes .claude/settings.json with sandbox + full auto-approve config,
+and adds the appropriate CLI flags (e.g. --tools for Claude, --full-auto for Codex).
+```
+
+### Explore Available Presets
+
+```
+User: "What approval presets are available?"
+
+Claude uses the list_presets tool → returns:
+- readonly: Read-only. Safe for auditing.
+- standard: Standard dev. Reads + web auto, writes/shell prompt.
+- permissive: File ops auto-approved, shell still prompts.
+- autonomous: Everything auto-approved. Use with sandbox.
 ```
 
 ### Send a Task to an Agent
@@ -183,6 +216,9 @@ Permissions use a colon-separated format with wildcard support:
 - `workspace:provision` - Provision workspaces
 - `workspace:read` - Read workspace file descriptors
 - `workspace:write` - Write workspace files
+- `presets:*` - All preset operations
+- `presets:list` - List available presets
+- `presets:read` - Get preset config details
 
 ## Supported Agent Types
 
