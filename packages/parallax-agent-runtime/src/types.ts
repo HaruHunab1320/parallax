@@ -48,6 +48,15 @@ export interface AgentConfig {
   credentials?: AgentCredentials;
   autoRestart?: boolean;
   idleTimeout?: number;
+
+  /** Override or disable specific adapter auto-response rules for this agent.
+   *  Keys are regex source strings (from rule.pattern.source).
+   *  - null value disables that rule entirely
+   *  - Object value merges fields into the matching adapter rule */
+  ruleOverrides?: Record<string, Record<string, unknown> | null>;
+
+  /** Per-agent stall timeout in ms. Overrides the manager-level default. */
+  stallTimeoutMs?: number;
 }
 
 /**
@@ -134,4 +143,28 @@ export type RuntimeEvent =
   | { type: 'login_required'; agent: AgentHandle; loginUrl?: string; loginInstructions?: string }
   | { type: 'blocking_prompt'; agent: AgentHandle; prompt: BlockingPromptInfo; autoResponded: boolean }
   | { type: 'message'; message: AgentMessage }
-  | { type: 'question'; agent: AgentHandle; question: string };
+  | { type: 'question'; agent: AgentHandle; question: string }
+  | { type: 'stall_detected'; agent: AgentHandle; recentOutput: string; stallDurationMs: number };
+
+/**
+ * Stall classification result (passed through from pty-manager)
+ */
+export interface StallClassification {
+  state: 'waiting_for_input' | 'still_working' | 'task_complete' | 'error';
+  prompt?: string;
+  suggestedResponse?: string;
+}
+
+/**
+ * Workspace provisioning configuration for spawn
+ */
+export interface WorkspaceProvisionConfig {
+  /** Repository URL to clone */
+  repo: string;
+  /** Base branch to create from (default: main) */
+  baseBranch?: string;
+  /** Git provider (default: github) */
+  provider?: string;
+  /** User-provided credentials (PAT or OAuth token) */
+  credentials?: { type: 'pat' | 'oauth'; token: string };
+}

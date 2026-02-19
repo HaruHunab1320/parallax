@@ -26,6 +26,10 @@ export const SpawnInputSchema = z.object({
   reportsTo: z.string().optional().describe('Agent ID this one reports to'),
   autoRestart: z.boolean().optional().describe('Restart on crash'),
   idleTimeout: z.number().optional().describe('Stop after N seconds idle'),
+  ruleOverrides: z.record(z.union([z.record(z.unknown()), z.null()])).optional()
+    .describe('Override or disable adapter auto-response rules. Keys are regex source strings; null disables the rule, objects merge into it.'),
+  stallTimeoutMs: z.number().optional()
+    .describe('Per-agent stall timeout in ms. Overrides manager default.'),
 });
 
 export const StopInputSchema = z.object({
@@ -63,6 +67,41 @@ export const MetricsInputSchema = z.object({
 
 export const HealthInputSchema = z.object({});
 
+export const ProvisionWorkspaceInputSchema = z.object({
+  repo: z.string().describe('Repository URL to clone (e.g. https://github.com/owner/repo)'),
+  baseBranch: z.string().default('main').describe('Base branch to create from'),
+  provider: z.string().default('github').describe('Git provider'),
+  strategy: z.enum(['clone', 'worktree']).default('clone').describe('Workspace strategy'),
+  executionId: z.string().describe('Execution/session ID for branch naming'),
+  role: z.string().default('engineer').describe('Role/task identifier for branch naming'),
+  slug: z.string().optional().describe('Human-readable slug for branch name'),
+  branchStrategy: z.enum(['feature_branch', 'fork', 'direct']).default('feature_branch')
+    .describe('Branch creation strategy'),
+  credentials: z.object({
+    type: z.enum(['pat', 'oauth']),
+    token: z.string(),
+  }).optional().describe('Git credentials (PAT or OAuth token)'),
+});
+
+export const FinalizeWorkspaceInputSchema = z.object({
+  workspaceId: z.string().describe('ID of the workspace to finalize'),
+  push: z.boolean().default(true).describe('Push the branch'),
+  createPr: z.boolean().default(false).describe('Create a pull request'),
+  pr: z.object({
+    title: z.string(),
+    body: z.string(),
+    targetBranch: z.string(),
+    draft: z.boolean().optional(),
+    labels: z.array(z.string()).optional(),
+    reviewers: z.array(z.string()).optional(),
+  }).optional().describe('PR configuration (required if createPr is true)'),
+  cleanup: z.boolean().default(false).describe('Clean up workspace after finalization'),
+});
+
+export const CleanupWorkspaceInputSchema = z.object({
+  workspaceId: z.string().describe('ID of the workspace to clean up'),
+});
+
 // Types
 export type SpawnInput = z.infer<typeof SpawnInputSchema>;
 export type StopInput = z.infer<typeof StopInputSchema>;
@@ -72,6 +111,9 @@ export type SendInput = z.infer<typeof SendInputSchema>;
 export type LogsInput = z.infer<typeof LogsInputSchema>;
 export type MetricsInput = z.infer<typeof MetricsInputSchema>;
 export type HealthInput = z.infer<typeof HealthInputSchema>;
+export type ProvisionWorkspaceInput = z.infer<typeof ProvisionWorkspaceInputSchema>;
+export type FinalizeWorkspaceInput = z.infer<typeof FinalizeWorkspaceInputSchema>;
+export type CleanupWorkspaceInput = z.infer<typeof CleanupWorkspaceInputSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tool Definitions (JSON Schema format for MCP)
@@ -80,7 +122,7 @@ export type HealthInput = z.infer<typeof HealthInputSchema>;
 export const TOOLS = [
   {
     name: 'spawn',
-    description: 'Create and start a new AI agent',
+    description: 'Create and start a new AI agent. Supports rule overrides to customize adapter behavior and per-agent stall timeouts.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -94,6 +136,12 @@ export const TOOLS = [
         reportsTo: { type: 'string', description: 'Agent ID this one reports to' },
         autoRestart: { type: 'boolean', description: 'Restart on crash' },
         idleTimeout: { type: 'number', description: 'Stop after N seconds idle' },
+        ruleOverrides: {
+          type: 'object',
+          additionalProperties: { oneOf: [{ type: 'object' }, { type: 'null' }] },
+          description: 'Override or disable adapter auto-response rules. Keys are regex source strings (e.g. "update available.*\\\\[y\\\\/n\\\\]"); null disables the rule, objects merge fields into it.',
+        },
+        stallTimeoutMs: { type: 'number', description: 'Per-agent stall timeout in ms. Overrides manager default.' },
       },
       required: ['name', 'type', 'capabilities'],
     },
@@ -174,10 +222,75 @@ export const TOOLS = [
   },
   {
     name: 'health',
-    description: 'Check the health status of the runtime',
+    description: 'Check the health status of the runtime, including adapter installation status',
     inputSchema: {
       type: 'object' as const,
       properties: {},
+    },
+  },
+  {
+    name: 'provision_workspace',
+    description: 'Provision a git workspace by cloning a repository and creating a feature branch. Returns the workspace path for use as an agent workdir.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        repo: { type: 'string', description: 'Repository URL (e.g. https://github.com/owner/repo)' },
+        baseBranch: { type: 'string', description: 'Base branch to create from', default: 'main' },
+        provider: { type: 'string', description: 'Git provider', default: 'github' },
+        strategy: { type: 'string', enum: ['clone', 'worktree'], description: 'Workspace strategy', default: 'clone' },
+        executionId: { type: 'string', description: 'Execution/session ID for branch naming' },
+        role: { type: 'string', description: 'Role/task identifier for branch naming', default: 'engineer' },
+        slug: { type: 'string', description: 'Human-readable slug for branch name' },
+        branchStrategy: { type: 'string', enum: ['feature_branch', 'fork', 'direct'], description: 'Branch strategy', default: 'feature_branch' },
+        credentials: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', enum: ['pat', 'oauth'] },
+            token: { type: 'string' },
+          },
+          required: ['type', 'token'],
+          description: 'Git credentials',
+        },
+      },
+      required: ['repo', 'executionId'],
+    },
+  },
+  {
+    name: 'finalize_workspace',
+    description: 'Finalize a workspace by pushing changes, optionally creating a pull request, and cleaning up.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        workspaceId: { type: 'string', description: 'ID of the workspace' },
+        push: { type: 'boolean', description: 'Push the branch', default: true },
+        createPr: { type: 'boolean', description: 'Create a pull request', default: false },
+        pr: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            body: { type: 'string' },
+            targetBranch: { type: 'string' },
+            draft: { type: 'boolean' },
+            labels: { type: 'array', items: { type: 'string' } },
+            reviewers: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['title', 'body', 'targetBranch'],
+          description: 'PR configuration',
+        },
+        cleanup: { type: 'boolean', description: 'Clean up workspace after', default: false },
+      },
+      required: ['workspaceId'],
+    },
+  },
+  {
+    name: 'cleanup_workspace',
+    description: 'Clean up a provisioned workspace (remove local files)',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        workspaceId: { type: 'string', description: 'ID of the workspace to clean up' },
+      },
+      required: ['workspaceId'],
     },
   },
 ];
@@ -198,6 +311,8 @@ export async function executeSpawn(manager: AgentManager, input: SpawnInput) {
     reportsTo: validated.reportsTo,
     autoRestart: validated.autoRestart,
     idleTimeout: validated.idleTimeout,
+    ruleOverrides: validated.ruleOverrides as Record<string, Record<string, unknown> | null> | undefined,
+    stallTimeoutMs: validated.stallTimeoutMs,
   });
 
   return {
@@ -305,6 +420,65 @@ export async function executeHealth(manager: AgentManager) {
   return { success: true, ...health };
 }
 
+export async function executeProvisionWorkspace(manager: AgentManager, input: ProvisionWorkspaceInput) {
+  const validated = ProvisionWorkspaceInputSchema.parse(input);
+
+  const workspace = await manager.provisionWorkspace({
+    repo: validated.repo,
+    provider: validated.provider as 'github',
+    strategy: validated.strategy,
+    branchStrategy: validated.branchStrategy,
+    baseBranch: validated.baseBranch,
+    execution: {
+      id: validated.executionId,
+      patternName: 'mcp-provision',
+    },
+    task: {
+      id: validated.executionId,
+      role: validated.role,
+      slug: validated.slug,
+    },
+    userCredentials: validated.credentials,
+  });
+
+  return {
+    success: true,
+    workspace: {
+      id: workspace.id,
+      path: workspace.path,
+      repo: workspace.repo,
+      branch: workspace.branch.name,
+      status: workspace.status,
+      strategy: workspace.strategy,
+    },
+  };
+}
+
+export async function executeFinalizeWorkspace(manager: AgentManager, input: FinalizeWorkspaceInput) {
+  const validated = FinalizeWorkspaceInputSchema.parse(input);
+
+  const result = await manager.finalizeWorkspace(validated.workspaceId, {
+    push: validated.push,
+    createPr: validated.createPr,
+    pr: validated.pr,
+    cleanup: validated.cleanup,
+  });
+
+  return {
+    success: true,
+    workspaceId: validated.workspaceId,
+    pullRequest: result
+      ? { number: result.number, url: result.url }
+      : undefined,
+  };
+}
+
+export async function executeCleanupWorkspace(manager: AgentManager, input: CleanupWorkspaceInput) {
+  const validated = CleanupWorkspaceInputSchema.parse(input);
+  await manager.cleanupWorkspace(validated.workspaceId);
+  return { success: true, workspaceId: validated.workspaceId };
+}
+
 // Tool permission mapping
 export const TOOL_PERMISSIONS: Record<string, string> = {
   spawn: 'agents:spawn',
@@ -315,4 +489,7 @@ export const TOOL_PERMISSIONS: Record<string, string> = {
   logs: 'agents:logs',
   metrics: 'agents:metrics',
   health: 'health:check',
+  provision_workspace: 'workspace:provision',
+  finalize_workspace: 'workspace:finalize',
+  cleanup_workspace: 'workspace:cleanup',
 };

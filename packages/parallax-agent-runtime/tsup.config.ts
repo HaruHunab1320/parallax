@@ -10,7 +10,7 @@ export default defineConfig([
     sourcemap: true,
     clean: true,
     // pty-manager has native bindings via node-pty, can't be bundled
-    external: ['pty-manager', 'coding-agent-adapters'],
+    external: ['pty-manager', 'coding-agent-adapters', 'git-workspace-service'],
   },
   // CLI build
   {
@@ -18,7 +18,7 @@ export default defineConfig([
     format: ['cjs'],
     splitting: false,
     sourcemap: true,
-    external: ['pty-manager', 'coding-agent-adapters'],
+    external: ['pty-manager', 'coding-agent-adapters', 'git-workspace-service'],
     banner: {
       js: '#!/usr/bin/env node',
     },

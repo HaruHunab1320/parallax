@@ -35,6 +35,9 @@ import {
   executeLogs,
   executeMetrics,
   executeHealth,
+  executeProvisionWorkspace,
+  executeFinalizeWorkspace,
+  executeCleanupWorkspace,
   type SpawnInput,
   type StopInput,
   type ListInput,
@@ -42,6 +45,9 @@ import {
   type SendInput,
   type LogsInput,
   type MetricsInput,
+  type ProvisionWorkspaceInput,
+  type FinalizeWorkspaceInput,
+  type CleanupWorkspaceInput,
 } from './tools/index.js';
 import {
   listAgentResources,
@@ -88,7 +94,7 @@ export class ParallaxMcpServer {
     this.server = new Server(
       {
         name: 'parallax-agent-runtime',
-        version: '0.2.1',
+        version: '0.3.0',
       },
       {
         capabilities: {
@@ -191,6 +197,15 @@ export class ParallaxMcpServer {
             break;
           case 'health':
             result = await executeHealth(this.manager);
+            break;
+          case 'provision_workspace':
+            result = await executeProvisionWorkspace(this.manager, args as ProvisionWorkspaceInput);
+            break;
+          case 'finalize_workspace':
+            result = await executeFinalizeWorkspace(this.manager, args as FinalizeWorkspaceInput);
+            break;
+          case 'cleanup_workspace':
+            result = await executeCleanupWorkspace(this.manager, args as CleanupWorkspaceInput);
             break;
           default:
             throw new Error(`Unknown tool: ${name}`);

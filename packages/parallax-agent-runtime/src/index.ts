@@ -48,6 +48,7 @@ export {
   AgentManager,
   type AgentManagerOptions,
   type AgentManagerEvents,
+  type AdapterHealth,
 } from './agent-manager.js';
 
 // Auth
@@ -72,6 +73,9 @@ export {
   executeLogs,
   executeMetrics,
   executeHealth,
+  executeProvisionWorkspace,
+  executeFinalizeWorkspace,
+  executeCleanupWorkspace,
   SpawnInputSchema,
   StopInputSchema,
   ListInputSchema,
@@ -80,6 +84,9 @@ export {
   LogsInputSchema,
   MetricsInputSchema,
   HealthInputSchema,
+  ProvisionWorkspaceInputSchema,
+  FinalizeWorkspaceInputSchema,
+  CleanupWorkspaceInputSchema,
   type SpawnInput,
   type StopInput,
   type ListInput,
@@ -88,6 +95,9 @@ export {
   type LogsInput,
   type MetricsInput,
   type HealthInput,
+  type ProvisionWorkspaceInput,
+  type FinalizeWorkspaceInput,
+  type CleanupWorkspaceInput,
 } from './tools/index.js';
 
 // Resources
@@ -124,6 +134,8 @@ export type {
   BlockingPromptInfo,
   RuntimeEvent,
   MessageType,
+  StallClassification,
+  WorkspaceProvisionConfig,
 } from './types.js';
 
 // Convenient alias

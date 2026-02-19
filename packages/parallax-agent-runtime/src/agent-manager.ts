@@ -1,7 +1,8 @@
 /**
  * Agent Manager
  *
- * Manages AI coding agents using pty-manager and coding-agent-adapters.
+ * Manages AI coding agents using pty-manager, coding-agent-adapters,
+ * and git-workspace-service.
  */
 
 import { EventEmitter } from 'events';
@@ -10,13 +11,24 @@ import {
   type SessionHandle,
   type SessionMessage,
   type PTYManagerConfig,
+  type AutoResponseRule,
 } from 'pty-manager';
 import {
   ClaudeAdapter,
   GeminiAdapter,
   CodexAdapter,
   AiderAdapter,
+  checkAdapters,
+  type PreflightResult,
 } from 'coding-agent-adapters';
+import {
+  WorkspaceService,
+  type WorkspaceServiceOptions,
+  type Workspace,
+  type WorkspaceConfig,
+  type WorkspaceFinalization,
+  type PullRequestInfo,
+} from 'git-workspace-service';
 import type { Logger } from 'pino';
 import type {
   AgentConfig,
@@ -26,10 +38,27 @@ import type {
   AgentStatus,
   AgentMetrics,
   BlockingPromptInfo,
+  StallClassification,
 } from './types.js';
 
 export interface AgentManagerOptions {
   maxAgents?: number;
+
+  /** Enable stall detection for all agents (default: false) */
+  stallDetectionEnabled?: boolean;
+
+  /** Default stall timeout in ms (default: 8000). Can be overridden per-agent. */
+  stallTimeoutMs?: number;
+
+  /** External stall classification callback. */
+  onStallClassify?: (
+    agentId: string,
+    recentOutput: string,
+    stallDurationMs: number,
+  ) => Promise<StallClassification | null>;
+
+  /** Options for the workspace service. If provided, workspace provisioning is enabled. */
+  workspace?: WorkspaceServiceOptions;
 }
 
 export interface AgentManagerEvents {
@@ -41,6 +70,15 @@ export interface AgentManagerEvents {
   blocking_prompt: (agent: AgentHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => void;
   message: (message: AgentMessage) => void;
   question: (agent: AgentHandle, question: string) => void;
+  stall_detected: (agent: AgentHandle, recentOutput: string, stallDurationMs: number) => void;
+}
+
+/** Adapter preflight status included in health checks */
+export interface AdapterHealth {
+  type: string;
+  installed: boolean;
+  version?: string;
+  error?: string;
 }
 
 /**
@@ -51,16 +89,20 @@ export class AgentManager extends EventEmitter {
   private logger: Logger;
   private agentConfigs: Map<string, AgentConfig> = new Map();
   private maxAgents: number;
+  private workspaceService: WorkspaceService | null = null;
 
   constructor(logger: Logger, options: AgentManagerOptions = {}) {
     super();
     this.logger = logger;
     this.maxAgents = options.maxAgents ?? 10;
 
-    // Create PTY manager
+    // Create PTY manager with stall detection config
     const ptyConfig: PTYManagerConfig = {
       logger: this.createPtyLogger(),
       maxLogLines: 1000,
+      stallDetectionEnabled: options.stallDetectionEnabled ?? false,
+      stallTimeoutMs: options.stallTimeoutMs,
+      onStallClassify: options.onStallClassify,
     };
 
     this.ptyManager = new PTYManager(ptyConfig);
@@ -70,6 +112,11 @@ export class AgentManager extends EventEmitter {
     this.ptyManager.registerAdapter(new GeminiAdapter());
     this.ptyManager.registerAdapter(new CodexAdapter());
     this.ptyManager.registerAdapter(new AiderAdapter());
+
+    // Initialize workspace service if configured
+    if (options.workspace) {
+      this.workspaceService = new WorkspaceService(options.workspace);
+    }
 
     // Set up event forwarding
     this.setupEventForwarding();
@@ -149,6 +196,11 @@ export class AgentManager extends EventEmitter {
       const agentHandle = this.toAgentHandle(handle);
       this.emit('question', agentHandle, question);
     });
+
+    this.ptyManager.on('stall_detected', (handle: SessionHandle, recentOutput: string, stallDurationMs: number) => {
+      const agentHandle = this.toAgentHandle(handle);
+      this.emit('stall_detected', agentHandle, recentOutput, stallDurationMs);
+    });
   }
 
   private toAgentHandle(handle: SessionHandle): AgentHandle {
@@ -214,6 +266,9 @@ export class AgentManager extends EventEmitter {
       workdir: config.workdir,
       env: config.env,
       adapterConfig,
+      // Pass through new pty-manager features
+      ruleOverrides: config.ruleOverrides as Record<string, Record<string, unknown> | null> | undefined,
+      stallTimeoutMs: config.stallTimeoutMs,
     };
 
     this.logger.info({ agentId: id, type: config.type, name: config.name }, 'Spawning agent');
@@ -284,14 +339,14 @@ export class AgentManager extends EventEmitter {
    * Get metrics for an agent
    */
   async metrics(agentId: string): Promise<AgentMetrics | null> {
-    const handle = await this.ptyManager.get(agentId);
-    if (!handle) return null;
+    // Use pty-manager's built-in metrics
+    const ptyMetrics = this.ptyManager.metrics(agentId);
+    if (!ptyMetrics) return null;
 
-    const uptime = handle.startedAt
-      ? Math.floor((Date.now() - handle.startedAt.getTime()) / 1000)
-      : undefined;
-
-    return { uptime };
+    return {
+      uptime: ptyMetrics.uptime,
+      messageCount: ptyMetrics.messageCount,
+    };
   }
 
   /**
@@ -300,6 +355,108 @@ export class AgentManager extends EventEmitter {
   attachTerminal(agentId: string) {
     return this.ptyManager.attachTerminal(agentId);
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Runtime Auto-Response Rules API
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Add an auto-response rule to an agent's session.
+   * Session rules are checked before adapter rules.
+   */
+  addAutoResponseRule(agentId: string, rule: AutoResponseRule): void {
+    this.ptyManager.addAutoResponseRule(agentId, rule);
+  }
+
+  /**
+   * Remove an auto-response rule by pattern.
+   */
+  removeAutoResponseRule(agentId: string, pattern: RegExp): boolean {
+    return this.ptyManager.removeAutoResponseRule(agentId, pattern);
+  }
+
+  /**
+   * Set all session auto-response rules, replacing existing ones.
+   */
+  setAutoResponseRules(agentId: string, rules: AutoResponseRule[]): void {
+    this.ptyManager.setAutoResponseRules(agentId, rules);
+  }
+
+  /**
+   * Get all session auto-response rules.
+   */
+  getAutoResponseRules(agentId: string): AutoResponseRule[] {
+    return this.ptyManager.getAutoResponseRules(agentId);
+  }
+
+  /**
+   * Clear all session auto-response rules.
+   */
+  clearAutoResponseRules(agentId: string): void {
+    this.ptyManager.clearAutoResponseRules(agentId);
+  }
+
+  /**
+   * Handle external stall classification for an agent.
+   */
+  handleStallClassification(agentId: string, classification: StallClassification | null): void {
+    const session = this.ptyManager.getSession(agentId);
+    if (session) {
+      session.handleStallClassification(classification);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Workspace Provisioning (git-workspace-service)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Provision a git workspace. Requires workspace service to be configured.
+   */
+  async provisionWorkspace(config: WorkspaceConfig): Promise<Workspace> {
+    if (!this.workspaceService) {
+      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+    }
+
+    this.logger.info({ repo: config.repo, strategy: config.strategy ?? 'clone' }, 'Provisioning workspace');
+    return this.workspaceService.provision(config);
+  }
+
+  /**
+   * Finalize a workspace (push, create PR, cleanup).
+   * Returns PR info if a PR was created.
+   */
+  async finalizeWorkspace(workspaceId: string, options: WorkspaceFinalization): Promise<PullRequestInfo | void> {
+    if (!this.workspaceService) {
+      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+    }
+
+    this.logger.info({ workspaceId, push: options.push, createPr: options.createPr }, 'Finalizing workspace');
+    return this.workspaceService.finalize(workspaceId, options);
+  }
+
+  /**
+   * Clean up a workspace.
+   */
+  async cleanupWorkspace(workspaceId: string): Promise<void> {
+    if (!this.workspaceService) {
+      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+    }
+
+    this.logger.info({ workspaceId }, 'Cleaning up workspace');
+    await this.workspaceService.cleanup(workspaceId);
+  }
+
+  /**
+   * Check if workspace service is available.
+   */
+  hasWorkspaceService(): boolean {
+    return this.workspaceService !== null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Lifecycle
+  // ─────────────────────────────────────────────────────────────────────────────
 
   /**
    * Shutdown all agents
@@ -311,20 +468,34 @@ export class AgentManager extends EventEmitter {
   }
 
   /**
-   * Get runtime health status
+   * Get runtime health status with adapter installation checks
    */
   async getHealth(): Promise<{
     healthy: boolean;
     agentCount: number;
     maxAgents: number;
-    adapters: string[];
+    adapters: AdapterHealth[];
+    workspaceServiceEnabled: boolean;
+    stallDetectionEnabled: boolean;
   }> {
     const agents = await this.list();
+
+    // Run preflight checks on all adapter CLIs
+    const preflightResults = await checkAdapters(['claude', 'gemini', 'codex', 'aider']);
+    const adapters: AdapterHealth[] = preflightResults.map((r: PreflightResult) => ({
+      type: r.adapter,
+      installed: r.installed,
+      version: r.version,
+      error: r.error,
+    }));
+
     return {
       healthy: true,
       agentCount: agents.length,
       maxAgents: this.maxAgents,
-      adapters: ['claude', 'gemini', 'codex', 'aider'],
+      adapters,
+      workspaceServiceEnabled: this.workspaceService !== null,
+      stallDetectionEnabled: true,
     };
   }
 }
