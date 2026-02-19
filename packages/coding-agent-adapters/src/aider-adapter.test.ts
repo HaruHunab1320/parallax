@@ -749,4 +749,37 @@ describe('AiderAdapter', () => {
       expect(adapter.getHealthCheckCommand()).toBe('aider --version');
     });
   });
+
+  describe('getWorkspaceFiles()', () => {
+    it('should return .aider.conventions.md as primary memory file', () => {
+      const files = adapter.getWorkspaceFiles();
+      const memory = files.find(f => f.type === 'memory');
+      expect(memory).toBeDefined();
+      expect(memory!.relativePath).toBe('.aider.conventions.md');
+      expect(memory!.autoLoaded).toBe(true);
+      expect(memory!.format).toBe('markdown');
+    });
+
+    it('should include .aider.conf.yml config', () => {
+      const files = adapter.getWorkspaceFiles();
+      const config = files.find(f => f.relativePath === '.aider.conf.yml');
+      expect(config).toBeDefined();
+      expect(config!.type).toBe('config');
+      expect(config!.format).toBe('yaml');
+    });
+
+    it('should include .aiderignore rules file', () => {
+      const files = adapter.getWorkspaceFiles();
+      const rules = files.find(f => f.type === 'rules');
+      expect(rules).toBeDefined();
+      expect(rules!.relativePath).toBe('.aiderignore');
+      expect(rules!.format).toBe('text');
+    });
+  });
+
+  describe('memoryFilePath', () => {
+    it('should return .aider.conventions.md', () => {
+      expect(adapter.memoryFilePath).toBe('.aider.conventions.md');
+    });
+  });
 });

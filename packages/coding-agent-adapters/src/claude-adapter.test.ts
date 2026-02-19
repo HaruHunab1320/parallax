@@ -448,4 +448,36 @@ describe('ClaudeAdapter', () => {
       expect(adapter.getHealthCheckCommand()).toBe('claude --version');
     });
   });
+
+  describe('getWorkspaceFiles()', () => {
+    it('should return CLAUDE.md as primary memory file', () => {
+      const files = adapter.getWorkspaceFiles();
+      const memory = files.find(f => f.type === 'memory');
+      expect(memory).toBeDefined();
+      expect(memory!.relativePath).toBe('CLAUDE.md');
+      expect(memory!.autoLoaded).toBe(true);
+      expect(memory!.format).toBe('markdown');
+    });
+
+    it('should include settings.json config', () => {
+      const files = adapter.getWorkspaceFiles();
+      const config = files.find(f => f.relativePath === '.claude/settings.json');
+      expect(config).toBeDefined();
+      expect(config!.type).toBe('config');
+      expect(config!.format).toBe('json');
+    });
+
+    it('should include custom commands directory', () => {
+      const files = adapter.getWorkspaceFiles();
+      const commands = files.find(f => f.relativePath === '.claude/commands');
+      expect(commands).toBeDefined();
+      expect(commands!.autoLoaded).toBe(false);
+    });
+  });
+
+  describe('memoryFilePath', () => {
+    it('should return CLAUDE.md', () => {
+      expect(adapter.memoryFilePath).toBe('CLAUDE.md');
+    });
+  });
 });

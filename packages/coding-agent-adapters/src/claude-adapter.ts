@@ -11,7 +11,7 @@ import type {
   BlockingPromptDetection,
   AutoResponseRule,
 } from 'pty-manager';
-import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials } from './base-coding-adapter';
+import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
 
 export class ClaudeAdapter extends BaseCodingAdapter {
   readonly adapterType = 'claude';
@@ -84,6 +84,32 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       safe: true,
     },
   ];
+
+  getWorkspaceFiles(): AgentFileDescriptor[] {
+    return [
+      {
+        relativePath: 'CLAUDE.md',
+        description: 'Project-level instructions read automatically on startup',
+        autoLoaded: true,
+        type: 'memory',
+        format: 'markdown',
+      },
+      {
+        relativePath: '.claude/settings.json',
+        description: 'Project-scoped settings (allowed tools, permissions)',
+        autoLoaded: true,
+        type: 'config',
+        format: 'json',
+      },
+      {
+        relativePath: '.claude/commands',
+        description: 'Custom slash commands directory',
+        autoLoaded: false,
+        type: 'config',
+        format: 'markdown',
+      },
+    ];
+  }
 
   getRecommendedModels(_credentials?: AgentCredentials): ModelRecommendations {
     return {

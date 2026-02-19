@@ -11,7 +11,7 @@ import type {
   BlockingPromptDetection,
   AutoResponseRule,
 } from 'pty-manager';
-import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials } from './base-coding-adapter';
+import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
 
 export class CodexAdapter extends BaseCodingAdapter {
   readonly adapterType = 'codex';
@@ -88,6 +88,32 @@ export class CodexAdapter extends BaseCodingAdapter {
       safe: true,
     },
   ];
+
+  getWorkspaceFiles(): AgentFileDescriptor[] {
+    return [
+      {
+        relativePath: 'AGENTS.md',
+        description: 'Project-level instructions read automatically on startup',
+        autoLoaded: true,
+        type: 'memory',
+        format: 'markdown',
+      },
+      {
+        relativePath: 'codex.md',
+        description: 'Additional project context file',
+        autoLoaded: true,
+        type: 'memory',
+        format: 'markdown',
+      },
+      {
+        relativePath: '.codex/config.json',
+        description: 'Project-scoped Codex configuration',
+        autoLoaded: true,
+        type: 'config',
+        format: 'json',
+      },
+    ];
+  }
 
   getRecommendedModels(_credentials?: AgentCredentials): ModelRecommendations {
     return {

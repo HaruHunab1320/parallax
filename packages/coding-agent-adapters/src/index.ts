@@ -38,7 +38,7 @@
 
 // Base class for extending
 export { BaseCodingAdapter } from './base-coding-adapter';
-export type { AgentCredentials, CodingAgentConfig, InstallationInfo, ModelRecommendations } from './base-coding-adapter';
+export type { AgentCredentials, CodingAgentConfig, InstallationInfo, ModelRecommendations, AgentFileDescriptor, WriteMemoryOptions } from './base-coding-adapter';
 
 // Adapters
 export { ClaudeAdapter } from './claude-adapter';

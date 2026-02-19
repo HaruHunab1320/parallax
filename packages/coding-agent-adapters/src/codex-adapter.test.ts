@@ -545,4 +545,37 @@ describe('CodexAdapter', () => {
       expect(adapter.getHealthCheckCommand()).toBe('codex --version');
     });
   });
+
+  describe('getWorkspaceFiles()', () => {
+    it('should return AGENTS.md as primary memory file', () => {
+      const files = adapter.getWorkspaceFiles();
+      const memory = files.find(f => f.type === 'memory');
+      expect(memory).toBeDefined();
+      expect(memory!.relativePath).toBe('AGENTS.md');
+      expect(memory!.autoLoaded).toBe(true);
+      expect(memory!.format).toBe('markdown');
+    });
+
+    it('should include codex.md as secondary memory', () => {
+      const files = adapter.getWorkspaceFiles();
+      const codexMd = files.find(f => f.relativePath === 'codex.md');
+      expect(codexMd).toBeDefined();
+      expect(codexMd!.type).toBe('memory');
+      expect(codexMd!.autoLoaded).toBe(true);
+    });
+
+    it('should include config.json', () => {
+      const files = adapter.getWorkspaceFiles();
+      const config = files.find(f => f.relativePath === '.codex/config.json');
+      expect(config).toBeDefined();
+      expect(config!.type).toBe('config');
+      expect(config!.format).toBe('json');
+    });
+  });
+
+  describe('memoryFilePath', () => {
+    it('should return AGENTS.md (first memory file)', () => {
+      expect(adapter.memoryFilePath).toBe('AGENTS.md');
+    });
+  });
 });

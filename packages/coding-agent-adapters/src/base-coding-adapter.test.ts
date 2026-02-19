@@ -2,8 +2,12 @@
  * Base Coding Adapter Tests
  */
 
-import { describe, it, expect } from 'vitest';
-import { BaseCodingAdapter, type InstallationInfo, type AgentCredentials } from './base-coding-adapter';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFile, rm, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { BaseCodingAdapter, type InstallationInfo, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
 import type { SpawnConfig, ParsedOutput, LoginDetection } from 'pty-manager';
 
 // Concrete implementation for testing
@@ -17,6 +21,29 @@ class TestAdapter extends BaseCodingAdapter {
     docsUrl: 'https://test-cli.dev/docs',
     minVersion: '1.0.0',
   };
+
+  getWorkspaceFiles(): AgentFileDescriptor[] {
+    return [
+      {
+        relativePath: 'TEST.md',
+        description: 'Test memory file',
+        autoLoaded: true,
+        type: 'memory',
+        format: 'markdown',
+      },
+      {
+        relativePath: '.test/config.json',
+        description: 'Test config file',
+        autoLoaded: true,
+        type: 'config',
+        format: 'json',
+      },
+    ];
+  }
+
+  getRecommendedModels() {
+    return { powerful: 'test-large', fast: 'test-small' };
+  }
 
   getCommand(): string {
     return 'test-cli';
@@ -260,6 +287,86 @@ describe('BaseCodingAdapter', () => {
       const args = adapter.getArgs(config);
 
       expect(args).toEqual([]);
+    });
+  });
+
+  describe('getWorkspaceFiles()', () => {
+    it('should return array of file descriptors', () => {
+      const files = adapter.getWorkspaceFiles();
+      expect(files).toHaveLength(2);
+    });
+
+    it('should have memory file with correct shape', () => {
+      const files = adapter.getWorkspaceFiles();
+      const memory = files.find(f => f.type === 'memory');
+      expect(memory).toBeDefined();
+      expect(memory!.relativePath).toBe('TEST.md');
+      expect(memory!.autoLoaded).toBe(true);
+      expect(memory!.format).toBe('markdown');
+    });
+
+    it('should have config file', () => {
+      const files = adapter.getWorkspaceFiles();
+      const config = files.find(f => f.type === 'config');
+      expect(config).toBeDefined();
+      expect(config!.relativePath).toBe('.test/config.json');
+    });
+  });
+
+  describe('memoryFilePath', () => {
+    it('should return the first memory file relativePath', () => {
+      expect(adapter.memoryFilePath).toBe('TEST.md');
+    });
+  });
+
+  describe('writeMemoryFile()', () => {
+    let tmpDir: string;
+
+    beforeEach(async () => {
+      tmpDir = await mkdtemp(join(tmpdir(), 'adapter-test-'));
+    });
+
+    afterEach(async () => {
+      await rm(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should write content to the default memory file', async () => {
+      const fullPath = await adapter.writeMemoryFile(tmpDir, '# Test Memory\nHello world');
+      expect(fullPath).toBe(join(tmpDir, 'TEST.md'));
+      const content = await readFile(fullPath, 'utf-8');
+      expect(content).toBe('# Test Memory\nHello world');
+    });
+
+    it('should create parent directories as needed', async () => {
+      const fullPath = await adapter.writeMemoryFile(tmpDir, '{}', {
+        fileName: 'deep/nested/file.json',
+      });
+      expect(fullPath).toBe(join(tmpDir, 'deep/nested/file.json'));
+      const content = await readFile(fullPath, 'utf-8');
+      expect(content).toBe('{}');
+    });
+
+    it('should support custom fileName', async () => {
+      const fullPath = await adapter.writeMemoryFile(tmpDir, 'custom content', {
+        fileName: 'CUSTOM.md',
+      });
+      expect(fullPath).toBe(join(tmpDir, 'CUSTOM.md'));
+      const content = await readFile(fullPath, 'utf-8');
+      expect(content).toBe('custom content');
+    });
+
+    it('should support append mode', async () => {
+      await adapter.writeMemoryFile(tmpDir, 'line1\n');
+      await adapter.writeMemoryFile(tmpDir, 'line2\n', { append: true });
+      const content = await readFile(join(tmpDir, 'TEST.md'), 'utf-8');
+      expect(content).toBe('line1\nline2\n');
+    });
+
+    it('should overwrite by default', async () => {
+      await adapter.writeMemoryFile(tmpDir, 'original');
+      await adapter.writeMemoryFile(tmpDir, 'replaced');
+      const content = await readFile(join(tmpDir, 'TEST.md'), 'utf-8');
+      expect(content).toBe('replaced');
     });
   });
 });

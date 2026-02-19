@@ -5,6 +5,8 @@
  * for AI coding agents.
  */
 
+import { writeFile, appendFile, mkdir } from 'node:fs/promises';
+import { join, dirname } from 'node:path';
 import { BaseCLIAdapter } from 'pty-manager';
 import type { SpawnConfig } from 'pty-manager';
 
@@ -44,6 +46,33 @@ export interface ModelRecommendations {
 }
 
 /**
+ * Describes a file that a coding agent CLI reads from the workspace.
+ * Orchestration systems use this to write instructions/config before spawning agents.
+ */
+export interface AgentFileDescriptor {
+  /** File path relative to workspace root (e.g., "CLAUDE.md", ".aider.conf.yml") */
+  relativePath: string;
+  /** Human-readable description of what this file does */
+  description: string;
+  /** Whether the CLI reads this file automatically on startup */
+  autoLoaded: boolean;
+  /** File category */
+  type: 'memory' | 'config' | 'rules';
+  /** File format */
+  format: 'markdown' | 'yaml' | 'json' | 'text';
+}
+
+/**
+ * Options for writing a memory file into a workspace
+ */
+export interface WriteMemoryOptions {
+  /** Custom file name override (default: adapter's primary memory file) */
+  fileName?: string;
+  /** Append to existing file instead of overwriting */
+  append?: boolean;
+}
+
+/**
  * Extended config with credentials and mode support
  */
 export interface CodingAgentConfig extends SpawnConfig {
@@ -75,6 +104,25 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
    * Installation information for this CLI tool
    */
   abstract readonly installation: InstallationInfo;
+
+  /**
+   * Workspace files this CLI reads automatically.
+   * Orchestration systems use this to know where to write instructions/config
+   * before spawning an agent.
+   */
+  abstract getWorkspaceFiles(): AgentFileDescriptor[];
+
+  /**
+   * The primary memory file for this CLI (the one it reads for project instructions).
+   * Returns the relativePath of the first 'memory' type file from getWorkspaceFiles().
+   */
+  get memoryFilePath(): string {
+    const memoryFile = this.getWorkspaceFiles().find(f => f.type === 'memory');
+    if (!memoryFile) {
+      throw new Error(`${this.displayName} adapter has no memory file defined`);
+    }
+    return memoryFile.relativePath;
+  }
 
   /**
    * Get credentials from config
@@ -186,5 +234,34 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
     content = content.trim();
 
     return content;
+  }
+
+  /**
+   * Write content to this agent's memory file in a workspace.
+   * Creates parent directories as needed.
+   *
+   * @param workspacePath - Absolute path to the workspace root
+   * @param content - The memory/instructions content to write
+   * @param options - Optional: custom fileName, append mode
+   * @returns The absolute path of the written file
+   */
+  async writeMemoryFile(
+    workspacePath: string,
+    content: string,
+    options?: WriteMemoryOptions,
+  ): Promise<string> {
+    const relativePath = options?.fileName ?? this.memoryFilePath;
+    const fullPath = join(workspacePath, relativePath);
+
+    // Ensure parent directory exists
+    await mkdir(dirname(fullPath), { recursive: true });
+
+    if (options?.append) {
+      await appendFile(fullPath, content, 'utf-8');
+    } else {
+      await writeFile(fullPath, content, 'utf-8');
+    }
+
+    return fullPath;
   }
 }

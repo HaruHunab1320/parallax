@@ -545,4 +545,36 @@ describe('GeminiAdapter', () => {
       expect(adapter.getHealthCheckCommand()).toBe('gemini --version');
     });
   });
+
+  describe('getWorkspaceFiles()', () => {
+    it('should return GEMINI.md as primary memory file', () => {
+      const files = adapter.getWorkspaceFiles();
+      const memory = files.find(f => f.type === 'memory');
+      expect(memory).toBeDefined();
+      expect(memory!.relativePath).toBe('GEMINI.md');
+      expect(memory!.autoLoaded).toBe(true);
+      expect(memory!.format).toBe('markdown');
+    });
+
+    it('should include settings.json config', () => {
+      const files = adapter.getWorkspaceFiles();
+      const config = files.find(f => f.relativePath === '.gemini/settings.json');
+      expect(config).toBeDefined();
+      expect(config!.type).toBe('config');
+      expect(config!.format).toBe('json');
+    });
+
+    it('should include styles directory', () => {
+      const files = adapter.getWorkspaceFiles();
+      const styles = files.find(f => f.relativePath === '.gemini/styles');
+      expect(styles).toBeDefined();
+      expect(styles!.autoLoaded).toBe(false);
+    });
+  });
+
+  describe('memoryFilePath', () => {
+    it('should return GEMINI.md', () => {
+      expect(adapter.memoryFilePath).toBe('GEMINI.md');
+    });
+  });
 });

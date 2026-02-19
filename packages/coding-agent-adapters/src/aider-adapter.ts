@@ -12,7 +12,7 @@ import type {
   BlockingPromptDetection,
   AutoResponseRule,
 } from 'pty-manager';
-import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials } from './base-coding-adapter';
+import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
 
 export class AiderAdapter extends BaseCodingAdapter {
   readonly adapterType = 'aider';
@@ -187,6 +187,32 @@ export class AiderAdapter extends BaseCodingAdapter {
       safe: true,
     },
   ];
+
+  getWorkspaceFiles(): AgentFileDescriptor[] {
+    return [
+      {
+        relativePath: '.aider.conventions.md',
+        description: 'Project conventions and instructions read on startup (--read flag)',
+        autoLoaded: true,
+        type: 'memory',
+        format: 'markdown',
+      },
+      {
+        relativePath: '.aider.conf.yml',
+        description: 'Project-scoped Aider configuration (model, flags, options)',
+        autoLoaded: true,
+        type: 'config',
+        format: 'yaml',
+      },
+      {
+        relativePath: '.aiderignore',
+        description: 'Gitignore-style file listing paths Aider should not edit',
+        autoLoaded: true,
+        type: 'rules',
+        format: 'text',
+      },
+    ];
+  }
 
   getRecommendedModels(credentials?: AgentCredentials): ModelRecommendations {
     if (credentials?.anthropicKey) {

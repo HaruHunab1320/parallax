@@ -11,7 +11,7 @@ import type {
   BlockingPromptDetection,
   AutoResponseRule,
 } from 'pty-manager';
-import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials } from './base-coding-adapter';
+import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
 
 export class GeminiAdapter extends BaseCodingAdapter {
   readonly adapterType = 'gemini';
@@ -62,6 +62,32 @@ export class GeminiAdapter extends BaseCodingAdapter {
       once: true,
     },
   ];
+
+  getWorkspaceFiles(): AgentFileDescriptor[] {
+    return [
+      {
+        relativePath: 'GEMINI.md',
+        description: 'Project-level instructions read automatically on startup',
+        autoLoaded: true,
+        type: 'memory',
+        format: 'markdown',
+      },
+      {
+        relativePath: '.gemini/settings.json',
+        description: 'Project-scoped settings (tool permissions, sandbox config)',
+        autoLoaded: true,
+        type: 'config',
+        format: 'json',
+      },
+      {
+        relativePath: '.gemini/styles',
+        description: 'Custom style/persona definitions directory',
+        autoLoaded: false,
+        type: 'config',
+        format: 'markdown',
+      },
+    ];
+  }
 
   getRecommendedModels(_credentials?: AgentCredentials): ModelRecommendations {
     return {
