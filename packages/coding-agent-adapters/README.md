@@ -161,6 +161,62 @@ aider.getRecommendedModels({ googleKey: 'AIza...' });
 // { powerful: 'gemini/gemini-3-pro', fast: 'gemini/gemini-3-flash' }
 ```
 
+## Workspace Files & Memory
+
+Each coding agent CLI has its own convention for project-level memory files (instructions the agent reads on startup) and config files. Adapters expose this knowledge so orchestration systems can write context to the correct files before spawning an agent.
+
+### Discovering Workspace Files
+
+```typescript
+import { ClaudeAdapter, AiderAdapter } from 'coding-agent-adapters';
+
+const claude = new ClaudeAdapter();
+claude.getWorkspaceFiles();
+// [
+//   { relativePath: 'CLAUDE.md', type: 'memory', autoLoaded: true, format: 'markdown', ... },
+//   { relativePath: '.claude/settings.json', type: 'config', autoLoaded: true, format: 'json', ... },
+//   { relativePath: '.claude/commands', type: 'config', autoLoaded: false, format: 'markdown', ... },
+// ]
+
+claude.memoryFilePath; // 'CLAUDE.md'
+
+const aider = new AiderAdapter();
+aider.memoryFilePath; // '.aider.conventions.md'
+```
+
+### Per-Adapter File Mappings
+
+| Adapter | Memory File | Config | Other |
+|---------|------------|--------|-------|
+| Claude | `CLAUDE.md` | `.claude/settings.json` | `.claude/commands` |
+| Gemini | `GEMINI.md` | `.gemini/settings.json` | `.gemini/styles` |
+| Codex | `AGENTS.md` | `.codex/config.json` | `codex.md` |
+| Aider | `.aider.conventions.md` | `.aider.conf.yml` | `.aiderignore` |
+
+### Writing Memory Files
+
+Use `writeMemoryFile()` to write instructions into a workspace before spawning an agent. Parent directories are created automatically.
+
+```typescript
+const adapter = new ClaudeAdapter();
+
+// Write to the adapter's default memory file (CLAUDE.md)
+await adapter.writeMemoryFile('/path/to/workspace', `# Project Context
+This is a TypeScript monorepo using pnpm workspaces.
+Always run tests before committing.
+`);
+
+// Append to an existing memory file
+await adapter.writeMemoryFile('/path/to/workspace', '\n## Additional Rules\nUse snake_case.\n', {
+  append: true,
+});
+
+// Write to a custom file (e.g., template-specific context for sub-agents)
+await adapter.writeMemoryFile('/path/to/workspace', '# Task-Specific Context\n...', {
+  fileName: 'TASK_CONTEXT.md',
+});
+```
+
 ## Preflight Check
 
 Before spawning agents, check if the required CLIs are installed:
@@ -218,11 +274,17 @@ Extend `BaseCodingAdapter` to create adapters for other coding CLIs:
 
 ```typescript
 import { BaseCodingAdapter } from 'coding-agent-adapters';
+import type { AgentFileDescriptor, InstallationInfo, ModelRecommendations } from 'coding-agent-adapters';
 import type { SpawnConfig, ParsedOutput, LoginDetection, AutoResponseRule } from 'pty-manager';
 
 export class CursorAdapter extends BaseCodingAdapter {
   readonly adapterType = 'cursor';
   readonly displayName = 'Cursor';
+
+  readonly installation: InstallationInfo = {
+    command: 'npm install -g cursor-cli',
+    docsUrl: 'https://cursor.sh/docs',
+  };
 
   // Set to false if the CLI uses text prompts instead of TUI menus
   override readonly usesTuiMenus = false;
@@ -230,6 +292,16 @@ export class CursorAdapter extends BaseCodingAdapter {
   readonly autoResponseRules: AutoResponseRule[] = [
     { pattern: /accept terms/i, type: 'tos', response: 'y', responseType: 'text', description: 'Accept TOS', safe: true, once: true },
   ];
+
+  getWorkspaceFiles(): AgentFileDescriptor[] {
+    return [
+      { relativePath: '.cursor/rules', description: 'Project rules', autoLoaded: true, type: 'memory', format: 'markdown' },
+    ];
+  }
+
+  getRecommendedModels(): ModelRecommendations {
+    return { powerful: 'claude-sonnet-4', fast: 'gpt-4o-mini' };
+  }
 
   getCommand(): string { return 'cursor'; }
   getArgs(config: SpawnConfig): string[] { return ['--cli']; }
