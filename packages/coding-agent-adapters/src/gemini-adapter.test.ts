@@ -178,11 +178,19 @@ describe('GeminiAdapter', () => {
       expect(result.type).toBe('api_key');
     });
 
-    it('should detect GEMINI_API_KEY mention', () => {
-      const result = adapter.detectLogin('Missing GEMINI_API_KEY');
+    it('should detect GEMINI_API_KEY set instruction', () => {
+      const result = adapter.detectLogin('Set GEMINI_API_KEY to use the API');
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('api_key');
+    });
+
+    it('should NOT detect login when both keys are set (success message)', () => {
+      const result = adapter.detectLogin(
+        'Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.'
+      );
+
+      expect(result.required).toBe(false);
     });
 
     it('should detect OAuth flow', () => {
@@ -329,8 +337,8 @@ describe('GeminiAdapter', () => {
       expect(result.type).toBe('config');
     });
 
-    it('should prioritize permission prompt over login-like text in same output', () => {
-      const result = adapter.detectBlockingPrompt('GEMINI_API_KEY set\nApply this change?');
+    it('should detect permission prompt even with API key context in output', () => {
+      const result = adapter.detectBlockingPrompt('GEMINI_API_KEY configured\nApply this change?');
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');

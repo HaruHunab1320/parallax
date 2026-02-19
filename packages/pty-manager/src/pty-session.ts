@@ -276,6 +276,13 @@ export class PTYSession extends EventEmitter {
   private _taskCompleteTimer: ReturnType<typeof setTimeout> | null = null;
   private static readonly TASK_COMPLETE_DEBOUNCE_MS = 1500;
 
+  // Deferred output processing — prevents node-pty's synchronous data
+  // delivery from starving the event loop (timers, I/O callbacks, etc.)
+  private _processScheduled = false;
+
+  // Output buffer cap — prevents unbounded growth during long tasks
+  private static readonly MAX_OUTPUT_BUFFER = 100_000; // 100 KB
+
   public readonly id: string;
   public readonly config: SpawnConfig;
 
@@ -739,78 +746,27 @@ export class PTYSession extends EventEmitter {
       this._lastActivityAt = new Date();
       this.outputBuffer += data;
 
-      // Reset stall timer on any new output while busy or authenticating
-      if (this._status === 'busy' || this._status === 'authenticating') {
-        this.resetStallTimer();
+      // Cap the buffer to prevent unbounded growth during long tasks.
+      // Detection only ever inspects the tail, so trimming is safe.
+      if (this.outputBuffer.length > PTYSession.MAX_OUTPUT_BUFFER) {
+        this.outputBuffer = this.outputBuffer.slice(-PTYSession.MAX_OUTPUT_BUFFER);
       }
 
-      // Emit raw output
+      // Emit raw output immediately (callers may need it for real-time display)
       this.emit('output', data);
 
-      // Ready detection — check FIRST, before blocking prompt detection.
-      // After an auto-response (e.g. trust prompt), the buffer may contain
-      // leftover prompt text that would falsely trigger detectBlockingPrompt
-      // and block detectReady from ever running. Adapter detectReady
-      // implementations have negative guards for trust/auth prompts, so
-      // this is safe — it won't prematurely mark the session as ready.
-      if (
-        (this._status === 'starting' || this._status === 'authenticating') &&
-        this.adapter.detectReady(this.outputBuffer)
-      ) {
-        this._status = 'ready';
-        this._lastBlockingPromptHash = null; // Clear stale blocking prompt state
-        this.outputBuffer = ''; // Clear stale startup text so it can't cause false detections
-        this.clearStallTimer();
-        this.emit('ready');
-        this.logger.info({ sessionId: this.id }, 'Session ready');
-        return; // Skip processing the stale buffer
-      }
-
-      // Task completion detection — when busy and the agent returns to its idle prompt.
-      // Uses a debounce to avoid false positives during mid-task output that
-      // happens to contain the prompt string.
-      if (this._status === 'busy' && this.adapter.detectReady(this.outputBuffer)) {
-        this.scheduleTaskComplete();
-      } else {
-        this.cancelTaskComplete();
-      }
-
-      // Auto-response / blocking prompt detection — runs after detectReady.
-      // Handles trust confirmations, permission prompts, apply changes, etc.
-      // throughout the entire session lifecycle.
-      const blockingPrompt = this.detectAndHandleBlockingPrompt();
-      if (blockingPrompt) {
-        return;
-      }
-
-      // Login detection — only during startup/auth (not after ready/busy)
-      if (this._status !== 'ready' && this._status !== 'busy') {
-        const loginDetection = this.adapter.detectLogin(this.outputBuffer);
-        if (loginDetection.required && this._status !== 'authenticating') {
-          this._status = 'authenticating';
-          this.clearStallTimer();
-          this.emit('login_required', loginDetection.instructions, loginDetection.url);
-          this.logger.warn(
-            { sessionId: this.id, loginType: loginDetection.type },
-            'Login required'
-          );
-          return;
-        }
-      }
-
-      // Check for exit
-      const exitDetection = this.adapter.detectExit(this.outputBuffer);
-      if (exitDetection.exited) {
-        this._status = 'stopped';
-        this.clearStallTimer();
-        this.emit('exit', exitDetection.code || 0);
-      }
-
-      // Try to parse output into structured message
-      // Only parse once session is ready - during startup we need the buffer
-      // to accumulate so detectReady can see the full startup output
-      if (this._status !== 'starting' && this._status !== 'authenticating') {
-        this.tryParseOutput();
+      // Defer all heavy detection work to the next event-loop tick.
+      // node-pty delivers data synchronously from its native read loop;
+      // running regex-heavy detection inline can starve the event loop
+      // and prevent timers (stall detection, task_complete debounce)
+      // from firing — especially on macOS ARM64 where the PTY read can
+      // hold the libuv poll phase.
+      if (!this._processScheduled) {
+        this._processScheduled = true;
+        setImmediate(() => {
+          this._processScheduled = false;
+          this.processOutputBuffer();
+        });
       }
     });
 
@@ -823,6 +779,84 @@ export class PTYSession extends EventEmitter {
       );
       this.emit('exit', exitCode);
     });
+  }
+
+  /**
+   * Process the accumulated output buffer.
+   * Called via setImmediate() from the onData handler so that heavy regex
+   * work runs in its own event-loop tick, not inside node-pty's native callback.
+   */
+  private processOutputBuffer(): void {
+    // Reset stall timer on any new output while busy or authenticating
+    if (this._status === 'busy' || this._status === 'authenticating') {
+      this.resetStallTimer();
+    }
+
+    // Ready detection — check FIRST, before blocking prompt detection.
+    // After an auto-response (e.g. trust prompt), the buffer may contain
+    // leftover prompt text that would falsely trigger detectBlockingPrompt
+    // and block detectReady from ever running. Adapter detectReady
+    // implementations have negative guards for trust/auth prompts, so
+    // this is safe — it won't prematurely mark the session as ready.
+    if (
+      (this._status === 'starting' || this._status === 'authenticating') &&
+      this.adapter.detectReady(this.outputBuffer)
+    ) {
+      this._status = 'ready';
+      this._lastBlockingPromptHash = null; // Clear stale blocking prompt state
+      this.outputBuffer = ''; // Clear stale startup text so it can't cause false detections
+      this.clearStallTimer();
+      this.emit('ready');
+      this.logger.info({ sessionId: this.id }, 'Session ready');
+      return; // Skip processing the stale buffer
+    }
+
+    // Task completion detection — when busy and the agent returns to its idle prompt.
+    // Uses a debounce to avoid false positives during mid-task output that
+    // happens to contain the prompt string.
+    if (this._status === 'busy' && this.adapter.detectReady(this.outputBuffer)) {
+      this.scheduleTaskComplete();
+    } else {
+      this.cancelTaskComplete();
+    }
+
+    // Auto-response / blocking prompt detection — runs after detectReady.
+    // Handles trust confirmations, permission prompts, apply changes, etc.
+    // throughout the entire session lifecycle.
+    const blockingPrompt = this.detectAndHandleBlockingPrompt();
+    if (blockingPrompt) {
+      return;
+    }
+
+    // Login detection — only during startup/auth (not after ready/busy)
+    if (this._status !== 'ready' && this._status !== 'busy') {
+      const loginDetection = this.adapter.detectLogin(this.outputBuffer);
+      if (loginDetection.required && this._status !== 'authenticating') {
+        this._status = 'authenticating';
+        this.clearStallTimer();
+        this.emit('login_required', loginDetection.instructions, loginDetection.url);
+        this.logger.warn(
+          { sessionId: this.id, loginType: loginDetection.type },
+          'Login required'
+        );
+        return;
+      }
+    }
+
+    // Check for exit
+    const exitDetection = this.adapter.detectExit(this.outputBuffer);
+    if (exitDetection.exited) {
+      this._status = 'stopped';
+      this.clearStallTimer();
+      this.emit('exit', exitDetection.code || 0);
+    }
+
+    // Try to parse output into structured message
+    // Only parse once session is ready - during startup we need the buffer
+    // to accumulate so detectReady can see the full startup output
+    if (this._status !== 'starting' && this._status !== 'authenticating') {
+      this.tryParseOutput();
+    }
   }
 
   /**

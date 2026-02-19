@@ -445,7 +445,9 @@ await session.selectMenuOption(2);  // Sends Down, Down, Enter with 50ms delays
 
 ## Stall Detection & Task Completion
 
-Content-based stall detection monitors sessions for output that stops changing. The content hash normalizes ANSI escape codes, TUI spinner characters, and countdown/duration text (e.g. `8m 17s` → constant) so that live timers don't perpetually reset the stall timer. When a stall is detected, the session first tries the adapter's `detectTaskComplete()` fast-path. If the adapter recognizes the output as a completed task (e.g. duration summary + idle prompt), it transitions directly to `ready` and emits `task_complete` — skipping the expensive LLM stall classifier entirely.
+Content-based stall detection monitors sessions for output that stops changing. The content hash normalizes ANSI escape codes, TUI spinner characters, and countdown/duration text (e.g. `8m 17s` → constant) so that live timers don't perpetually reset the stall timer. All detection work (ready, blocking prompt, login, exit, stall) runs in a deferred `setImmediate()` tick so that node-pty's synchronous data delivery cannot starve the event loop — timers and I/O callbacks always get a chance to run between data bursts. The output buffer is capped at 100 KB to prevent unbounded growth during long tasks.
+
+When a stall is detected, the session first tries the adapter's `detectTaskComplete()` fast-path. If the adapter recognizes the output as a completed task (e.g. duration summary + idle prompt), it transitions directly to `ready` and emits `task_complete` — skipping the expensive LLM stall classifier entirely.
 
 If the adapter doesn't recognize the output, the session falls back to emitting `stall_detected` for external classification.
 

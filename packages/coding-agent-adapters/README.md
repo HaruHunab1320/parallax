@@ -68,7 +68,7 @@ const login = adapter.detectLogin(output);
 | Adapter | Auth Types | Source Files |
 |---------|-----------|-------------|
 | Claude | API key, OAuth browser | CLI runtime |
-| Gemini | Google OAuth, API key entry, auth in-progress | `AuthDialog.tsx`, `ApiAuthDialog.tsx`, `AuthInProgress.tsx` |
+| Gemini | Google OAuth, API key entry, auth in-progress (ignores "Both keys set" success messages) | `AuthDialog.tsx`, `ApiAuthDialog.tsx`, `AuthInProgress.tsx` |
 | Codex | Device code flow, onboarding auth menu | `auth.rs`, `headless_chatgpt_login.rs` |
 | Aider | API key missing/invalid, OpenRouter OAuth | `onboarding.py`, `models.py` |
 

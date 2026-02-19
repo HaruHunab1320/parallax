@@ -151,11 +151,12 @@ export class GeminiAdapter extends BaseCodingAdapter {
   detectLogin(output: string): LoginDetection {
     const stripped = this.stripAnsi(output);
 
-    // Check for API key issues
+    // Check for API key issues.
+    // Must require error context — "Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using ..."
+    // is a success message, not an auth error.
     if (
       stripped.includes('API key not found') ||
-      stripped.includes('GOOGLE_API_KEY') ||
-      stripped.includes('GEMINI_API_KEY') ||
+      /set (?:GOOGLE_API_KEY|GEMINI_API_KEY)/i.test(stripped) ||
       stripped.includes('authentication required') ||
       stripped.includes('Invalid API key') ||
       stripped.includes('API key is not valid')
