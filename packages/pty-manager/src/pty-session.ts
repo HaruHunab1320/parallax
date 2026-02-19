@@ -556,6 +556,10 @@ export class PTYSession extends EventEmitter {
     // Strip TUI box-drawing, spinner, and decorative Unicode characters
     result = result.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓⬆⬇◆◇▪▫■□▲△▼▽◈⟨⟩⌘⏎⏏⌫⌦⇧⇪⌥]/g, ' ');
 
+    // Normalize countdown/duration text (e.g., "8m 17s" → "0s") to prevent
+    // TUI countdown timers from resetting the stall timer every second.
+    result = result.replace(/\d+[hms](?:\s+\d+[hms])*/g, '0s');
+
     // Collapse multiple spaces
     result = result.replace(/ {2,}/g, ' ');
 

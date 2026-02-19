@@ -220,7 +220,7 @@ describe('AgentManager', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         expect.objectContaining({
-          adapterConfig: { anthropicKey: 'sk-test' },
+          adapterConfig: { anthropicKey: 'sk-test', interactive: true },
         })
       );
     });

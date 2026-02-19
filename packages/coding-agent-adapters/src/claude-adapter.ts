@@ -309,8 +309,11 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     // Turn duration pattern: "<Verb> for <duration>" (customizable verb)
     const hasDuration = /[A-Z][A-Za-z' -]{2,40}\s+for\s+\d+(?:h\s+\d{1,2}m\s+\d{1,2}s|m\s+\d{1,2}s|s)/.test(stripped);
 
-    // Idle prompt: ❯ at end of output
-    const hasIdlePrompt = /❯\s*$/.test(stripped);
+    // Idle prompt: ❯ in the tail of the output.
+    // The status bar (file counts, PR info, "Update available", etc.) renders
+    // *after* the ❯ prompt in the TUI output stream, so we can't anchor to $.
+    const tail = stripped.slice(-300);
+    const hasIdlePrompt = /❯/.test(tail);
 
     // High confidence: duration summary + idle prompt
     if (hasDuration && hasIdlePrompt) {
@@ -337,15 +340,19 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     // Claude Code shows a prompt when ready
     // Only match specific interactive prompts, not banner text like "Claude Code"
     // or generic words like "Ready" which appear alongside auth/trust screens
+    // Check the tail for prompt patterns — the status bar (file counts,
+    // PR info, "Update available", etc.) renders *after* the prompt in the
+    // TUI output stream, so we can't anchor to $.
+    const tail = stripped.slice(-300);
     return (
       stripped.includes('How can I help') ||
       stripped.includes('What would you like') ||
       // v2.1+ shows "for shortcuts" hint when ready
       stripped.includes('for shortcuts') ||
       // Match "claude> " or similar specific prompts, not bare ">"
-      /claude>\s*$/i.test(stripped) ||
+      /claude>/i.test(tail) ||
       // v2.1+ uses ❯ as the input prompt
-      /❯\s*$/.test(stripped)
+      /❯/.test(tail)
     );
   }
 

@@ -287,6 +287,7 @@ export class AgentManager extends EventEmitter {
     const adapterConfig: Record<string, unknown> = {
       ...(config.credentials ?? {}),
       ...(config.approvalPreset ? { approvalPreset: config.approvalPreset } : {}),
+      interactive: config.interactive ?? true,
     };
 
     const spawnConfig = {

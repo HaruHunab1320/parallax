@@ -62,6 +62,11 @@ export interface AgentConfig {
 
   /** Approval preset controlling tool permissions for the spawned agent. */
   approvalPreset?: ApprovalPreset;
+
+  /** Run in interactive mode (default: true).
+   *  When true, skips non-interactive CLI flags (--print, --quiet, --non-interactive)
+   *  that are incompatible with PTY sessions. Set to false only for piped/headless usage. */
+  interactive?: boolean;
 }
 
 /**

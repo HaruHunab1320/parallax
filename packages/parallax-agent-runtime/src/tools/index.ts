@@ -39,6 +39,8 @@ export const SpawnInputSchema = z.object({
     .describe('Per-agent stall timeout in ms. Overrides manager default.'),
   approvalPreset: z.enum(['readonly', 'standard', 'permissive', 'autonomous']).optional()
     .describe('Approval preset controlling tool permissions for the agent'),
+  interactive: z.boolean().default(true)
+    .describe('Run in interactive mode (default: true). When true, skips non-interactive CLI flags (--print, --quiet, --non-interactive) that are incompatible with PTY sessions.'),
 });
 
 export const StopInputSchema = z.object({
@@ -177,6 +179,7 @@ export const TOOLS = [
         },
         stallTimeoutMs: { type: 'number', description: 'Per-agent stall timeout in ms. Overrides manager default.' },
         approvalPreset: { type: 'string', enum: ['readonly', 'standard', 'permissive', 'autonomous'], description: 'Approval preset controlling tool permissions for the agent' },
+        interactive: { type: 'boolean', description: 'Run in interactive mode (default: true). When true, skips non-interactive CLI flags (--print, --quiet, --non-interactive) that are incompatible with PTY sessions.', default: true },
       },
       required: ['name', 'type', 'capabilities'],
     },
@@ -395,6 +398,7 @@ export async function executeSpawn(manager: AgentManager, input: SpawnInput) {
     ruleOverrides: validated.ruleOverrides as Record<string, Record<string, unknown> | null> | undefined,
     stallTimeoutMs: validated.stallTimeoutMs,
     approvalPreset: validated.approvalPreset as ApprovalPreset | undefined,
+    interactive: validated.interactive,
   });
 
   return {

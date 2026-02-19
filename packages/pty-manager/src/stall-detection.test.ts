@@ -1017,6 +1017,31 @@ describe('stripAnsiForStall cursor movement handling', () => {
     expect(result).not.toBe('safetycheck');
   });
 
+  it('should normalize countdown/duration text for consistent hashing', () => {
+    const session = new PTYSession(
+      createMockAdapter(),
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const strip = (session as unknown as { stripAnsiForStall: (s: string) => string }).stripAnsiForStall;
+
+    // Two outputs differing only by countdown should hash the same
+    const a = strip.call(session, 'Initiating PR Creation (esc to cancel, 8m 17s)');
+    const b = strip.call(session, 'Initiating PR Creation (esc to cancel, 8m 16s)');
+    expect(a).toBe(b);
+
+    // Different countdown formats should also normalize
+    const c = strip.call(session, 'Running shell command (esc to cancel, 1h 02m 30s)');
+    const d = strip.call(session, 'Running shell command (esc to cancel, 1h 02m 29s)');
+    expect(c).toBe(d);
+
+    // Seconds-only should normalize
+    const e = strip.call(session, 'Working (5s)');
+    const f = strip.call(session, 'Working (12s)');
+    expect(e).toBe(f);
+  });
+
   it('should strip spinner characters', () => {
     const session = new PTYSession(
       createMockAdapter(),

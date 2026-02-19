@@ -41,6 +41,22 @@ describe('ClaudeAdapter.detectTaskComplete', () => {
     expect(adapter.detectTaskComplete(output)).toBe(false);
   });
 
+  it('detects duration + idle prompt with trailing status bar', () => {
+    // Real Claude TUI: status bar renders after the ❯ prompt
+    const output = 'Response done\n✻ Churned for 50s   ❯   2 files +0 -0 · PR #48  Update available!';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
+  it('detects duration + idle prompt with trailing update notice', () => {
+    const output = 'Done\nCooked for 3m 12s\n❯  2 files +0 -0\nUpdate available!';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
+  it('detects shortcuts hint + idle prompt with trailing status bar', () => {
+    const output = 'for shortcuts\n❯   2 files +0 -0 · PR #48';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
   it('rejects idle prompt without duration or shortcuts', () => {
     const output = 'Some text\n❯ ';
     expect(adapter.detectTaskComplete(output)).toBe(false);
