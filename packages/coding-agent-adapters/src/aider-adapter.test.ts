@@ -444,9 +444,39 @@ describe('AiderAdapter', () => {
       }
     });
 
-    it('should match add to chat prompt', () => {
-      const rule = adapter.autoResponseRules.find(r => r.type === 'permission');
+    it('should match add to chat prompt with [y/n]', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('add files')
+      );
       expect(rule?.pattern.test('Add main.py to the chat? [y/n]')).toBe(true);
+    });
+
+    it('should match add to chat prompt with [Yes]', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('add files')
+      );
+      expect(rule?.pattern.test('Add main.py to the chat? [Yes]:')).toBe(true);
+    });
+
+    it('should match add to chat prompt with (Y)es/(N)o format', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('add files')
+      );
+      expect(rule?.pattern.test("Add file to the chat? (Y)es/(N)o/(D)on't ask again [Yes]:")).toBe(true);
+    });
+
+    it('should match create new file with [Yes]', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('create')
+      );
+      expect(rule?.pattern.test('Create new file main.py [Yes]:')).toBe(true);
+    });
+
+    it('should match apply changes with [Yes]', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('apply')
+      );
+      expect(rule?.pattern.test('Apply changes to main.py [Yes]:')).toBe(true);
     });
   });
 

@@ -23,6 +23,7 @@ export interface SerializedRule {
   keys?: string[];
   description: string;
   safe?: boolean;
+  once?: boolean;
 }
 
 export interface WorkerSessionHandle {
@@ -353,6 +354,7 @@ export class BunCompatiblePTYManager extends EventEmitter {
           keys: r.keys,
           description: r.description,
           safe: r.safe,
+          once: r.once,
         })) as AutoResponseRule[];
         this.resolvePending(`getRules:${id}`, rules);
         break;
@@ -546,6 +548,7 @@ export class BunCompatiblePTYManager extends EventEmitter {
       keys: rule.keys,
       description: rule.description,
       safe: rule.safe,
+      once: rule.once,
     };
   }
 

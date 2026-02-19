@@ -67,6 +67,7 @@ interface SerializedRule {
   keys?: string[];
   description: string;
   safe?: boolean;
+  once?: boolean;
 }
 
 interface Command {
@@ -357,6 +358,7 @@ function deserializeRule(serialized: SerializedRule): AutoResponseRule {
     keys: serialized.keys,
     description: serialized.description,
     safe: serialized.safe,
+    once: serialized.once,
   };
 }
 
@@ -370,6 +372,7 @@ function serializeRule(rule: AutoResponseRule): SerializedRule {
     keys: rule.keys,
     description: rule.description,
     safe: rule.safe,
+    once: rule.once,
   };
 }
 

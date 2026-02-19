@@ -357,6 +357,13 @@ describe('ClaudeAdapter', () => {
       expect(rule?.safe).toBe(true);
     });
 
+    it('should have once: true to prevent thrashing', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust')
+      );
+      expect(rule?.once).toBe(true);
+    });
+
     it('should match trust folder prompt', () => {
       const rule = adapter.autoResponseRules.find(r =>
         r.description.toLowerCase().includes('trust')
@@ -364,11 +371,25 @@ describe('ClaudeAdapter', () => {
       expect(rule?.pattern.test('Do you trust this folder?')).toBe(true);
     });
 
-    it('should match safety check prompt', () => {
+    it('should match safety check prompt (with space)', () => {
       const rule = adapter.autoResponseRules.find(r =>
         r.description.toLowerCase().includes('trust')
       );
       expect(rule?.pattern.test('Running safety check...')).toBe(true);
+    });
+
+    it('should match safetycheck (without space, from stripped cursor codes)', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust')
+      );
+      expect(rule?.pattern.test('Running safetycheck...')).toBe(true);
+    });
+
+    it('should match "project you created" prompt', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('trust')
+      );
+      expect(rule?.pattern.test('This is a project you created')).toBe(true);
     });
 
     it('should have update decline rule with responseType text', () => {

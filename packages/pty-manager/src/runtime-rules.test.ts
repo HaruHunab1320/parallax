@@ -344,4 +344,47 @@ describe('Rule serialization for IPC', () => {
     expect(deserialized.pattern.test('Update available')).toBe(true);
     expect(deserialized.pattern.test('Skip until next version')).toBe(true);
   });
+
+  it('should correctly round-trip rules with once field', () => {
+    const originalRule: AutoResponseRule = {
+      pattern: /trust.*folder/i,
+      type: 'permission' as BlockingPromptType,
+      response: '',
+      responseType: 'keys',
+      keys: ['enter'],
+      description: 'Trust directory (once)',
+      safe: true,
+      once: true,
+    };
+
+    // Serialize
+    const serialized = {
+      pattern: originalRule.pattern.source,
+      flags: originalRule.pattern.flags,
+      type: originalRule.type,
+      response: originalRule.response,
+      responseType: originalRule.responseType,
+      keys: originalRule.keys,
+      description: originalRule.description,
+      safe: originalRule.safe,
+      once: originalRule.once,
+    };
+
+    // Deserialize
+    const deserialized: AutoResponseRule = {
+      pattern: new RegExp(serialized.pattern, serialized.flags || ''),
+      type: serialized.type,
+      response: serialized.response,
+      responseType: serialized.responseType,
+      keys: serialized.keys,
+      description: serialized.description,
+      safe: serialized.safe,
+      once: serialized.once,
+    };
+
+    expect(deserialized.once).toBe(true);
+    expect(deserialized.responseType).toBe('keys');
+    expect(deserialized.keys).toEqual(['enter']);
+    expect(deserialized.pattern.test('trust this folder')).toBe(true);
+  });
 });

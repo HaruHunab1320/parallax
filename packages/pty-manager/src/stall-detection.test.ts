@@ -56,6 +56,7 @@ type SessionInternals = {
   _lastStallHash: string | null;
   _lastContentHash: string | null;
   _lastBlockingPromptHash: string | null;
+  _firedOnceRules: Set<string>;
   outputBuffer: string;
   ptyProcess: {
     write: (data: string) => void;
@@ -886,6 +887,148 @@ describe('TUI key-sequence auto-response', () => {
     expect(writeFn).toHaveBeenCalledWith('\r');
     // Should NOT have sent 'keys:enter\r' as raw text
     expect(writeFn).not.toHaveBeenCalledWith('keys:enter\r');
+  });
+});
+
+describe('once-rule auto-response thrashing prevention', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should fire a once-rule only once, even if buffer re-matches', () => {
+    const adapter = createMockAdapter();
+    adapter.autoResponseRules = [
+      {
+        pattern: /trust.*folder/i,
+        type: 'permission',
+        response: '',
+        responseType: 'keys',
+        keys: ['enter'],
+        description: 'Trust directory',
+        safe: true,
+        once: true,
+      },
+    ];
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+
+    // First trigger
+    internals.outputBuffer = 'Do you trust this folder?';
+    const handled1 = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    expect(handled1).toBe(true);
+    vi.advanceTimersByTime(0); // Flush sendKeySequence setTimeout(fn, 0)
+    expect(writeFn).toHaveBeenCalledTimes(1); // Enter sent
+
+    // TUI re-renders the same prompt text
+    internals.outputBuffer = 'Do you trust this folder?';
+    const handled2 = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    expect(handled2).toBe(false); // Should NOT fire again
+    expect(writeFn).toHaveBeenCalledTimes(1); // No additional write
+  });
+
+  it('should still fire non-once rules multiple times', () => {
+    const adapter = createMockAdapter();
+    adapter.autoResponseRules = [
+      {
+        pattern: /permission/i,
+        type: 'permission',
+        response: 'y',
+        responseType: 'text',
+        description: 'Grant permission',
+        safe: true,
+        // once is NOT set
+      },
+    ];
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+
+    // First trigger
+    internals.outputBuffer = 'Grant permission?';
+    (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    expect(writeFn).toHaveBeenCalledTimes(1);
+
+    // Second trigger — should still fire
+    internals.outputBuffer = 'Grant permission again?';
+    (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    expect(writeFn).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('stripAnsiForStall cursor movement handling', () => {
+  it('should replace \\x1b[n;mH (absolute position) with spaces', () => {
+    const session = new PTYSession(
+      createMockAdapter(),
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const strip = (session as unknown as { stripAnsiForStall: (s: string) => string }).stripAnsiForStall;
+    const result = strip.call(session, 'Do\x1b[5;10Hyou\x1b[6;1Htrust');
+    expect(result).toContain('Do');
+    expect(result).toContain('you');
+    expect(result).toContain('trust');
+    // Should have spaces between words, not be concatenated
+    expect(result).not.toBe('Doyoutrust');
+  });
+
+  it('should replace \\x1b[nG (column position) with spaces', () => {
+    const session = new PTYSession(
+      createMockAdapter(),
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const strip = (session as unknown as { stripAnsiForStall: (s: string) => string }).stripAnsiForStall;
+    const result = strip.call(session, 'safety\x1b[20Gcheck');
+    expect(result).toContain('safety');
+    expect(result).toContain('check');
+    expect(result).not.toBe('safetycheck');
+  });
+
+  it('should strip spinner characters', () => {
+    const session = new PTYSession(
+      createMockAdapter(),
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const strip = (session as unknown as { stripAnsiForStall: (s: string) => string }).stripAnsiForStall;
+    const result = strip.call(session, '⠋ Loading ⠙ Loading ⠹ Loading');
+    // Spinner chars stripped, text preserved
+    expect(result).toContain('Loading');
+    expect(result).not.toMatch(/[⠋⠙⠹]/);
   });
 });
 

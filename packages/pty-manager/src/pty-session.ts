@@ -257,6 +257,7 @@ export class PTYSession extends EventEmitter {
   private messageCounter: number = 0;
   private logger: Logger;
   private sessionRules: AutoResponseRule[] = [];
+  private _firedOnceRules: Set<string> = new Set();
   private _lastBlockingPromptHash: string | null = null;
 
   // Stall detection
@@ -397,8 +398,9 @@ export class PTYSession extends EventEmitter {
     }
 
     // Hash the stripped buffer tail — only reset timer when content actually changes
+    // Trim to ignore trailing whitespace from cursor-movement-to-space replacements
     const tail = this.outputBuffer.slice(-500);
-    const stripped = this.stripAnsiForStall(tail);
+    const stripped = this.stripAnsiForStall(tail).trim();
     const hash = this.simpleHash(stripped);
 
     if (hash === this._lastContentHash) {
@@ -492,13 +494,30 @@ export class PTYSession extends EventEmitter {
   }
 
   /**
-   * Strip ANSI codes for stall detection output.
-   * Replaces cursor-forward sequences with spaces first.
+   * Strip ANSI codes, cursor movement, box-drawing, and spinner characters.
+   * Used for stall detection hashing and auto-response pattern matching.
+   *
+   * Cursor movement codes are replaced with spaces (not removed) to preserve
+   * word boundaries — e.g. "Do\x1b[5Cyou" becomes "Do you", not "Doyou".
    */
   private stripAnsiForStall(str: string): string {
-    const withSpaces = str.replace(/\x1b\[\d*C/g, ' ');
+    // Replace ALL cursor movement codes with a space:
+    // \x1b[nC (forward), \x1b[nD (back), \x1b[nA (up), \x1b[nB (down), \x1b[nG (column)
+    // \x1b[n;mH and \x1b[n;mf (absolute positioning)
+    let result = str.replace(/\x1b\[\d*[CDABG]/g, ' ');
+    result = result.replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ');
+
+    // Strip remaining ANSI escape sequences
     // eslint-disable-next-line no-control-regex
-    return withSpaces.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+    result = result.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+
+    // Strip TUI box-drawing and spinner characters
+    result = result.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓]/g, ' ');
+
+    // Collapse multiple spaces
+    result = result.replace(/ {2,}/g, ' ');
+
+    return result;
   }
 
   /**
@@ -801,13 +820,19 @@ export class PTYSession extends EventEmitter {
       return false;
     }
 
-    // Strip ANSI codes and TUI box-drawing chars so regex patterns match
-    // the visible text, not raw terminal escape sequences.
-    let stripped = this.stripAnsiForStall(this.outputBuffer);
-    stripped = stripped.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⏺←→↑↓]/g, ' ');
-    stripped = stripped.replace(/ {2,}/g, ' ');
+    // Strip ANSI codes, cursor movement, box-drawing, and spinner chars
+    // so regex patterns match the visible text, not raw terminal sequences.
+    const stripped = this.stripAnsiForStall(this.outputBuffer);
 
     for (const rule of allRules) {
+      // Skip once-rules that have already fired
+      if (rule.once) {
+        const ruleKey = `${rule.pattern.source}:${rule.pattern.flags}`;
+        if (this._firedOnceRules.has(ruleKey)) {
+          continue;
+        }
+      }
+
       if (rule.pattern.test(stripped)) {
         // Check if it's safe to auto-respond (default: true)
         const safe = rule.safe !== false;
@@ -838,6 +863,12 @@ export class PTYSession extends EventEmitter {
           } else {
             // Text response (backward compat)
             this.writeRaw(rule.response + '\r');
+          }
+
+          // Track once-rules so they don't fire again on TUI re-renders
+          if (rule.once) {
+            const ruleKey = `${rule.pattern.source}:${rule.pattern.flags}`;
+            this._firedOnceRules.add(ruleKey);
           }
 
           // Clear the matched portion from buffer to prevent re-matching

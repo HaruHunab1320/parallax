@@ -295,9 +295,27 @@ describe('CodexAdapter', () => {
       expect(rule?.pattern.test('Update available - Skip until next version')).toBe(true);
     });
 
-    it('should match trust directory prompt', () => {
+    it('should have once: true to prevent thrashing', () => {
+      const rule = adapter.autoResponseRules.find(r => r.type === 'permission');
+      expect(rule?.once).toBe(true);
+    });
+
+    it('should match trust directory prompt (normal text)', () => {
       const rule = adapter.autoResponseRules.find(r => r.type === 'permission');
       expect(rule?.pattern.test('Do you trust the contents of this directory?')).toBe(true);
+    });
+
+    it('should match trust prompt with stripped spaces (cursor codes removed)', () => {
+      const rule = adapter.autoResponseRules.find(r => r.type === 'permission');
+      expect(rule?.pattern.test('trust the contents')).toBe(true);
+      expect(rule?.pattern.test('trust this directory')).toBe(true);
+      expect(rule?.pattern.test('do you trust')).toBe(true);
+    });
+
+    it('should match trust prompt with single-char separators (cursor replacement)', () => {
+      const rule = adapter.autoResponseRules.find(r => r.type === 'permission');
+      // After cursor code → space replacement, words get single-char separators
+      expect(rule?.pattern.test('trust the contents')).toBe(true);
     });
   });
 

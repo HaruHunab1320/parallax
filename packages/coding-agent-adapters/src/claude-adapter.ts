@@ -34,13 +34,14 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    */
   readonly autoResponseRules: AutoResponseRule[] = [
     {
-      pattern: /trust.*folder|safety check/i,
+      pattern: /trust.*folder|safety.?check|project.you.created/i,
       type: 'permission',
       response: '',
       responseType: 'keys',
       keys: ['enter'],
       description: 'Accept trust prompt for working directory',
       safe: true,
+      once: true,
     },
     {
       pattern: /update available.*\[y\/n\]/i,

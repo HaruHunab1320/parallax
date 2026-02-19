@@ -134,6 +134,24 @@ export async function configureCredentialHelper(
   const helperScript = createShellCredentialHelperScript(contextFilePath);
   await fs.promises.writeFile(helperScriptPath, helperScript, { mode: 0o700 });
 
+  // Ensure .git-workspace/ is in .gitignore to prevent committing secrets
+  const gitignorePath = path.join(workspacePath, '.gitignore');
+  const entry = '.git-workspace/';
+  try {
+    let content = '';
+    try {
+      content = await fs.promises.readFile(gitignorePath, 'utf-8');
+    } catch {
+      // File doesn't exist yet — will be created below
+    }
+    if (!content.includes(entry)) {
+      const suffix = content.length > 0 && !content.endsWith('\n') ? `\n${entry}\n` : `${entry}\n`;
+      await fs.promises.writeFile(gitignorePath, content + suffix);
+    }
+  } catch {
+    // Non-fatal — credential helper still works, just won't be gitignored
+  }
+
   // Return the path to the helper script
   return helperScriptPath;
 }

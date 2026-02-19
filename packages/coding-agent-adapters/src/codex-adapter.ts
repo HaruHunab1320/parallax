@@ -40,13 +40,14 @@ export class CodexAdapter extends BaseCodingAdapter {
       safe: true,
     },
     {
-      pattern: /trust the contents of this directory/i,
+      pattern: /trust.the.contents|trust.this.directory|do.you.trust/i,
       type: 'permission',
       response: '',
       responseType: 'keys',
       keys: ['enter'],
       description: 'Trust directory contents to allow Codex to operate',
       safe: true,
+      once: true,
     },
   ];
 

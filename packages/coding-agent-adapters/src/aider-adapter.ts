@@ -40,7 +40,7 @@ export class AiderAdapter extends BaseCodingAdapter {
    */
   readonly autoResponseRules: AutoResponseRule[] = [
     {
-      pattern: /Add .+ to the chat\?.*\[y\/n\]/i,
+      pattern: /Add .+ to the chat\?.*(\[y\/n\]|\[Yes\]|\(Y\)es)/i,
       type: 'permission',
       response: 'y',
       responseType: 'text',
@@ -48,7 +48,7 @@ export class AiderAdapter extends BaseCodingAdapter {
       safe: true,
     },
     {
-      pattern: /Create new file.*\[y\/n\]/i,
+      pattern: /Create new file.*(\[y\/n\]|\[Yes\]|\(Y\)es)/i,
       type: 'permission',
       response: 'y',
       responseType: 'text',
@@ -56,7 +56,7 @@ export class AiderAdapter extends BaseCodingAdapter {
       safe: true,
     },
     {
-      pattern: /Apply.*changes.*\[y\/n\]/i,
+      pattern: /Apply.*changes.*(\[y\/n\]|\[Yes\]|\(Y\)es)/i,
       type: 'permission',
       response: 'y',
       responseType: 'text',

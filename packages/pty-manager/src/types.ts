@@ -194,6 +194,9 @@ export interface AutoResponseRule {
 
   /** Whether this is safe to auto-respond (default: true) */
   safe?: boolean;
+
+  /** Fire this rule at most once per session (prevents thrashing on TUI re-renders) */
+  once?: boolean;
 }
 
 /**
