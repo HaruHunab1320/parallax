@@ -243,6 +243,19 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Task Completion Detection
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Detect if the CLI has completed a task and returned to its idle prompt.
+   * More specific than detectReady() — matches high-confidence completion indicators
+   * (e.g. duration summaries, explicit "done" messages) alongside the idle prompt.
+   *
+   * Used as a fast-path in stall detection to avoid expensive LLM classifier calls.
+   */
+  abstract detectTaskComplete(output: string): boolean;
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Approval Presets
   // ─────────────────────────────────────────────────────────────────────────────
 

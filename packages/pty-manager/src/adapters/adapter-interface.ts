@@ -88,6 +88,16 @@ export interface CLIAdapter {
   getPromptPattern(): RegExp;
 
   /**
+   * Optional: Detect if the CLI has completed a task and returned to its idle prompt.
+   * More specific than detectReady — matches high-confidence completion indicators
+   * (e.g. duration summaries, explicit "done" messages) alongside the idle prompt.
+   *
+   * Used as a fast-path in stall detection to avoid expensive LLM classifier calls.
+   * If not implemented, the stall classifier is used as the fallback.
+   */
+  detectTaskComplete?(output: string): boolean;
+
+  /**
    * Optional: Validate that the CLI is installed and accessible
    */
   validateInstallation?(): Promise<{ installed: boolean; version?: string; error?: string }>;

@@ -427,6 +427,40 @@ export class AiderAdapter extends BaseCodingAdapter {
     return super.detectBlockingPrompt(output);
   }
 
+  /**
+   * Detect task completion for Aider.
+   *
+   * High-confidence patterns:
+   *   - "Aider is waiting for your input" notification (bell message)
+   *   - Edit-format mode prompts (ask>, code>, architect>) after output
+   *
+   * Patterns from: AGENT_LOADING_STATUS_PATTERNS.json
+   *   - aider_completed_llm_response_ready
+   */
+  detectTaskComplete(output: string): boolean {
+    const stripped = this.stripAnsi(output);
+
+    // "Aider is waiting for your input" — explicit notification that model turn finished
+    if (/Aider\s+is\s+waiting\s+for\s+your\s+input/.test(stripped)) {
+      return true;
+    }
+
+    // Mode prompt at end of output after visible response content.
+    // Only count as task-complete if there's substantial output above the prompt
+    // (not just a bare prompt which could be startup).
+    const hasPrompt = /(?:ask|code|architect)(?:\s+multi)?>\s*$/m.test(stripped);
+    if (hasPrompt) {
+      // Check for signs of completed work above the prompt
+      const hasEditMarkers = /Applied edit to|Commit [a-f0-9]+|wrote to|Updated/i.test(stripped);
+      const hasTokenUsage = /Tokens:|Cost:/i.test(stripped);
+      if (hasEditMarkers || hasTokenUsage) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
 

@@ -310,6 +310,32 @@ export class GeminiAdapter extends BaseCodingAdapter {
     return super.detectBlockingPrompt(output);
   }
 
+  /**
+   * Detect task completion for Gemini CLI.
+   *
+   * High-confidence patterns:
+   *   - "◇ Ready" window title signal (OSC sequence, may survive ANSI stripping)
+   *   - "Type your message" composer placeholder after agent output
+   *
+   * Patterns from: AGENT_LOADING_STATUS_PATTERNS.json
+   *   - gemini_ready_title
+   */
+  detectTaskComplete(output: string): boolean {
+    const stripped = this.stripAnsi(output);
+
+    // Window title "◇ Ready" is a strong task-complete signal
+    if (/◇\s+Ready/.test(stripped)) {
+      return true;
+    }
+
+    // Composer placeholder is definitive — the agent is idle
+    if (/type.?your.?message/i.test(stripped)) {
+      return true;
+    }
+
+    return false;
+  }
+
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
 

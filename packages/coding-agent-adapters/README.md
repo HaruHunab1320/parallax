@@ -94,6 +94,27 @@ Adapters detect prompts that block the session and require user action:
 | Codex | Directory trust, tool approval, update available, model migration, CWD selection |
 | Aider | File operations, shell commands, git init, pip install, destructive operations |
 
+### Task Completion Detection
+
+Each adapter implements `detectTaskComplete(output)` to recognize when the CLI has finished a task and returned to its idle prompt. This is more specific than `detectReady()` — it matches high-confidence completion indicators (duration summaries, explicit done messages) that short-circuit the LLM stall classifier in pty-manager.
+
+| Adapter | Completion Indicators | Source Patterns |
+|---------|----------------------|----------------|
+| Claude | Turn duration (`Cooked for 3m 12s`, custom verb) + `❯` prompt | `claude_completed_turn_duration` |
+| Gemini | `◇ Ready` window title, `Type your message` composer | `gemini_ready_title` |
+| Codex | `Worked for 1m 05s` separator + `›` prompt | `codex_completed_worked_for_separator`, `codex_ready_prompt` |
+| Aider | `Aider is waiting for your input`, mode prompts with edit/cost markers | `aider_completed_llm_response_ready` |
+
+```typescript
+const claude = new ClaudeAdapter();
+claude.detectTaskComplete('Cooked for 3m 12s\n❯ ');  // true
+claude.detectTaskComplete('Reading 5 files…');         // false
+
+const aider = new AiderAdapter();
+aider.detectTaskComplete('Applied edit to main.ts\nTokens: 1234\ncode> ');  // true
+aider.detectTaskComplete('Waiting for claude-sonnet-4-20250514');            // false
+```
+
 ### Exit Detection
 
 Adapters detect when a CLI session has ended:
@@ -388,6 +409,11 @@ export class CursorAdapter extends BaseCodingAdapter {
 
   detectReady(output: string): boolean {
     return /cursor>\s*$/m.test(output);
+  }
+
+  detectTaskComplete(output: string): boolean {
+    // High-confidence: task summary + idle prompt
+    return /completed in \d+s/.test(output) && /cursor>\s*$/m.test(output);
   }
 
   parseOutput(output: string): ParsedOutput | null {

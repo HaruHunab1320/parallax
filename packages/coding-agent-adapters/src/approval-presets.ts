@@ -110,6 +110,8 @@ export const CLAUDE_TOOL_CATEGORIES: Record<string, ToolCategory> = {
   // file_write
   Write: 'file_write',
   Edit: 'file_write',
+  MultiEdit: 'file_write',
+  NotebookEdit: 'file_write',
   // shell
   Bash: 'shell',
   BashOutput: 'shell',

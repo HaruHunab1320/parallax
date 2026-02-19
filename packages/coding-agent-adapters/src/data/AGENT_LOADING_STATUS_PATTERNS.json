@@ -1,0 +1,249 @@
+{
+  "generated_at": "2026-02-19",
+  "purpose": "PTY-ready detection patterns for loading/status updates across Claude Code, Codex, Gemini CLI, and aider",
+  "normalization_assumptions": {
+    "ansi_escapes_removed": true,
+    "cursor_movement_may_insert_spaces": true,
+    "multiple_spaces_collapsed": true
+  },
+  "agents": [
+    {
+      "name": "Claude Code",
+      "source_scope": "docs/changelog-visible strings only in this open repo",
+      "confidence": "medium",
+      "patterns": [
+        {
+          "id": "claude_active_reading_files",
+          "active_or_completed": "active",
+          "state_type": "loading",
+          "exact_pattern": "Reading X files…",
+          "regex": "Reading\\s+\\d+\\s+files(?:\\.{3}|…)",
+          "source_file": "claude-code/CHANGELOG.md",
+          "source_line": 585,
+          "notes": "Changelog references collapsed indicator text while active."
+        },
+        {
+          "id": "claude_completed_turn_duration",
+          "active_or_completed": "completed",
+          "state_type": "turn_complete",
+          "exact_pattern": "Cooked for 1m 6s",
+          "regex": "Cooked\\s+for\\s+\\d+(?:h\\s+\\d{1,2}m\\s+\\d{1,2}s|m\\s+\\d{1,2}s|s)",
+          "source_file": "claude-code/CHANGELOG.md",
+          "source_line": 417,
+          "notes": "`showTurnDuration` setting example; runtime may use custom spinner verbs."
+        },
+        {
+          "id": "claude_completed_turn_duration_custom_verb",
+          "active_or_completed": "completed",
+          "state_type": "turn_complete",
+          "exact_pattern": "<CustomVerb> for 4m 39s",
+          "regex": "[A-Z][A-Za-z' -]{2,40}\\s+for\\s+\\d+(?:h\\s+\\d{1,2}m\\s+\\d{1,2}s|m\\s+\\d{1,2}s|s)",
+          "source_file": "claude-code/CHANGELOG.md",
+          "source_line": 264,
+          "notes": "Verb is user-customizable via `spinnerVerbs`; use as heuristic, not strict canonical text."
+        }
+      ]
+    },
+    {
+      "name": "Codex",
+      "source_scope": "codex-rs TUI source + snapshots",
+      "confidence": "high",
+      "patterns": [
+        {
+          "id": "codex_active_status_row",
+          "active_or_completed": "active",
+          "state_type": "loading",
+          "exact_pattern": "• Working (0s • esc to interrupt)",
+          "regex": "[•◦]?\\s*.+?\\s*\\(\\d+(?:h\\s+\\d{2}m\\s+\\d{2}s|m\\s+\\d{2}s|s)\\s+•\\s+esc\\s+to\\s+interrupt\\)(?:\\s+·\\s+.+)?",
+          "source_file": "codex/codex-rs/tui/src/status_indicator_widget.rs",
+          "source_line": 241,
+          "notes": "Header can vary (Working/Analyzing/etc)."
+        },
+        {
+          "id": "codex_active_booting_mcp",
+          "active_or_completed": "active",
+          "state_type": "startup_loading",
+          "exact_pattern": "Booting MCP server: alpha",
+          "regex": "Booting\\s+MCP\\s+server:\\s+.+",
+          "source_file": "codex/codex-rs/tui/src/chatwidget.rs",
+          "source_line": 1668,
+          "notes": "Typically appears inside status row while agent remains active."
+        },
+        {
+          "id": "codex_active_waiting_background_terminal",
+          "active_or_completed": "active",
+          "state_type": "tool_wait",
+          "exact_pattern": "Waiting for background terminal · <command>",
+          "regex": "Waiting\\s+for\\s+background\\s+terminal(?:\\s+·\\s+.+)?",
+          "source_file": "codex/codex-rs/tui/src/chatwidget.rs",
+          "source_line": 1896,
+          "notes": "Emitted while polling background unified exec process."
+        },
+        {
+          "id": "codex_active_web_search",
+          "active_or_completed": "active",
+          "state_type": "tool_loading",
+          "exact_pattern": "Searching the web",
+          "regex": "Searching\\s+the\\s+web",
+          "source_file": "codex/codex-rs/tui/src/history_cell.rs",
+          "source_line": 1472,
+          "notes": "Web search cell header while call is in progress."
+        },
+        {
+          "id": "codex_completed_web_search",
+          "active_or_completed": "completed",
+          "state_type": "tool_complete",
+          "exact_pattern": "Searched",
+          "regex": "^Searched$",
+          "source_file": "codex/codex-rs/tui/src/history_cell.rs",
+          "source_line": 1470,
+          "notes": "Web search cell header once completed."
+        },
+        {
+          "id": "codex_completed_worked_for_separator",
+          "active_or_completed": "completed",
+          "state_type": "turn_complete",
+          "exact_pattern": "Worked for 1m 05s",
+          "regex": "Worked\\s+for\\s+\\d+(?:h\\s+\\d{2}m\\s+\\d{2}s|m\\s+\\d{2}s|s)",
+          "source_file": "codex/codex-rs/tui/src/history_cell.rs",
+          "source_line": 2230,
+          "notes": "Rendered only for work-heavy turns; omitted for purely conversational turns."
+        },
+        {
+          "id": "codex_ready_prompt",
+          "active_or_completed": "completed",
+          "state_type": "ready_for_input",
+          "exact_pattern": "› Ask Codex to do anything",
+          "regex": "›\\s+Ask\\s+Codex\\s+to\\s+do\\s+anything",
+          "source_file": "codex/codex-rs/tui/src/chatwidget/snapshots/codex_tui__chatwidget__tests__mcp_startup_header_booting.snap",
+          "source_line": 9,
+          "notes": "Strong ready-state indicator after active work or startup transitions."
+        }
+      ]
+    },
+    {
+      "name": "Gemini CLI",
+      "source_scope": "interactive UI source",
+      "confidence": "high",
+      "patterns": [
+        {
+          "id": "gemini_active_loading_line",
+          "active_or_completed": "active",
+          "state_type": "loading",
+          "exact_pattern": "<phrase> (esc to cancel, 25s)",
+          "regex": ".+\\(esc\\s+to\\s+cancel,\\s+(?:\\d+s|\\d+m\\s+\\d+s|\\d+h\\s+\\d+m\\s+\\d+s)\\)",
+          "source_file": "gemini-cli/packages/cli/src/ui/components/LoadingIndicator.tsx",
+          "source_line": 66,
+          "notes": "Rendered in Responding state unless waiting-for-confirmation suppresses timer segment."
+        },
+        {
+          "id": "gemini_active_waiting_user_confirmation",
+          "active_or_completed": "active",
+          "state_type": "approval_wait",
+          "exact_pattern": "Waiting for user confirmation...",
+          "regex": "Waiting\\s+for\\s+user\\s+confirmation\\.\\.\\.",
+          "source_file": "gemini-cli/packages/cli/src/ui/hooks/usePhraseCycler.ts",
+          "source_line": 54,
+          "notes": "Used when streaming state is waiting for confirmation."
+        },
+        {
+          "id": "gemini_active_interactive_shell_wait",
+          "active_or_completed": "active",
+          "state_type": "tool_wait",
+          "exact_pattern": "Interactive shell awaiting input... press tab to focus shell",
+          "regex": "Interactive\\s+shell\\s+awaiting\\s+input\\.\\.\\.\\s+press\\s+tab\\s+to\\s+focus\\s+shell",
+          "source_file": "gemini-cli/packages/cli/src/ui/hooks/usePhraseCycler.ts",
+          "source_line": 13,
+          "notes": "High-signal state for shell tool requiring user focus/input."
+        },
+        {
+          "id": "gemini_active_witty_phrases",
+          "active_or_completed": "active",
+          "state_type": "loading_phrase",
+          "exact_pattern": "Generating witty retort…",
+          "regex": "(?:Generating\\s+witty\\s+retort|Reticulating\\s+splines|Warming\\s+up\\s+the\\s+AI\\s+hamsters|Preparing\\s+a\\s+witty\\s+response)(?:\\.{3}|…)",
+          "source_file": "gemini-cli/packages/cli/src/ui/constants/wittyPhrases.ts",
+          "source_line": 16,
+          "notes": "Representative subset; full list is configurable and large."
+        },
+        {
+          "id": "gemini_completed_session_summary",
+          "active_or_completed": "completed",
+          "state_type": "session_complete",
+          "exact_pattern": "Agent powering down. Goodbye!",
+          "regex": "Agent\\s+powering\\s+down\\.\\s+Goodbye!",
+          "source_file": "gemini-cli/packages/cli/src/ui/components/SessionSummaryDisplay.tsx",
+          "source_line": 15,
+          "notes": "Shown at quit/completion summary stage."
+        },
+        {
+          "id": "gemini_ready_title",
+          "active_or_completed": "completed",
+          "state_type": "ready_for_input",
+          "exact_pattern": "◇  Ready",
+          "regex": "◇\\s+Ready",
+          "source_file": "gemini-cli/packages/cli/src/utils/windowTitle.ts",
+          "source_line": 74,
+          "notes": "Window-title signal (OSC); may be stripped by ANSI/terminal filters."
+        }
+      ]
+    },
+    {
+      "name": "aider",
+      "source_scope": "python runtime source",
+      "confidence": "high",
+      "patterns": [
+        {
+          "id": "aider_active_waiting_model",
+          "active_or_completed": "active",
+          "state_type": "loading",
+          "exact_pattern": "Waiting for <model>",
+          "regex": "Waiting\\s+for\\s+[A-Za-z0-9_./:-]+",
+          "source_file": "aider/aider/coders/base_coder.py",
+          "source_line": 1440,
+          "notes": "Spinner starts before model streaming output appears."
+        },
+        {
+          "id": "aider_active_waiting_llm_default",
+          "active_or_completed": "active",
+          "state_type": "loading",
+          "exact_pattern": "Waiting for LLM",
+          "regex": "Waiting\\s+for\\s+LLM",
+          "source_file": "aider/aider/waiting.py",
+          "source_line": 174,
+          "notes": "Default WaitingSpinner text where no specific model label is set."
+        },
+        {
+          "id": "aider_active_generating_commit_message",
+          "active_or_completed": "active",
+          "state_type": "loading",
+          "exact_pattern": "Generating commit message with <model>",
+          "regex": "Generating\\s+commit\\s+message\\s+with\\s+.+",
+          "source_file": "aider/aider/repo.py",
+          "source_line": 343,
+          "notes": "Commit-message generation spinner path."
+        },
+        {
+          "id": "aider_completed_llm_response_ready",
+          "active_or_completed": "completed",
+          "state_type": "awaiting_user_input",
+          "exact_pattern": "Aider is waiting for your input",
+          "regex": "Aider\\s+is\\s+waiting\\s+for\\s+your\\s+input",
+          "source_file": "aider/aider/io.py",
+          "source_line": 43,
+          "notes": "Notification/bell message indicating model turn completed and control returned to user."
+        },
+        {
+          "id": "aider_completed_spinner_stop_on_response",
+          "active_or_completed": "completed",
+          "state_type": "loading_end",
+          "exact_pattern": "(spinner stopped when response arrives)",
+          "regex": "",
+          "source_file": "aider/aider/coders/base_coder.py",
+          "source_line": 1837,
+          "notes": "Not text-emitted; control signal in code path where waiting spinner is stopped on first response chunk."
+        }
+      ]
+    }
+  ]
+}

@@ -473,6 +473,22 @@ export class PTYSession extends EventEmitter {
     }
     this._lastStallHash = hash;
 
+    // Fast path: try adapter-level task completion detection before
+    // falling back to the expensive LLM stall classifier.
+    if (this._status === 'busy' && this.adapter.detectTaskComplete?.(this.outputBuffer)) {
+      this._status = 'ready';
+      this._lastBlockingPromptHash = null;
+      this.outputBuffer = '';
+      this.clearStallTimer();
+      this.emit('status_changed', 'ready');
+      this.emit('task_complete');
+      this.logger.info(
+        { sessionId: this.id },
+        'Task complete (adapter fast-path) — agent returned to idle prompt'
+      );
+      return;
+    }
+
     // Compute recent output: last 2000 chars, ANSI-stripped
     const recentRaw = this.outputBuffer.slice(-2000);
     const recentOutput = this.stripAnsiForStall(recentRaw);

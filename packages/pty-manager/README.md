@@ -10,6 +10,7 @@ PTY session manager with lifecycle management, pluggable adapters, and blocking 
 - **Auto-response rules** - Automatically respond to known prompts with text or key sequences
 - **TUI menu navigation** - Navigate arrow-key menus via `selectMenuOption()` and key-sequence rules
 - **Stall detection** - Content-based stall detection with pluggable external classifiers
+- **Task completion detection** - Adapter-level fast-path that short-circuits the LLM stall classifier when the CLI returns to its idle prompt
 - **Terminal attachment** - Attach to sessions for raw I/O streaming
 - **Special key support** - Send Ctrl, Alt, Shift, and function key combinations via `sendKeys()`
 - **Bracketed paste** - Proper paste handling with bracketed paste mode support
@@ -130,6 +131,11 @@ class MyCLIAdapter extends BaseCLIAdapter {
     return /ready>/.test(output);
   }
 
+  // Optional: high-confidence task completion detection
+  detectTaskComplete(output) {
+    return /done in \d+s/.test(output) && /ready>/.test(output);
+  }
+
   parseOutput(output) {
     return {
       type: 'response',
@@ -189,6 +195,8 @@ class PTYManager extends EventEmitter {
 | `blocking_prompt` | `SessionHandle, promptInfo, autoResponded` | Prompt detected |
 | `message` | `SessionMessage` | Parsed message received |
 | `question` | `SessionHandle, question` | Question detected |
+| `stall_detected` | `SessionHandle, recentOutput, stallDurationMs` | Output stalled, needs classification |
+| `task_complete` | `SessionHandle` | Agent finished task, returned to idle |
 
 ### SpawnConfig
 
@@ -435,9 +443,11 @@ Adapters can declare `usesTuiMenus: true` to indicate they use arrow-key menus i
 await session.selectMenuOption(2);  // Sends Down, Down, Enter with 50ms delays
 ```
 
-## Stall Detection
+## Stall Detection & Task Completion
 
-Content-based stall detection monitors sessions for output that stops changing. When a stall is detected, the session emits a `stall_detected` event with the buffered output for external classification.
+Content-based stall detection monitors sessions for output that stops changing. When a stall is detected, the session first tries the adapter's `detectTaskComplete()` fast-path. If the adapter recognizes the output as a completed task (e.g. duration summary + idle prompt), it transitions directly to `ready` and emits `task_complete` — skipping the expensive LLM stall classifier entirely.
+
+If the adapter doesn't recognize the output, the session falls back to emitting `stall_detected` for external classification.
 
 ```typescript
 // Enable stall detection with a pluggable classifier
@@ -459,6 +469,30 @@ const session = await manager.spawn({
   },
 });
 ```
+
+### Adapter-Level Task Completion (Fast Path)
+
+Adapters can implement `detectTaskComplete(output)` to recognize high-confidence completion patterns specific to their CLI. This avoids the latency and cost of an LLM classifier call.
+
+```typescript
+class MyCLIAdapter extends BaseCLIAdapter {
+  // ...
+
+  detectTaskComplete(output: string): boolean {
+    // Match CLI-specific patterns that indicate work is done
+    return /completed in \d+s/.test(output) && /my-cli>/.test(output);
+  }
+}
+```
+
+The default `BaseCLIAdapter` implementation delegates to `detectReady()`. Coding agent adapters override this with CLI-specific patterns:
+
+| Adapter | Completion Indicators |
+|---------|----------------------|
+| Claude Code | Turn duration (`Cooked for 3m 12s`) + `❯` prompt |
+| Gemini CLI | `◇ Ready` window title, `Type your message` composer |
+| Codex | `Worked for 1m 05s` separator + `›` prompt |
+| Aider | `Aider is waiting for your input`, mode prompts with edit markers |
 
 ## Blocking Prompt Types
 

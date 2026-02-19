@@ -292,6 +292,39 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     return super.detectBlockingPrompt(output);
   }
 
+  /**
+   * Detect task completion for Claude Code.
+   *
+   * High-confidence pattern: turn duration summary + idle prompt.
+   * Claude Code shows "<Verb> for Xm Ys" (e.g. "Cooked for 3m 12s")
+   * when a turn completes, followed by the ❯ input prompt.
+   *
+   * Patterns from: AGENT_LOADING_STATUS_PATTERNS.json
+   *   - claude_completed_turn_duration
+   *   - claude_completed_turn_duration_custom_verb
+   */
+  detectTaskComplete(output: string): boolean {
+    const stripped = this.stripAnsi(output);
+
+    // Turn duration pattern: "<Verb> for <duration>" (customizable verb)
+    const hasDuration = /[A-Z][A-Za-z' -]{2,40}\s+for\s+\d+(?:h\s+\d{1,2}m\s+\d{1,2}s|m\s+\d{1,2}s|s)/.test(stripped);
+
+    // Idle prompt: ❯ at end of output
+    const hasIdlePrompt = /❯\s*$/.test(stripped);
+
+    // High confidence: duration summary + idle prompt
+    if (hasDuration && hasIdlePrompt) {
+      return true;
+    }
+
+    // Medium confidence: idle prompt with "for shortcuts" hint (post-task state)
+    if (hasIdlePrompt && stripped.includes('for shortcuts')) {
+      return true;
+    }
+
+    return false;
+  }
+
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
 

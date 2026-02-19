@@ -209,6 +209,15 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
   }
 
   /**
+   * Default task completion detection — delegates to detectReady().
+   * Subclasses should override to match high-confidence completion patterns
+   * (e.g. duration summaries) that short-circuit the LLM stall classifier.
+   */
+  detectTaskComplete(output: string): boolean {
+    return this.detectReady(output);
+  }
+
+  /**
    * Default input formatting - just return as-is
    */
   formatInput(message: string): string {

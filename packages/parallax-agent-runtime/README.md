@@ -40,6 +40,7 @@ parallax-agent-runtime
 - **Approval Presets** - Unified tool permission control across all CLIs (`readonly`, `standard`, `permissive`, `autonomous`)
 - **Multi-Agent Coordination** - Agents can communicate and collaborate
 - **Real-time Logs** - Stream agent terminal output
+- **Smart Task Completion** - Adapter-level detection short-circuits LLM stall classifier when agents finish tasks
 - **Metrics & Health** - Monitor agent resource usage
 - **Authentication** - Optional JWT/API key auth for remote access
 

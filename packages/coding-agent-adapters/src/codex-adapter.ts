@@ -333,6 +333,44 @@ export class CodexAdapter extends BaseCodingAdapter {
     return super.detectBlockingPrompt(output);
   }
 
+  /**
+   * Detect task completion for Codex CLI.
+   *
+   * High-confidence patterns:
+   *   - "Worked for Xm Ys" separator after work-heavy turns
+   *   - "› Ask Codex to do anything" ready prompt
+   *
+   * Patterns from: AGENT_LOADING_STATUS_PATTERNS.json
+   *   - codex_completed_worked_for_separator
+   *   - codex_ready_prompt
+   */
+  detectTaskComplete(output: string): boolean {
+    const stripped = this.stripAnsi(output);
+
+    // "Worked for <duration>" separator — high-confidence completion indicator
+    const hasWorkedFor = /Worked\s+for\s+\d+(?:h\s+\d{2}m\s+\d{2}s|m\s+\d{2}s|s)/.test(stripped);
+
+    // Ready prompt: "› Ask Codex to do anything"
+    const hasReadyPrompt = /›\s+Ask\s+Codex\s+to\s+do\s+anything/.test(stripped);
+
+    // High confidence: worked-for separator + ready prompt
+    if (hasWorkedFor && hasReadyPrompt) {
+      return true;
+    }
+
+    // Medium confidence: ready prompt alone (strong signal post-task)
+    if (hasReadyPrompt) {
+      return true;
+    }
+
+    // Worked-for separator + any › prompt
+    if (hasWorkedFor && /›\s+/m.test(stripped)) {
+      return true;
+    }
+
+    return false;
+  }
+
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
 
