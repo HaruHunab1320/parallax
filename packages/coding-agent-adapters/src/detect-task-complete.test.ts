@@ -79,6 +79,16 @@ describe('ClaudeAdapter.detectTaskComplete', () => {
     expect(adapter.detectTaskComplete(output)).toBe(true);
   });
 
+  it('detects exact Claude TUI buffer with SGR color codes + NBSP after prompt', () => {
+    // Exact raw bytes captured from Claude Code v2.1.45
+    // ✻ in gray, "Cooked for 41s" in gray, then ❯ + \xa0 (NBSP) + reverse-video cursor
+    const output =
+      '\x1b[38;2;153;153;153m✻\x1b[39m \x1b[38;2;153;153;153mCooked for 41s\x1b[39m' +
+      '\r\x1b[1B   \r\x1b[2B' +
+      '❯\xa0\x1b[7m \x1b[27m';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
   it('rejects active loading output', () => {
     const output = 'Reading 5 files…';
     expect(adapter.detectTaskComplete(output)).toBe(false);

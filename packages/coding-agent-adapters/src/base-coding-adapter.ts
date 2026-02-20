@@ -184,9 +184,14 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
     // Strip remaining ANSI via parent
     result = super.stripAnsi(result);
 
-    // Strip bare control characters (carriage return, backspace, bell, etc.)
+    // Strip bare control characters (CR, backspace, bell, etc.)
+    // Preserves \x09 (tab) and \x0a (newline) only.
     // eslint-disable-next-line no-control-regex
-    result = result.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+    result = result.replace(/[\x00-\x08\x0b-\x0d\x0e-\x1f\x7f]/g, '');
+
+    // Normalize non-breaking space (\xa0) to regular space.
+    // Claude Code TUI emits \xa0 after the ❯ prompt.
+    result = result.replace(/\xa0/g, ' ');
 
     // Strip TUI box-drawing, spinner, and decorative Unicode characters.
     // Keeps ❯ and › (prompt indicators) and ◇ (Gemini ready signal).
