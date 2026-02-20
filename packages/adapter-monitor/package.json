@@ -1,6 +1,6 @@
 {
   "name": "agent-adapter-monitor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Automated CLI adapter monitoring - captures startup snapshots and detects pattern changes",
   "type": "module",
   "main": "./dist/index.js",
