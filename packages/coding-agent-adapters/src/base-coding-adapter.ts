@@ -256,6 +256,17 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Loading / Active-Work Detection
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Detect if the CLI is actively loading/processing (thinking spinner,
+   * file reading, model streaming, etc.). When true, stall detection is
+   * suppressed because the agent is provably working.
+   */
+  abstract detectLoading(output: string): boolean;
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Task Completion Detection
   // ─────────────────────────────────────────────────────────────────────────────
 

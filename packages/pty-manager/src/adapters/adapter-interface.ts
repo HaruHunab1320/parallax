@@ -106,6 +106,16 @@ export interface CLIAdapter {
   readonly readySettleMs?: number;
 
   /**
+   * Optional: Detect if the CLI is actively loading/processing (thinking spinner,
+   * file reading, model streaming, etc.). When true, stall detection is suppressed
+   * because the agent is provably working — just not producing new visible text.
+   *
+   * Patterns should match active loading indicators like "esc to interrupt",
+   * "Reading N files", "Waiting for LLM", etc.
+   */
+  detectLoading?(output: string): boolean;
+
+  /**
    * Optional: Get health check command
    */
   getHealthCheckCommand?(): string;

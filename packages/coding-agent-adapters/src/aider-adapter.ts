@@ -431,6 +431,31 @@ export class AiderAdapter extends BaseCodingAdapter {
   }
 
   /**
+   * Detect if Aider is actively loading/processing.
+   *
+   * Patterns from: AGENT_LOADING_STATUS_PATTERNS.json
+   *   - aider_active_waiting_model: "Waiting for <model>"
+   *   - aider_active_waiting_llm_default: "Waiting for LLM"
+   *   - aider_active_generating_commit_message: "Generating commit message with ..."
+   */
+  detectLoading(output: string): boolean {
+    const stripped = this.stripAnsi(output);
+    const tail = stripped.slice(-500);
+
+    // Waiting for model response
+    if (/Waiting\s+for\s+(?:LLM|[A-Za-z0-9_./:@-]+)/i.test(tail)) {
+      return true;
+    }
+
+    // Generating commit message
+    if (/Generating\s+commit\s+message\s+with\s+/i.test(tail)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Detect task completion for Aider.
    *
    * High-confidence patterns:

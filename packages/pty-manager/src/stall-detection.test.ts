@@ -56,6 +56,7 @@ type SessionInternals = {
   _lastStallHash: string | null;
   _lastContentHash: string | null;
   _lastBlockingPromptHash: string | null;
+  _stallBackoffMs: number;
   _firedOnceRules: Set<string>;
   outputBuffer: string;
   ptyProcess: {
@@ -331,7 +332,7 @@ describe('handleStallClassification', () => {
     vi.useRealTimers();
   });
 
-  it('should reset timer on null classification', () => {
+  it('should reset timer on null classification (with backoff)', () => {
     const { session } = createBusySession({ timeoutMs: 3000 });
     const stallHandler = vi.fn();
     session.on('stall_detected', stallHandler);
@@ -342,15 +343,19 @@ describe('handleStallClassification', () => {
     vi.advanceTimersByTime(3000);
     expect(stallHandler).toHaveBeenCalledTimes(1);
 
-    // Classify as null (reset timer)
+    // Classify as null — timer resets with doubled backoff (3s → 6s)
     session.handleStallClassification(null);
 
-    // resetStallTimer clears _lastStallHash, so next fire will re-emit
+    // Should NOT fire at 3s (old interval)
+    vi.advanceTimersByTime(3000);
+    expect(stallHandler).toHaveBeenCalledTimes(1);
+
+    // Should fire at 6s (backed-off interval)
     vi.advanceTimersByTime(3000);
     expect(stallHandler).toHaveBeenCalledTimes(2);
   });
 
-  it('should reset timer on still_working classification', () => {
+  it('should reset timer on still_working classification (with backoff)', () => {
     const { session } = createBusySession({ timeoutMs: 3000 });
     const stallHandler = vi.fn();
     session.on('stall_detected', stallHandler);
@@ -360,9 +365,14 @@ describe('handleStallClassification', () => {
     vi.advanceTimersByTime(3000);
     expect(stallHandler).toHaveBeenCalledTimes(1);
 
+    // Classify as still_working — backoff doubles (3s → 6s)
     session.handleStallClassification({ state: 'still_working' });
 
-    // Timer was reset, fires again
+    // Should NOT fire at 3s
+    vi.advanceTimersByTime(3000);
+    expect(stallHandler).toHaveBeenCalledTimes(1);
+
+    // Should fire at 6s
     vi.advanceTimersByTime(3000);
     expect(stallHandler).toHaveBeenCalledTimes(2);
   });
@@ -1084,5 +1094,251 @@ describe('PTYManager stall detection config', () => {
     // Should not throw
     manager.configureStallDetection(true, 10000);
     manager.configureStallDetection(false);
+  });
+});
+
+describe('Loading pattern suppression', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should suppress stall emission when adapter.detectLoading returns true', () => {
+    const adapter = createMockAdapter();
+    adapter.detectLoading = () => true;
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+      true,  // stall detection enabled
+      5000,  // timeout
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'busy';
+
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    simulateOutput(session, 'Working on it...');
+
+    // Timer fires at 5s — but loading is detected, so no emission
+    vi.advanceTimersByTime(5000);
+    expect(stallHandler).not.toHaveBeenCalled();
+
+    // Timer reschedules — still loading, still suppressed
+    vi.advanceTimersByTime(5000);
+    expect(stallHandler).not.toHaveBeenCalled();
+  });
+
+  it('should emit stall_detected once loading pattern disappears', () => {
+    let isLoading = true;
+    const adapter = createMockAdapter();
+    adapter.detectLoading = () => isLoading;
+
+    const writeFn = vi.fn();
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+      true,
+      5000,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: writeFn,
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'busy';
+
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    simulateOutput(session, 'Processing...');
+
+    // First check at 5s — loading detected, suppressed
+    vi.advanceTimersByTime(5000);
+    expect(stallHandler).not.toHaveBeenCalled();
+
+    // Loading stops
+    isLoading = false;
+
+    // Next check fires — no longer loading, should emit
+    vi.advanceTimersByTime(5000);
+    expect(stallHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not call detectLoading when adapter does not implement it', () => {
+    const adapter = createMockAdapter();
+    // No detectLoading on adapter
+
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+      true,
+      3000,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: vi.fn(),
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'busy';
+
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    simulateOutput(session, 'Some output');
+
+    // Should fire normally without detectLoading
+    vi.advanceTimersByTime(3000);
+    expect(stallHandler).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Stall backoff', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should double backoff interval on still_working classification', () => {
+    const { session } = createBusySession({ timeoutMs: 4000 });
+    const internals = getInternals(session);
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    simulateOutput(session, 'Working on task...');
+
+    // Initial backoff should equal the base timeout
+    expect(internals._stallBackoffMs).toBe(4000);
+
+    // First stall at 4s
+    vi.advanceTimersByTime(4000);
+    expect(stallHandler).toHaveBeenCalledTimes(1);
+
+    // Classify as still_working — backoff doubles to 8s
+    session.handleStallClassification({ state: 'still_working' });
+    expect(internals._stallBackoffMs).toBe(8000);
+
+    // Next stall at 8s from classification
+    vi.advanceTimersByTime(8000);
+    expect(stallHandler).toHaveBeenCalledTimes(2);
+
+    // Classify again — backoff doubles to 16s
+    session.handleStallClassification({ state: 'still_working' });
+    expect(internals._stallBackoffMs).toBe(16000);
+  });
+
+  it('should cap backoff at MAX_STALL_BACKOFF_MS (30s)', () => {
+    const { session } = createBusySession({ timeoutMs: 4000 });
+    const internals = getInternals(session);
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    simulateOutput(session, 'Working...');
+
+    // First stall at 4s
+    vi.advanceTimersByTime(4000);
+    expect(stallHandler).toHaveBeenCalledTimes(1);
+
+    // 4s → 8s
+    session.handleStallClassification({ state: 'still_working' });
+    expect(internals._stallBackoffMs).toBe(8000);
+
+    vi.advanceTimersByTime(8000);
+    // 8s → 16s
+    session.handleStallClassification({ state: 'still_working' });
+    expect(internals._stallBackoffMs).toBe(16000);
+
+    vi.advanceTimersByTime(16000);
+    // 16s → 30s (capped, not 32s)
+    session.handleStallClassification({ state: 'still_working' });
+    expect(internals._stallBackoffMs).toBe(30000);
+
+    vi.advanceTimersByTime(30000);
+    // 30s → 30s (stays capped)
+    session.handleStallClassification({ state: 'still_working' });
+    expect(internals._stallBackoffMs).toBe(30000);
+  });
+
+  it('should reset backoff when new real content arrives', () => {
+    const { session } = createBusySession({ timeoutMs: 4000 });
+    const internals = getInternals(session);
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    simulateOutput(session, 'First output');
+
+    // Stall fires at 4s
+    vi.advanceTimersByTime(4000);
+    expect(stallHandler).toHaveBeenCalledTimes(1);
+
+    // Back off to 8s
+    session.handleStallClassification({ state: 'still_working' });
+    expect(internals._stallBackoffMs).toBe(8000);
+
+    // New real output arrives — backoff resets to base
+    simulateOutput(session, ' new content');
+    expect(internals._stallBackoffMs).toBe(4000);
+
+    // Next stall fires at 4s (not 8s)
+    vi.advanceTimersByTime(4000);
+    expect(stallHandler).toHaveBeenCalledTimes(2);
+  });
+
+  it('should apply backoff to null classification (same as still_working)', () => {
+    const { session } = createBusySession({ timeoutMs: 4000 });
+    const internals = getInternals(session);
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    simulateOutput(session, 'Output');
+
+    vi.advanceTimersByTime(4000);
+    expect(stallHandler).toHaveBeenCalledTimes(1);
+
+    // Null classification — should also double backoff
+    session.handleStallClassification(null);
+    expect(internals._stallBackoffMs).toBe(8000);
+
+    vi.advanceTimersByTime(8000);
+    expect(stallHandler).toHaveBeenCalledTimes(2);
+  });
+
+  it('should reset backoff when clearStallTimer is called', () => {
+    const { session } = createBusySession({ timeoutMs: 4000 });
+    const internals = getInternals(session);
+
+    simulateOutput(session, 'Output');
+
+    vi.advanceTimersByTime(4000);
+    session.handleStallClassification({ state: 'still_working' });
+    expect(internals._stallBackoffMs).toBe(8000);
+
+    // Simulate task completing — clearStallTimer resets backoff
+    (session as unknown as { clearStallTimer: () => void }).clearStallTimer();
+    expect(internals._stallBackoffMs).toBe(4000);
   });
 });

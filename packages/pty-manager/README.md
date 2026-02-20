@@ -9,7 +9,7 @@ PTY session manager with lifecycle management, pluggable adapters, and blocking 
 - **Blocking prompt detection** - Detect login prompts, confirmations, and interactive prompts
 - **Auto-response rules** - Automatically respond to known prompts with text or key sequences
 - **TUI menu navigation** - Navigate arrow-key menus via `selectMenuOption()` and key-sequence rules
-- **Stall detection** - Content-based stall detection with pluggable external classifiers
+- **Stall detection** - Content-based stall detection with pluggable external classifiers, loading suppression, and exponential backoff
 - **Task completion detection** - Adapter-level fast-path that short-circuits the LLM stall classifier when the CLI returns to its idle prompt
 - **Terminal attachment** - Attach to sessions for raw I/O streaming
 - **Special key support** - Send Ctrl, Alt, Shift, and function key combinations via `sendKeys()`
@@ -134,6 +134,11 @@ class MyCLIAdapter extends BaseCLIAdapter {
   // Optional: high-confidence task completion detection
   detectTaskComplete(output) {
     return /done in \d+s/.test(output) && /ready>/.test(output);
+  }
+
+  // Optional: detect active loading state (suppresses stall detection)
+  detectLoading(output) {
+    return /processing|loading/i.test(output);
   }
 
   parseOutput(output) {
@@ -520,6 +525,37 @@ The default `BaseCLIAdapter` implementation delegates to `detectReady()`. Coding
 | Gemini CLI | `◇ Ready` window title, `Type your message` composer |
 | Codex | `Worked for 1m 05s` separator + `›` prompt |
 | Aider | `Aider is waiting for your input`, mode prompts with edit markers |
+
+### Loading Pattern Suppression
+
+Adapters can implement `detectLoading(output)` to detect when the CLI is actively working — thinking spinners, file reading progress, model streaming indicators. When `detectLoading()` returns `true`, stall detection is suppressed entirely because the agent is provably working, just not producing new visible text.
+
+```typescript
+class MyCLIAdapter extends BaseCLIAdapter {
+  detectLoading(output: string): boolean {
+    // Match loading indicators specific to this CLI
+    return /esc to interrupt/i.test(output) || /Reading \d+ files/i.test(output);
+  }
+}
+```
+
+This avoids unnecessary LLM classifier calls during normal operation and prevents false stall alerts when agents are thinking or reading files.
+
+### Stall Backoff
+
+When the external stall classifier returns `still_working` (or `null`), the next stall check interval doubles exponentially instead of repeating at the base rate. This prevents hammering the classifier every few seconds during long-running tasks.
+
+- Base interval: `stallTimeoutMs` (default: 8000ms)
+- After each `still_working`: interval doubles (8s → 16s → 30s cap)
+- Maximum interval: 30 seconds
+- Reset: backoff resets to the base interval whenever new real content arrives (content hash changes)
+
+```
+First stall check:  8s → classifier says "still_working"
+Second check:      16s → classifier says "still_working"
+Third check:       30s → (capped at 30s)
+New output arrives:     → backoff resets to 8s
+```
 
 ## Blocking Prompt Types
 

@@ -271,6 +271,8 @@ export class PTYSession extends EventEmitter {
   private _lastStallHash: string | null = null;
   private _stallStartedAt: number | null = null;
   private _lastContentHash: string | null = null;
+  private _stallBackoffMs: number = 0; // Initialized in constructor from _stallTimeoutMs
+  private static readonly MAX_STALL_BACKOFF_MS = 30_000;
 
   // Task completion detection (idle detection when busy)
   private _taskCompleteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -303,6 +305,7 @@ export class PTYSession extends EventEmitter {
     this.logger = logger || consoleLogger;
     this._stallDetectionEnabled = stallDetectionEnabled ?? false;
     this._stallTimeoutMs = config.stallTimeoutMs ?? defaultStallTimeoutMs ?? 8000;
+    this._stallBackoffMs = this._stallTimeoutMs;
 
     // Process rule overrides from spawn config
     if (config.ruleOverrides) {
@@ -442,13 +445,14 @@ export class PTYSession extends EventEmitter {
     }
     this._lastContentHash = hash;
 
-    // Content changed — clear and restart the timer
+    // Content changed — clear and restart the timer, reset backoff
     if (this._stallTimer) {
       clearTimeout(this._stallTimer);
       this._stallTimer = null;
     }
     this._stallStartedAt = Date.now();
     this._lastStallHash = null; // New content, reset dedup hash for emissions
+    this._stallBackoffMs = this._stallTimeoutMs; // Reset backoff on new real content
 
     this._stallTimer = setTimeout(() => {
       this.onStallTimerFired();
@@ -465,6 +469,7 @@ export class PTYSession extends EventEmitter {
     }
     this._stallStartedAt = null;
     this._lastContentHash = null;
+    this._stallBackoffMs = this._stallTimeoutMs;
   }
 
   /**
@@ -475,14 +480,26 @@ export class PTYSession extends EventEmitter {
       return; // Status changed while timer was running
     }
 
+    // Loading suppression: if the adapter detects an active loading indicator
+    // (thinking spinner, "esc to interrupt", "Reading N files", etc.),
+    // the agent is provably working — suppress stall detection and reschedule.
+    if (this.adapter.detectLoading?.(this.outputBuffer)) {
+      this.logger.debug(
+        { sessionId: this.id },
+        'Loading pattern detected — suppressing stall emission'
+      );
+      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+      return;
+    }
+
     // Compute dedup hash from last 500 chars of outputBuffer
     const tail = this.outputBuffer.slice(-500);
     const hash = this.simpleHash(tail);
 
     if (hash === this._lastStallHash) {
       // Buffer tail unchanged since last stall emission — don't re-emit.
-      // Schedule another check.
-      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallTimeoutMs);
+      // Schedule another check with current backoff.
+      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
       return;
     }
     this._lastStallHash = hash;
@@ -518,8 +535,8 @@ export class PTYSession extends EventEmitter {
 
     this.emit('stall_detected', recentOutput, stallDurationMs);
 
-    // Schedule next check in case classifier says "still_working"
-    this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallTimeoutMs);
+    // Schedule next check with current backoff
+    this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
   }
 
   /**
@@ -591,10 +608,27 @@ export class PTYSession extends EventEmitter {
     }
 
     if (!classification || classification.state === 'still_working') {
-      // Force timer restart — classifier said "still working" so we should
-      // check again later, even if buffer content hasn't changed.
+      // Exponential backoff — double the check interval (capped at 30s).
+      // This avoids hammering the LLM classifier every few seconds when
+      // the agent is legitimately working on a long task.
+      this._stallBackoffMs = Math.min(
+        this._stallBackoffMs * 2,
+        PTYSession.MAX_STALL_BACKOFF_MS,
+      );
+      this.logger.debug(
+        { sessionId: this.id, nextCheckMs: this._stallBackoffMs },
+        'Still working — backing off stall check interval'
+      );
+
+      // Force timer restart with backed-off interval, even if buffer
+      // content hasn't changed.
       this._lastContentHash = null;
-      this.resetStallTimer();
+      this._lastStallHash = null; // Reset dedup hash so next fire can re-emit
+      if (this._stallTimer) {
+        clearTimeout(this._stallTimer);
+        this._stallTimer = null;
+      }
+      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
       return;
     }
 

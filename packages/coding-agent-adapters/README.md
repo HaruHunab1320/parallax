@@ -105,6 +105,28 @@ Adapters detect prompts that block the session and require user action:
 | Codex | Directory trust, tool approval, update available, model migration, CWD selection |
 | Aider | File operations, shell commands, git init, pip install, destructive operations |
 
+### Loading / Active-Work Detection
+
+Each adapter implements `detectLoading(output)` to detect when the CLI is actively processing — thinking spinners, file reading, model streaming. When loading is detected, pty-manager suppresses stall detection entirely, avoiding unnecessary LLM classifier calls during normal operation.
+
+| Adapter | Loading Indicators | Source Patterns |
+|---------|-------------------|----------------|
+| Claude | `esc to interrupt`, `Reading N files` | `claude_active_reading_files` |
+| Gemini | `esc to cancel`, `Waiting for user confirmation` | `gemini_active_loading_line` |
+| Codex | `esc to interrupt`, `Booting MCP server`, `Searching the web` | `codex_active_status_row`, `codex_active_booting_mcp` |
+| Aider | `Waiting for LLM/<model>`, `Generating commit message with` | `aider_active_waiting_model`, `aider_active_waiting_llm_default` |
+
+```typescript
+const claude = new ClaudeAdapter();
+claude.detectLoading('• Working (5s • esc to interrupt)');  // true
+claude.detectLoading('Reading 42 files…');                   // true
+claude.detectLoading('❯ ');                                  // false
+
+const aider = new AiderAdapter();
+aider.detectLoading('Waiting for claude-sonnet-4-20250514'); // true
+aider.detectLoading('code> ');                                // false
+```
+
 ### Task Completion Detection
 
 Each adapter implements `detectTaskComplete(output)` to recognize when the CLI has finished a task and returned to its idle prompt. This is more specific than `detectReady()` — it matches high-confidence completion indicators (duration summaries, explicit done messages) that short-circuit the LLM stall classifier in pty-manager.
@@ -423,6 +445,11 @@ export class CursorAdapter extends BaseCodingAdapter {
 
   detectReady(output: string): boolean {
     return /cursor>\s*$/m.test(output);
+  }
+
+  detectLoading(output: string): boolean {
+    // Active loading indicator — suppresses stall detection
+    return /processing|thinking/i.test(output);
   }
 
   detectTaskComplete(output: string): boolean {

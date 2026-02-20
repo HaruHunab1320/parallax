@@ -323,6 +323,30 @@ export class GeminiAdapter extends BaseCodingAdapter {
   }
 
   /**
+   * Detect if Gemini CLI is actively loading/processing.
+   *
+   * Patterns from: AGENT_LOADING_STATUS_PATTERNS.json
+   *   - gemini_active_loading_line: "(esc to cancel, Xs)"
+   *   - gemini_active_waiting_user_confirmation: "Waiting for user confirmation..."
+   */
+  detectLoading(output: string): boolean {
+    const stripped = this.stripAnsi(output);
+    const tail = stripped.slice(-500);
+
+    // Active loading indicator with "esc to cancel" + timer
+    if (/esc\s+to\s+cancel/i.test(tail)) {
+      return true;
+    }
+
+    // Waiting for user confirmation (streaming state)
+    if (/Waiting\s+for\s+user\s+confirmation/i.test(tail)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Detect task completion for Gemini CLI.
    *
    * High-confidence patterns:

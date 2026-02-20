@@ -296,6 +296,30 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   }
 
   /**
+   * Detect if Claude Code is actively loading/processing.
+   *
+   * Patterns from: AGENT_LOADING_STATUS_PATTERNS.json
+   *   - claude_active_reading_files: "Reading N files…"
+   *   - General: "esc to interrupt" spinner status line
+   */
+  detectLoading(output: string): boolean {
+    const stripped = this.stripAnsi(output);
+    const tail = stripped.slice(-500);
+
+    // Active spinner with "esc to interrupt" — agent is working
+    if (/esc\s+to\s+interrupt/i.test(tail)) {
+      return true;
+    }
+
+    // "Reading N files" loading indicator
+    if (/Reading\s+\d+\s+files/i.test(tail)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Detect task completion for Claude Code.
    *
    * High-confidence pattern: turn duration summary + idle prompt.

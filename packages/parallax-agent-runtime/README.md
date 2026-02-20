@@ -41,6 +41,8 @@ parallax-agent-runtime
 - **Multi-Agent Coordination** - Agents can communicate and collaborate
 - **Real-time Logs** - Stream agent terminal output
 - **Smart Task Completion** - Adapter-level detection short-circuits LLM stall classifier when agents finish tasks
+- **Loading Suppression** - Stall detection suppressed when agents are actively working (thinking, reading files, streaming)
+- **Stall Backoff** - Exponential backoff (up to 30s) on repeated `still_working` classifications reduces classifier overhead
 - **Ready Settle Delay** - Defers input until TUI agents finish rendering, preventing swallowed keystrokes
 - **Metrics & Health** - Monitor agent resource usage
 - **Authentication** - Optional JWT/API key auth for remote access

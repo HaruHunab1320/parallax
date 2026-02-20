@@ -334,6 +334,36 @@ export class CodexAdapter extends BaseCodingAdapter {
   }
 
   /**
+   * Detect if Codex CLI is actively loading/processing.
+   *
+   * Patterns from: AGENT_LOADING_STATUS_PATTERNS.json
+   *   - codex_active_status_row: "• Working (0s • esc to interrupt)"
+   *   - codex_active_booting_mcp: "Booting MCP server: ..."
+   *   - codex_active_web_search: "Searching the web"
+   */
+  detectLoading(output: string): boolean {
+    const stripped = this.stripAnsi(output);
+    const tail = stripped.slice(-500);
+
+    // Active status row with "esc to interrupt"
+    if (/esc\s+to\s+interrupt/i.test(tail)) {
+      return true;
+    }
+
+    // Booting MCP server
+    if (/Booting\s+MCP\s+server/i.test(tail)) {
+      return true;
+    }
+
+    // Web search in progress
+    if (/Searching\s+the\s+web/i.test(tail)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Detect task completion for Codex CLI.
    *
    * High-confidence patterns:
