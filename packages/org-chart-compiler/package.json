@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/org-chart-compiler",
+  "name": "@parallaxai/org-chart-compiler",
   "version": "1.0.0",
   "description": "DSL compiler for multi-agent organizational structures and workflows",
   "main": "dist/index.js",
