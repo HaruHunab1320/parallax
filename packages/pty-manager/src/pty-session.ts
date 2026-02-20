@@ -1214,6 +1214,7 @@ export class PTYSession extends EventEmitter {
    */
   send(message: string): SessionMessage {
     this._status = 'busy';
+    this.outputBuffer = ''; // Clear stale startup/previous-task text so detectReady guards don't false-negative
     this.emit('status_changed', 'busy');
     this.resetStallTimer();
 
