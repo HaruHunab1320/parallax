@@ -1450,6 +1450,34 @@ describe('Task complete settle pattern', () => {
     expect(internals._status).toBe('ready');
   });
 
+  it('should prefer detectTaskComplete over detectReady while busy', () => {
+    const adapter = createMockAdapter();
+    adapter.detectReady = () => true;
+    adapter.detectTaskComplete = () => false;
+
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: vi.fn(),
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'busy';
+    internals.outputBuffer = 'transient prompt-like output';
+
+    const processOutputBuffer = (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer;
+    processOutputBuffer.call(session);
+
+    expect(internals._taskCompletePending).toBe(false);
+    expect(internals._status).toBe('busy');
+  });
+
   it('should strip OSC sequences from stall output', () => {
     const { session } = createBusySession({ timeoutMs: 3000 });
     const stallHandler = vi.fn();

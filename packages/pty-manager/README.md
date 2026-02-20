@@ -216,6 +216,8 @@ interface SpawnConfig {
   rows?: number;         // Terminal rows (default: 40)
   timeout?: number;      // Session timeout in ms
   readySettleMs?: number; // Override adapter's ready settle delay
+  stallTimeoutMs?: number; // Override manager stall timeout for this session
+  traceTaskCompletion?: boolean; // Verbose completion trace logs (auto-enabled for Claude)
 }
 ```
 
@@ -479,11 +481,59 @@ Content-based stall detection monitors sessions for output that stops changing. 
 
 ### Task Completion Fast-Path (Settle Pattern)
 
-When a busy session's output matches the adapter's `detectReady()` pattern, a `task_complete` debounce timer starts. TUI agents like Claude Code continue rendering decorative output after the prompt — update notices, shortcut hints, status bar updates. Instead of cancelling the timer on each new data chunk (which would prevent the event from ever firing), the session uses a **settle pattern**: the debounce timer resets on each new chunk but is never cancelled. The timer callback re-verifies `detectReady()` before transitioning, so stale triggers are safe.
+When a busy session's output matches the adapter's task-complete signal (`detectTaskComplete()` when implemented, otherwise `detectReady()`), a `task_complete` debounce timer starts. TUI agents like Claude Code continue rendering decorative output after the prompt — update notices, shortcut hints, status bar updates. Instead of cancelling the timer on each new data chunk (which would prevent the event from ever firing), the session uses a **settle pattern**: the debounce timer resets on each new chunk but is never cancelled. The timer callback re-verifies the same task-complete signal before transitioning, so stale triggers are safe.
 
 This mirrors the `readySettlePending` pattern used for startup ready detection, and ensures the `task_complete` event fires reliably even when TUI chrome continues rendering after the agent has finished its task.
 
 If the fast-path timer doesn't fire (e.g. the prompt indicator disappears from the buffer), the session falls back to stall detection which emits `stall_detected` for external classification.
+
+### Task Completion Trace Logs (Claude-focused)
+
+`PTYSession` now emits structured debug logs with message `"Task completion trace"` at each completion transition point:
+
+- `busy_signal`
+- `debounce_schedule`
+- `debounce_fire`
+- `debounce_reject_status`
+- `debounce_reject_signal`
+- `transition_ready`
+
+By default, tracing is enabled for adapter type `claude`. You can override per session:
+
+```typescript
+const handle = await manager.spawn({
+  name: 'agent',
+  type: 'claude',
+  traceTaskCompletion: true, // force on
+  // traceTaskCompletion: false, // force off
+});
+```
+
+Each trace includes detection booleans (`detectTaskComplete`, `detectReady`, `detectLoading`) and a normalized tail hash/snippet to correlate against PTY output captures.
+
+### Completion Confidence Timeline Utility
+
+Use the exported helpers to turn raw trace logs into a per-turn confidence timeline:
+
+```typescript
+import {
+  extractTaskCompletionTraceRecords,
+  buildTaskCompletionTimeline,
+} from 'pty-manager';
+
+const records = extractTaskCompletionTraceRecords(mixedLogEntries);
+const timeline = buildTaskCompletionTimeline(records, { adapterType: 'claude' });
+
+console.log(timeline.turns);
+```
+
+The timeline classifies each trace step as:
+
+- `active`
+- `active_loading`
+- `likely_complete`
+- `rejected`
+- `completed`
 
 ```typescript
 // Enable stall detection with a pluggable classifier

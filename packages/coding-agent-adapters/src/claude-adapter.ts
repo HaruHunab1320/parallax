@@ -209,13 +209,6 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    * Detect blocking prompts specific to Claude Code CLI
    */
   detectBlockingPrompt(output: string): BlockingPromptDetection {
-    // Guard: if the output looks like a ready state, don't flag as blocking.
-    // This prevents residual prompt text in the buffer from being misinterpreted
-    // after the CLI has already moved past the blocking state.
-    if (this.detectReady(output)) {
-      return { detected: false };
-    }
-
     const stripped = this.stripAnsi(output);
 
     // First check for login (highest priority)
@@ -291,6 +284,12 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       };
     }
 
+    // If explicit blocking patterns did not match and output is clearly idle,
+    // avoid generic fallback misclassifying residual text as a prompt.
+    if (this.detectReady(output)) {
+      return { detected: false };
+    }
+
     // Fall back to base class detection
     return super.detectBlockingPrompt(output);
   }
@@ -332,6 +331,13 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    */
   detectTaskComplete(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    if (!stripped.trim()) return false;
+    if (this.detectLoading(stripped)) return false;
+
+    // If Claude is waiting for a confirmation, it's not task-complete idle.
+    if (/trust.*directory|do you want to|needs? your permission/i.test(stripped)) {
+      return false;
+    }
 
     // Turn duration pattern: "<Verb> for <duration>" (customizable verb)
     const hasDuration = /[A-Z][A-Za-z' -]{2,40}\s+for\s+\d+(?:h\s+\d{1,2}m\s+\d{1,2}s|m\s+\d{1,2}s|s)/.test(stripped);
@@ -357,6 +363,8 @@ export class ClaudeAdapter extends BaseCodingAdapter {
 
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    if (!stripped.trim()) return false;
+    if (this.detectLoading(stripped)) return false;
 
     // Guard: if the output contains a trust prompt, we're NOT ready yet —
     // the user (or auto-response) still needs to confirm.
@@ -371,16 +379,16 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     // PR info, "Update available", etc.) renders *after* the prompt in the
     // TUI output stream, so we can't anchor to $.
     const tail = stripped.slice(-300);
-    return (
+    const hasConversationalReadyText =
       stripped.includes('How can I help') ||
-      stripped.includes('What would you like') ||
-      // v2.1+ shows "for shortcuts" hint when ready
-      stripped.includes('for shortcuts') ||
-      // Match "claude> " or similar specific prompts, not bare ">"
-      /claude>/i.test(tail) ||
-      // v2.1+ uses ❯ as the input prompt
-      /❯/.test(tail)
-    );
+      stripped.includes('What would you like');
+
+    const hasLegacyPrompt = /claude>/i.test(tail);
+    const hasShortcutsHint = stripped.includes('for shortcuts');
+
+    // Deliberately do NOT treat a bare "❯" as ready. Claude's TUI redraws
+    // can emit transient prompt glyphs before fully settling.
+    return hasConversationalReadyText || hasLegacyPrompt || hasShortcutsHint;
   }
 
   parseOutput(output: string): ParsedOutput | null {

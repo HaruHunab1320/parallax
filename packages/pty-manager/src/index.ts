@@ -8,6 +8,10 @@
 // Core classes
 export { PTYManager } from './pty-manager';
 export { PTYSession, SPECIAL_KEYS } from './pty-session';
+export {
+  extractTaskCompletionTraceRecords,
+  buildTaskCompletionTimeline,
+} from './task-completion-trace';
 
 // Adapter system
 export {
@@ -54,6 +58,13 @@ export type {
 // Event types
 export type { PTYManagerEvents } from './pty-manager';
 export type { PTYSessionEvents } from './pty-session';
+export type {
+  TaskCompletionTraceRecord,
+  TaskCompletionTimelineStep,
+  TaskCompletionTurnTimeline,
+  TaskCompletionTimelineResult,
+  BuildTimelineOptions,
+} from './task-completion-trace';
 
 // Bun compatibility layer
 export {

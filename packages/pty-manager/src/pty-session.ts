@@ -712,10 +712,16 @@ export class PTYSession extends EventEmitter {
    * being a no-op when already scheduled. This allows TUI agents that
    * continue rendering decorative output (status bar, update notices) after
    * the prompt to eventually settle, rather than having the timer cancelled
-   * by every new data chunk. The callback re-verifies detectReady() before
-   * transitioning, so stale triggers are safe.
+   * by every new data chunk. The callback re-verifies the task-complete
+   * signal before transitioning, so stale triggers are safe.
    */
   private scheduleTaskComplete(): void {
+    const wasPending = this._taskCompletePending;
+    this.traceTaskCompletion('debounce_schedule', {
+      wasPending,
+      debounceMs: PTYSession.TASK_COMPLETE_DEBOUNCE_MS,
+    });
+
     if (this._taskCompleteTimer) {
       clearTimeout(this._taskCompleteTimer);
     }
@@ -725,9 +731,18 @@ export class PTYSession extends EventEmitter {
       this._taskCompleteTimer = null;
       this._taskCompletePending = false;
 
-      // Re-check: still busy and ready indicator still present?
-      if (this._status !== 'busy') return;
-      if (!this.adapter.detectReady(this.outputBuffer)) return;
+      const signal = this.isTaskCompleteSignal(this.outputBuffer);
+      this.traceTaskCompletion('debounce_fire', { signal });
+
+      // Re-check: still busy and task-complete signal still present?
+      if (this._status !== 'busy') {
+        this.traceTaskCompletion('debounce_reject_status', { signal });
+        return;
+      }
+      if (!signal) {
+        this.traceTaskCompletion('debounce_reject_signal', { signal });
+        return;
+      }
 
       this._status = 'ready';
       this._lastBlockingPromptHash = null;
@@ -735,8 +750,71 @@ export class PTYSession extends EventEmitter {
       this.clearStallTimer();
       this.emit('status_changed', 'ready');
       this.emit('task_complete');
+      this.traceTaskCompletion('transition_ready', { signal: true });
       this.logger.info({ sessionId: this.id }, 'Task complete — agent returned to idle prompt');
     }, PTYSession.TASK_COMPLETE_DEBOUNCE_MS);
+  }
+
+  /**
+   * Adapter-level task completion check with compatibility fallback.
+   * Prefer detectTaskComplete() because detectReady() may be broad for TUIs.
+   */
+  private isTaskCompleteSignal(output: string): boolean {
+    if (this.adapter.detectTaskComplete) {
+      return this.adapter.detectTaskComplete(output);
+    }
+    return this.adapter.detectReady(output);
+  }
+
+  /**
+   * Claude-oriented task completion traces for PTY debugging.
+   * Enabled by config.traceTaskCompletion, otherwise defaults to enabled for Claude.
+   */
+  private traceTaskCompletion(
+    event: string,
+    ctx: Partial<{
+      signal: boolean;
+      wasPending: boolean;
+      debounceMs: number;
+    }> = {},
+  ): void {
+    if (!this.shouldTraceTaskCompletion()) return;
+
+    const output = this.outputBuffer;
+    const detectTaskComplete = this.adapter.detectTaskComplete
+      ? this.adapter.detectTaskComplete(output)
+      : undefined;
+    const detectReady = this.adapter.detectReady(output);
+    const detectLoading = this.adapter.detectLoading
+      ? this.adapter.detectLoading(output)
+      : undefined;
+    const normalizedTail = this.stripAnsiForStall(output.slice(-280));
+
+    this.logger.debug(
+      {
+        sessionId: this.id,
+        adapterType: this.adapter.adapterType,
+        event,
+        status: this._status,
+        taskCompletePending: this._taskCompletePending,
+        signal: ctx.signal,
+        wasPending: ctx.wasPending,
+        debounceMs: ctx.debounceMs,
+        detectTaskComplete,
+        detectReady,
+        detectLoading,
+        tailHash: this.simpleHash(normalizedTail),
+        tailSnippet: normalizedTail.slice(-140),
+      },
+      'Task completion trace'
+    );
+  }
+
+  private shouldTraceTaskCompletion(): boolean {
+    if (typeof this.config.traceTaskCompletion === 'boolean') {
+      return this.config.traceTaskCompletion;
+    }
+    return this.adapter.adapterType === 'claude';
   }
 
   /**
@@ -938,12 +1016,14 @@ export class PTYSession extends EventEmitter {
       return;
     }
 
-    // Task completion detection — when busy and the agent returns to its idle prompt.
+    // Task completion detection — when busy and the agent returns to idle.
     // Uses a settle pattern: once triggered, the debounce timer resets on each
     // new data chunk instead of being cancelled. The callback re-verifies
-    // detectReady() before transitioning, so stale triggers are safe.
+    // the task-complete signal before transitioning, so stale triggers are safe.
     if (this._status === 'busy') {
-      if (this._taskCompletePending || this.adapter.detectReady(this.outputBuffer)) {
+      const signal = this.isTaskCompleteSignal(this.outputBuffer);
+      if (this._taskCompletePending || signal) {
+        this.traceTaskCompletion('busy_signal', { signal });
         this.scheduleTaskComplete();
       }
       // No else/cancel — timer self-validates on fire

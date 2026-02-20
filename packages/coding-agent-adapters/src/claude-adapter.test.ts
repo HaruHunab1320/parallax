@@ -272,8 +272,8 @@ describe('ClaudeAdapter', () => {
       expect(adapter.detectReady('claude> ')).toBe(true);
     });
 
-    it('should detect ❯ prompt (v2.1+)', () => {
-      expect(adapter.detectReady('❯ ')).toBe(true);
+    it('should NOT detect bare ❯ prompt (too ambiguous during TUI redraw)', () => {
+      expect(adapter.detectReady('❯ ')).toBe(false);
     });
 
     it('should NOT detect bare > prompt (too broad)', () => {
@@ -299,6 +299,10 @@ describe('ClaudeAdapter', () => {
 
     it('should return false for loading output', () => {
       expect(adapter.detectReady('Loading...')).toBe(false);
+    });
+
+    it('should return false for active spinner output', () => {
+      expect(adapter.detectReady('• Working (12s • esc to interrupt)')).toBe(false);
     });
   });
 
