@@ -6,9 +6,9 @@
 
 import { Router, Request, Response } from 'express';
 import { Logger } from 'pino';
-import { WorkspaceService } from './workspace-service';
+import { WorkspaceService } from 'git-workspace-service';
+import type { WorkspaceConfig, WorkspaceFinalization } from 'git-workspace-service';
 import { CredentialService } from './credential-service';
-import { WorkspaceConfig, WorkspaceFinalization } from './types';
 
 export interface WorkspaceApiConfig {
   workspaceService: WorkspaceService;

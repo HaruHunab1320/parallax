@@ -37,7 +37,7 @@ class SummaryAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(task: string, data?: any): Promise<{
+  async analyze(_task: string, data?: any): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;

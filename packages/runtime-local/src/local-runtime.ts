@@ -2,6 +2,7 @@
  * Local Runtime Provider
  *
  * RuntimeProvider implementation for local PTY-based agent sessions.
+ * Delegates to pty-manager for PTY management and coding-agent-adapters for CLI adapters.
  */
 
 import {
@@ -11,17 +12,22 @@ import {
   AgentMessage,
   AgentMetrics,
   AgentFilter,
+  AgentStatus,
   StopOptions,
   SendOptions,
   LogOptions,
-  AdapterRegistry,
 } from '@parallax/runtime-interface';
+import {
+  PTYManager,
+  type SessionHandle,
+  type SessionMessage,
+  type PTYManagerConfig,
+  type BlockingPromptInfo,
+} from 'pty-manager';
 import { Logger } from 'pino';
-import { PTYManager } from './pty/pty-manager';
-import { defaultRegistry } from './adapters';
+import { registerAllAdapters } from './adapters';
 
 export interface LocalRuntimeOptions {
-  adapters?: AdapterRegistry;
   maxAgents?: number;
 }
 
@@ -32,6 +38,7 @@ export class LocalRuntime extends BaseRuntimeProvider {
   private manager: PTYManager;
   private initialized = false;
   private maxAgents: number;
+  private agentConfigs: Map<string, AgentConfig> = new Map();
 
   constructor(
     private logger: Logger,
@@ -39,45 +46,126 @@ export class LocalRuntime extends BaseRuntimeProvider {
   ) {
     super();
 
-    const adapters = options.adapters || defaultRegistry;
     this.maxAgents = options.maxAgents || 10;
-    this.manager = new PTYManager(adapters, logger);
+
+    const ptyConfig: PTYManagerConfig = {
+      logger: this.createPtyLogger(),
+      maxLogLines: 1000,
+    };
+
+    this.manager = new PTYManager(ptyConfig);
+
+    // Register all coding-agent-adapters + EchoAdapter
+    registerAllAdapters(this.manager);
 
     // Forward events from manager
     this.setupEventForwarding();
   }
 
+  /**
+   * Adapter for pino Logger → pty-manager Logger interface
+   */
+  private createPtyLogger() {
+    return {
+      debug: (arg1: unknown, arg2?: unknown) => {
+        if (typeof arg1 === 'string') {
+          this.logger.debug(arg1);
+        } else {
+          this.logger.debug(arg1 as object, arg2 as string);
+        }
+      },
+      info: (arg1: unknown, arg2?: unknown) => {
+        if (typeof arg1 === 'string') {
+          this.logger.info(arg1);
+        } else {
+          this.logger.info(arg1 as object, arg2 as string);
+        }
+      },
+      warn: (arg1: unknown, arg2?: unknown) => {
+        if (typeof arg1 === 'string') {
+          this.logger.warn(arg1);
+        } else {
+          this.logger.warn(arg1 as object, arg2 as string);
+        }
+      },
+      error: (arg1: unknown, arg2?: unknown) => {
+        if (typeof arg1 === 'string') {
+          this.logger.error(arg1);
+        } else {
+          this.logger.error(arg1 as object, arg2 as string);
+        }
+      },
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Type Conversion (runtime-interface ↔ pty-manager)
+  // ─────────────────────────────────────────────────────────────
+
+  private toAgentHandle(handle: SessionHandle): AgentHandle {
+    const config = this.agentConfigs.get(handle.id);
+    return {
+      id: handle.id,
+      name: handle.name,
+      type: (config?.type ?? handle.type) as AgentHandle['type'],
+      status: handle.status as AgentStatus,
+      pid: handle.pid,
+      role: config?.role,
+      capabilities: config?.capabilities ?? [],
+      startedAt: handle.startedAt,
+      lastActivityAt: handle.lastActivityAt,
+      error: handle.error,
+      exitCode: handle.exitCode,
+    };
+  }
+
+  private toAgentMessage(msg: SessionMessage): AgentMessage {
+    return {
+      id: msg.id,
+      agentId: msg.sessionId,
+      direction: msg.direction,
+      type: msg.type,
+      content: msg.content,
+      metadata: msg.metadata,
+      timestamp: msg.timestamp,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Event Forwarding (pty-manager events → runtime-interface events)
+  // ─────────────────────────────────────────────────────────────
+
   private setupEventForwarding(): void {
-    this.manager.on('agent_started', (agent) => {
-      this.emit('agent_started', agent);
+    this.manager.on('session_started', (handle: SessionHandle) => {
+      this.emit('agent_started', this.toAgentHandle(handle));
     });
 
-    this.manager.on('agent_ready', (agent) => {
-      this.emit('agent_ready', agent);
+    this.manager.on('session_ready', (handle: SessionHandle) => {
+      this.emit('agent_ready', this.toAgentHandle(handle));
     });
 
-    this.manager.on('agent_stopped', (agent, reason) => {
-      this.emit('agent_stopped', agent, reason);
+    this.manager.on('session_stopped', (handle: SessionHandle, reason: string) => {
+      this.emit('agent_stopped', this.toAgentHandle(handle), reason);
     });
 
-    this.manager.on('agent_error', (agent, error) => {
-      this.emit('agent_error', agent, error);
+    this.manager.on('session_error', (handle: SessionHandle, error: string) => {
+      this.emit('agent_error', this.toAgentHandle(handle), error);
     });
 
-    this.manager.on('login_required', (agent, instructions, url) => {
-      this.emit('login_required', agent, url);
+    this.manager.on('login_required', (handle: SessionHandle, instructions?: string, url?: string) => {
+      this.emit('login_required', this.toAgentHandle(handle), instructions, url);
     });
 
-    this.manager.on('blocking_prompt', (agent, promptInfo, autoResponded) => {
-      this.emit('blocking_prompt', agent, promptInfo, autoResponded);
+    this.manager.on('blocking_prompt', (handle: SessionHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => {
+      this.emit('blocking_prompt', this.toAgentHandle(handle), promptInfo, autoResponded);
     });
 
-    this.manager.on('message', (message) => {
-      this.emit('message', message);
+    this.manager.on('message', (msg: SessionMessage) => {
+      this.emit('message', this.toAgentMessage(msg));
     });
 
-    this.manager.on('question', (agent, question) => {
-      this.emit('question', agent, question);
+    this.manager.on('question', (handle: SessionHandle, question: string) => {
+      this.emit('question', this.toAgentHandle(handle), question);
     });
   }
 
@@ -93,18 +181,18 @@ export class LocalRuntime extends BaseRuntimeProvider {
     this.logger.info('Initializing local runtime');
 
     // Validate that adapters have their CLIs installed
-    const adapters = defaultRegistry.all();
+    const adapters = this.manager.adapters.all();
     for (const adapter of adapters) {
       if (adapter.validateInstallation) {
         const result = await adapter.validateInstallation();
         if (result.installed) {
           this.logger.info(
-            { adapter: adapter.agentType, version: result.version },
+            { adapter: adapter.adapterType, version: result.version },
             'CLI adapter validated'
           );
         } else {
           this.logger.warn(
-            { adapter: adapter.agentType, error: result.error },
+            { adapter: adapter.adapterType, error: result.error },
             'CLI not installed or not accessible'
           );
         }
@@ -122,6 +210,7 @@ export class LocalRuntime extends BaseRuntimeProvider {
       await this.manager.shutdown();
     }
 
+    this.agentConfigs.clear();
     this.initialized = false;
     this.logger.info('Local runtime shut down');
   }
@@ -150,28 +239,71 @@ export class LocalRuntime extends BaseRuntimeProvider {
     }
 
     // Check agent limit
-    const currentAgents = await this.manager.list();
+    const currentAgents = this.manager.list();
     if (currentAgents.length >= this.maxAgents) {
       throw new Error(`Maximum agent limit reached (${this.maxAgents})`);
     }
 
-    return this.manager.spawn(config);
+    // Store config for reverse lookup in toAgentHandle
+    const id = config.id ?? `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    this.agentConfigs.set(id, { ...config, id });
+
+    // Convert AgentConfig → SpawnConfig for pty-manager
+    const spawnConfig = {
+      id,
+      name: config.name,
+      type: config.type,
+      workdir: config.workdir,
+      env: config.env,
+    };
+
+    const handle = await this.manager.spawn(spawnConfig);
+    return this.toAgentHandle(handle);
   }
 
   async stop(agentId: string, options?: StopOptions): Promise<void> {
     await this.manager.stop(agentId, options);
+    this.agentConfigs.delete(agentId);
   }
 
   async restart(agentId: string): Promise<AgentHandle> {
-    return this.manager.restart(agentId);
+    const config = this.agentConfigs.get(agentId);
+    if (!config) {
+      throw new Error(`Agent not found: ${agentId}`);
+    }
+
+    await this.stop(agentId, { timeout: 5000 });
+
+    // Respawn with a new ID
+    const newConfig = { ...config, id: undefined };
+    return this.spawn(newConfig);
   }
 
   async get(agentId: string): Promise<AgentHandle | null> {
-    return this.manager.get(agentId);
+    const handle = this.manager.get(agentId);
+    return handle ? this.toAgentHandle(handle) : null;
   }
 
   async list(filter?: AgentFilter): Promise<AgentHandle[]> {
-    return this.manager.list(filter);
+    const sessionFilter = filter ? {
+      status: filter.status,
+      type: filter.type,
+    } : undefined;
+
+    const handles = this.manager.list(sessionFilter);
+    let agents = handles.map(h => this.toAgentHandle(h));
+
+    // Apply agent-specific filters not supported by pty-manager
+    if (filter?.role) {
+      agents = agents.filter(a => a.role === filter.role);
+    }
+    if (filter?.capabilities) {
+      agents = agents.filter(a =>
+        filter.capabilities!.every(c => a.capabilities.includes(c))
+      );
+    }
+
+    return agents;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -183,7 +315,8 @@ export class LocalRuntime extends BaseRuntimeProvider {
     message: string,
     options?: SendOptions
   ): Promise<AgentMessage | void> {
-    const msg = await this.manager.send(agentId, message);
+    const sessionMsg = this.manager.send(agentId, message);
+    const msg = this.toAgentMessage(sessionMsg);
 
     if (options?.expectResponse) {
       // Wait for response with timeout
@@ -195,11 +328,11 @@ export class LocalRuntime extends BaseRuntimeProvider {
           reject(new Error(`Response timeout after ${timeout}ms`));
         }, timeout);
 
-        const handler = (response: AgentMessage) => {
-          if (response.agentId === agentId && response.direction === 'outbound') {
+        const handler = (response: SessionMessage) => {
+          if (response.sessionId === agentId && response.direction === 'outbound') {
             clearTimeout(timer);
             this.manager.off('message', handler);
-            resolve(response);
+            resolve(this.toAgentMessage(response));
           }
         };
 
@@ -216,19 +349,20 @@ export class LocalRuntime extends BaseRuntimeProvider {
     let resolver: ((value: IteratorResult<AgentMessage>) => void) | null = null;
     let done = false;
 
-    const handler = (message: AgentMessage) => {
-      if (message.agentId === agentId) {
+    const handler = (msg: SessionMessage) => {
+      if (msg.sessionId === agentId) {
+        const agentMsg = this.toAgentMessage(msg);
         if (resolver) {
-          resolver({ value: message, done: false });
+          resolver({ value: agentMsg, done: false });
           resolver = null;
         } else {
-          queue.push(message);
+          queue.push(agentMsg);
         }
       }
     };
 
-    const stopHandler = (agent: AgentHandle) => {
-      if (agent.id === agentId) {
+    const stopHandler = (handle: SessionHandle) => {
+      if (handle.id === agentId) {
         done = true;
         if (resolver) {
           resolver({ value: undefined as any, done: true });
@@ -237,7 +371,7 @@ export class LocalRuntime extends BaseRuntimeProvider {
     };
 
     this.manager.on('message', handler);
-    this.manager.on('agent_stopped', stopHandler);
+    this.manager.on('session_stopped', stopHandler);
 
     try {
       while (!done) {
@@ -257,7 +391,7 @@ export class LocalRuntime extends BaseRuntimeProvider {
       }
     } finally {
       this.manager.off('message', handler);
-      this.manager.off('agent_stopped', stopHandler);
+      this.manager.off('session_stopped', stopHandler);
     }
   }
 
@@ -267,16 +401,16 @@ export class LocalRuntime extends BaseRuntimeProvider {
 
   async *logs(agentId: string, options?: LogOptions): AsyncIterable<string> {
     yield* this.manager.logs(agentId, options);
-
-    // If follow mode, subscribe to new output
-    if (options?.follow) {
-      // Would need to implement streaming from PTY output
-      // For now, just yield existing logs
-    }
   }
 
   async metrics(agentId: string): Promise<AgentMetrics | null> {
-    return this.manager.metrics(agentId);
+    const ptyMetrics = this.manager.metrics(agentId);
+    if (!ptyMetrics) return null;
+
+    return {
+      uptime: ptyMetrics.uptime,
+      messageCount: ptyMetrics.messageCount,
+    };
   }
 
   // ─────────────────────────────────────────────────────────────

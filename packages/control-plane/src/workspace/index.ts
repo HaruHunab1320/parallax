@@ -2,13 +2,48 @@
  * Workspace Module
  *
  * Git workspace provisioning and credential management for agent tasks.
+ * Types, utilities, and core WorkspaceService are provided by git-workspace-service.
+ * Control-plane-specific services (Prisma-backed credentials, GitHub webhooks, providers) are local.
  */
 
-export * from './types';
-export * from './branch-naming';
-export * from './credential-service';
-export * from './workspace-service';
-export * from './workspace-api';
-export * from './github-webhooks';
+// Re-export types and utilities from git-workspace-service
+export type {
+  Workspace,
+  WorkspaceConfig,
+  WorkspaceFinalization,
+  WorkspaceServiceConfig,
+  BranchConfig,
+  BranchInfo,
+  BranchStrategy,
+  PullRequestInfo,
+  GitProvider,
+  CredentialType,
+  GitCredential,
+  GitCredentialRequest,
+  CredentialGrant,
+  UserProvidedCredentials,
+  GitHubAppConfig,
+  GitHubAppInstallation,
+  GitProviderAdapter,
+} from 'git-workspace-service';
+
+export {
+  WorkspaceService,
+  generateBranchName,
+  parseBranchName,
+  isManagedBranch,
+  filterBranchesByExecution,
+  createBranchInfo,
+  generateSlug,
+  DEFAULT_BRANCH_PREFIX,
+  configureCredentialHelper,
+  cleanupCredentialFiles,
+  getGitCredentialConfig,
+} from 'git-workspace-service';
+
+// Control-plane-specific exports
+export { CredentialService } from './credential-service';
+export type { CredentialServiceConfig } from './credential-service';
+export { createWorkspaceRouter } from './workspace-api';
+export { createGitHubWebhookRouter } from './github-webhooks';
 export * from './providers';
-export * from './git-credential-helper';

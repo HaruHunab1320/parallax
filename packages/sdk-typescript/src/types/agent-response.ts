@@ -17,7 +17,7 @@ export interface AgentResponse<T = any> {
   /**
    * Agent identifier
    */
-  agent: string;
+  agent?: string;
 
   /**
    * Optional reasoning explanation

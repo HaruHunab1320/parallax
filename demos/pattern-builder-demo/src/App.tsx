@@ -17,7 +17,7 @@ function App() {
     <div style={{ width: '100%', height: '100vh' }}>
       <PatternBuilder
         showYamlPreview
-        onSave={(yaml) => {
+        onSave={(yaml: string) => {
           setSavedYaml(yaml);
           console.log('Pattern saved:', yaml);
         }}

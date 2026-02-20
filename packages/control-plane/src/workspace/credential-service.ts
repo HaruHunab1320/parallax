@@ -7,7 +7,7 @@
 
 import { Logger } from 'pino';
 import { randomUUID } from 'crypto';
-import {
+import type {
   GitCredential,
   GitCredentialRequest,
   CredentialGrant,
@@ -16,7 +16,9 @@ import {
   GitHubAppConfig,
   GitHubAppInstallation,
   UserProvidedCredentials,
-} from './types';
+  GitProviderAdapter,
+  PullRequestInfo,
+} from 'git-workspace-service';
 import { GitHubProvider, GitHubProviderConfig } from './providers/github-provider';
 import { CredentialGrantRepository } from '../db/repositories/credential-grant.repository';
 
@@ -92,6 +94,78 @@ export class CredentialService {
    */
   getGitHubProvider(): GitHubProvider | undefined {
     return this.githubProvider;
+  }
+
+  /**
+   * Get a provider adapter by name.
+   * Bridge for git-workspace-service's WorkspaceService compatibility.
+   */
+  getProvider(name: GitProvider): GitProviderAdapter | undefined {
+    if (name === 'github' && this.githubProvider) {
+      const ghProvider = this.githubProvider;
+      const logger = this.logger;
+      return {
+        name: 'github' as const,
+        getCredentials: async (request: GitCredentialRequest) => {
+          const repoInfo = this.parseGitHubRepo(request.repo);
+          if (!repoInfo) {
+            throw new Error(`Invalid GitHub repository: ${request.repo}`);
+          }
+          return ghProvider.getCredentials(
+            repoInfo.owner,
+            repoInfo.repo,
+            request.access,
+            request.ttlSeconds || 3600,
+          );
+        },
+        revokeCredential: async (_credentialId: string) => {
+          // GitHub App tokens expire naturally; no explicit revocation needed
+        },
+        createPullRequest: async (options: {
+          repo: string;
+          sourceBranch: string;
+          targetBranch: string;
+          title: string;
+          body: string;
+          draft?: boolean;
+          labels?: string[];
+          reviewers?: string[];
+          credential: GitCredential;
+        }): Promise<PullRequestInfo> => {
+          const repoInfo = this.parseGitHubRepo(options.repo);
+          if (!repoInfo) {
+            throw new Error(`Invalid GitHub repository: ${options.repo}`);
+          }
+          const pr = await ghProvider.createPullRequest(
+            repoInfo.owner,
+            repoInfo.repo,
+            {
+              title: options.title,
+              body: options.body,
+              head: options.sourceBranch,
+              base: options.targetBranch,
+              draft: options.draft,
+            },
+          );
+          if (options.labels?.length) {
+            await ghProvider.addLabels(repoInfo.owner, repoInfo.repo, pr.number, options.labels);
+          }
+          if (options.reviewers?.length) {
+            await ghProvider.requestReviewers(repoInfo.owner, repoInfo.repo, pr.number, options.reviewers);
+          }
+          return pr;
+        },
+        branchExists: async (_repo: string, _branch: string, _credential: GitCredential) => {
+          // Not used in current control-plane workspace flow
+          return false;
+        },
+        getDefaultBranch: async (_repo: string, _credential: GitCredential) => {
+          // Not used in current control-plane workspace flow
+          return 'main';
+        },
+      };
+    }
+    return undefined;
   }
 
   /**
@@ -443,7 +517,16 @@ export class CredentialService {
     const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
     // Map user credential type to our CredentialType
-    const credentialType: CredentialType = userCreds.type === 'pat' ? 'pat' : 'oauth';
+    let credentialType: CredentialType;
+    let token: string;
+
+    if (userCreds.type === 'ssh') {
+      credentialType = 'ssh_key';
+      token = ''; // SSH credentials use system agent, no token needed
+    } else {
+      credentialType = userCreds.type === 'pat' ? 'pat' : 'oauth';
+      token = userCreds.token;
+    }
 
     // For user-provided credentials, we assume full repo access based on what they provided
     // The actual permissions are determined by the token's scope at the provider level
@@ -454,7 +537,7 @@ export class CredentialService {
     return {
       id: randomUUID(),
       type: credentialType,
-      token: userCreds.token,
+      token,
       repo: request.repo,
       permissions,
       expiresAt,

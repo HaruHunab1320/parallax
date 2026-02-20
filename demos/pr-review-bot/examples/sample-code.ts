@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Sample code with intentional issues for the PR Review Bot to find
 
 import { db } from './database';

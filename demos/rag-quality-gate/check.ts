@@ -83,7 +83,7 @@ async function submitCheck(ragResponse: RAGResponse): Promise<{ executionId: str
     throw new Error(`Failed to submit check: ${error}`);
   }
 
-  const execution = await response.json();
+  const execution: any = await response.json();
   return { executionId: execution.id };
 }
 
@@ -98,7 +98,7 @@ async function pollForResult(executionId: string, maxWaitMs = 60000): Promise<Qu
       throw new Error(`Failed to get execution status: ${response.statusText}`);
     }
 
-    const execution = await response.json();
+    const execution: any = await response.json();
 
     if (execution.status === 'completed') {
       // Unwrap ConfidenceValue if present

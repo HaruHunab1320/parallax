@@ -5,17 +5,17 @@
  * without requiring actual AI CLI tools.
  */
 
-import {
+import type {
   CLIAdapter,
-  AgentConfig,
+  SpawnConfig,
   ParsedOutput,
   LoginDetection,
   BlockingPromptDetection,
   AutoResponseRule,
-} from '@parallax/runtime-interface';
+} from 'pty-manager';
 
 export class EchoAdapter implements CLIAdapter {
-  readonly agentType = 'echo';
+  readonly adapterType = 'echo';
   readonly displayName = 'Echo (Test)';
 
   // No auto-response rules for echo adapter - it's for testing
@@ -26,11 +26,11 @@ export class EchoAdapter implements CLIAdapter {
     return '/bin/bash';
   }
 
-  getArgs(_config: AgentConfig): string[] {
+  getArgs(_config: SpawnConfig): string[] {
     return [];
   }
 
-  getEnv(_config: AgentConfig): Record<string, string> {
+  getEnv(_config: SpawnConfig): Record<string, string> {
     return {
       PS1: 'echo> ',
     };

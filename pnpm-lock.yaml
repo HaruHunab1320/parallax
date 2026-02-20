@@ -797,6 +797,9 @@ importers:
       express:
         specifier: ^4.21.2
         version: 4.22.1
+      git-workspace-service:
+        specifier: workspace:*
+        version: link:../git-workspace-service
       ioredis:
         specifier: ^5.4.1
         version: 5.9.2
@@ -995,10 +998,10 @@ importers:
         specifier: ^1.0.0
         version: 1.26.0(zod@3.25.76)
       coding-agent-adapters:
-        specifier: workspace:*
+        specifier: workspace:^0.7.2
         version: link:../coding-agent-adapters
       git-workspace-service:
-        specifier: workspace:*
+        specifier: workspace:^0.4.0
         version: link:../git-workspace-service
       jsonwebtoken:
         specifier: ^9.0.0
@@ -1010,7 +1013,7 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       pty-manager:
-        specifier: workspace:*
+        specifier: workspace:^1.6.6
         version: link:../pty-manager
       uuid:
         specifier: ^11.0.5
@@ -1329,21 +1332,21 @@ importers:
       '@parallax/runtime-interface':
         specifier: workspace:*
         version: link:../runtime-interface
+      coding-agent-adapters:
+        specifier: workspace:*
+        version: link:../coding-agent-adapters
       express:
         specifier: ^4.21.2
         version: 4.22.1
-      node-pty:
-        specifier: ^1.0.0
-        version: 1.1.0
       pino:
         specifier: ^9.5.0
         version: 9.7.0
       pino-pretty:
         specifier: ^13.0.0
         version: 13.0.0
-      uuid:
-        specifier: ^11.0.5
-        version: 11.1.0
+      pty-manager:
+        specifier: workspace:*
+        version: link:../pty-manager
       ws:
         specifier: ^8.16.0
         version: 8.18.3
@@ -1354,9 +1357,6 @@ importers:
       '@types/node':
         specifier: ^22.14.1
         version: 22.16.5
-      '@types/uuid':
-        specifier: ^10.0.0
-        version: 10.0.0
       '@types/ws':
         specifier: ^8.5.10
         version: 8.18.1

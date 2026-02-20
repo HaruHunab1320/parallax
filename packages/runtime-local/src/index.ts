@@ -2,6 +2,7 @@
  * Parallax Local Runtime
  *
  * PTY-based runtime for local CLI agent sessions.
+ * Delegates to pty-manager and coding-agent-adapters for PTY/adapter management.
  */
 
 // Main runtime
@@ -10,21 +11,20 @@ export { LocalRuntime, LocalRuntimeOptions } from './local-runtime';
 // Server
 export { RuntimeServer, RuntimeServerOptions } from './server';
 
-// PTY management
-export { PTYSession } from './pty/pty-session';
-export { PTYManager } from './pty/pty-manager';
-
-// Adapters
+// Adapters (local EchoAdapter + re-exports from coding-agent-adapters)
 export {
-  BaseCLIAdapter,
+  EchoAdapter,
   ClaudeAdapter,
-  CodexAdapter,
   GeminiAdapter,
-  createDefaultRegistry,
-  defaultRegistry,
+  CodexAdapter,
+  AiderAdapter,
+  registerAllAdapters,
+  createAllAdapters,
+  createAdapter,
+  checkAdapters,
 } from './adapters';
 
-// Re-export interface types for convenience
+// Re-export runtime-interface types for convenience
 export {
   AgentConfig,
   AgentHandle,
@@ -32,5 +32,4 @@ export {
   AgentStatus,
   AgentType,
   RuntimeProvider,
-  CLIAdapter,
 } from '@parallax/runtime-interface';

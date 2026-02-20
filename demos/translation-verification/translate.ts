@@ -98,7 +98,7 @@ async function submitTranslation(request: TranslationRequest): Promise<{ executi
     throw new Error(`Failed to submit translation: ${error}`);
   }
 
-  const execution = await response.json();
+  const execution: any = await response.json();
   return { executionId: execution.id };
 }
 
@@ -113,7 +113,7 @@ async function pollForResult(executionId: string, maxWaitMs = 90000): Promise<Tr
       throw new Error(`Failed to get execution status: ${response.statusText}`);
     }
 
-    const execution = await response.json();
+    const execution: any = await response.json();
 
     if (execution.status === 'completed') {
       // Unwrap ConfidenceValue if present

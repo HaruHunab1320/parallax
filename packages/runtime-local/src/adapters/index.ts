@@ -1,36 +1,32 @@
 /**
  * CLI Adapters
  *
- * Export all CLI adapters and provide a pre-configured registry.
+ * Re-exports adapters from coding-agent-adapters and provides the local EchoAdapter.
  */
 
-export { BaseCLIAdapter } from './base-adapter';
-export { ClaudeAdapter } from './claude-adapter';
-export { CodexAdapter } from './codex-adapter';
-export { GeminiAdapter } from './gemini-adapter';
 export { EchoAdapter } from './echo-adapter';
 
-import { AdapterRegistry } from '@parallax/runtime-interface';
-import { ClaudeAdapter } from './claude-adapter';
-import { CodexAdapter } from './codex-adapter';
-import { GeminiAdapter } from './gemini-adapter';
+// Re-export from coding-agent-adapters for convenience
+export {
+  ClaudeAdapter,
+  GeminiAdapter,
+  CodexAdapter,
+  AiderAdapter,
+  createAllAdapters,
+  createAdapter,
+  checkAdapters,
+} from 'coding-agent-adapters';
+
+import type { PTYManager } from 'pty-manager';
+import { createAllAdapters } from 'coding-agent-adapters';
 import { EchoAdapter } from './echo-adapter';
 
 /**
- * Create a registry with all built-in adapters
+ * Register all built-in adapters (coding-agent-adapters + EchoAdapter) on a PTYManager.
  */
-export function createDefaultRegistry(): AdapterRegistry {
-  const registry = new AdapterRegistry();
-
-  registry.register(new ClaudeAdapter());
-  registry.register(new CodexAdapter());
-  registry.register(new GeminiAdapter());
-  registry.register(new EchoAdapter());
-
-  return registry;
+export function registerAllAdapters(manager: PTYManager): void {
+  for (const adapter of createAllAdapters()) {
+    manager.registerAdapter(adapter);
+  }
+  manager.registerAdapter(new EchoAdapter());
 }
-
-/**
- * Default adapter registry instance
- */
-export const defaultRegistry = createDefaultRegistry();

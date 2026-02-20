@@ -7,12 +7,12 @@
 import { Octokit } from '@octokit/rest';
 import { createAppAuth } from '@octokit/auth-app';
 import { Logger } from 'pino';
-import {
+import type {
   GitCredential,
   GitHubAppConfig,
   GitHubAppInstallation,
   PullRequestInfo,
-} from '../types';
+} from 'git-workspace-service';
 import { randomUUID } from 'crypto';
 
 export interface GitHubProviderConfig {

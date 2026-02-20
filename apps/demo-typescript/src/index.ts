@@ -117,7 +117,7 @@ async function runDemo() {
     // Keep running for a bit
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-  } catch (error) {
+  } catch (error: any) {
     console.log('⚠️  Failed to start gRPC server');
     console.log(`   Error: ${error.message}\n`);
   }
@@ -128,7 +128,7 @@ async function runDemo() {
   try {
     // Test invalid analysis
     await agent.analyze('invalid-task', {});
-  } catch (error) {
+  } catch (error: any) {
     console.log('✅ Error handling works:', error.message);
   }
 

@@ -88,7 +88,7 @@ async function main() {
     if (!healthRes.ok) {
       throw new Error(`Health check failed: ${healthRes.status}`);
     }
-    const health = await healthRes.json();
+    const health: any = await healthRes.json();
     console.log(`   ✓ Control plane healthy (${health.status})`);
   } catch (error) {
     console.error(`   ✗ Control plane not reachable at ${CONTROL_PLANE_URL}`);
@@ -124,11 +124,11 @@ async function main() {
     });
 
     if (!res.ok) {
-      const error = await res.json();
+      const error: any = await res.json();
       throw new Error(error.error || `Request failed: ${res.status}`);
     }
 
-    execution = await res.json();
+    execution = await res.json() as ExecutionResponse;
     console.log(`   ✓ Execution started: ${execution.id}`);
   } catch (error) {
     console.error(`   ✗ Failed to start execution: ${error}`);
@@ -158,7 +158,7 @@ async function pollExecution(executionId: string): Promise<void> {
         break;
       }
 
-      const result: ExecutionResult = await res.json();
+      const result = await res.json() as ExecutionResult;
 
       // Print status changes
       if (result.status !== lastStatus) {
@@ -170,7 +170,7 @@ async function pollExecution(executionId: string): Promise<void> {
       // Fetch and print new events
       const eventsRes = await fetch(`${CONTROL_PLANE_URL}/api/executions/${executionId}/events`);
       if (eventsRes.ok) {
-        const { events } = await eventsRes.json();
+        const { events }: any = await eventsRes.json();
         if (events.length > lastEventCount) {
           for (const event of events.slice(lastEventCount)) {
             printEvent(event);

@@ -452,16 +452,12 @@ export async function createServer(): Promise<express.Application> {
       );
       logger.info('Credential service initialized (with database persistence)');
 
-      // Initialize workspace service
-      workspaceService = new WorkspaceService(
-        {
-          workspacesDir,
-          autoCleanup: process.env.PARALLAX_WORKSPACE_AUTO_CLEANUP !== 'false',
-          workspaceTtlSeconds: parseInt(process.env.PARALLAX_WORKSPACE_TTL || '3600'),
-        },
-        credentialService,
-        logger
-      );
+      // Initialize workspace service (git-workspace-service)
+      workspaceService = new WorkspaceService({
+        config: { baseDir: workspacesDir, branchPrefix: 'parallax' },
+        credentialService: credentialService as any,
+        logger,
+      });
 
       await workspaceService.initialize();
       logger.info({ workspacesDir }, 'Workspace service initialized');

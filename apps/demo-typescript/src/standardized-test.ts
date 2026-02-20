@@ -3,17 +3,17 @@
  * All SDKs must pass these exact same tests
  */
 
-import { ParallaxAgent, ParallaxClient } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallax/sdk-typescript';
 
 // Test agent implementation
 class TestAgent extends ParallaxAgent {
   constructor() {
-    super({
-      id: 'test-agent-ts',
-      name: 'Test Agent (TypeScript)',
-      capabilities: ['analysis', 'validation'],
-      expertise: 0.85
-    });
+    super(
+      'test-agent-ts',
+      'Test Agent (TypeScript)',
+      ['analysis', 'validation'],
+      { expertise: 0.85 }
+    );
   }
 
   async analyze(task: string, input: any) {
@@ -78,7 +78,7 @@ async function runStandardizedTests() {
       agent.capabilities.includes('validation');
     results['Agent Creation'] = passed;
     console.log(`Test 1: Agent Creation............... ${passed ? 'PASS' : 'FAIL'}`);
-  } catch (e) {
+  } catch (e: any) {
     results['Agent Creation'] = false;
     console.log(`Test 1: Agent Creation............... FAIL (${e.message})`);
   }
@@ -92,10 +92,10 @@ async function runStandardizedTests() {
         type: 'text'
       }
     });
-    const passed = response.confidence >= 0.7 && response.value;
+    const passed = response.confidence >= 0.7 && !!response.value;
     results['Simple Analysis'] = passed;
     console.log(`Test 2: Simple Analysis.............. ${passed ? 'PASS' : 'FAIL'}`);
-  } catch (e) {
+  } catch (e: any) {
     results['Simple Analysis'] = false;
     console.log(`Test 2: Simple Analysis.............. FAIL (${e.message})`);
   }
@@ -115,7 +115,7 @@ async function runStandardizedTests() {
       response.value.details.length === 2;
     results['Validation'] = passed;
     console.log(`Test 3: Validation................... ${passed ? 'PASS' : 'FAIL'}`);
-  } catch (e) {
+  } catch (e: any) {
     results['Validation'] = false;
     console.log(`Test 3: Validation................... FAIL (${e.message})`);
   }
@@ -126,34 +126,14 @@ async function runStandardizedTests() {
     await agent.analyze('unknown-task', {});
     results['Error Handling'] = false;
     console.log('Test 4: Error Handling............... FAIL (No error thrown)');
-  } catch (e) {
+  } catch (e: any) {
     const passed = e.message.toLowerCase().includes('unknown task');
     results['Error Handling'] = passed;
     console.log(`Test 4: Error Handling............... ${passed ? 'PASS' : 'FAIL'}`);
   }
 
-  // Test 5: Client API (optional)
-  try {
-    const client = new ParallaxClient({ baseUrl: 'http://localhost:8080' });
-    
-    // 5.1 Health Check
-    const health = await client.health();
-    
-    // 5.2 List Patterns
-    const patterns = await client.listPatterns();
-    
-    // 5.3 Pattern Execution
-    const execution = await client.executePattern('SimpleConsensus', {
-      task: 'SDK test',
-      data: { test: true }
-    });
-    
-    const passed = health.status === 'healthy' && patterns.length > 0 && execution.id;
-    results['Client API'] = passed;
-    console.log(`Test 5: Client API (optional)........ ${passed ? 'PASS' : 'FAIL'}`);
-  } catch (e) {
-    console.log('Test 5: Client API (optional)........ SKIP (Control plane not running)');
-  }
+  // Test 5: Client API (optional) - skipped, ParallaxClient has been removed from the SDK
+  console.log('Test 5: Client API (optional)........ SKIP (ParallaxClient not available)');
 
   // Summary
   const passed = Object.values(results).filter(r => r).length;

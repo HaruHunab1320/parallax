@@ -73,7 +73,7 @@ async function submitVariantsTest(query: string): Promise<{ executionId: string 
     throw new Error(`Failed to submit test: ${error}`);
   }
 
-  const execution = await response.json();
+  const execution: any = await response.json();
   return { executionId: execution.id };
 }
 
@@ -152,7 +152,7 @@ async function pollForResult(executionId: string, maxWaitMs = 120000): Promise<T
       throw new Error(`Failed to get execution status: ${response.statusText}`);
     }
 
-    const execution = await response.json();
+    const execution: any = await response.json();
 
     if (execution.status === 'completed') {
       const result = execution.result?.value || execution.result;

@@ -84,7 +84,7 @@ async function submitAnalysis(document: string, title: string): Promise<{ execut
     throw new Error(`Failed to submit analysis: ${error}`);
   }
 
-  const execution = await response.json();
+  const execution: any = await response.json();
   return { executionId: execution.id };
 }
 
@@ -99,7 +99,7 @@ async function pollForResult(executionId: string, maxWaitMs = 90000): Promise<An
       throw new Error(`Failed to get execution status: ${response.statusText}`);
     }
 
-    const execution = await response.json();
+    const execution: any = await response.json();
 
     if (execution.status === 'completed') {
       const result = execution.result?.value || execution.result;

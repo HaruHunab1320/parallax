@@ -70,7 +70,7 @@ async function runReview(code: string): Promise<ReviewResult> {
     throw new Error(`Failed to create execution: ${response.status} - ${error}`);
   }
 
-  const execution = await response.json();
+  const execution: any = await response.json();
   const executionId = execution.id;
 
   console.log(`📋 Execution started: ${executionId}`);
@@ -88,7 +88,7 @@ async function runReview(code: string): Promise<ReviewResult> {
       throw new Error(`Failed to get execution status: ${statusResponse.status}`);
     }
 
-    const status = await statusResponse.json();
+    const status: any = await statusResponse.json();
 
     if (status.status === 'completed') {
       result = status.result;
