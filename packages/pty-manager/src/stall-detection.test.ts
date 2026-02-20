@@ -1495,6 +1495,72 @@ describe('Task complete settle pattern', () => {
     expect(recentOutput).toContain('World');
   });
 
+  it('should preserve visible text when ANSI + cursor movement are present', () => {
+    const { session } = createBusySession({ timeoutMs: 3000 });
+
+    const stripAnsiForStall = (session as unknown as {
+      stripAnsiForStall: (s: string) => string;
+    }).stripAnsiForStall;
+
+    const raw =
+      '\x1b[6A\x1b[38;2;215;119;87m✻\x1b[39m ' +
+      "\x1b[38;2;255;255;255m⏺\x1b[1C\x1b[39mDone. Here's the summary:" +
+      '\r\x1b[1B❯\x1b[2C';
+
+    const stripped = stripAnsiForStall(raw);
+    expect(stripped).toContain("Done. Here's the summary:");
+    expect(stripped.trim().length).toBeGreaterThan(0);
+  });
+
+  it('should preserve visible symbols/text for classifier stripping', () => {
+    const { session } = createBusySession({ timeoutMs: 3000 });
+
+    const stripAnsiForClassifier = (session as unknown as {
+      stripAnsiForClassifier: (s: string) => string;
+    }).stripAnsiForClassifier;
+
+    const raw =
+      '\x1b[6A\x1b[38;2;215;119;87m✻\x1b[39m ' +
+      "\x1b[38;2;255;255;255m⏺\x1b[1C\x1b[39mDone. Here's the summary:" +
+      '\r\x1b[1B❯\x1b[2C';
+
+    const stripped = stripAnsiForClassifier(raw);
+    expect(stripped).toContain("Done. Here's the summary:");
+    expect(stripped).toContain('✻');
+    expect(stripped).toContain('❯');
+  });
+
+  it('should not parse-and-clear output while busy', () => {
+    const adapter = createMockAdapter();
+    adapter.parseOutput = () => ({
+      type: 'response',
+      content: 'parsed',
+      isComplete: true,
+      isQuestion: false,
+    });
+
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: vi.fn(),
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'busy';
+    internals.outputBuffer = 'Claude produced output\nDone.';
+
+    const processOutputBuffer = (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer;
+    processOutputBuffer.call(session);
+
+    expect(internals.outputBuffer).toBe('Claude produced output\nDone.');
+  });
+
   it('should transition via fast-path when TUI renders decorative content after prompt', () => {
     const adapter = createMockAdapter();
     adapter.detectReady = (buffer: string) => buffer.includes('$');

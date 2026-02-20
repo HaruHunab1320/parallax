@@ -439,8 +439,10 @@ export class PTYSession extends EventEmitter {
     // (Slicing raw first caused different cursor-positioning codes at the
     // truncation boundary to produce different stripped text each TUI redraw.)
     const stripped = this.stripAnsiForStall(this.outputBuffer).trim();
+    const visible = this.stripAnsiForClassifier(this.outputBuffer).trim();
     const tail = stripped.slice(-500);
-    const hash = this.simpleHash(tail);
+    const fallbackTail = visible.slice(-500);
+    const hash = this.simpleHash(tail || fallbackTail);
 
     if (hash === this._lastContentHash) {
       // Content unchanged (e.g., spinner animation) — don't reset the timer
@@ -535,16 +537,23 @@ export class PTYSession extends EventEmitter {
       return;
     }
 
-    // Compute recent output: last 2000 chars, ANSI-stripped
+    // Compute recent output for classifier: last 2000 chars, ANSI-stripped
+    // while preserving visible symbols/text used by TUI CLIs.
     const recentRaw = this.outputBuffer.slice(-2000);
-    const recentOutput = this.stripAnsiForStall(recentRaw);
+    const recentOutput = this.stripAnsiForClassifier(recentRaw).trim();
 
     const stallDurationMs = this._stallStartedAt
       ? Date.now() - this._stallStartedAt
       : this._stallTimeoutMs;
 
     this.logger.debug(
-      { sessionId: this.id, stallDurationMs, bufferTailLength: tail.length },
+      {
+        sessionId: this.id,
+        stallDurationMs,
+        bufferTailLength: tail.length,
+        recentOutputLength: recentOutput.length,
+        recentOutputHash: this.simpleHash(recentOutput.slice(-500)),
+      },
       'Stall detected'
     );
 
@@ -620,6 +629,34 @@ export class PTYSession extends EventEmitter {
     // Collapse multiple spaces
     result = result.replace(/ {2,}/g, ' ');
 
+    return result;
+  }
+
+  /**
+   * Less-aggressive ANSI stripping for classifier context.
+   * Preserves visible TUI symbols (e.g. ❯, ✻) and durations while removing
+   * escape/control sequences so the classifier keeps useful evidence.
+   */
+  private stripAnsiForClassifier(str: string): string {
+    let result = str.replace(/\x1b\[\d*[CDABGdEF]/g, ' ');
+    result = result.replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ');
+    result = result.replace(/\x1b\[\d*[JK]/g, ' ');
+
+    // Strip OSC and DCS payloads
+    result = result.replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '');
+    result = result.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
+
+    // Strip remaining ANSI escape sequences
+    // eslint-disable-next-line no-control-regex
+    result = result.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+
+    // Strip bare control chars except tab/newline
+    // eslint-disable-next-line no-control-regex
+    result = result.replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '');
+
+    // Normalize NBSP and collapse spaces
+    result = result.replace(/\xa0/g, ' ');
+    result = result.replace(/ {2,}/g, ' ');
     return result;
   }
 
@@ -1060,10 +1097,10 @@ export class PTYSession extends EventEmitter {
       this.emit('exit', exitDetection.code || 0);
     }
 
-    // Try to parse output into structured message
-    // Only parse once session is ready - during startup we need the buffer
-    // to accumulate so detectReady can see the full startup output
-    if (this._status !== 'starting' && this._status !== 'authenticating') {
+    // Try to parse output into structured message only when ready.
+    // Parsing clears outputBuffer; doing this while busy can starve task-complete
+    // and stall detection of evidence during heavy TUI rendering.
+    if (this._status === 'ready') {
       this.tryParseOutput();
     }
   }
