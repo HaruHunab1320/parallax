@@ -210,6 +210,7 @@ interface SpawnConfig {
   cols?: number;         // Terminal columns (default: 120)
   rows?: number;         // Terminal rows (default: 40)
   timeout?: number;      // Session timeout in ms
+  readySettleMs?: number; // Override adapter's ready settle delay
 }
 ```
 
@@ -455,6 +456,16 @@ class MyCLIAdapter extends BaseCLIAdapter {
   readonly readySettleMs = 500;
   // ...
 }
+```
+
+The settle delay can also be overridden per-spawn via `SpawnConfig.readySettleMs`, which takes precedence over the adapter default. This lets orchestrators tune the delay for varying environments (CI, remote containers, local dev) without forking adapters:
+
+```typescript
+const handle = await manager.spawn({
+  name: 'agent',
+  type: 'claude',
+  readySettleMs: 1000, // Slow CI environment — wait longer
+});
 ```
 
 ## Stall Detection & Task Completion

@@ -66,6 +66,10 @@ export interface SpawnConfig {
   /** Per-session stall timeout in ms. Overrides PTYManagerConfig.stallTimeoutMs. */
   stallTimeoutMs?: number;
 
+  /** Override adapter's readySettleMs for this session.
+   *  Ms of output silence after detectReady match before emitting session_ready. */
+  readySettleMs?: number;
+
   /** Override or disable specific adapter auto-response rules for this session.
    *  Keys are regex source strings (from rule.pattern.source).
    *  - null value disables that rule entirely

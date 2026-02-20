@@ -698,7 +698,7 @@ export class PTYSession extends EventEmitter {
     if (this._readySettleTimer) {
       clearTimeout(this._readySettleTimer);
     }
-    const settleMs = this.adapter.readySettleMs ?? 100;
+    const settleMs = this.config.readySettleMs ?? this.adapter.readySettleMs ?? 100;
     this._readySettleTimer = setTimeout(() => {
       this._readySettleTimer = null;
       this._readySettlePending = false;
