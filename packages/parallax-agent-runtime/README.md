@@ -41,6 +41,7 @@ parallax-agent-runtime
 - **Multi-Agent Coordination** - Agents can communicate and collaborate
 - **Real-time Logs** - Stream agent terminal output
 - **Smart Task Completion** - Adapter-level detection short-circuits LLM stall classifier when agents finish tasks
+- **Ready Settle Delay** - Defers input until TUI agents finish rendering, preventing swallowed keystrokes
 - **Metrics & Health** - Monitor agent resource usage
 - **Authentication** - Optional JWT/API key auth for remote access
 
@@ -56,7 +57,7 @@ parallax-agent-runtime
 | `logs` | Get agent terminal output |
 | `metrics` | Get agent resource metrics |
 | `health` | Check runtime health status |
-| `provision_workspace` | Provision a git workspace (clone repo, create branch) |
+| `provision_workspace` | Provision a git workspace (clone repo, create branch, optional custom branch name) |
 | `finalize_workspace` | Finalize a workspace (push, create PR, cleanup) |
 | `cleanup_workspace` | Clean up a provisioned workspace |
 | `get_workspace_files` | Get workspace file descriptors for an agent type (e.g. CLAUDE.md, GEMINI.md) |
@@ -137,6 +138,22 @@ Claude uses the list_presets tool → returns:
 - standard: Standard dev. Reads + web auto, writes/shell prompt.
 - permissive: File ops auto-approved, shell still prompts.
 - autonomous: Everything auto-approved. Use with sandbox.
+```
+
+### Provision with a Custom Branch Name
+
+```
+User: "Set up a workspace with a specific branch name"
+
+Claude uses the provision_workspace tool:
+{
+  "repo": "https://github.com/owner/repo",
+  "executionId": "exec-123",
+  "branchName": "test/claude-nonce-abc123"
+}
+
+When branchName is provided, it is used verbatim instead of
+auto-generating from executionId/role/slug.
 ```
 
 ### Send a Task to an Agent

@@ -86,6 +86,7 @@ export const ProvisionWorkspaceInputSchema = z.object({
   executionId: z.string().describe('Execution/session ID for branch naming'),
   role: z.string().default('engineer').describe('Role/task identifier for branch naming'),
   slug: z.string().optional().describe('Human-readable slug for branch name'),
+  branchName: z.string().optional().describe('Exact branch name to use (overrides auto-generated name from executionId/role/slug)'),
   branchStrategy: z.enum(['feature_branch', 'fork', 'direct']).default('feature_branch')
     .describe('Branch creation strategy'),
   credentials: z.object({
@@ -279,6 +280,7 @@ export const TOOLS = [
         executionId: { type: 'string', description: 'Execution/session ID for branch naming' },
         role: { type: 'string', description: 'Role/task identifier for branch naming', default: 'engineer' },
         slug: { type: 'string', description: 'Human-readable slug for branch name' },
+        branchName: { type: 'string', description: 'Exact branch name to use (overrides auto-generated name from executionId/role/slug)' },
         branchStrategy: { type: 'string', enum: ['feature_branch', 'fork', 'direct'], description: 'Branch strategy', default: 'feature_branch' },
         credentials: {
           type: 'object',
@@ -515,6 +517,7 @@ export async function executeProvisionWorkspace(manager: AgentManager, input: Pr
     strategy: validated.strategy,
     branchStrategy: validated.branchStrategy,
     baseBranch: validated.baseBranch,
+    branchName: validated.branchName,
     execution: {
       id: validated.executionId,
       patternName: 'mcp-provision',
