@@ -62,6 +62,23 @@ describe('ClaudeAdapter.detectTaskComplete', () => {
     expect(adapter.detectTaskComplete(output)).toBe(false);
   });
 
+  it('detects turn duration through raw ANSI + spinner TUI output', () => {
+    // Simulates real Claude TUI output with ANSI cursor positioning,
+    // spinner characters, and box-drawing mixed in with text
+    const output = '\x1b[2J\x1b[H⠋ Processing\x1b[5C\x1b[2K' +
+      '✻\x1b[3C Churned for 46s\x1b[10C\x1b[K' +
+      '\x1b[2;1H│\x1b[5Cstatus bar text\x1b[K' +
+      '\x1b[3;1H❯\x1b[2C';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
+  it('detects "Baked for" through ANSI-garbled output', () => {
+    const output = '\x1b[1;1H\x1b[2K⠙ Working...\x1b[K\r\n' +
+      '✻ Baked for 2m 30s\x1b[20C\r\n' +
+      '❯\x1b[3C 2 files +0 -0';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
   it('rejects active loading output', () => {
     const output = 'Reading 5 files…';
     expect(adapter.detectTaskComplete(output)).toBe(false);

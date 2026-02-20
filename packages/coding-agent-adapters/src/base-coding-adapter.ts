@@ -161,11 +161,17 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   abstract getRecommendedModels(credentials?: AgentCredentials): ModelRecommendations;
 
   /**
-   * Override stripAnsi to handle TUI cursor movement codes.
+   * Override stripAnsi to handle TUI cursor movement codes, spinner/box-drawing
+   * characters, bare control characters, and extra whitespace.
+   *
    * TUI CLIs (Claude Code, Gemini CLI, Codex) use cursor positioning
-   * sequences instead of literal spaces. Replace ALL cursor movement
-   * codes with spaces before stripping other ANSI codes so regex
-   * patterns can match the visible text.
+   * sequences instead of literal spaces, and render decorative Unicode
+   * characters (spinners, box-drawing). All of these must be stripped so
+   * adapter detection methods (detectReady, detectTaskComplete, etc.) can
+   * match visible text with their regex patterns.
+   *
+   * Note: ❯ and › are preserved — they are prompt indicators used by
+   * detectReady / detectTaskComplete.
    */
   protected stripAnsi(str: string): string {
     // Cursor forward/back/up/down, column positioning, line movement
@@ -174,7 +180,22 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
     result = result.replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ');
     // Erase display/line (preserve word boundaries)
     result = result.replace(/\x1b\[\d*[JK]/g, ' ');
-    return super.stripAnsi(result);
+
+    // Strip remaining ANSI via parent
+    result = super.stripAnsi(result);
+
+    // Strip bare control characters (carriage return, backspace, bell, etc.)
+    // eslint-disable-next-line no-control-regex
+    result = result.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+
+    // Strip TUI box-drawing, spinner, and decorative Unicode characters.
+    // Keeps ❯ and › (prompt indicators) and ◇ (Gemini ready signal).
+    result = result.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓⬆⬇◆▪▫■□▲△▼▽◈⟨⟩⌘⏎⏏⌫⌦⇧⇪⌥]/g, ' ');
+
+    // Collapse multiple spaces
+    result = result.replace(/ {2,}/g, ' ');
+
+    return result;
   }
 
   /**

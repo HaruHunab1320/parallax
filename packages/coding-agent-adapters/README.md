@@ -53,7 +53,9 @@ session.send('Help me refactor this function to use async/await');
 
 ## Session Lifecycle Detection
 
-Each adapter implements detection for every stage of a CLI session:
+Each adapter implements detection for every stage of a CLI session.
+
+All detection methods use `stripAnsi()` which strips ANSI escape sequences, cursor positioning codes, bare control characters, TUI spinner/box-drawing characters, and collapses whitespace — ensuring regex patterns match through raw terminal output. Prompt indicators (`❯`, `›`, `◇`) are preserved.
 
 ### Login / Auth Detection
 
@@ -129,7 +131,7 @@ aider.detectLoading('code> ');                                // false
 
 ### Task Completion Detection
 
-Each adapter implements `detectTaskComplete(output)` to recognize when the CLI has finished a task and returned to its idle prompt. This is more specific than `detectReady()` — it matches high-confidence completion indicators (duration summaries, explicit done messages) that short-circuit the LLM stall classifier in pty-manager.
+Each adapter implements `detectTaskComplete(output)` to recognize when the CLI has finished a task and returned to its idle prompt. This is more specific than `detectReady()` — it matches high-confidence completion indicators (duration summaries, explicit done messages) that short-circuit the LLM stall classifier in pty-manager. Patterns match through raw ANSI-laden TUI output including spinner characters and cursor positioning codes.
 
 | Adapter | Completion Indicators | Source Patterns |
 |---------|----------------------|----------------|
