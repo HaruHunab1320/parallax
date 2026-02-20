@@ -17,6 +17,14 @@ export interface AdapterPatterns {
   auth: string[];
   /** Blocking prompt detection patterns */
   blocking: string[];
+  /** Loading/active indicator patterns */
+  loading: string[];
+  /** Turn completion patterns */
+  turnComplete: string[];
+  /** Tool wait patterns */
+  toolWait: string[];
+  /** Exit/session complete patterns */
+  exit: string[];
   /** Source of patterns */
   source: 'snapshot' | 'baseline';
   /** Version these patterns are from (if from snapshot) */
@@ -45,6 +53,15 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
       'update available',
       '[y/n]',
     ],
+    loading: [
+      'Reading X files…',
+    ],
+    turnComplete: [
+      'Cooked for 1m 6s',
+      '<CustomVerb> for 4m 39s',
+    ],
+    toolWait: [],
+    exit: [],
     source: 'baseline',
   },
 
@@ -67,6 +84,20 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
       'update available',
       '[y/n]',
     ],
+    loading: [
+      '<phrase> (esc to cancel, 25s)',
+      'Waiting for user confirmation...',
+      'Generating witty retort…',
+      'Reticulating splines',
+      'Warming up the AI hamsters',
+    ],
+    turnComplete: [],
+    toolWait: [
+      'Interactive shell awaiting input... press tab to focus shell',
+    ],
+    exit: [
+      'Agent powering down. Goodbye!',
+    ],
     source: 'baseline',
   },
 
@@ -86,6 +117,18 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
       'update available',
       '[y/n]',
     ],
+    loading: [
+      '• Working (0s • esc to interrupt)',
+      'Booting MCP server: alpha',
+    ],
+    turnComplete: [
+      'Worked for 1m 05s',
+    ],
+    toolWait: [
+      'Waiting for background terminal · <command>',
+      'Searching the web',
+    ],
+    exit: [],
     source: 'baseline',
   },
 
@@ -105,6 +148,16 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
       '(Y)es/(N)o',
       '[y/n]',
     ],
+    loading: [
+      'Waiting for <model>',
+      'Waiting for LLM',
+      'Generating commit message with <model>',
+    ],
+    turnComplete: [
+      'Aider is waiting for your input',
+    ],
+    toolWait: [],
+    exit: [],
     source: 'baseline',
   },
 };
@@ -122,6 +175,10 @@ interface MonitorPatterns {
   readyPatterns: string[];
   authPatterns: string[];
   blockingPatterns: string[];
+  loadingPatterns?: string[];
+  turnCompletePatterns?: string[];
+  toolWaitPatterns?: string[];
+  exitPatterns?: string[];
 }
 
 /**
@@ -152,6 +209,10 @@ async function tryLoadFromMonitor(
         ready: patterns.readyPatterns || [],
         auth: patterns.authPatterns || [],
         blocking: patterns.blockingPatterns || [],
+        loading: patterns.loadingPatterns || [],
+        turnComplete: patterns.turnCompletePatterns || [],
+        toolWait: patterns.toolWaitPatterns || [],
+        exit: patterns.exitPatterns || [],
         source: 'snapshot',
         version: patterns.version,
       };

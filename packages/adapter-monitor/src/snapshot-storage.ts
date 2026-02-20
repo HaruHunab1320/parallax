@@ -90,6 +90,10 @@ export function extractPatterns(snapshot: StartupSnapshot): VersionPatternMappin
   const authPatterns: string[] = [];
   const blockingPatterns: string[] = [];
   const updatePatterns: string[] = [];
+  const loadingPatterns: string[] = [];
+  const turnCompletePatterns: string[] = [];
+  const toolWaitPatterns: string[] = [];
+  const exitPatterns: string[] = [];
 
   for (const pattern of snapshot.patterns) {
     const text = pattern.text;
@@ -116,6 +120,26 @@ export function extractPatterns(snapshot: StartupSnapshot): VersionPatternMappin
           updatePatterns.push(text);
         }
         break;
+      case 'loading':
+        if (!loadingPatterns.includes(text)) {
+          loadingPatterns.push(text);
+        }
+        break;
+      case 'turn_complete':
+        if (!turnCompletePatterns.includes(text)) {
+          turnCompletePatterns.push(text);
+        }
+        break;
+      case 'tool_wait':
+        if (!toolWaitPatterns.includes(text)) {
+          toolWaitPatterns.push(text);
+        }
+        break;
+      case 'exit':
+        if (!exitPatterns.includes(text)) {
+          exitPatterns.push(text);
+        }
+        break;
     }
   }
 
@@ -127,6 +151,10 @@ export function extractPatterns(snapshot: StartupSnapshot): VersionPatternMappin
     authPatterns,
     blockingPatterns,
     updatePatterns,
+    loadingPatterns,
+    turnCompletePatterns,
+    toolWaitPatterns,
+    exitPatterns,
     snapshotFile: SNAPSHOT_PATHS.snapshot(snapshot.adapter, snapshot.version),
   };
 }
@@ -197,59 +225,58 @@ export function comparePatterns(
     adapter,
     oldVersion: oldMapping.version,
     newVersion: newMapping.version,
-    added: { ready: [], auth: [], blocking: [] },
-    removed: { ready: [], auth: [], blocking: [] },
+    added: { ready: [], auth: [], blocking: [], loading: [], turn_complete: [], tool_wait: [], exit: [] },
+    removed: { ready: [], auth: [], blocking: [], loading: [], turn_complete: [], tool_wait: [], exit: [] },
     isBreaking: false,
     summary: '',
   };
 
-  // Compare ready patterns
-  for (const pattern of newMapping.readyPatterns) {
-    if (!oldMapping.readyPatterns.includes(pattern)) {
-      diff.added.ready.push(pattern);
+  // Helper to compare pattern arrays
+  function comparePair(
+    oldArr: string[],
+    newArr: string[],
+    addedTarget: string[],
+    removedTarget: string[],
+  ): void {
+    for (const pattern of newArr) {
+      if (!oldArr.includes(pattern)) {
+        addedTarget.push(pattern);
+      }
     }
-  }
-  for (const pattern of oldMapping.readyPatterns) {
-    if (!newMapping.readyPatterns.includes(pattern)) {
-      diff.removed.ready.push(pattern);
-    }
-  }
-
-  // Compare auth patterns
-  for (const pattern of newMapping.authPatterns) {
-    if (!oldMapping.authPatterns.includes(pattern)) {
-      diff.added.auth.push(pattern);
-    }
-  }
-  for (const pattern of oldMapping.authPatterns) {
-    if (!newMapping.authPatterns.includes(pattern)) {
-      diff.removed.auth.push(pattern);
+    for (const pattern of oldArr) {
+      if (!newArr.includes(pattern)) {
+        removedTarget.push(pattern);
+      }
     }
   }
 
-  // Compare blocking patterns
-  for (const pattern of newMapping.blockingPatterns) {
-    if (!oldMapping.blockingPatterns.includes(pattern)) {
-      diff.added.blocking.push(pattern);
-    }
-  }
-  for (const pattern of oldMapping.blockingPatterns) {
-    if (!newMapping.blockingPatterns.includes(pattern)) {
-      diff.removed.blocking.push(pattern);
-    }
-  }
+  comparePair(oldMapping.readyPatterns, newMapping.readyPatterns, diff.added.ready, diff.removed.ready);
+  comparePair(oldMapping.authPatterns, newMapping.authPatterns, diff.added.auth, diff.removed.auth);
+  comparePair(oldMapping.blockingPatterns, newMapping.blockingPatterns, diff.added.blocking, diff.removed.blocking);
+  comparePair(oldMapping.loadingPatterns || [], newMapping.loadingPatterns || [], diff.added.loading, diff.removed.loading);
+  comparePair(oldMapping.turnCompletePatterns || [], newMapping.turnCompletePatterns || [], diff.added.turn_complete, diff.removed.turn_complete);
+  comparePair(oldMapping.toolWaitPatterns || [], newMapping.toolWaitPatterns || [], diff.added.tool_wait, diff.removed.tool_wait);
+  comparePair(oldMapping.exitPatterns || [], newMapping.exitPatterns || [], diff.added.exit, diff.removed.exit);
 
   // Determine if breaking (removed ready patterns could break detection)
   diff.isBreaking = diff.removed.ready.length > 0;
 
   // Generate summary
   const changes: string[] = [];
-  if (diff.added.ready.length) changes.push(`+${diff.added.ready.length} ready patterns`);
-  if (diff.removed.ready.length) changes.push(`-${diff.removed.ready.length} ready patterns`);
-  if (diff.added.auth.length) changes.push(`+${diff.added.auth.length} auth patterns`);
-  if (diff.removed.auth.length) changes.push(`-${diff.removed.auth.length} auth patterns`);
-  if (diff.added.blocking.length) changes.push(`+${diff.added.blocking.length} blocking patterns`);
-  if (diff.removed.blocking.length) changes.push(`-${diff.removed.blocking.length} blocking patterns`);
+  const categories: Array<{ key: keyof PatternDiff['added']; label: string }> = [
+    { key: 'ready', label: 'ready' },
+    { key: 'auth', label: 'auth' },
+    { key: 'blocking', label: 'blocking' },
+    { key: 'loading', label: 'loading' },
+    { key: 'turn_complete', label: 'turn_complete' },
+    { key: 'tool_wait', label: 'tool_wait' },
+    { key: 'exit', label: 'exit' },
+  ];
+
+  for (const { key, label } of categories) {
+    if (diff.added[key].length) changes.push(`+${diff.added[key].length} ${label} patterns`);
+    if (diff.removed[key].length) changes.push(`-${diff.removed[key].length} ${label} patterns`);
+  }
 
   diff.summary = changes.length > 0
     ? `${adapter} ${oldMapping.version} → ${newMapping.version}: ${changes.join(', ')}`

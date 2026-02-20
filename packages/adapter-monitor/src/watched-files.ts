@@ -45,6 +45,10 @@ export const WATCHED_FILES: Record<AdapterType, WatchedFileConfig> = {
       // Exit detection
       { path: 'packages/cli/src/ui/components/LogoutConfirmationDialog.tsx', category: 'exit_detection' },
 
+      // Loading indicators
+      { path: 'packages/cli/src/ui/components/LoadingIndicator.tsx', category: 'loading' },
+      { path: 'packages/cli/src/ui/hooks/usePhraseCycler.ts', category: 'loading' },
+
       // Framework / rendering
       { path: 'packages/cli/src/gemini.tsx', category: 'framework' },
       { path: 'packages/cli/src/ui/components/CliSpinner.tsx', category: 'framework' },
@@ -77,6 +81,10 @@ export const WATCHED_FILES: Record<AdapterType, WatchedFileConfig> = {
       // Ready detection
       { path: 'codex-rs/tui/src/bottom_pane/chat_composer.rs', category: 'ready_detection' },
 
+      // Loading indicators
+      { path: 'codex-rs/tui/src/status_indicator_widget.rs', category: 'loading' },
+      { path: 'codex-rs/tui/src/history_cell.rs', category: 'loading' },
+
       // Startup
       { path: 'codex-rs/tui/src/onboarding/welcome.rs', category: 'startup' },
 
@@ -107,8 +115,8 @@ export const WATCHED_FILES: Record<AdapterType, WatchedFileConfig> = {
       // Exit detection
       { path: 'aider/versioncheck.py', category: 'exit_detection' },
 
-      // Framework / rendering
-      { path: 'aider/waiting.py', category: 'framework' },
+      // Loading indicators
+      { path: 'aider/waiting.py', category: 'loading' },
     ],
   },
 
@@ -136,7 +144,7 @@ export function getWatchedFiles(adapter: AdapterType): WatchedFileConfig {
  */
 export function getWatchedFilesByCategory(
   adapter: AdapterType,
-  category: 'blocking_prompt' | 'ready_detection' | 'exit_detection' | 'auth' | 'framework' | 'startup',
+  category: 'blocking_prompt' | 'ready_detection' | 'exit_detection' | 'auth' | 'framework' | 'startup' | 'loading',
 ): string[] {
   return WATCHED_FILES[adapter].watchedFiles
     .filter(f => f.category === category)

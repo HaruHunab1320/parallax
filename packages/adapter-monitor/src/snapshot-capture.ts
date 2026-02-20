@@ -30,7 +30,39 @@ function analyzePatterns(lines: string[]): DetectedPattern[] {
     const line = lines[i].trim();
     if (!line) continue;
 
-    // Ready indicators
+    // --- High-confidence ready patterns from AGENT_LOADING_STATUS_PATTERNS.json ---
+
+    // Codex: "› Ask Codex to do anything"
+    if (/›\s+Ask\s+Codex/i.test(line)) {
+      patterns.push({
+        type: 'ready',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.95,
+      });
+    }
+
+    // Gemini: "◇ Ready"
+    if (/◇\s+Ready/.test(line)) {
+      patterns.push({
+        type: 'ready',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.95,
+      });
+    }
+
+    // Claude: "❯" prompt glyph with shortcuts hint
+    if (/❯/.test(line) && /for shortcuts/i.test(line)) {
+      patterns.push({
+        type: 'ready',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.9,
+      });
+    }
+
+    // Ready indicators (generic)
     if (/ready|help you|what would you like|type your message/i.test(line)) {
       patterns.push({
         type: 'ready',
@@ -78,6 +110,154 @@ function analyzePatterns(lines: string[]): DetectedPattern[] {
         text: line,
         lineNumber: i + 1,
         confidence: 0.7,
+      });
+    }
+
+    // --- Loading/active indicators ---
+
+    // Status row: "esc to interrupt" (Codex), "esc to cancel" (Gemini)
+    if (/esc\s+to\s+(?:interrupt|cancel)/i.test(line)) {
+      patterns.push({
+        type: 'loading',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.9,
+      });
+    }
+
+    // Spinner: "Waiting for LLM", "Waiting for <model>" (aider)
+    if (/Waiting\s+for\s+(?:LLM|[A-Za-z0-9_./-]+)/i.test(line)) {
+      patterns.push({
+        type: 'loading',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.85,
+      });
+    }
+
+    // "Generating commit message", "Generating witty retort" etc.
+    if (/Generating\s+\w+/i.test(line)) {
+      patterns.push({
+        type: 'loading',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.8,
+      });
+    }
+
+    // "Reading 5 files…" (Claude)
+    if (/Reading\s+\d+\s+files/i.test(line)) {
+      patterns.push({
+        type: 'loading',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.85,
+      });
+    }
+
+    // "Booting MCP server:" (Codex)
+    if (/Booting\s+MCP\s+server/i.test(line)) {
+      patterns.push({
+        type: 'loading',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.9,
+      });
+    }
+
+    // Witty loading phrases (Gemini)
+    if (/Reticulating\s+splines|Warming\s+up\s+the\s+AI/i.test(line)) {
+      patterns.push({
+        type: 'loading',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.75,
+      });
+    }
+
+    // --- Turn complete patterns ---
+
+    // Claude: "<Verb> for <duration>" (e.g. "Cooked for 1m 6s")
+    if (/[A-Z][A-Za-z' -]{2,40}\s+for\s+\d+(?:h\s+\d{1,2}m\s+\d{1,2}s|m\s+\d{1,2}s|s)/.test(line)) {
+      patterns.push({
+        type: 'turn_complete',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.9,
+      });
+    }
+
+    // Codex: "Worked for 1m 05s"
+    if (/Worked\s+for\s+\d+/.test(line)) {
+      patterns.push({
+        type: 'turn_complete',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.9,
+      });
+    }
+
+    // Aider: "Aider is waiting for your input"
+    if (/Aider\s+is\s+waiting\s+for\s+your\s+input/.test(line)) {
+      patterns.push({
+        type: 'turn_complete',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.9,
+      });
+    }
+
+    // --- Tool wait patterns ---
+
+    // Codex: "Waiting for background terminal"
+    if (/Waiting\s+for\s+background\s+terminal/i.test(line)) {
+      patterns.push({
+        type: 'tool_wait',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.9,
+      });
+    }
+
+    // Gemini: "Interactive shell awaiting input"
+    if (/Interactive\s+shell\s+awaiting\s+input/i.test(line)) {
+      patterns.push({
+        type: 'tool_wait',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.9,
+      });
+    }
+
+    // Codex: "Searching the web"
+    if (/Searching\s+the\s+web/i.test(line)) {
+      patterns.push({
+        type: 'tool_wait',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.85,
+      });
+    }
+
+    // --- Exit/session complete patterns ---
+
+    // Gemini: "Agent powering down. Goodbye!"
+    if (/Agent\s+powering\s+down/i.test(line)) {
+      patterns.push({
+        type: 'exit',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.95,
+      });
+    }
+
+    // Codex: "to continue this session, run"
+    if (/to\s+continue\s+this\s+session/i.test(line)) {
+      patterns.push({
+        type: 'exit',
+        text: line,
+        lineNumber: i + 1,
+        confidence: 0.9,
       });
     }
   }

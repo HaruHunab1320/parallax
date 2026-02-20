@@ -38,6 +38,7 @@ export type BlockingPromptType =
   | 'model_select'   // Model/version selection
   | 'project_select' // Project/workspace selection
   | 'permission'     // Permission request
+  | 'tool_wait'      // Agent waiting on tool/shell interaction
   | 'unknown';       // Unrecognized blocking prompt
 
 /**

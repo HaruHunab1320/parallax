@@ -106,6 +106,91 @@ export const BASELINE_READY_PATTERNS: Record<AdapterType, string[]> = {
 };
 
 /**
+ * Known loading/active indicator patterns per adapter (baseline)
+ * Source: AGENT_LOADING_STATUS_PATTERNS.json
+ */
+export const BASELINE_LOADING_PATTERNS: Record<AdapterType, string[]> = {
+  claude: [
+    'Reading X files…',
+  ],
+
+  gemini: [
+    '<phrase> (esc to cancel, 25s)',
+    'Waiting for user confirmation...',
+    'Generating witty retort…',
+    'Reticulating splines',
+    'Warming up the AI hamsters',
+  ],
+
+  codex: [
+    '• Working (0s • esc to interrupt)',
+    'Booting MCP server: alpha',
+  ],
+
+  aider: [
+    'Waiting for <model>',
+    'Waiting for LLM',
+    'Generating commit message with <model>',
+  ],
+};
+
+/**
+ * Known turn completion patterns per adapter (baseline)
+ * Source: AGENT_LOADING_STATUS_PATTERNS.json
+ */
+export const BASELINE_TURN_COMPLETE_PATTERNS: Record<AdapterType, string[]> = {
+  claude: [
+    'Cooked for 1m 6s',
+    '<CustomVerb> for 4m 39s',
+  ],
+
+  gemini: [],
+
+  codex: [
+    'Worked for 1m 05s',
+  ],
+
+  aider: [
+    'Aider is waiting for your input',
+  ],
+};
+
+/**
+ * Known tool wait patterns per adapter (baseline)
+ * Source: AGENT_LOADING_STATUS_PATTERNS.json
+ */
+export const BASELINE_TOOL_WAIT_PATTERNS: Record<AdapterType, string[]> = {
+  claude: [],
+
+  gemini: [
+    'Interactive shell awaiting input... press tab to focus shell',
+  ],
+
+  codex: [
+    'Waiting for background terminal · <command>',
+    'Searching the web',
+  ],
+
+  aider: [],
+};
+
+/**
+ * Known exit/session complete patterns per adapter (baseline)
+ * Source: AGENT_LOADING_STATUS_PATTERNS.json
+ */
+export const BASELINE_EXIT_PATTERNS: Record<AdapterType, string[]> = {
+  claude: [],
+
+  gemini: [
+    'Agent powering down. Goodbye!',
+  ],
+
+  codex: [],
+
+  aider: [],
+};
+
+/**
  * Known auth patterns per adapter (baseline)
  */
 export const BASELINE_AUTH_PATTERNS: Record<AdapterType, string[]> = {

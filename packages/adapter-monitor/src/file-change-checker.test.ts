@@ -63,7 +63,7 @@ describe('checkFileChanges', () => {
     const result = await checkFileChanges('aider', '0.81.0', '0.82.0');
 
     expect(result.changedFiles).toHaveLength(1);
-    expect(result.changedFiles[0].category).toBe('framework');
+    expect(result.changedFiles[0].category).toBe('loading');
     expect(result.adapterUpdateNeeded).toBe(false);
   });
 

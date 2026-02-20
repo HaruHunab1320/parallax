@@ -247,6 +247,17 @@ export class GeminiAdapter extends BaseCodingAdapter {
       };
     }
 
+    // Interactive shell awaiting input (usePhraseCycler.ts)
+    if (/Interactive\s+shell\s+awaiting\s+input/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'tool_wait',
+        prompt: 'Gemini interactive shell needs user focus',
+        canAutoRespond: false,
+        instructions: 'Press Tab to focus the interactive shell, or wait for it to complete',
+      };
+    }
+
     // Login check — after permission prompts
     const loginDetection = this.detectLogin(output);
     if (loginDetection.required) {
@@ -412,6 +423,14 @@ export class GeminiAdapter extends BaseCodingAdapter {
     }
 
     if (/you are now logged out/i.test(stripped)) {
+      return {
+        exited: true,
+        code: 0,
+      };
+    }
+
+    // Session summary / shutdown (SessionSummaryDisplay.tsx)
+    if (/Agent\s+powering\s+down/i.test(stripped)) {
       return {
         exited: true,
         code: 0,

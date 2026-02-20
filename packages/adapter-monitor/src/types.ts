@@ -45,7 +45,7 @@ export interface CLIVersionSource {
  */
 export interface DetectedPattern {
   /** Pattern type */
-  type: 'ready' | 'auth' | 'blocking' | 'update' | 'prompt';
+  type: 'ready' | 'auth' | 'blocking' | 'update' | 'prompt' | 'loading' | 'turn_complete' | 'tool_wait' | 'exit';
 
   /** The actual text/pattern detected */
   text: string;
@@ -123,6 +123,18 @@ export interface VersionPatternMapping {
   /** Update notice patterns */
   updatePatterns: string[];
 
+  /** Loading/active indicator patterns */
+  loadingPatterns: string[];
+
+  /** Turn completion patterns */
+  turnCompletePatterns: string[];
+
+  /** Tool wait patterns */
+  toolWaitPatterns: string[];
+
+  /** Exit/session complete patterns */
+  exitPatterns: string[];
+
   /** The snapshot that generated these patterns */
   snapshotFile?: string;
 }
@@ -159,6 +171,10 @@ export interface PatternDiff {
     ready: string[];
     auth: string[];
     blocking: string[];
+    loading: string[];
+    turn_complete: string[];
+    tool_wait: string[];
+    exit: string[];
   };
 
   /** Removed patterns */
@@ -166,6 +182,10 @@ export interface PatternDiff {
     ready: string[];
     auth: string[];
     blocking: string[];
+    loading: string[];
+    turn_complete: string[];
+    tool_wait: string[];
+    exit: string[];
   };
 
   /** Whether this is a breaking change */
@@ -247,7 +267,7 @@ export interface WatchedFile {
   path: string;
 
   /** What this file controls */
-  category: 'blocking_prompt' | 'ready_detection' | 'exit_detection' | 'auth' | 'framework' | 'startup';
+  category: 'blocking_prompt' | 'ready_detection' | 'exit_detection' | 'auth' | 'framework' | 'startup' | 'loading';
 }
 
 /**

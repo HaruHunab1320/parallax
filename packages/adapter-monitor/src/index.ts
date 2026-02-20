@@ -24,7 +24,15 @@ export type {
 } from './types';
 
 // Configuration
-export { MONITORED_CLIS, BASELINE_READY_PATTERNS, BASELINE_AUTH_PATTERNS } from './config';
+export {
+  MONITORED_CLIS,
+  BASELINE_READY_PATTERNS,
+  BASELINE_AUTH_PATTERNS,
+  BASELINE_LOADING_PATTERNS,
+  BASELINE_TURN_COMPLETE_PATTERNS,
+  BASELINE_TOOL_WAIT_PATTERNS,
+  BASELINE_EXIT_PATTERNS,
+} from './config';
 
 // Version checking
 export { checkVersion, checkAllVersions, filterUpdatesAvailable } from './version-checker';

@@ -45,7 +45,7 @@ describe('WATCHED_FILES', () => {
     expect(categories).toContain('auth');
     expect(categories).toContain('blocking_prompt');
     expect(categories).toContain('exit_detection');
-    expect(categories).toContain('framework');
+    expect(categories).toContain('loading');
   });
 
   it('all watched files have valid paths', () => {
@@ -54,7 +54,7 @@ describe('WATCHED_FILES', () => {
         expect(file.path).toBeTruthy();
         expect(file.path).not.toContain(' ');
         expect(file.category).toMatch(
-          /^(blocking_prompt|ready_detection|exit_detection|auth|framework|startup)$/,
+          /^(blocking_prompt|ready_detection|exit_detection|auth|framework|startup|loading)$/,
         );
       }
     }
