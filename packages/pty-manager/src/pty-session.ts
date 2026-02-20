@@ -276,6 +276,10 @@ export class PTYSession extends EventEmitter {
   private _taskCompleteTimer: ReturnType<typeof setTimeout> | null = null;
   private static readonly TASK_COMPLETE_DEBOUNCE_MS = 1500;
 
+  // Ready detection settle delay — defers session_ready until output goes quiet
+  private _readySettleTimer: ReturnType<typeof setTimeout> | null = null;
+  private _readySettlePending = false;
+
   // Deferred output processing — prevents node-pty's synchronous data
   // delivery from starving the event loop (timers, I/O callbacks, etc.)
   private _processScheduled = false;
@@ -680,6 +684,49 @@ export class PTYSession extends EventEmitter {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Ready Detection Settle Delay
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Schedule or reset the ready-settle timer.
+   * Defers emitting session_ready until output goes quiet for readySettleMs
+   * after detectReady first matches. This prevents sending input while
+   * TUI agents are still rendering (status bar, shortcuts, update notices).
+   */
+  private scheduleReadySettle(): void {
+    this._readySettlePending = true;
+    if (this._readySettleTimer) {
+      clearTimeout(this._readySettleTimer);
+    }
+    const settleMs = this.adapter.readySettleMs ?? 100;
+    this._readySettleTimer = setTimeout(() => {
+      this._readySettleTimer = null;
+      this._readySettlePending = false;
+      // Re-verify state and ready indicator
+      if (this._status !== 'starting' && this._status !== 'authenticating') return;
+      if (!this.adapter.detectReady(this.outputBuffer)) return;
+      this._status = 'ready';
+      this._lastBlockingPromptHash = null;
+      this.outputBuffer = '';
+      this.clearStallTimer();
+      this.emit('ready');
+      this.logger.info({ sessionId: this.id }, 'Session ready (after settle)');
+    }, settleMs);
+  }
+
+  /**
+   * Cancel a pending ready-settle timer (ready indicator disappeared
+   * or session status changed).
+   */
+  private cancelReadySettle(): void {
+    if (this._readySettleTimer) {
+      clearTimeout(this._readySettleTimer);
+      this._readySettleTimer = null;
+    }
+    this._readySettlePending = false;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Lifecycle
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -795,6 +842,20 @@ export class PTYSession extends EventEmitter {
       this.resetStallTimer();
     }
 
+    // If a ready-settle is pending, reset the timer on new data instead of
+    // re-running all detection. If the ready indicator disappears, cancel.
+    if (this._readySettlePending) {
+      if (
+        (this._status === 'starting' || this._status === 'authenticating') &&
+        this.adapter.detectReady(this.outputBuffer)
+      ) {
+        this.scheduleReadySettle();
+      } else {
+        this.cancelReadySettle();
+      }
+      return;
+    }
+
     // Ready detection — check FIRST, before blocking prompt detection.
     // After an auto-response (e.g. trust prompt), the buffer may contain
     // leftover prompt text that would falsely trigger detectBlockingPrompt
@@ -805,13 +866,8 @@ export class PTYSession extends EventEmitter {
       (this._status === 'starting' || this._status === 'authenticating') &&
       this.adapter.detectReady(this.outputBuffer)
     ) {
-      this._status = 'ready';
-      this._lastBlockingPromptHash = null; // Clear stale blocking prompt state
-      this.outputBuffer = ''; // Clear stale startup text so it can't cause false detections
-      this.clearStallTimer();
-      this.emit('ready');
-      this.logger.info({ sessionId: this.id }, 'Session ready');
-      return; // Skip processing the stale buffer
+      this.scheduleReadySettle();
+      return;
     }
 
     // Task completion detection — when busy and the agent returns to its idle prompt.
@@ -1240,6 +1296,7 @@ export class PTYSession extends EventEmitter {
       this._status = 'stopping';
       this.clearStallTimer();
       this.cancelTaskComplete();
+      this.cancelReadySettle();
       this.ptyProcess.kill(signal);
       this.logger.info({ sessionId: this.id, signal }, 'Killing PTY session');
     }

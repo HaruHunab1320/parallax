@@ -331,6 +331,25 @@ const parsed = parseBranchName('parallax/exec-123/engineer-auth-feature');
 // Result: { executionId: 'exec-123', role: 'engineer', slug: 'auth-feature' }
 ```
 
+### Custom Branch Names
+
+If you need a specific branch name (e.g. for deterministic naming or external conventions), pass `branchName` in the workspace config to bypass auto-generation:
+
+```typescript
+const workspace = await workspaceService.provision({
+  repo: 'https://github.com/owner/repo',
+  branchStrategy: 'feature_branch',
+  baseBranch: 'main',
+  branchName: 'test/claude-nonce-abc123',  // Used verbatim
+  execution: { id: 'exec-123', patternName: 'review' },
+  task: { id: 'task-456', role: 'engineer' },
+});
+
+console.log(workspace.branch.name); // 'test/claude-nonce-abc123'
+```
+
+When `branchName` is set, `isManagedBranch()` may return `false` for the resulting branch — this is expected since custom names intentionally bypass the naming convention. The branch is still created from `baseBranch` and works with both clone and worktree strategies.
+
 ## API Reference
 
 ### WorkspaceService

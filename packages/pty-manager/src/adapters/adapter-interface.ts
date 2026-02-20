@@ -102,6 +102,9 @@ export interface CLIAdapter {
    */
   validateInstallation?(): Promise<{ installed: boolean; version?: string; error?: string }>;
 
+  /** Ms of output silence after detectReady match before emitting session_ready (default: 100) */
+  readonly readySettleMs?: number;
+
   /**
    * Optional: Get health check command
    */

@@ -18,6 +18,9 @@ export class AiderAdapter extends BaseCodingAdapter {
   readonly adapterType = 'aider';
   readonly displayName = 'Aider';
 
+  /** Minimal TUI, mostly text output — shorter settle delay */
+  override readonly readySettleMs: number = 200;
+
   /**
    * Aider uses plain text [y/n] prompts, NOT TUI arrow-key menus.
    */

@@ -11,6 +11,7 @@ import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type {
+  BranchInfo,
   Workspace,
   WorkspaceConfig,
   WorkspaceFinalization,
@@ -170,16 +171,23 @@ export class WorkspaceService {
       }
     }
 
-    // Generate branch name
-    const branchInfo = createBranchInfo(
-      {
-        executionId: config.execution.id,
-        role: config.task.role,
-        slug: config.task.slug,
-        baseBranch: config.baseBranch,
-      },
-      { prefix: this.branchPrefix }
-    );
+    // Generate branch name (or use caller-provided override)
+    const branchInfo: BranchInfo = config.branchName
+      ? {
+          name: config.branchName,
+          executionId: config.execution.id,
+          baseBranch: config.baseBranch,
+          createdAt: new Date(),
+        }
+      : createBranchInfo(
+          {
+            executionId: config.execution.id,
+            role: config.task.role,
+            slug: config.task.slug,
+            baseBranch: config.baseBranch,
+          },
+          { prefix: this.branchPrefix }
+        );
 
     // Create workspace object (credential is optional for public repos)
     const workspace: Workspace = {

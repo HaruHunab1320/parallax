@@ -188,7 +188,7 @@ class PTYManager extends EventEmitter {
 | Event | Payload | Description |
 |-------|---------|-------------|
 | `session_started` | `SessionHandle` | Session spawn initiated |
-| `session_ready` | `SessionHandle` | Session ready for input |
+| `session_ready` | `SessionHandle` | Session ready for input (after settle delay) |
 | `session_stopped` | `SessionHandle, reason` | Session terminated |
 | `session_error` | `SessionHandle, error` | Error occurred |
 | `login_required` | `SessionHandle, instructions?, url?` | Auth required |
@@ -441,6 +441,20 @@ Adapters can declare `usesTuiMenus: true` to indicate they use arrow-key menus i
 ```typescript
 // Navigate to the Nth option in a TUI menu (0-indexed)
 await session.selectMenuOption(2);  // Sends Down, Down, Enter with 50ms delays
+```
+
+## Ready Detection Settle Delay
+
+When an adapter's `detectReady()` first matches during startup, `session_ready` is **not** emitted immediately. Instead, the session waits for output to go quiet for `readySettleMs` (default: 100ms) before firing the event. This prevents the orchestrator from sending input while a TUI agent is still rendering (status bar, keyboard shortcuts, update notices).
+
+Adapters can override `readySettleMs` to tune the delay for their CLI's rendering speed. If new output arrives during the settle window, the timer resets. If the ready indicator disappears (e.g. a blocking prompt appears), the settle is cancelled.
+
+```typescript
+class MyCLIAdapter extends BaseCLIAdapter {
+  // Heavy TUI rendering — wait longer before declaring ready
+  readonly readySettleMs = 500;
+  // ...
+}
 ```
 
 ## Stall Detection & Task Completion

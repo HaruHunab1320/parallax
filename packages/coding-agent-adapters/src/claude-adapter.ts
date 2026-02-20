@@ -17,6 +17,9 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   readonly adapterType = 'claude';
   readonly displayName = 'Claude Code';
 
+  /** Heaviest TUI — status bar, shortcuts, update notices, /ide suggestions */
+  override readonly readySettleMs: number = 500;
+
   readonly installation: InstallationInfo = {
     command: 'npm install -g @anthropic-ai/claude-code',
     alternatives: [

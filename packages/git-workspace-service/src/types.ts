@@ -383,6 +383,12 @@ export interface WorkspaceConfig {
    * Hook to run when workspace operations complete
    */
   onComplete?: CompletionHook;
+
+  /**
+   * Exact branch name to use. If provided, overrides the auto-generated
+   * name from prefix/execution/task. The branch is still created from baseBranch.
+   */
+  branchName?: string;
 }
 
 /**

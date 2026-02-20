@@ -107,6 +107,13 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   override readonly usesTuiMenus: boolean = true;
 
   /**
+   * Ms of output silence after detectReady match before emitting session_ready.
+   * Allows TUI rendering (status bar, shortcuts, update notices) to complete
+   * before the orchestrator sends input.
+   */
+  readonly readySettleMs: number = 300;
+
+  /**
    * Installation information for this CLI tool
    */
   abstract readonly installation: InstallationInfo;

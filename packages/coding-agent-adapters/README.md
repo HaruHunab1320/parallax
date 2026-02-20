@@ -44,12 +44,12 @@ session.send('Help me refactor this function to use async/await');
 
 ## Available Adapters
 
-| Adapter | CLI | Type | Input Style | Auto-Response Rules |
-|---------|-----|------|-------------|---------------------|
-| `ClaudeAdapter` | Claude Code | `claude` | TUI menus | 5 rules |
-| `GeminiAdapter` | Gemini CLI | `gemini` | TUI menus | 3 rules |
-| `CodexAdapter` | OpenAI Codex | `codex` | TUI menus | 6 rules |
-| `AiderAdapter` | Aider | `aider` | Text `(Y)es/(N)o` | 17 rules |
+| Adapter | CLI | Type | Input Style | Auto-Response Rules | Ready Settle |
+|---------|-----|------|-------------|---------------------|-------------|
+| `ClaudeAdapter` | Claude Code | `claude` | TUI menus | 5 rules | 500ms |
+| `GeminiAdapter` | Gemini CLI | `gemini` | TUI menus | 3 rules | 300ms |
+| `CodexAdapter` | OpenAI Codex | `codex` | TUI menus | 6 rules | 300ms |
+| `AiderAdapter` | Aider | `aider` | Text `(Y)es/(N)o` | 17 rules | 200ms |
 
 ## Session Lifecycle Detection
 
@@ -82,6 +82,17 @@ Each adapter knows exactly what "ready for input" looks like:
 | Gemini | Prompt glyphs (`>`, `!`, `*`, `(r:)`), composer placeholder | `InputPrompt.tsx`, `Composer.tsx` |
 | Codex | `>` glyph, placeholder suggestions | `chat_composer.rs` |
 | Aider | `ask>`, `code>`, `architect>`, `help>`, `multi>`, startup banner | `io.py`, `base_coder.py` |
+
+### Ready Settle Delay
+
+Each adapter sets `readySettleMs` to control how long pty-manager waits after `detectReady()` matches before emitting `session_ready`. This prevents the orchestrator from sending input while the TUI is still rendering (status bar, shortcuts, update notices). The base default is 300ms; adapters override based on their rendering weight.
+
+| Adapter | `readySettleMs` | Rationale |
+|---------|----------------|-----------|
+| Claude Code | 500ms | Heaviest TUI — status bar, shortcuts, update notices, /ide suggestions |
+| Gemini CLI | 300ms | Moderate Ink TUI (inherits base default) |
+| Codex | 300ms | Moderate Rust TUI (inherits base default) |
+| Aider | 200ms | Minimal TUI, mostly text output |
 
 ### Blocking Prompt Detection
 
@@ -381,6 +392,9 @@ export class CursorAdapter extends BaseCodingAdapter {
 
   // Set to false if the CLI uses text prompts instead of TUI menus
   override readonly usesTuiMenus = false;
+
+  // Tune ready settle delay for this CLI's rendering speed (base default: 300ms)
+  override readonly readySettleMs = 250;
 
   readonly autoResponseRules: AutoResponseRule[] = [
     { pattern: /accept terms/i, type: 'tos', response: 'y', responseType: 'text', description: 'Accept TOS', safe: true, once: true },
