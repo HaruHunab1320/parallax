@@ -1,6 +1,6 @@
 {
   "name": "parallax-agent-runtime",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "MCP server for AI agent orchestration - spawn, manage, and coordinate multiple AI agents",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -22,12 +22,12 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "coding-agent-adapters": "workspace:*",
-    "git-workspace-service": "workspace:*",
+    "coding-agent-adapters": "workspace:^0.7.2",
+    "git-workspace-service": "workspace:^0.4.0",
     "jsonwebtoken": "^9.0.0",
     "pino": "^9.5.0",
     "pino-pretty": "^13.0.0",
-    "pty-manager": "workspace:*",
+    "pty-manager": "workspace:^1.6.5",
     "uuid": "^11.0.5",
     "zod": "^3.25.0"
   },
