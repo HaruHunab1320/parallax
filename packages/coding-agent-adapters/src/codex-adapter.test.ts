@@ -324,6 +324,11 @@ describe('CodexAdapter', () => {
       expect(adapter.detectReady('› explain this codebase')).toBe(true);
     });
 
+    it('should detect idle composer footer hints', () => {
+      expect(adapter.detectReady('? for shortcuts 100% context left')).toBe(true);
+      expect(adapter.detectReady('tab to queue message 98% context left')).toBe(true);
+    });
+
     it('should detect placeholder suggestions (chatwidget.rs)', () => {
       expect(adapter.detectReady('explain this codebase')).toBe(true);
       expect(adapter.detectReady('summarize recent commits')).toBe(true);
@@ -344,6 +349,16 @@ describe('CodexAdapter', () => {
 
     it('should NOT detect ready when auth prompt is present', () => {
       expect(adapter.detectReady('Sign in with ChatGPT\n› ')).toBe(false);
+    });
+
+    it('should NOT detect menu selection rows as idle composer', () => {
+      expect(adapter.detectReady('› 1. Yes, proceed (y)')).toBe(false);
+      expect(adapter.detectReady('› 2. No, cancel (esc)')).toBe(false);
+    });
+
+    it('should detect ready even with stale update text when composer is present', () => {
+      const output = 'Update available! 1.0.0 -> 1.1.0\n...\n› Ask Codex to do anything';
+      expect(adapter.detectReady(output)).toBe(true);
     });
 
     it('should NOT detect ready when update prompt is present', () => {

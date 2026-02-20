@@ -153,6 +153,11 @@ describe('CodexAdapter.detectTaskComplete', () => {
     expect(adapter.detectTaskComplete(output)).toBe(true);
   });
 
+  it('detects non-menu composer prompt + footer hints', () => {
+    const output = 'Summary complete\n› Summarize recent commits\n? for shortcuts 100% context left';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
   it('detects "Worked for" hours format + prompt', () => {
     const output = 'Worked for 2h 15m 30s\n› something';
     expect(adapter.detectTaskComplete(output)).toBe(true);
@@ -170,6 +175,11 @@ describe('CodexAdapter.detectTaskComplete', () => {
 
   it('rejects "Worked for" without any prompt', () => {
     const output = 'Worked for 1m 05s\nmore output here';
+    expect(adapter.detectTaskComplete(output)).toBe(false);
+  });
+
+  it('rejects menu selection rows (not idle composer)', () => {
+    const output = 'Worked for 1m 05s\n› 1. Yes, proceed (y)';
     expect(adapter.detectTaskComplete(output)).toBe(false);
   });
 

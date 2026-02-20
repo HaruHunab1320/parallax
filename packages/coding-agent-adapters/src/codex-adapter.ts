@@ -376,25 +376,36 @@ export class CodexAdapter extends BaseCodingAdapter {
    */
   detectTaskComplete(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    if (!stripped.trim()) return false;
+    if (this.detectLoading(stripped)) return false;
 
     // "Worked for <duration>" separator — high-confidence completion indicator
     const hasWorkedFor = /Worked\s+for\s+\d+(?:h\s+\d{2}m\s+\d{2}s|m\s+\d{2}s|s)/.test(stripped);
 
-    // Ready prompt: "› Ask Codex to do anything"
-    const hasReadyPrompt = /›\s+Ask\s+Codex\s+to\s+do\s+anything/.test(stripped);
+    // Composer-ready prompt: "› Ask Codex to do anything" OR any non-menu composer row.
+    // Excludes menu selections like "› 1. Yes, proceed".
+    const hasComposerPrompt =
+      /›\s+Ask\s+Codex\s+to\s+do\s+anything/.test(stripped) ||
+      /^\s*›\s*(?!\d+\.)\S.*$/m.test(stripped);
 
-    // High confidence: worked-for separator + ready prompt
-    if (hasWorkedFor && hasReadyPrompt) {
+    // Footer hints that are shown with an active idle composer.
+    const hasIdleFooterHints =
+      /\?\s+for\s+shortcuts/i.test(stripped) ||
+      /context\s+left/i.test(stripped) ||
+      /tab\s+to\s+queue\s+message/i.test(stripped);
+
+    // High confidence: worked-for separator + idle composer signal
+    if (hasWorkedFor && (hasComposerPrompt || hasIdleFooterHints)) {
       return true;
     }
 
-    // Medium confidence: ready prompt alone (strong signal post-task)
-    if (hasReadyPrompt) {
+    // Medium confidence: idle composer prompt alone
+    if (hasComposerPrompt) {
       return true;
     }
 
-    // Worked-for separator + any › prompt
-    if (hasWorkedFor && /›\s+/m.test(stripped)) {
+    // Worked-for separator + idle footer hints
+    if (hasWorkedFor && hasIdleFooterHints) {
       return true;
     }
 
@@ -403,6 +414,25 @@ export class CodexAdapter extends BaseCodingAdapter {
 
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    if (!stripped.trim()) return false;
+    if (this.detectLoading(stripped)) return false;
+
+    // Positive ready signals first (tail-biased), then fallback to guards.
+    // This prevents stale historical text in outputBuffer from masking
+    // a real idle composer prompt after task completion.
+    const tail = stripped.slice(-1200);
+    const hasComposerPrompt =
+      /^\s*›\s*(?!\d+\.)\S.*$/m.test(tail) ||
+      /›\s+Ask\s+Codex\s+to\s+do\s+anything/.test(tail);
+    const hasComposerFooter =
+      /\?\s+for\s+shortcuts/i.test(tail) ||
+      /context\s+left/i.test(tail) ||
+      /tab\s+to\s+queue\s+message/i.test(tail) ||
+      /shift\s*\+\s*enter\s+for\s+newline/i.test(tail);
+
+    if (hasComposerPrompt || hasComposerFooter) {
+      return true;
+    }
 
     // Guard: if output contains trust, auth, or update prompts, we're NOT ready
     if (/do.?you.?trust.?the.?contents/i.test(stripped) ||
@@ -411,11 +441,6 @@ export class CodexAdapter extends BaseCodingAdapter {
         /enable.?full.?access/i.test(stripped) ||
         /choose.?working.?directory/i.test(stripped)) {
       return false;
-    }
-
-    // Ready prompt glyph `›` with placeholder suggestions (chat_composer.rs:3697)
-    if (/›\s+/m.test(stripped)) {
-      return true;
     }
 
     // Placeholder suggestions indicate the composer is active (chatwidget.rs:7228)
