@@ -217,7 +217,7 @@ interface SpawnConfig {
   timeout?: number;      // Session timeout in ms
   readySettleMs?: number; // Override adapter's ready settle delay
   stallTimeoutMs?: number; // Override manager stall timeout for this session
-  traceTaskCompletion?: boolean; // Verbose completion trace logs (auto-enabled for Claude)
+  traceTaskCompletion?: boolean; // Verbose completion trace logs (off by default)
 }
 ```
 
@@ -498,14 +498,13 @@ If the fast-path timer doesn't fire (e.g. the prompt indicator disappears from t
 - `debounce_reject_signal`
 - `transition_ready`
 
-By default, tracing is enabled for adapter type `claude`. You can override per session:
+Tracing is off by default. Enable per session:
 
 ```typescript
 const handle = await manager.spawn({
   name: 'agent',
   type: 'claude',
-  traceTaskCompletion: true, // force on
-  // traceTaskCompletion: false, // force off
+  traceTaskCompletion: true,
 });
 ```
 

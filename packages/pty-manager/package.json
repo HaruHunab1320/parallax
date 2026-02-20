@@ -1,6 +1,6 @@
 {
   "name": "pty-manager",
-  "version": "1.6.5",
+  "version": "1.6.6",
   "description": "PTY session manager with lifecycle management, pluggable adapters, and blocking prompt detection",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

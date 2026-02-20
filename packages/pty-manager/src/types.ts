@@ -71,7 +71,7 @@ export interface SpawnConfig {
   readySettleMs?: number;
 
   /** Enable verbose task-completion trace logs.
-   *  If unset, PTYSession enables this automatically for adapter type "claude". */
+   *  Disabled by default; set true to enable. */
   traceTaskCompletion?: boolean;
 
   /** Override or disable specific adapter auto-response rules for this session.

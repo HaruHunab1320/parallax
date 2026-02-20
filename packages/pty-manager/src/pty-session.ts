@@ -805,7 +805,7 @@ export class PTYSession extends EventEmitter {
 
   /**
    * Claude-oriented task completion traces for PTY debugging.
-   * Enabled by config.traceTaskCompletion, otherwise defaults to enabled for Claude.
+   * Disabled by default; enable via config.traceTaskCompletion.
    */
   private traceTaskCompletion(
     event: string,
@@ -848,10 +848,7 @@ export class PTYSession extends EventEmitter {
   }
 
   private shouldTraceTaskCompletion(): boolean {
-    if (typeof this.config.traceTaskCompletion === 'boolean') {
-      return this.config.traceTaskCompletion;
-    }
-    return this.adapter.adapterType === 'claude';
+    return this.config.traceTaskCompletion === true;
   }
 
   /**
