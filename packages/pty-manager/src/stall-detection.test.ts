@@ -58,6 +58,7 @@ type SessionInternals = {
   _lastBlockingPromptHash: string | null;
   _stallBackoffMs: number;
   _firedOnceRules: Set<string>;
+  _taskCompletePending: boolean;
   outputBuffer: string;
   ptyProcess: {
     write: (data: string) => void;
@@ -1340,5 +1341,160 @@ describe('Stall backoff', () => {
     // Simulate task completing — clearStallTimer resets backoff
     (session as unknown as { clearStallTimer: () => void }).clearStallTimer();
     expect(internals._stallBackoffMs).toBe(4000);
+  });
+});
+
+describe('Task complete settle pattern', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should not cancel task_complete timer when detectReady fails on subsequent output', () => {
+    const adapter = createMockAdapter();
+    // detectReady checks for a prompt pattern in the buffer.
+    // The prompt is always present, but in the old cancel-on-any-data code,
+    // the else branch would cancel the timer on non-matching output.
+    // With the settle pattern, _taskCompletePending short-circuits the
+    // detectReady check, keeping the timer alive.
+    adapter.detectReady = (buffer: string) => buffer.includes('$');
+
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: vi.fn(),
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'busy';
+
+    const statusHandler = vi.fn();
+    const taskCompleteHandler = vi.fn();
+    session.on('status_changed', statusHandler);
+    session.on('task_complete', taskCompleteHandler);
+
+    const processOutputBuffer = (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer;
+
+    // First processOutputBuffer — buffer has prompt, detectReady returns true
+    internals.outputBuffer = 'Done.\n$ ';
+    processOutputBuffer.call(session);
+    expect(internals._taskCompletePending).toBe(true);
+
+    // Second processOutputBuffer — decorative TUI output appended.
+    // With settle pattern, _taskCompletePending keeps the timer alive
+    // (timer resets instead of being cancelled).
+    internals.outputBuffer += '\x1b[40;1Hstatus bar content';
+    processOutputBuffer.call(session);
+    expect(internals._taskCompletePending).toBe(true);
+
+    // Timer fires after debounce — re-verifies detectReady (buffer still has '$')
+    vi.advanceTimersByTime(1500);
+    expect(taskCompleteHandler).toHaveBeenCalledTimes(1);
+    expect(statusHandler).toHaveBeenCalledWith('ready');
+    expect(internals._status).toBe('ready');
+  });
+
+  it('should reset task_complete debounce timer on each new data chunk', () => {
+    const adapter = createMockAdapter();
+    adapter.detectReady = () => true;
+
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: vi.fn(),
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'busy';
+
+    const taskCompleteHandler = vi.fn();
+    session.on('task_complete', taskCompleteHandler);
+
+    const processOutputBuffer = (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer;
+
+    // Initial trigger
+    processOutputBuffer.call(session);
+    expect(internals._taskCompletePending).toBe(true);
+
+    // Advance 1000ms (less than 1500ms debounce)
+    vi.advanceTimersByTime(1000);
+    expect(taskCompleteHandler).not.toHaveBeenCalled();
+
+    // New data arrives — resets debounce timer
+    internals.outputBuffer += 'decorative TUI output';
+    processOutputBuffer.call(session);
+
+    // Advance another 1000ms (2000ms total, but only 1000ms since reset)
+    vi.advanceTimersByTime(1000);
+    expect(taskCompleteHandler).not.toHaveBeenCalled();
+
+    // Advance remaining 500ms (1500ms since last reset)
+    vi.advanceTimersByTime(500);
+    expect(taskCompleteHandler).toHaveBeenCalledTimes(1);
+    expect(internals._status).toBe('ready');
+  });
+
+  it('should transition via fast-path when TUI renders decorative content after prompt', () => {
+    const adapter = createMockAdapter();
+    adapter.detectReady = (buffer: string) => buffer.includes('$');
+
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: vi.fn(),
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'busy';
+
+    const taskCompleteHandler = vi.fn();
+    const statusHandler = vi.fn();
+    session.on('task_complete', taskCompleteHandler);
+    session.on('status_changed', statusHandler);
+
+    const processOutputBuffer = (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer;
+
+    // Agent finishes task — output contains duration + prompt
+    internals.outputBuffer = 'Task completed in 2.3s\n$ ';
+    processOutputBuffer.call(session);
+    expect(internals._taskCompletePending).toBe(true);
+
+    // TUI renders status bar update (decorative content)
+    internals.outputBuffer += '\x1b[40;1H\x1b[2K\x1b[36mStatus: idle\x1b[0m';
+    processOutputBuffer.call(session);
+
+    // TUI renders update notice
+    internals.outputBuffer += '\x1b[1;1H\x1b[33mUpdate available v1.2.3\x1b[0m';
+    processOutputBuffer.call(session);
+
+    // Timer should still be pending
+    expect(taskCompleteHandler).not.toHaveBeenCalled();
+
+    // After debounce period, timer fires and transitions
+    vi.advanceTimersByTime(1500);
+    expect(taskCompleteHandler).toHaveBeenCalledTimes(1);
+    expect(statusHandler).toHaveBeenCalledWith('ready');
+    expect(internals._status).toBe('ready');
   });
 });

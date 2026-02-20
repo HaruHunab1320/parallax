@@ -276,6 +276,7 @@ export class PTYSession extends EventEmitter {
 
   // Task completion detection (idle detection when busy)
   private _taskCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private _taskCompletePending = false;
   private static readonly TASK_COMPLETE_DEBOUNCE_MS = 1500;
 
   // Ready detection settle delay — defers session_ready until output goes quiet
@@ -580,9 +581,13 @@ export class PTYSession extends EventEmitter {
     // eslint-disable-next-line no-control-regex
     result = result.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
 
-    // Strip bare control characters (carriage return, backspace, bell, etc.)
+    // Strip bare control characters (backspace, bell, carriage return, etc.)
+    // Preserves only \x09 (tab) and \x0a (newline).
     // eslint-disable-next-line no-control-regex
-    result = result.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+    result = result.replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '');
+
+    // Normalize non-breaking spaces (NBSP \xa0) to regular spaces
+    result = result.replace(/\xa0/g, ' ');
 
     // Strip TUI box-drawing, spinner, and decorative Unicode characters
     result = result.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓⬆⬇◆◇▪▫■□▲△▼▽◈⟨⟩⌘⏎⏏⌫⌦⇧⇪⌥]/g, ' ');
@@ -682,15 +687,22 @@ export class PTYSession extends EventEmitter {
 
   /**
    * Schedule a task_complete transition after a debounce period.
-   * If new non-whitespace output arrives before the timer fires,
-   * the timer is cancelled (by cancelTaskComplete in onData).
+   * Uses a settle pattern: each call resets the debounce timer instead of
+   * being a no-op when already scheduled. This allows TUI agents that
+   * continue rendering decorative output (status bar, update notices) after
+   * the prompt to eventually settle, rather than having the timer cancelled
+   * by every new data chunk. The callback re-verifies detectReady() before
+   * transitioning, so stale triggers are safe.
    */
   private scheduleTaskComplete(): void {
-    // Already scheduled — let the existing timer run
-    if (this._taskCompleteTimer) return;
+    if (this._taskCompleteTimer) {
+      clearTimeout(this._taskCompleteTimer);
+    }
+    this._taskCompletePending = true;
 
     this._taskCompleteTimer = setTimeout(() => {
       this._taskCompleteTimer = null;
+      this._taskCompletePending = false;
 
       // Re-check: still busy and ready indicator still present?
       if (this._status !== 'busy') return;
@@ -715,6 +727,7 @@ export class PTYSession extends EventEmitter {
       clearTimeout(this._taskCompleteTimer);
       this._taskCompleteTimer = null;
     }
+    this._taskCompletePending = false;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -905,12 +918,14 @@ export class PTYSession extends EventEmitter {
     }
 
     // Task completion detection — when busy and the agent returns to its idle prompt.
-    // Uses a debounce to avoid false positives during mid-task output that
-    // happens to contain the prompt string.
-    if (this._status === 'busy' && this.adapter.detectReady(this.outputBuffer)) {
-      this.scheduleTaskComplete();
-    } else {
-      this.cancelTaskComplete();
+    // Uses a settle pattern: once triggered, the debounce timer resets on each
+    // new data chunk instead of being cancelled. The callback re-verifies
+    // detectReady() before transitioning, so stale triggers are safe.
+    if (this._status === 'busy') {
+      if (this._taskCompletePending || this.adapter.detectReady(this.outputBuffer)) {
+        this.scheduleTaskComplete();
+      }
+      // No else/cancel — timer self-validates on fire
     }
 
     // Auto-response / blocking prompt detection — runs after detectReady.

@@ -10,7 +10,7 @@ PTY session manager with lifecycle management, pluggable adapters, and blocking 
 - **Auto-response rules** - Automatically respond to known prompts with text or key sequences
 - **TUI menu navigation** - Navigate arrow-key menus via `selectMenuOption()` and key-sequence rules
 - **Stall detection** - Content-based stall detection with pluggable external classifiers, loading suppression, and exponential backoff
-- **Task completion detection** - Adapter-level fast-path that short-circuits the LLM stall classifier when the CLI returns to its idle prompt
+- **Task completion detection** - Settle-based fast-path that short-circuits the LLM stall classifier when the CLI returns to its idle prompt, resilient to decorative TUI rendering after the prompt
 - **Terminal attachment** - Attach to sessions for raw I/O streaming
 - **Special key support** - Send Ctrl, Alt, Shift, and function key combinations via `sendKeys()`
 - **Bracketed paste** - Proper paste handling with bracketed paste mode support
@@ -475,11 +475,15 @@ const handle = await manager.spawn({
 
 ## Stall Detection & Task Completion
 
-Content-based stall detection monitors sessions for output that stops changing. The content hash strips the full buffer first, then slices the last 500 characters of the normalized text — this ensures identical visual content always produces the same hash regardless of how many raw escape sequences surround it. The normalization strips ANSI escape codes, TUI spinner characters, and countdown/duration text (e.g. `8m 17s` → constant) so that live timers and TUI redraws don't perpetually reset the stall timer. All detection work (ready, blocking prompt, login, exit, stall) runs in a deferred `setImmediate()` tick so that node-pty's synchronous data delivery cannot starve the event loop — timers and I/O callbacks always get a chance to run between data bursts. The output buffer is capped at 100 KB to prevent unbounded growth during long tasks.
+Content-based stall detection monitors sessions for output that stops changing. The content hash strips the full buffer first, then slices the last 500 characters of the normalized text — this ensures identical visual content always produces the same hash regardless of how many raw escape sequences surround it. The normalization strips ANSI escape codes, carriage returns (`\r`), non-breaking spaces (`\xa0`), TUI spinner characters, and countdown/duration text (e.g. `8m 17s` → constant) so that live timers, TUI line-overwrites, and redraws don't perpetually reset the stall timer. All detection work (ready, blocking prompt, login, exit, stall) runs in a deferred `setImmediate()` tick so that node-pty's synchronous data delivery cannot starve the event loop — timers and I/O callbacks always get a chance to run between data bursts. The output buffer is capped at 100 KB to prevent unbounded growth during long tasks.
 
-When a stall is detected, the session first tries the adapter's `detectTaskComplete()` fast-path. If the adapter recognizes the output as a completed task (e.g. duration summary + idle prompt), it transitions directly to `ready` and emits `task_complete` — skipping the expensive LLM stall classifier entirely.
+### Task Completion Fast-Path (Settle Pattern)
 
-If the adapter doesn't recognize the output, the session falls back to emitting `stall_detected` for external classification.
+When a busy session's output matches the adapter's `detectReady()` pattern, a `task_complete` debounce timer starts. TUI agents like Claude Code continue rendering decorative output after the prompt — update notices, shortcut hints, status bar updates. Instead of cancelling the timer on each new data chunk (which would prevent the event from ever firing), the session uses a **settle pattern**: the debounce timer resets on each new chunk but is never cancelled. The timer callback re-verifies `detectReady()` before transitioning, so stale triggers are safe.
+
+This mirrors the `readySettlePending` pattern used for startup ready detection, and ensures the `task_complete` event fires reliably even when TUI chrome continues rendering after the agent has finished its task.
+
+If the fast-path timer doesn't fire (e.g. the prompt indicator disappears from the buffer), the session falls back to stall detection which emits `stall_detected` for external classification.
 
 ```typescript
 // Enable stall detection with a pluggable classifier
