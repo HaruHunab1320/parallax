@@ -57,6 +57,7 @@ type SessionInternals = {
   _lastContentHash: string | null;
   _lastBlockingPromptHash: string | null;
   _stallBackoffMs: number;
+  _stallEmissionCount: number;
   _firedOnceRules: Set<string>;
   _taskCompletePending: boolean;
   outputBuffer: string;
@@ -1449,6 +1450,23 @@ describe('Task complete settle pattern', () => {
     expect(internals._status).toBe('ready');
   });
 
+  it('should strip OSC sequences from stall output', () => {
+    const { session } = createBusySession({ timeoutMs: 3000 });
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    // Output with OSC window title sequence
+    simulateOutput(session, 'Hello \x1b]0;Window Title\x07 World');
+
+    vi.advanceTimersByTime(3000);
+
+    expect(stallHandler).toHaveBeenCalledTimes(1);
+    const recentOutput = stallHandler.mock.calls[0][0];
+    expect(recentOutput).not.toContain('Window Title');
+    expect(recentOutput).toContain('Hello');
+    expect(recentOutput).toContain('World');
+  });
+
   it('should transition via fast-path when TUI renders decorative content after prompt', () => {
     const adapter = createMockAdapter();
     adapter.detectReady = (buffer: string) => buffer.includes('$');
@@ -1496,5 +1514,74 @@ describe('Task complete settle pattern', () => {
     expect(taskCompleteHandler).toHaveBeenCalledTimes(1);
     expect(statusHandler).toHaveBeenCalledWith('ready');
     expect(internals._status).toBe('ready');
+  });
+});
+
+describe('Max stall emission count', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should stop emitting after MAX_STALL_EMISSIONS', () => {
+    const { session } = createBusySession({ timeoutMs: 3000 });
+    const internals = getInternals(session);
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    simulateOutput(session, 'Working on task...');
+
+    // Fire stall 5 times with still_working classifications between each.
+    // Each still_working doubles the backoff, so advance by the correct amount.
+    let backoff = 3000;
+    for (let i = 0; i < 5; i++) {
+      vi.advanceTimersByTime(backoff);
+      // Classify as still_working to allow re-emission (resets dedup hash)
+      session.handleStallClassification({ state: 'still_working' });
+      backoff = Math.min(backoff * 2, 30000);
+    }
+
+    expect(stallHandler).toHaveBeenCalledTimes(5);
+
+    // 6th stall — should be suppressed by circuit breaker
+    vi.advanceTimersByTime(30000); // backoff has grown to cap
+    expect(stallHandler).toHaveBeenCalledTimes(5); // Still 5, not 6
+  });
+
+  it('should reset stall emission count when new content arrives', () => {
+    const { session } = createBusySession({ timeoutMs: 3000 });
+    const internals = getInternals(session);
+    const stallHandler = vi.fn();
+    session.on('stall_detected', stallHandler);
+
+    simulateOutput(session, 'Working on task...');
+
+    // Fire 4 stalls (tracking backoff from still_working)
+    let backoff = 3000;
+    for (let i = 0; i < 4; i++) {
+      vi.advanceTimersByTime(backoff);
+      session.handleStallClassification({ state: 'still_working' });
+      backoff = Math.min(backoff * 2, 30000);
+    }
+
+    expect(stallHandler).toHaveBeenCalledTimes(4);
+    expect(internals._stallEmissionCount).toBe(4);
+
+    // New real content arrives — resets emission count and backoff
+    simulateOutput(session, ' new output arrived');
+    expect(internals._stallEmissionCount).toBe(0);
+
+    // Can now fire 5 more stalls (backoff resets to base on new content)
+    backoff = 3000;
+    for (let i = 0; i < 5; i++) {
+      vi.advanceTimersByTime(backoff);
+      session.handleStallClassification({ state: 'still_working' });
+      backoff = Math.min(backoff * 2, 30000);
+    }
+
+    expect(stallHandler).toHaveBeenCalledTimes(9); // 4 + 5
   });
 });

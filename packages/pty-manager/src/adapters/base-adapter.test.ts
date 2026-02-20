@@ -180,4 +180,33 @@ describe('BaseCLIAdapter', () => {
     const adapter = new TestAdapter();
     expect(adapter.autoResponseRules).toEqual([]);
   });
+
+  it('should strip OSC sequences from output', () => {
+    const adapter = new TestAdapter();
+
+    // OSC hyperlink: \x1b]8;;url\x07visible\x1b]8;;\x07
+    // The OSC wrappers should be stripped, visible text preserved
+    const input = '\x1b]8;;https://example.com\x07Click here\x1b]8;;\x07 to continue';
+    const detection = adapter.detectBlockingPrompt(input + '?');
+
+    // The stripped output should contain visible text
+    expect(detection.detected).toBe(true);
+    // Verify OSC payload is gone from the prompt
+    expect(detection.prompt).not.toContain('https://example.com');
+    expect(detection.prompt).toContain('Click here');
+    expect(detection.prompt).toContain('to continue');
+  });
+
+  it('should strip OSC window title sequences', () => {
+    const adapter = new TestAdapter();
+
+    // OSC window title: \x1b]0;Title\x07
+    const input = 'Hello \x1b]0;Window Title\x07World';
+    const detection = adapter.detectBlockingPrompt(input + '?');
+
+    expect(detection.detected).toBe(true);
+    expect(detection.prompt).not.toContain('Window Title');
+    expect(detection.prompt).toContain('Hello');
+    expect(detection.prompt).toContain('World');
+  });
 });

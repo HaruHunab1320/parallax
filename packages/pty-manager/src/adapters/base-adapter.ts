@@ -304,7 +304,11 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     // Replace cursor-forward sequences (\x1b[<n>C) with spaces before stripping.
     // TUI CLIs use these instead of literal spaces for word positioning.
     const withSpaces = str.replace(/\x1b\[\d*C/g, ' ');
+    // Strip OSC sequences: \x1b] ... BEL or \x1b] ... ST
+    const withoutOsc = withSpaces.replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '');
+    // Strip DCS sequences: \x1bP ... ST
+    const withoutDcs = withoutOsc.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
     // eslint-disable-next-line no-control-regex
-    return withSpaces.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+    return withoutDcs.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
   }
 }

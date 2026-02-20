@@ -273,6 +273,8 @@ export class PTYSession extends EventEmitter {
   private _lastContentHash: string | null = null;
   private _stallBackoffMs: number = 0; // Initialized in constructor from _stallTimeoutMs
   private static readonly MAX_STALL_BACKOFF_MS = 30_000;
+  private _stallEmissionCount: number = 0;
+  private static readonly MAX_STALL_EMISSIONS = 5;
 
   // Task completion detection (idle detection when busy)
   private _taskCompleteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -445,6 +447,7 @@ export class PTYSession extends EventEmitter {
       return;
     }
     this._lastContentHash = hash;
+    this._stallEmissionCount = 0;
 
     // Content changed — clear and restart the timer, reset backoff
     if (this._stallTimer) {
@@ -471,6 +474,7 @@ export class PTYSession extends EventEmitter {
     this._stallStartedAt = null;
     this._lastContentHash = null;
     this._stallBackoffMs = this._stallTimeoutMs;
+    this._stallEmissionCount = 0;
   }
 
   /**
@@ -518,6 +522,16 @@ export class PTYSession extends EventEmitter {
         { sessionId: this.id },
         'Task complete (adapter fast-path) — agent returned to idle prompt'
       );
+      return;
+    }
+
+    this._stallEmissionCount++;
+    if (this._stallEmissionCount > PTYSession.MAX_STALL_EMISSIONS) {
+      this.logger.warn(
+        { sessionId: this.id, count: this._stallEmissionCount },
+        'Max stall emissions reached — suspending stall detection for this task'
+      );
+      this.clearStallTimer();
       return;
     }
 
@@ -576,6 +590,13 @@ export class PTYSession extends EventEmitter {
     let result = str.replace(/\x1b\[\d*[CDABGdEF]/g, ' ');
     result = result.replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ');
     result = result.replace(/\x1b\[\d*[JK]/g, ' ');
+
+    // Strip OSC sequences (Operating System Command): \x1b] ... BEL or \x1b] ... ST
+    // Used for hyperlinks, window titles, Kitty graphics. Payload text would pollute output.
+    result = result.replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '');
+
+    // Strip DCS sequences (Device Control String): \x1bP ... ST
+    result = result.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
 
     // Strip remaining ANSI escape sequences (SGR, cursor show/hide, etc.)
     // eslint-disable-next-line no-control-regex
