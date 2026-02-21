@@ -5,6 +5,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { randomUUID } from 'crypto';
 import type * as ptyModule from 'node-pty';
 import type { CLIAdapter } from './adapters/adapter-interface';
 import type {
@@ -86,7 +87,7 @@ const consoleLogger: Logger = {
  * Generate a unique ID
  */
 function generateId(): string {
-  return `pty-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  return `pty-${Date.now()}-${randomUUID().slice(0, 8)}`;
 }
 
 /**

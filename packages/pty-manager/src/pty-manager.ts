@@ -211,7 +211,13 @@ export class PTYManager extends EventEmitter {
 
       // Call external classifier if configured
       if (this._onStallClassify) {
-        this._onStallClassify(session.id, recentOutput, stallDurationMs)
+        // Sanitize output before passing to LLM classifier to mitigate prompt injection.
+        // Truncate to 1500 chars and strip sequences that could be used to manipulate the classifier.
+        const sanitized = recentOutput
+          .slice(-1500)
+          .replace(/\b(ignore|disregard|forget)\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|rules?)\b/gi, '[REDACTED]')
+          .replace(/\b(you\s+are|act\s+as|pretend\s+to\s+be|you\s+must|system\s*:)\b/gi, '[REDACTED]');
+        this._onStallClassify(session.id, sanitized, stallDurationMs)
           .then((classification) => {
             session.handleStallClassification(classification);
           })
@@ -249,6 +255,7 @@ export class PTYManager extends EventEmitter {
 
       session.once('exit', () => {
         clearTimeout(timer);
+        session.removeAllListeners();
         this.sessions.delete(sessionId);
         this.outputLogs.delete(sessionId);
         resolve();

@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { PTYManager, type SessionHandle, type SpawnConfig } from '../../../packages/pty-manager/src/index';
-import { PTYConsoleBridge } from '../../../packages/pty-console/src/index';
+import { PTYManager } from '../../../packages/pty-manager/src/pty-manager';
+import type { SessionHandle, SpawnConfig } from '../../../packages/pty-manager/src/types';
+import { PTYConsoleBridge } from '../../../packages/pty-console/src/pty-console-bridge';
 import { CodexAdapter } from '../../../packages/coding-agent-adapters/src/codex-adapter';
 import { GeminiAdapter } from '../../../packages/coding-agent-adapters/src/gemini-adapter';
 

@@ -531,8 +531,15 @@ export class WorkspaceService {
     }
 
     // Remove workspace directory (for clones or if worktree removal failed)
+    // Validate the resolved path is inside baseDir to prevent symlink traversal
     try {
-      await fs.rm(workspace.path, { recursive: true, force: true });
+      const realPath = await fs.realpath(workspace.path);
+      const realBase = await fs.realpath(this.baseDir);
+      if (!realPath.startsWith(realBase + path.sep) && realPath !== realBase) {
+        this.log('error', { workspaceId, realPath, realBase }, 'Workspace path resolves outside baseDir — refusing to delete');
+      } else {
+        await fs.rm(workspace.path, { recursive: true, force: true });
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log('warn', { workspaceId, error: errorMessage }, 'Failed to remove workspace directory');
