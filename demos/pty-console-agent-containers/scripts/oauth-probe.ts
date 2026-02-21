@@ -2,11 +2,24 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { PTYManager } from '../../../packages/pty-manager/src/pty-manager';
-import type { SessionHandle, SpawnConfig } from '../../../packages/pty-manager/src/types';
-import { PTYConsoleBridge } from '../../../packages/pty-console/src/pty-console-bridge';
-import { CodexAdapter } from '../../../packages/coding-agent-adapters/src/codex-adapter';
-import { GeminiAdapter } from '../../../packages/coding-agent-adapters/src/gemini-adapter';
+import type { SessionHandle, SpawnConfig } from '../../../packages/pty-manager/src/types.ts';
+import * as PTYManagerModule from '../../../packages/pty-manager/src/pty-manager.ts';
+import * as PTYConsoleBridgeModule from '../../../packages/pty-console/src/pty-console-bridge.ts';
+import * as CodexAdapterModule from '../../../packages/coding-agent-adapters/src/codex-adapter.ts';
+import * as GeminiAdapterModule from '../../../packages/coding-agent-adapters/src/gemini-adapter.ts';
+
+const PTYManager = (PTYManagerModule as { PTYManager?: typeof import('../../../packages/pty-manager/src/pty-manager.ts')['PTYManager'] }).PTYManager
+  ?? ((PTYManagerModule as { default?: { PTYManager?: typeof import('../../../packages/pty-manager/src/pty-manager.ts')['PTYManager'] } }).default?.PTYManager as typeof import('../../../packages/pty-manager/src/pty-manager.ts')['PTYManager']);
+const PTYConsoleBridge = (PTYConsoleBridgeModule as { PTYConsoleBridge?: typeof import('../../../packages/pty-console/src/pty-console-bridge.ts')['PTYConsoleBridge'] }).PTYConsoleBridge
+  ?? ((PTYConsoleBridgeModule as { default?: { PTYConsoleBridge?: typeof import('../../../packages/pty-console/src/pty-console-bridge.ts')['PTYConsoleBridge'] } }).default?.PTYConsoleBridge as typeof import('../../../packages/pty-console/src/pty-console-bridge.ts')['PTYConsoleBridge']);
+const CodexAdapter = (CodexAdapterModule as { CodexAdapter?: typeof import('../../../packages/coding-agent-adapters/src/codex-adapter.ts')['CodexAdapter'] }).CodexAdapter
+  ?? ((CodexAdapterModule as { default?: { CodexAdapter?: typeof import('../../../packages/coding-agent-adapters/src/codex-adapter.ts')['CodexAdapter'] } }).default?.CodexAdapter as typeof import('../../../packages/coding-agent-adapters/src/codex-adapter.ts')['CodexAdapter']);
+const GeminiAdapter = (GeminiAdapterModule as { GeminiAdapter?: typeof import('../../../packages/coding-agent-adapters/src/gemini-adapter.ts')['GeminiAdapter'] }).GeminiAdapter
+  ?? ((GeminiAdapterModule as { default?: { GeminiAdapter?: typeof import('../../../packages/coding-agent-adapters/src/gemini-adapter.ts')['GeminiAdapter'] } }).default?.GeminiAdapter as typeof import('../../../packages/coding-agent-adapters/src/gemini-adapter.ts')['GeminiAdapter']);
+
+if (!PTYManager || !PTYConsoleBridge || !CodexAdapter || !GeminiAdapter) {
+  throw new Error('Failed to resolve required modules for OAuth probe script');
+}
 
 type AgentType = 'codex' | 'gemini';
 

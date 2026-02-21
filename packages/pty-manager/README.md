@@ -37,6 +37,12 @@ sudo apt-get install build-essential
 npm install --global windows-build-tools
 ```
 
+On some platforms, `node-pty`'s prebuilt `spawn-helper` binary may lack execute permissions after install. If you see `EACCES` errors when spawning sessions, fix with:
+
+```bash
+chmod +x node_modules/node-pty/build/Release/spawn-helper
+```
+
 ## Quick Start
 
 ```typescript

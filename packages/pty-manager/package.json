@@ -1,6 +1,6 @@
 {
   "name": "pty-manager",
-  "version": "1.6.7",
+  "version": "1.6.8",
   "description": "PTY session manager with lifecycle management, pluggable adapters, and blocking prompt detection",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -20,12 +20,10 @@
   },
   "files": [
     "dist",
-    "scripts",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "postinstall": "node scripts/postinstall.js",
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest",
