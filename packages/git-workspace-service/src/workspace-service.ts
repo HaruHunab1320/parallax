@@ -578,6 +578,9 @@ export class WorkspaceService {
       cloneUrl = cloneUrl.replace('git@github.com:', 'https://github.com/');
     }
 
+    // Strip trailing slashes before checking for .git
+    cloneUrl = cloneUrl.replace(/\/+$/, '');
+
     // Add .git if missing
     if (!cloneUrl.endsWith('.git')) {
       cloneUrl = `${cloneUrl}.git`;
@@ -779,6 +782,9 @@ export class WorkspaceService {
     if (url.startsWith('git@github.com:')) {
       url = url.replace('git@github.com:', 'https://github.com/');
     }
+
+    // Strip trailing slashes before checking for .git
+    url = url.replace(/\/+$/, '');
 
     // Add .git if missing
     if (!url.endsWith('.git')) {

@@ -1162,6 +1162,9 @@ export class PTYSession extends EventEmitter {
         // Otherwise, notify that user intervention is needed
         if (detection.type === 'login') {
           this._status = 'authenticating';
+          // Surface login prompts through the dedicated auth event so callers
+          // can open OAuth/device-code URLs without parsing blocking_prompt.
+          this.emit('login_required', detection.instructions, detection.url);
         }
 
         this.logger.warn(

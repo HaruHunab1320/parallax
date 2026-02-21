@@ -402,6 +402,28 @@ importers:
         specifier: ^5.3.3
         version: 5.8.3
 
+  demos/pty-console-agent-containers:
+    dependencies:
+      coding-agent-adapters:
+        specifier: workspace:*
+        version: link:../../packages/coding-agent-adapters
+      pty-console:
+        specifier: workspace:*
+        version: link:../../packages/pty-console
+      pty-manager:
+        specifier: workspace:*
+        version: link:../../packages/pty-manager
+    devDependencies:
+      '@types/node':
+        specifier: ^22.14.1
+        version: 22.16.5
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
+      vitest:
+        specifier: ^2.1.7
+        version: 2.1.9(@types/node@22.16.5)(lightningcss@1.30.2)(terser@5.46.0)
+
   demos/rag-quality-gate:
     dependencies:
       '@google/generative-ai':

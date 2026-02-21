@@ -900,6 +900,47 @@ describe('TUI key-sequence auto-response', () => {
     // Should NOT have sent 'keys:enter\r' as raw text
     expect(writeFn).not.toHaveBeenCalledWith('keys:enter\r');
   });
+
+  it('should emit login_required when detectBlockingPrompt returns login', () => {
+    const adapter = createMockAdapter();
+    adapter.detectBlockingPrompt = () => ({
+      detected: true,
+      type: 'login',
+      prompt: 'Sign in required',
+      canAutoRespond: false,
+      instructions: 'Complete browser auth',
+      url: 'https://example.com/device',
+    });
+
+    const session = new PTYSession(
+      adapter,
+      { name: 'test', type: 'test' },
+      silentLogger as never,
+    );
+
+    const internals = getInternals(session);
+    internals.ptyProcess = {
+      write: vi.fn(),
+      kill: vi.fn(),
+      pid: 12345,
+      resize: vi.fn(),
+    };
+    internals._status = 'ready';
+    internals.outputBuffer = 'Sign in required';
+
+    const loginHandler = vi.fn();
+    const blockingHandler = vi.fn();
+    session.on('login_required', loginHandler);
+    session.on('blocking_prompt', blockingHandler);
+
+    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+
+    expect(handled).toBe(true);
+    expect(loginHandler).toHaveBeenCalledWith('Complete browser auth', 'https://example.com/device');
+    expect(blockingHandler).toHaveBeenCalledTimes(1);
+    expect(blockingHandler.mock.calls[0][0].type).toBe('login');
+    expect(blockingHandler.mock.calls[0][1]).toBe(false);
+  });
 });
 
 describe('once-rule auto-response thrashing prevention', () => {

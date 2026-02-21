@@ -6,8 +6,8 @@ FROM parallax/agent-base:latest
 
 USER root
 
-# Install Aider via pip
-RUN pip3 install --no-cache-dir aider-chat
+# Install Aider via pip (Alpine Python is externally-managed per PEP 668)
+RUN pip3 install --no-cache-dir --break-system-packages aider-chat
 
 # Switch back to agent user
 USER agent
