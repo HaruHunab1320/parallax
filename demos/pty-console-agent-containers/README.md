@@ -73,6 +73,36 @@ Interactive wrapper options:
 - `--cols 220`
 - `--rows 70`
 
+Gemini interactive passthrough capture:
+
+```bash
+pnpm --filter @parallax/pty-console-agent-containers-demo capture:gemini:interactive
+```
+
+Codex interactive passthrough capture:
+
+```bash
+pnpm --filter @parallax/pty-console-agent-containers-demo capture:codex:interactive
+```
+
+Both support:
+
+- `--workdir /path/to/repo`
+- `--output-dir .parallax/pty-captures`
+- `--cols 220`
+- `--rows 70`
+- Detach with `Ctrl+]`
+
+Aider interactive passthrough capture:
+
+```bash
+pnpm --filter @parallax/pty-console-agent-containers-demo capture:aider:interactive
+```
+
+Full guide (all agent wrappers, artifact structure, and workflow):
+
+- `demos/pty-console-agent-containers/CAPTURE_USAGE.md`
+
 ## Strict ready mode
 
 Require all sessions to reach `ready`:
