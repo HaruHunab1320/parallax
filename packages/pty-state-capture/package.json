@@ -1,0 +1,52 @@
+{
+  "name": "pty-state-capture",
+  "version": "0.1.0",
+  "description": "Raw PTY capture, VT-aware frame reduction, and interaction-state extraction for CLI orchestration",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "pty",
+    "terminal",
+    "ansi",
+    "state-machine",
+    "orchestration"
+  ],
+  "author": "Parallax",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HaruHunab1320/parallax",
+    "directory": "packages/pty-state-capture"
+  },
+  "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/pty-state-capture#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

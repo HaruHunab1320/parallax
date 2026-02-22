@@ -123,4 +123,33 @@ describe('PTYConsoleBridge', () => {
     expect(manager.stop).toHaveBeenCalledWith('s3', undefined);
     bridge.close();
   });
+
+  it('forwards auth_required with structured auth info', () => {
+    const manager = new FakeManager();
+    const bridge = new PTYConsoleBridge(manager);
+    const statusListener = vi.fn();
+    bridge.on('session_status', statusListener);
+
+    const handle: SessionHandle = {
+      id: 's4',
+      name: 'agent4',
+      type: 'claude',
+      status: 'authenticating',
+    };
+    manager.emit('auth_required', handle, {
+      method: 'oauth_browser',
+      url: 'https://claude.ai/oauth/authorize',
+      instructions: 'Open the URL to sign in',
+    });
+
+    expect(statusListener).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'auth_required',
+      session: handle,
+      auth: expect.objectContaining({
+        method: 'oauth_browser',
+        url: 'https://claude.ai/oauth/authorize',
+      }),
+    }));
+    bridge.close();
+  });
 });

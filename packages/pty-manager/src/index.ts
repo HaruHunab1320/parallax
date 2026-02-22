@@ -36,6 +36,8 @@ export type {
   // Adapter types
   ParsedOutput,
   LoginDetection,
+  AuthRequiredMethod,
+  AuthRequiredInfo,
   BlockingPromptType,
   BlockingPromptDetection,
   AutoResponseRule,

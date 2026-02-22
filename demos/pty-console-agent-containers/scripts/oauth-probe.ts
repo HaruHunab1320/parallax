@@ -136,6 +136,15 @@ async function waitForUrls(
   bridge.on('session_status', (event) => {
     const session = event.session;
     if (session.type !== 'codex' && session.type !== 'gemini') return;
+    if (event.kind === 'auth_required' && event.auth) {
+      if (event.auth.url) {
+        urls.set(session.type, event.auth.url);
+        done.add(session.type);
+      }
+      if (event.auth.deviceCode) {
+        console.log(`[${session.type}] device code: ${event.auth.deviceCode}`);
+      }
+    }
     if (event.kind === 'login_required' || event.kind === 'blocking_prompt') {
       const count = (keySendCount.get(session.id) ?? 0) + 1;
       keySendCount.set(session.id, count);

@@ -145,6 +145,7 @@ export type {
   AgentMetrics,
   AgentCredentials,
   BlockingPromptInfo,
+  AuthRequiredInfo,
   RuntimeEvent,
   MessageType,
   StallClassification,

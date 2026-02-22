@@ -1,0 +1,77 @@
+{
+  "name": "pty-manager-internal-tracing",
+  "version": "0.0.0-internal.1",
+  "description": "INTERNAL ONLY: PTY session manager fork for tracing/capture experiments and adapter research",
+  "private": true,
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "pty-worker": "./dist/pty-worker.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./worker": {
+      "require": "./dist/pty-worker.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest --coverage",
+    "test:integration": "tsx test-integration.ts",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "echo \"Internal package - publishing disabled\" && exit 1"
+  },
+  "keywords": [
+    "pty",
+    "terminal",
+    "pseudo-terminal",
+    "node-pty",
+    "session-manager",
+    "shell",
+    "tty",
+    "process-management",
+    "docker",
+    "ssh",
+    "bun",
+    "typescript"
+  ],
+  "author": "Jakob Grant",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HaruHunab1320/parallax.git",
+    "directory": "packages/pty-manager-internal-tracing"
+  },
+  "bugs": {
+    "url": "https://github.com/HaruHunab1320/parallax/issues"
+  },
+  "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/pty-manager-internal-tracing#readme",
+  "dependencies": {
+    "node-pty": "^1.0.0",
+    "pty-state-capture": "workspace:^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "tsup": "^8.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

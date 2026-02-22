@@ -4,6 +4,7 @@ import type {
   StopOptions,
   TerminalAttachment,
   BlockingPromptInfo,
+  AuthRequiredInfo,
   AutoResponseRule,
 } from 'pty-manager';
 
@@ -27,6 +28,7 @@ export interface SessionStatusEvent {
     | 'status_changed'
     | 'task_complete'
     | 'login_required'
+    | 'auth_required'
     | 'blocking_prompt'
     | 'question'
     | 'message';
@@ -35,6 +37,7 @@ export interface SessionStatusEvent {
   error?: string;
   instructions?: string;
   url?: string;
+  auth?: AuthRequiredInfo;
   promptInfo?: BlockingPromptInfo;
   autoResponded?: boolean;
   question?: string;
@@ -62,4 +65,3 @@ export interface PTYManagerLike {
     clearAutoResponseRules: () => void;
   } | undefined;
 }
-

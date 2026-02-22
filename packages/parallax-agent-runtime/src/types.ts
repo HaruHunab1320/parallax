@@ -143,6 +143,17 @@ export interface BlockingPromptInfo {
 }
 
 /**
+ * Structured auth-required payload forwarded from pty-manager.
+ */
+export interface AuthRequiredInfo {
+  method: 'api_key' | 'oauth_browser' | 'device_code' | 'unknown';
+  url?: string;
+  deviceCode?: string;
+  instructions?: string;
+  promptSnippet?: string;
+}
+
+/**
  * Runtime events
  */
 export type RuntimeEvent =
@@ -151,6 +162,7 @@ export type RuntimeEvent =
   | { type: 'agent_stopped'; agent: AgentHandle; reason: string }
   | { type: 'agent_error'; agent: AgentHandle; error: string }
   | { type: 'login_required'; agent: AgentHandle; loginUrl?: string; loginInstructions?: string }
+  | { type: 'auth_required'; agent: AgentHandle; auth: AuthRequiredInfo }
   | { type: 'blocking_prompt'; agent: AgentHandle; prompt: BlockingPromptInfo; autoResponded: boolean }
   | { type: 'message'; message: AgentMessage }
   | { type: 'question'; agent: AgentHandle; question: string }

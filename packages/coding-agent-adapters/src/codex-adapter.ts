@@ -206,13 +206,15 @@ export class CodexAdapter extends BaseCodingAdapter {
         /open.?this.?link.?in.?your.?browser/i.test(stripped) ||
         /enter.?this.?one-time.?code/i.test(stripped)) {
       const codeMatch = stripped.match(/code[:\s]+([A-Z0-9-]+)/i);
+      const deviceCode = codeMatch ? codeMatch[1] : undefined;
       const urlMatch = stripped.match(/https?:\/\/[^\s]+/);
       return {
         required: true,
         type: 'device_code',
         url: urlMatch ? urlMatch[0] : undefined,
-        instructions: codeMatch
-          ? `Enter code ${codeMatch[1]} at the URL`
+        deviceCode,
+        instructions: deviceCode
+          ? `Enter code ${deviceCode} at the URL`
           : 'Device code authentication in progress — complete in browser',
       };
     }
@@ -220,13 +222,15 @@ export class CodexAdapter extends BaseCodingAdapter {
     // Legacy device code detection
     if (stripped.includes('device code') || stripped.includes('Enter the code')) {
       const codeMatch = stripped.match(/code[:\s]+([A-Z0-9-]+)/i);
+      const deviceCode = codeMatch ? codeMatch[1] : undefined;
       const urlMatch = stripped.match(/https?:\/\/[^\s]+/);
       return {
         required: true,
         type: 'device_code',
         url: urlMatch ? urlMatch[0] : undefined,
-        instructions: codeMatch
-          ? `Enter code ${codeMatch[1]} at the URL`
+        deviceCode,
+        instructions: deviceCode
+          ? `Enter code ${deviceCode} at the URL`
           : 'Device code authentication required',
       };
     }

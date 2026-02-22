@@ -9,7 +9,9 @@
     "test:watch": "vitest",
     "test:smoke": "vitest run test/agent-ready.smoke.test.ts",
     "test:smoke:local": "vitest run test/agent-ready-local.smoke.test.ts",
-    "test:smoke:all": "vitest run test/agent-ready.smoke.test.ts test/agent-ready-local.smoke.test.ts"
+    "test:smoke:all": "vitest run test/agent-ready.smoke.test.ts test/agent-ready-local.smoke.test.ts",
+    "capture:claude": "tsx scripts/claude-state-capture.ts",
+    "capture:claude:interactive": "tsx scripts/claude-interactive-capture.ts"
   },
   "dependencies": {
     "coding-agent-adapters": "workspace:*",

@@ -143,6 +143,10 @@ export class PTYConsoleBridge extends EventEmitter {
       this.emitStatus({ kind: 'login_required', session, instructions, url });
     });
 
+    this.listen('auth_required', (session: SessionHandle, auth: SessionStatusEvent['auth']) => {
+      this.emitStatus({ kind: 'auth_required', session, auth });
+    });
+
     this.listen(
       'blocking_prompt',
       (session: SessionHandle, promptInfo: SessionStatusEvent['promptInfo'], autoResponded: boolean) => {
@@ -201,4 +205,3 @@ export class PTYConsoleBridge extends EventEmitter {
     this.emit('session_status', event);
   }
 }
-

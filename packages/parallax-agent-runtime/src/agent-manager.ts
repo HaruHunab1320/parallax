@@ -11,6 +11,7 @@ import {
   type SessionHandle,
   type SessionMessage,
   type PTYManagerConfig,
+  type AuthRequiredInfo as PtyAuthRequiredInfo,
   type AutoResponseRule,
 } from 'pty-manager';
 import {
@@ -44,6 +45,7 @@ import type {
   AgentStatus,
   AgentMetrics,
   BlockingPromptInfo,
+  AuthRequiredInfo,
   StallClassification,
 } from './types.js';
 
@@ -73,6 +75,7 @@ export interface AgentManagerEvents {
   agent_stopped: (agent: AgentHandle, reason: string) => void;
   agent_error: (agent: AgentHandle, error: string) => void;
   login_required: (agent: AgentHandle, instructions?: string, url?: string) => void;
+  auth_required: (agent: AgentHandle, auth: AuthRequiredInfo) => void;
   blocking_prompt: (agent: AgentHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => void;
   message: (message: AgentMessage) => void;
   question: (agent: AgentHandle, question: string) => void;
@@ -186,6 +189,11 @@ export class AgentManager extends EventEmitter {
     this.ptyManager.on('login_required', (handle: SessionHandle, instructions?: string, url?: string) => {
       const agentHandle = this.toAgentHandle(handle);
       this.emit('login_required', agentHandle, instructions, url);
+    });
+
+    this.ptyManager.on('auth_required', (handle: SessionHandle, auth: PtyAuthRequiredInfo) => {
+      const agentHandle = this.toAgentHandle(handle);
+      this.emit('auth_required', agentHandle, auth as AuthRequiredInfo);
     });
 
     this.ptyManager.on('blocking_prompt', (handle: SessionHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => {

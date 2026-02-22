@@ -14,6 +14,8 @@ import type {
   SessionHandle,
   SessionMessage,
   BlockingPromptInfo,
+  AuthRequiredInfo,
+  LoginDetection,
   AutoResponseRule,
   StallClassification,
   Logger,
@@ -39,6 +41,7 @@ export interface PTYSessionEvents {
   output: (data: string) => void;
   ready: () => void;
   login_required: (instructions?: string, url?: string) => void;
+  auth_required: (info: AuthRequiredInfo) => void;
   blocking_prompt: (prompt: BlockingPromptInfo, autoResponded: boolean) => void;
   message: (message: SessionMessage) => void;
   question: (question: string) => void;
@@ -584,6 +587,66 @@ export class PTYSession extends EventEmitter {
     return hash.toString(36);
   }
 
+  private mapLoginTypeToAuthMethod(type: LoginDetection['type'] | undefined): AuthRequiredInfo['method'] {
+    switch (type) {
+      case 'api_key':
+        return 'api_key';
+      case 'device_code':
+        return 'device_code';
+      case 'oauth':
+      case 'browser':
+        return 'oauth_browser';
+      default:
+        return 'unknown';
+    }
+  }
+
+  private extractDeviceCode(text: string): string | undefined {
+    const stripped = this.stripAnsiForClassifier(text);
+    const explicitMatch = stripped.match(
+      /(?:one-time|one time|device)?\s*code[:\s]+([A-Z0-9]{3,}(?:-[A-Z0-9]{3,})+)/i
+    );
+    if (explicitMatch?.[1]) {
+      return explicitMatch[1].toUpperCase();
+    }
+
+    if (!/code/i.test(stripped)) {
+      return undefined;
+    }
+    const fallbackMatch = stripped.match(/\b([A-Z0-9]{3,}(?:-[A-Z0-9]{3,})+)\b/);
+    return fallbackMatch?.[1]?.toUpperCase();
+  }
+
+  private getPromptSnippet(maxChars = 280): string | undefined {
+    const normalized = this.stripAnsiForClassifier(this.outputBuffer)
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!normalized) {
+      return undefined;
+    }
+    return normalized.length <= maxChars
+      ? normalized
+      : normalized.slice(-maxChars);
+  }
+
+  private emitAuthRequired(details: {
+    type?: LoginDetection['type'];
+    url?: string;
+    deviceCode?: string;
+    instructions?: string;
+  }): void {
+    const info: AuthRequiredInfo = {
+      method: this.mapLoginTypeToAuthMethod(details.type),
+      url: details.url,
+      deviceCode: details.deviceCode ?? this.extractDeviceCode(this.outputBuffer),
+      instructions: details.instructions,
+      promptSnippet: this.getPromptSnippet(),
+    };
+
+    this.emit('auth_required', info);
+    this.emit('login_required', info.instructions, info.url);
+  }
+
   /**
    * Strip ANSI codes, cursor movement, box-drawing, and spinner characters.
    * Used for stall detection hashing and auto-response pattern matching.
@@ -1078,7 +1141,12 @@ export class PTYSession extends EventEmitter {
       if (loginDetection.required && this._status !== 'authenticating') {
         this._status = 'authenticating';
         this.clearStallTimer();
-        this.emit('login_required', loginDetection.instructions, loginDetection.url);
+        this.emitAuthRequired({
+          type: loginDetection.type,
+          url: loginDetection.url,
+          deviceCode: loginDetection.deviceCode,
+          instructions: loginDetection.instructions,
+        });
         this.logger.warn(
           { sessionId: this.id, loginType: loginDetection.type },
           'Login required'
@@ -1165,7 +1233,13 @@ export class PTYSession extends EventEmitter {
           this._status = 'authenticating';
           // Surface login prompts through the dedicated auth event so callers
           // can open OAuth/device-code URLs without parsing blocking_prompt.
-          this.emit('login_required', detection.instructions, detection.url);
+          const inferred = this.adapter.detectLogin(this.outputBuffer);
+          this.emitAuthRequired({
+            type: inferred.required ? inferred.type : undefined,
+            url: detection.url ?? inferred.url,
+            deviceCode: inferred.required ? inferred.deviceCode : undefined,
+            instructions: detection.instructions ?? inferred.instructions,
+          });
         }
 
         this.logger.warn(

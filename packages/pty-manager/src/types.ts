@@ -139,7 +139,28 @@ export interface LoginDetection {
   required: boolean;
   type?: 'api_key' | 'oauth' | 'browser' | 'device_code';
   url?: string;
+  deviceCode?: string;
   instructions?: string;
+}
+
+/**
+ * Normalized authentication methods for runtime event consumers.
+ */
+export type AuthRequiredMethod =
+  | 'api_key'
+  | 'oauth_browser'
+  | 'device_code'
+  | 'unknown';
+
+/**
+ * Structured authentication-required payload emitted by PTY session/manager.
+ */
+export interface AuthRequiredInfo {
+  method: AuthRequiredMethod;
+  url?: string;
+  deviceCode?: string;
+  instructions?: string;
+  promptSnippet?: string;
 }
 
 /**

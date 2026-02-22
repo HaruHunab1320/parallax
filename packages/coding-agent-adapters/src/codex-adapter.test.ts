@@ -204,6 +204,7 @@ describe('CodexAdapter', () => {
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('device_code');
+      expect(result.deviceCode).toBe('ABC-123');
     });
 
     it('should detect legacy device code flow', () => {
@@ -212,6 +213,7 @@ describe('CodexAdapter', () => {
       expect(result.required).toBe(true);
       expect(result.type).toBe('device_code');
       expect(result.url).toBe('https://openai.com/auth');
+      expect(result.deviceCode).toBe('ABC-123');
     });
 
     it('should return not required for normal output', () => {

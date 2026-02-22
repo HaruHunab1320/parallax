@@ -15,6 +15,7 @@ import type {
   SessionFilter,
   SessionStatus,
   BlockingPromptInfo,
+  AuthRequiredInfo,
   AutoResponseRule,
   StallClassification,
   StopOptions,
@@ -30,6 +31,7 @@ export interface PTYManagerEvents {
   session_stopped: (session: SessionHandle, reason: string) => void;
   session_error: (session: SessionHandle, error: string) => void;
   login_required: (session: SessionHandle, instructions?: string, url?: string) => void;
+  auth_required: (session: SessionHandle, info: AuthRequiredInfo) => void;
   blocking_prompt: (session: SessionHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => void;
   message: (message: SessionMessage) => void;
   question: (session: SessionHandle, question: string) => void;
@@ -173,6 +175,10 @@ export class PTYManager extends EventEmitter {
 
     session.on('login_required', (instructions?: string, url?: string) => {
       this.emit('login_required', session.toHandle(), instructions, url);
+    });
+
+    session.on('auth_required', (info: AuthRequiredInfo) => {
+      this.emit('auth_required', session.toHandle(), info);
     });
 
     session.on('blocking_prompt', (promptInfo: BlockingPromptInfo, autoResponded: boolean) => {

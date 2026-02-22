@@ -131,6 +131,7 @@ describe('AgentManager', () => {
       expect(events).toContain('session_stopped');
       expect(events).toContain('session_error');
       expect(events).toContain('login_required');
+      expect(events).toContain('auth_required');
       expect(events).toContain('blocking_prompt');
       expect(events).toContain('message');
       expect(events).toContain('question');
@@ -538,6 +539,27 @@ describe('AgentManager', () => {
   });
 
   describe('event forwarding', () => {
+    it('forwards auth_required event with agent handle', () => {
+      const manager = new AgentManager(logger);
+
+      const authHandler = mockOn.mock.calls.find(
+        (c: unknown[]) => c[0] === 'auth_required'
+      )?.[1] as Function;
+      expect(authHandler).toBeDefined();
+
+      const emitSpy = vi.spyOn(manager, 'emit');
+      authHandler(
+        { id: 'agent-1', name: 'test', type: 'claude', status: 'authenticating' },
+        { method: 'oauth_browser', url: 'https://claude.ai/oauth/authorize', instructions: 'Open URL' }
+      );
+
+      expect(emitSpy).toHaveBeenCalledWith(
+        'auth_required',
+        expect.objectContaining({ id: 'agent-1' }),
+        expect.objectContaining({ method: 'oauth_browser', url: 'https://claude.ai/oauth/authorize' })
+      );
+    });
+
     it('forwards stall_detected event with agent handle', () => {
       const manager = new AgentManager(logger);
 

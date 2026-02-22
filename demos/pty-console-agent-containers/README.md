@@ -33,6 +33,46 @@ Run both:
 pnpm --filter @parallax/pty-console-agent-containers-demo test:smoke:all
 ```
 
+## Claude State Capture (Internal Tracing)
+
+Run Claude with `pty-manager-internal-tracing` capture enabled and print live interaction-state transitions:
+
+```bash
+pnpm --filter @parallax/pty-console-agent-containers-demo capture:claude
+```
+
+With a prompt:
+
+```bash
+pnpm --filter @parallax/pty-console-agent-containers-demo capture:claude -- --prompt "Create a short TODO list"
+```
+
+Useful options:
+
+- `--timeout-ms 180000`
+- `--output-dir .parallax/pty-captures`
+- `--workdir /path/to/repo`
+
+The script prints artifact file paths (`raw-events`, `states`, `transitions`, `lifecycle`) at the end of the run.
+
+Interactive passthrough capture (use Claude normally while recording all terminal I/O and state transitions):
+
+```bash
+pnpm --filter @parallax/pty-console-agent-containers-demo capture:claude:interactive
+```
+
+Exit/detach options:
+
+- Type `/exit` in Claude, or
+- Press `Ctrl+]` in the wrapper terminal
+
+Interactive wrapper options:
+
+- `--workdir /path/to/repo`
+- `--output-dir .parallax/pty-captures`
+- `--cols 220`
+- `--rows 70`
+
 ## Strict ready mode
 
 Require all sessions to reach `ready`:
