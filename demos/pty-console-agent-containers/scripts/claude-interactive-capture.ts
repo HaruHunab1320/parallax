@@ -12,11 +12,49 @@ if (!PTYManager) {
   throw new Error('Failed to resolve PTYManager from pty-manager-internal-tracing');
 }
 
+function createManagerLogger() {
+  const verbose = process.env.PTY_CAPTURE_VERBOSE === '1';
+  return {
+    debug: (...args: unknown[]) => {
+      if (!verbose) return;
+      if (typeof args[0] === 'string') {
+        console.debug(args[0], args[1]);
+      } else {
+        console.debug(args[1], args[0]);
+      }
+    },
+    info: (...args: unknown[]) => {
+      if (!verbose) return;
+      if (typeof args[0] === 'string') {
+        console.info(args[0], args[1]);
+      } else {
+        console.info(args[1], args[0]);
+      }
+    },
+    warn: (...args: unknown[]) => {
+      if (!verbose) return;
+      if (typeof args[0] === 'string') {
+        console.warn(args[0], args[1]);
+      } else {
+        console.warn(args[1], args[0]);
+      }
+    },
+    error: (...args: unknown[]) => {
+      if (typeof args[0] === 'string') {
+        console.error(args[0], args[1]);
+      } else {
+        console.error(args[1], args[0]);
+      }
+    },
+  };
+}
+
 interface CliArgs {
   workdir: string;
   outputDir: string;
   cols: number;
   rows: number;
+  renderMode: 'raw' | 'plain';
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -28,6 +66,7 @@ function parseArgs(argv: string[]): CliArgs {
     outputDir: resolve(process.env.CLAUDE_CAPTURE_OUTPUT_DIR ?? '.parallax/pty-captures'),
     cols: Number.parseInt(process.env.CLAUDE_CAPTURE_COLS ?? String(stdoutCols), 10),
     rows: Number.parseInt(process.env.CLAUDE_CAPTURE_ROWS ?? String(stdoutRows), 10),
+    renderMode: process.env.CLAUDE_CAPTURE_RENDER === 'plain' ? 'plain' : 'raw',
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -48,6 +87,13 @@ function parseArgs(argv: string[]): CliArgs {
     if (arg === '--rows' && argv[i + 1]) {
       const parsed = Number.parseInt(argv[++i], 10);
       if (Number.isFinite(parsed) && parsed > 0) out.rows = parsed;
+      continue;
+    }
+    if (arg === '--render' && argv[i + 1]) {
+      const mode = argv[++i];
+      if (mode === 'raw' || mode === 'plain') {
+        out.renderMode = mode;
+      }
       continue;
     }
     if (arg === '--help' || arg === '-h') {
@@ -71,6 +117,7 @@ Options:
   --output-dir <path>     Capture output root dir (default: .parallax/pty-captures)
   --cols <n>              Initial terminal columns (default: current terminal cols)
   --rows <n>              Initial terminal rows (default: current terminal rows)
+  --render <raw|plain>    Display mode (default: raw; plain reduces TUI flicker)
   -h, --help              Show this help
 
 Exit:
@@ -82,7 +129,21 @@ Env:
   CLAUDE_CAPTURE_OUTPUT_DIR
   CLAUDE_CAPTURE_COLS
   CLAUDE_CAPTURE_ROWS
+  CLAUDE_CAPTURE_RENDER    raw | plain
   `);
+}
+
+function toPlainDisplay(data: string): string {
+  // Preserve readable text but drop heavy cursor controls that cause jumpy repainting.
+  let out = data;
+  out = out.replace(/\x1b\[\d*(?:;\d+)*[ABCDGHfJKmSTu]/g, ' ');
+  out = out.replace(/\x1b\[\?[0-9;]*[hl]/g, ' ');
+  out = out.replace(/\x1b\][^\x07]*\x07/g, ' ');
+  out = out.replace(/\r/g, '\n');
+  out = out.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏✻✶✳✢⏺]/g, ' ');
+  out = out.replace(/[ \t]{2,}/g, ' ');
+  out = out.replace(/\n{3,}/g, '\n\n');
+  return out;
 }
 
 async function main(): Promise<void> {
@@ -95,6 +156,7 @@ async function main(): Promise<void> {
   await mkdir(captureDir, { recursive: true });
 
   const manager = new PTYManager({
+    logger: createManagerLogger(),
     capture: {
       enabled: true,
       outputRootDir: captureDir,
@@ -226,10 +288,11 @@ async function main(): Promise<void> {
 
   process.stderr.write(`[claude-capture] session=${session.id}\n`);
   process.stderr.write(`[claude-capture] run-id=${runId}\n`);
+  process.stderr.write(`[claude-capture] render=${args.renderMode}\n`);
   process.stderr.write('[claude-capture] press Ctrl+] to detach\n\n');
 
   unsubOutput = attachment.onData((data) => {
-    process.stdout.write(data);
+    process.stdout.write(args.renderMode === 'plain' ? toPlainDisplay(data) : data);
   });
 
   process.stdin.setRawMode(true);

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AdapterRegistry } from './adapter-registry';
-import type { CLIAdapter } from './adapter-interface';
-import type { SpawnConfig, ParsedOutput, LoginDetection } from '../types';
+import { AdapterRegistry } from '../src/adapters/adapter-registry';
+import type { CLIAdapter } from '../src/adapters/adapter-interface';
+import type { SpawnConfig, ParsedOutput, LoginDetection } from '../src/types';
 
 // Mock adapter for testing
 function createMockAdapter(type: string): CLIAdapter {

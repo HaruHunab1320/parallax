@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isBun } from './bun-compat';
+import { isBun } from '../src/bun-compat';
 
 describe('bun-compat', () => {
   describe('isBun()', () => {
@@ -19,7 +19,7 @@ describe('bun-compat', () => {
   describe('BunPTYManagerOptions', () => {
     it('should accept adapterModules option', async () => {
       // Import the type to verify it exists
-      const { BunCompatiblePTYManager } = await import('./bun-compat');
+      const { BunCompatiblePTYManager } = await import('../src/bun-compat');
 
       // Verify the class exists and accepts options
       expect(BunCompatiblePTYManager).toBeDefined();

@@ -6,7 +6,7 @@
  * format (JSON settings files, CLI flags, env vars).
  */
 
-import type { AdapterType } from './types';
+import type { AdapterType } from './base-coding-adapter';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

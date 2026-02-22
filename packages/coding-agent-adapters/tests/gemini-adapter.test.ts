@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { GeminiAdapter } from './gemini-adapter';
+import { GeminiAdapter } from '../src/gemini-adapter';
 import type { SpawnConfig } from 'pty-manager';
 
 describe('GeminiAdapter', () => {

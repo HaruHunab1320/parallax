@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { AiderAdapter } from './aider-adapter';
+import { AiderAdapter } from '../src/aider-adapter';
 import type { SpawnConfig } from 'pty-manager';
 
 describe('AiderAdapter', () => {

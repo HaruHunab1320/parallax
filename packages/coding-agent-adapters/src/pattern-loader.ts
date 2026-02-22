@@ -5,7 +5,7 @@
  * with fallback to hardcoded baseline patterns.
  */
 
-import type { AdapterType } from './types';
+import type { AdapterType } from './base-coding-adapter';
 
 /**
  * Pattern set for an adapter

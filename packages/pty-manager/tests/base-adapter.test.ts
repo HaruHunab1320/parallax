@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { BaseCLIAdapter } from './base-adapter';
-import type { SpawnConfig, ParsedOutput, LoginDetection } from '../types';
+import { BaseCLIAdapter } from '../src/adapters/base-adapter';
+import type { SpawnConfig, ParsedOutput, LoginDetection } from '../src/types';
 
 // Concrete implementation for testing
 class TestAdapter extends BaseCLIAdapter {

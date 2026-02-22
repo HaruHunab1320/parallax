@@ -23,4 +23,19 @@ describe('SessionStateCapture', () => {
     expect(states.length).toBeGreaterThan(0);
     expect(transitions.length).toBeGreaterThan(0);
   });
+
+  it('scopes state rules by source to prevent cross-agent misclassification', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pty-capture-'));
+    const capture = new SessionStateCapture({
+      sessionId: 's2',
+      outputDir: dir,
+      source: 'claude',
+    });
+
+    const readyLikeGemini = await capture.feed('Type your message or @path/to/file');
+    expect(readyLikeGemini.state.state).toBe('unknown');
+
+    const approvalLikeGemini = await capture.feed('Do you want to proceed?');
+    expect(approvalLikeGemini.state.state).toBe('unknown');
+  });
 });

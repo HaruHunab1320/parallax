@@ -24,7 +24,7 @@ import {
   type PreflightResult,
   type InstallationInfo,
   type AgentCredentials,
-} from './index';
+} from '../src/index';
 
 describe('Exports', () => {
   describe('Adapter classes', () => {

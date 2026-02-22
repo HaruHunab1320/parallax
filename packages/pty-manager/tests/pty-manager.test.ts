@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PTYManager } from './pty-manager';
-import { ShellAdapter } from './adapters/shell-adapter';
-import { createAdapter } from './adapters/adapter-factory';
+import { PTYManager } from '../src/pty-manager';
+import { ShellAdapter } from '../src/adapters/shell-adapter';
+import { createAdapter } from '../src/adapters/adapter-factory';
 
 describe('PTYManager', () => {
   let manager: PTYManager;

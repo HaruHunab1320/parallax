@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { SPECIAL_KEYS } from './pty-session';
+import { SPECIAL_KEYS } from '../src/pty-session';
 
 describe('SPECIAL_KEYS', () => {
   describe('Ctrl+letter combinations', () => {

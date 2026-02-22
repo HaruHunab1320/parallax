@@ -4,3 +4,4 @@
 
 export { GitHubProvider } from './github-provider';
 export type { GitHubProviderConfig, GitHubProviderLogger } from './github-provider';
+export { GitHubPatClient } from './github-pat-client';

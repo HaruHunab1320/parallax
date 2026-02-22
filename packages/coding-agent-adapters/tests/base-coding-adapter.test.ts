@@ -7,7 +7,7 @@ import { readFile, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { BaseCodingAdapter, type InstallationInfo, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
+import { BaseCodingAdapter, type InstallationInfo, type AgentCredentials, type AgentFileDescriptor } from '../src/base-coding-adapter';
 import type { SpawnConfig, ParsedOutput, LoginDetection } from 'pty-manager';
 
 // Concrete implementation for testing

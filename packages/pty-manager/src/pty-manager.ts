@@ -8,6 +8,7 @@ import { EventEmitter } from 'events';
 import type { CLIAdapter } from './adapters/adapter-interface';
 import { AdapterRegistry } from './adapters/adapter-registry';
 import { PTYSession } from './pty-session';
+import { consoleLogger } from './logger';
 import type {
   SpawnConfig,
   SessionHandle,
@@ -40,39 +41,7 @@ export interface PTYManagerEvents {
   task_complete: (session: SessionHandle) => void;
 }
 
-/**
- * Console-based logger fallback
- */
-const consoleLogger: Logger = {
-  debug: (...args: unknown[]) => {
-    if (typeof args[0] === 'string') {
-      console.debug(args[0], args[1]);
-    } else {
-      console.debug(args[1], args[0]);
-    }
-  },
-  info: (...args: unknown[]) => {
-    if (typeof args[0] === 'string') {
-      console.info(args[0], args[1]);
-    } else {
-      console.info(args[1], args[0]);
-    }
-  },
-  warn: (...args: unknown[]) => {
-    if (typeof args[0] === 'string') {
-      console.warn(args[0], args[1]);
-    } else {
-      console.warn(args[1], args[0]);
-    }
-  },
-  error: (...args: unknown[]) => {
-    if (typeof args[0] === 'string') {
-      console.error(args[0], args[1]);
-    } else {
-      console.error(args[1], args[0]);
-    }
-  },
-};
+
 
 export class PTYManager extends EventEmitter {
   private sessions: Map<string, PTYSession> = new Map();

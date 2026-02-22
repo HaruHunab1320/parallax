@@ -107,7 +107,7 @@ export class SessionStateCapture {
     const normalizedChunk = normalizeForMatching(chunk);
     this.appendNormalized(normalizedChunk);
 
-    const classified = classifyState(this.normalizedBuffer, this.rules);
+    const classified = classifyState(this.normalizedBuffer, this.rules, this.config.source);
     const nextState: ClassifiedState = {
       ts: now,
       sessionId: this.config.sessionId,

@@ -26,6 +26,7 @@ export class PTYStateCaptureManager {
     const config: SessionCaptureOptions = {
       sessionId,
       outputDir: join(this.options.outputRootDir, sessionId),
+      source: overrides.source,
       rows: overrides.rows ?? this.options.defaultRows,
       cols: overrides.cols ?? this.options.defaultCols,
       maxLines: overrides.maxLines ?? this.options.maxLines,

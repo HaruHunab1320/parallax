@@ -163,6 +163,7 @@ export class PTYManager extends EventEmitter {
 
     if (this.captureEnabled && this.captureManager) {
       await this.captureManager.openSession(session.id, {
+        source: config.type,
         rows: config.rows ?? this.captureConfig?.rows,
         cols: config.cols ?? this.captureConfig?.cols,
         maxLines: this.captureConfig?.maxLines,

@@ -10,9 +10,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PTYSession } from './pty-session';
-import type { CLIAdapter } from './adapters/adapter-interface';
-import type { StallClassification } from './types';
+import { PTYSession } from '../src/pty-session';
+import type { CLIAdapter } from '../src/adapters/adapter-interface';
+import type { StallClassification } from '../src/types';
 
 /**
  * Create a minimal mock adapter for testing
@@ -1168,7 +1168,7 @@ describe('stripAnsiForStall cursor movement handling', () => {
 describe('PTYManager stall detection config', () => {
   it('should store stall config from constructor', async () => {
     // Use dynamic import to avoid module-level issues
-    const { PTYManager } = await import('./pty-manager');
+    const { PTYManager } = await import('../src/pty-manager');
 
     const classifyFn = vi.fn().mockResolvedValue(null);
 
@@ -1185,7 +1185,7 @@ describe('PTYManager stall detection config', () => {
   });
 
   it('should update config via configureStallDetection', async () => {
-    const { PTYManager } = await import('./pty-manager');
+    const { PTYManager } = await import('../src/pty-manager');
 
     const manager = new PTYManager();
 

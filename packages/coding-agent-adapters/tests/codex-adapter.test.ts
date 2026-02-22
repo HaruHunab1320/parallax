@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { CodexAdapter } from './codex-adapter';
+import { CodexAdapter } from '../src/codex-adapter';
 import type { SpawnConfig } from 'pty-manager';
 
 describe('CodexAdapter', () => {

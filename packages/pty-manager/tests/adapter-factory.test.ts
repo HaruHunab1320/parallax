@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createAdapter } from './adapter-factory';
+import { createAdapter } from '../src/adapters/adapter-factory';
 
 describe('createAdapter', () => {
   it('should create an adapter from basic config', () => {

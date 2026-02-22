@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ShellAdapter } from './shell-adapter';
+import { ShellAdapter } from '../src/adapters/shell-adapter';
 
 describe('ShellAdapter', () => {
   it('should have correct adapter type', () => {

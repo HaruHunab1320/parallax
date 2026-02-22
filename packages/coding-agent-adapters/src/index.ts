@@ -83,7 +83,7 @@ export type {
 } from './approval-presets';
 
 // Types
-export type { AdapterType } from './types';
+export type { AdapterType } from './base-coding-adapter';
 
 // Convenience function to register all adapters
 import { ClaudeAdapter } from './claude-adapter';
@@ -106,7 +106,7 @@ export function createAllAdapters() {
 /**
  * Adapter type to class mapping
  */
-import type { AdapterType } from './types';
+import type { AdapterType } from './base-coding-adapter';
 
 export const ADAPTER_TYPES: Record<AdapterType, typeof ClaudeAdapter | typeof GeminiAdapter | typeof CodexAdapter | typeof AiderAdapter> = {
   claude: ClaudeAdapter,

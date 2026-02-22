@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { ClaudeAdapter } from './claude-adapter';
+import { ClaudeAdapter } from '../src/claude-adapter';
 import type { SpawnConfig } from 'pty-manager';
 
 describe('ClaudeAdapter', () => {

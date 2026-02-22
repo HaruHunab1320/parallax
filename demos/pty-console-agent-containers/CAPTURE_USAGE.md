@@ -45,6 +45,15 @@ All wrappers support:
 --rows 70
 ```
 
+Claude wrapper additionally supports:
+
+```bash
+--render raw|plain
+```
+
+- `raw` (default): exact TUI passthrough (full fidelity, can visually flicker on heavy redraw)
+- `plain`: strips most cursor-control repaint sequences for a steadier live view
+
 Example:
 
 ```bash
@@ -52,7 +61,8 @@ pnpm --filter @parallax/pty-console-agent-containers-demo capture:claude:interac
   --workdir /Users/jakobgrant/Workspaces/parallax \
   --output-dir .parallax/pty-captures \
   --cols 220 \
-  --rows 70
+  --rows 70 \
+  --render plain
 ```
 
 ## Exit / Detach

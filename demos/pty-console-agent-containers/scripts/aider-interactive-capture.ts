@@ -12,6 +12,43 @@ if (!PTYManager) {
   throw new Error('Failed to resolve PTYManager from pty-manager-internal-tracing');
 }
 
+function createManagerLogger() {
+  const verbose = process.env.PTY_CAPTURE_VERBOSE === '1';
+  return {
+    debug: (...args: unknown[]) => {
+      if (!verbose) return;
+      if (typeof args[0] === 'string') {
+        console.debug(args[0], args[1]);
+      } else {
+        console.debug(args[1], args[0]);
+      }
+    },
+    info: (...args: unknown[]) => {
+      if (!verbose) return;
+      if (typeof args[0] === 'string') {
+        console.info(args[0], args[1]);
+      } else {
+        console.info(args[1], args[0]);
+      }
+    },
+    warn: (...args: unknown[]) => {
+      if (!verbose) return;
+      if (typeof args[0] === 'string') {
+        console.warn(args[0], args[1]);
+      } else {
+        console.warn(args[1], args[0]);
+      }
+    },
+    error: (...args: unknown[]) => {
+      if (typeof args[0] === 'string') {
+        console.error(args[0], args[1]);
+      } else {
+        console.error(args[1], args[0]);
+      }
+    },
+  };
+}
+
 interface CliArgs {
   workdir: string;
   outputDir: string;
@@ -96,6 +133,7 @@ async function main(): Promise<void> {
   await mkdir(captureDir, { recursive: true });
 
   const manager = new PTYManager({
+    logger: createManagerLogger(),
     capture: {
       enabled: true,
       outputRootDir: captureDir,

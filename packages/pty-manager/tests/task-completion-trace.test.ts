@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   extractTaskCompletionTraceRecords,
   buildTaskCompletionTimeline,
-} from './task-completion-trace';
+} from '../src/task-completion-trace';
 
 describe('task completion trace utilities', () => {
   it('extracts structured trace records from object/json inputs', () => {

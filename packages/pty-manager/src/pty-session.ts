@@ -20,6 +20,7 @@ import type {
   StallClassification,
   Logger,
 } from './types';
+import { consoleLogger } from './logger';
 
 // Lazy-load node-pty to avoid issues in environments where it's not installed
 let ptyCache: typeof ptyModule | null = null;
@@ -52,39 +53,7 @@ export interface PTYSessionEvents {
   task_complete: () => void;
 }
 
-/**
- * Console-based logger fallback
- */
-const consoleLogger: Logger = {
-  debug: (...args: unknown[]) => {
-    if (typeof args[0] === 'string') {
-      console.debug(args[0], args[1]);
-    } else {
-      console.debug(args[1], args[0]);
-    }
-  },
-  info: (...args: unknown[]) => {
-    if (typeof args[0] === 'string') {
-      console.info(args[0], args[1]);
-    } else {
-      console.info(args[1], args[0]);
-    }
-  },
-  warn: (...args: unknown[]) => {
-    if (typeof args[0] === 'string') {
-      console.warn(args[0], args[1]);
-    } else {
-      console.warn(args[1], args[0]);
-    }
-  },
-  error: (...args: unknown[]) => {
-    if (typeof args[0] === 'string') {
-      console.error(args[0], args[1]);
-    } else {
-      console.error(args[1], args[0]);
-    }
-  },
-};
+
 
 /**
  * Generate a unique ID

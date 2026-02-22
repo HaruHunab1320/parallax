@@ -12,6 +12,11 @@ import type { SpawnConfig } from 'pty-manager';
 import { generateApprovalConfig, type ApprovalPreset, type ApprovalConfig } from './approval-presets';
 
 /**
+ * Supported adapter types
+ */
+export type AdapterType = 'claude' | 'gemini' | 'codex' | 'aider';
+
+/**
  * Credentials that can be passed via SpawnConfig.adapterConfig
  */
 export interface AgentCredentials {

@@ -82,6 +82,7 @@ export interface VTFrameOptions {
 export interface SessionCaptureOptions extends VTFrameOptions {
   sessionId: string;
   outputDir: string;
+  source?: string;
   stateRules?: StateRule[];
   writeRawEvents?: boolean;
   writeStates?: boolean;

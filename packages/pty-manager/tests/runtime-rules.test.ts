@@ -5,10 +5,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PTYManager } from './pty-manager';
-import { PTYSession } from './pty-session';
-import { ShellAdapter } from './adapters/shell-adapter';
-import type { AutoResponseRule, BlockingPromptType } from './types';
+import { PTYManager } from '../src/pty-manager';
+import { PTYSession } from '../src/pty-session';
+import { ShellAdapter } from '../src/adapters/shell-adapter';
+import type { AutoResponseRule, BlockingPromptType } from '../src/types';
 
 // Mock adapter for testing
 const mockAdapter = {

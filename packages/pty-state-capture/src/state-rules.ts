@@ -77,6 +77,7 @@ export function mergeRules(userRules: StateRule[] | undefined): StateRule[] {
 export function classifyState(
   normalizedTail: string,
   rules: StateRule[],
+  source?: string,
 ): { kind: StateKind; ruleId?: string; confidence: number } {
   if (normalizedTail.length === 0) {
     return { kind: 'unknown', confidence: 0.1 };
@@ -84,6 +85,10 @@ export function classifyState(
 
   const matches: Array<{ rule: StateRule; index: number }> = [];
   for (const rule of rules) {
+    // Source-scoped rules only apply to their matching adapter type.
+    if (rule.source && source && rule.source !== source) {
+      continue;
+    }
     const safeFlags = rule.pattern.flags.replace(/g/g, '');
     const safe = new RegExp(rule.pattern.source, safeFlags);
     const index = normalizedTail.search(safe);

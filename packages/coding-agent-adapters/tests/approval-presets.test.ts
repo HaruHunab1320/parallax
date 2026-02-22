@@ -15,7 +15,7 @@ import {
   AIDER_COMMAND_CATEGORIES,
   type ApprovalPreset,
   type ToolCategory,
-} from './approval-presets';
+} from '../src/approval-presets';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants and helpers

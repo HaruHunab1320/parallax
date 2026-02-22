@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { ClaudeAdapter } from './claude-adapter';
-import { GeminiAdapter } from './gemini-adapter';
-import { CodexAdapter } from './codex-adapter';
-import { AiderAdapter } from './aider-adapter';
+import { ClaudeAdapter } from '../src/claude-adapter';
+import { GeminiAdapter } from '../src/gemini-adapter';
+import { CodexAdapter } from '../src/codex-adapter';
+import { AiderAdapter } from '../src/aider-adapter';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Claude Code - detectTaskComplete
