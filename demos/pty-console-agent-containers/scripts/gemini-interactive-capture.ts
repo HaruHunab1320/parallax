@@ -145,6 +145,7 @@ async function main(): Promise<void> {
     },
   });
   manager.registerAdapter(new GeminiAdapter());
+  const autoRespond = process.env.PTY_CAPTURE_AUTO_RESPOND === '1';
 
   let session: SessionHandle | null = null;
   let detached = false;
@@ -256,6 +257,9 @@ async function main(): Promise<void> {
       interactive: true,
     },
   });
+  if (!autoRespond) {
+    manager.clearAutoResponseRules(session.id);
+  }
 
   const attachment = manager.attachTerminal(session.id);
   if (!attachment) {
@@ -265,6 +269,7 @@ async function main(): Promise<void> {
 
   process.stderr.write(`[gemini-capture] session=${session.id}\n`);
   process.stderr.write(`[gemini-capture] run-id=${runId}\n`);
+  process.stderr.write(`[gemini-capture] auto-respond=${autoRespond ? 'on' : 'off'}\n`);
   process.stderr.write('[gemini-capture] press Ctrl+] to detach\n\n');
 
   unsubOutput = attachment.onData((data) => {

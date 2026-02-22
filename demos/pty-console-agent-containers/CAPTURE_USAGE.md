@@ -70,6 +70,13 @@ pnpm --filter @parallax/pty-console-agent-containers-demo capture:claude:interac
 - Exit inside agent CLI (`/exit` where supported), or
 - Press `Ctrl+]` in the wrapper terminal to detach.
 
+## Auto-Response Behavior (Interactive Mode)
+
+Interactive wrappers now disable adapter auto-response rules by default to avoid unintended menu selections while you are driving manually.
+
+- Default: `PTY_CAPTURE_AUTO_RESPOND=0` (effective default)
+- Opt-in: `PTY_CAPTURE_AUTO_RESPOND=1` to re-enable auto prompt responses
+
 ## Where Captured Data Lives
 
 Default root:

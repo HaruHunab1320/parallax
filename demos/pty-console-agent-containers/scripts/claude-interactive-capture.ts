@@ -168,6 +168,7 @@ async function main(): Promise<void> {
     },
   });
   manager.registerAdapter(new ClaudeAdapter());
+  const autoRespond = process.env.PTY_CAPTURE_AUTO_RESPOND === '1';
 
   let session: SessionHandle | null = null;
   let detached = false;
@@ -279,6 +280,9 @@ async function main(): Promise<void> {
       interactive: true,
     },
   });
+  if (!autoRespond) {
+    manager.clearAutoResponseRules(session.id);
+  }
 
   const attachment = manager.attachTerminal(session.id);
   if (!attachment) {
@@ -289,6 +293,7 @@ async function main(): Promise<void> {
   process.stderr.write(`[claude-capture] session=${session.id}\n`);
   process.stderr.write(`[claude-capture] run-id=${runId}\n`);
   process.stderr.write(`[claude-capture] render=${args.renderMode}\n`);
+  process.stderr.write(`[claude-capture] auto-respond=${autoRespond ? 'on' : 'off'}\n`);
   process.stderr.write('[claude-capture] press Ctrl+] to detach\n\n');
 
   unsubOutput = attachment.onData((data) => {
