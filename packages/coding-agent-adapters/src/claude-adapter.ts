@@ -388,7 +388,11 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   detectTaskComplete(output: string): boolean {
     const stripped = this.stripAnsi(output);
     if (!stripped.trim()) return false;
-    if (this.detectLoading(stripped)) return false;
+    // NOTE: Do NOT call detectLoading() here. The buffer often contains stale
+    // loading patterns (e.g. "esc to interrupt" from the spinner) alongside
+    // completion signals. Task completion is a more specific signal and should
+    // not be suppressed by loading detection — that priority is handled at the
+    // PTY session level in onStallTimerFired().
 
     // If Claude is waiting for a confirmation, it's not task-complete idle.
     if (/trust.*directory|do you want to|needs? your permission/i.test(stripped)) {
@@ -420,7 +424,8 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
     if (!stripped.trim()) return false;
-    if (this.detectLoading(stripped)) return false;
+    // Same rationale as detectTaskComplete: don't let stale loading patterns
+    // in the buffer suppress ready detection.
 
     // Guard: if the output contains a trust prompt, we're NOT ready yet —
     // the user (or auto-response) still needs to confirm.

@@ -381,7 +381,9 @@ export class CodexAdapter extends BaseCodingAdapter {
   detectTaskComplete(output: string): boolean {
     const stripped = this.stripAnsi(output);
     if (!stripped.trim()) return false;
-    if (this.detectLoading(stripped)) return false;
+    // Do NOT call detectLoading() here — stale loading patterns in the buffer
+    // would suppress valid completion signals. Priority is handled at the
+    // PTY session level.
 
     // "Worked for <duration>" separator — high-confidence completion indicator
     const hasWorkedFor = /Worked\s+for\s+\d+(?:h\s+\d{2}m\s+\d{2}s|m\s+\d{2}s|s)/.test(stripped);
@@ -419,7 +421,8 @@ export class CodexAdapter extends BaseCodingAdapter {
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
     if (!stripped.trim()) return false;
-    if (this.detectLoading(stripped)) return false;
+    // Same rationale as detectTaskComplete: don't let stale loading patterns
+    // suppress ready detection.
 
     // Positive ready signals first (tail-biased), then fallback to guards.
     // This prevents stale historical text in outputBuffer from masking
