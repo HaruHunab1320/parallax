@@ -111,6 +111,9 @@ export function classifyState(
     return { kind: 'unknown', confidence: 0.1 };
   }
 
+  // Prefer recent terminal output so stale markers (for example:
+  // "Cooked for 41s" from an earlier turn) do not keep re-triggering.
+  const recentTail = normalizedTail.slice(-4000);
   const matches: Array<{ rule: StateRule; index: number }> = [];
   for (const rule of rules) {
     // Source-scoped rules only apply to their matching adapter type.
@@ -119,7 +122,7 @@ export function classifyState(
     }
     const safeFlags = rule.pattern.flags.replace(/g/g, '');
     const safe = new RegExp(rule.pattern.source, safeFlags);
-    const index = normalizedTail.search(safe);
+    const index = recentTail.search(safe);
     if (index >= 0) {
       matches.push({ rule, index });
     }

@@ -63,4 +63,45 @@ describe('SessionStateCapture', () => {
     expect(ready.state.state).toBe('ready_for_input');
     expect(ready.state.ruleId).toBe('ready_prompt_claude');
   });
+
+  it('serializes concurrent feed calls to avoid duplicate transition spam', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pty-capture-'));
+    const capture = new SessionStateCapture({
+      sessionId: 's4',
+      outputDir: dir,
+      source: 'claude',
+    });
+
+    await Promise.all([
+      capture.feed('⏸ plan mode on (shift+tab to cycle) · Esc to interrupt'),
+      capture.feed('✻ Cooked for 41s'),
+      capture.feed('❯ Try "fix lint errors" ? for shortcuts'),
+    ]);
+
+    const transitionsRaw = await readFile(capture.paths.transitionsPath, 'utf8');
+    const transitions = transitionsRaw
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { from: string; to: string });
+
+    const uniquePairs = new Set(transitions.map((t) => `${t.from}->${t.to}`));
+    expect(transitions.length).toBe(uniquePairs.size);
+    expect(capture.getCurrentState()).toBe('ready_for_input');
+  });
+
+  it('does not keep classifying stale completion markers after newer output', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pty-capture-'));
+    const capture = new SessionStateCapture({
+      sessionId: 's5',
+      outputDir: dir,
+      source: 'claude',
+    });
+
+    const completed = await capture.feed('✻ Cooked for 41s');
+    expect(completed.state.state).toBe('completed');
+
+    const stale = await capture.feed('x'.repeat(5000));
+    expect(stale.state.state).toBe('unknown');
+  });
 });

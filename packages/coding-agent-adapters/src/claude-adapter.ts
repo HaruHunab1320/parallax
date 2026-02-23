@@ -79,6 +79,15 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       safe: true,
     },
     {
+      pattern: /how is claude doing this session\?\s*\(optional\)|1:\s*bad\s+2:\s*fine\s+3:\s*good\s+0:\s*dismiss/i,
+      type: 'config',
+      response: '0',
+      responseType: 'text',
+      description: 'Dismiss optional Claude session survey',
+      safe: true,
+      once: true,
+    },
+    {
       pattern: /continue without.*\[y\/n\]/i,
       type: 'config',
       response: 'y',
@@ -127,6 +136,7 @@ export class ClaudeAdapter extends BaseCodingAdapter {
 
   getArgs(config: SpawnConfig): string[] {
     const args: string[] = [];
+    const adapterConfig = config.adapterConfig as { continue?: boolean; resume?: string } | undefined;
 
     // Print mode for non-interactive usage (skip if interactive mode)
     if (!this.isInteractive(config)) {
@@ -137,6 +147,13 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       if (config.workdir) {
         args.push('--cwd', config.workdir);
       }
+    }
+
+    // Pass-through resume flags for interactive sessions
+    if (adapterConfig?.resume) {
+      args.push('--resume', adapterConfig.resume);
+    } else if (adapterConfig?.continue) {
+      args.push('--continue');
     }
 
     // Append approval preset CLI flags
@@ -221,6 +238,45 @@ export class ClaudeAdapter extends BaseCodingAdapter {
         url: loginDetection.url,
         canAutoRespond: false,
         instructions: loginDetection.instructions,
+      };
+    }
+
+    // Claude survey/feedback prompt (optional)
+    if (/how is claude doing this session\?\s*\(optional\)|1:\s*bad\s+2:\s*fine\s+3:\s*good\s+0:\s*dismiss/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'config',
+        prompt: 'Claude session survey',
+        options: ['1', '2', '3', '0'],
+        suggestedResponse: '0',
+        canAutoRespond: true,
+        instructions: 'Optional survey prompt; reply 0 to dismiss',
+      };
+    }
+
+    // Generic Claude modal/dialog controls discovered from live capture
+    if (/enter\/tab\/space to toggle.*esc to cancel|enter to confirm.*esc to cancel|esc to close/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'config',
+        prompt: 'Claude dialog awaiting navigation',
+        options: ['keys:enter', 'keys:esc', 'keys:down,enter'],
+        suggestedResponse: 'keys:esc',
+        canAutoRespond: false,
+        instructions: 'Use Enter/Esc or arrow keys to navigate this dialog',
+      };
+    }
+
+    // Slash-menu screens where navigation keys are required
+    if (/\/agents\b|\/chrome\b|\/config\b|\/tasks\b|\/skills\b|\/remote-env\b|press .* to navigate .* enter .* esc/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'config',
+        prompt: 'Claude menu navigation required',
+        options: ['keys:esc', 'keys:enter', 'keys:down,enter'],
+        suggestedResponse: 'keys:esc',
+        canAutoRespond: false,
+        instructions: 'Claude is showing an interactive menu; use arrow keys + Enter or Esc',
       };
     }
 

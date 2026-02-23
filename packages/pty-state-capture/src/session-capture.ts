@@ -35,6 +35,7 @@ export class SessionStateCapture {
   private normalizedBuffer = '';
   private currentState: ClassifiedState;
   private transitionCount = 0;
+  private feedQueue: Promise<void> = Promise.resolve();
 
   public readonly paths: CapturePaths;
 
@@ -84,6 +85,21 @@ export class SessionStateCapture {
   }
 
   async feed(
+    chunk: string,
+    direction: StreamDirection = 'stdout',
+  ): Promise<FeedOutputResult> {
+    const run = this.feedQueue.then(
+      () => this.feedInternal(chunk, direction),
+      () => this.feedInternal(chunk, direction),
+    );
+    this.feedQueue = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  private async feedInternal(
     chunk: string,
     direction: StreamDirection = 'stdout',
   ): Promise<FeedOutputResult> {

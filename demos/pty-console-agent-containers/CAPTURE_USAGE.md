@@ -49,10 +49,14 @@ Claude wrapper additionally supports:
 
 ```bash
 --render raw|plain
+--continue
+--resume <sessionId>
 ```
 
 - `raw` (default): exact TUI passthrough (full fidelity, can visually flicker on heavy redraw)
 - `plain`: strips most cursor-control repaint sequences for a steadier live view
+- `--continue`: starts Claude with `--continue`
+- `--resume <id>`: starts Claude with `--resume <id>`
 
 Example:
 

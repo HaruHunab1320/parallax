@@ -55,6 +55,8 @@ interface CliArgs {
   cols: number;
   rows: number;
   renderMode: 'raw' | 'plain';
+  continue: boolean;
+  resume?: string;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -67,6 +69,7 @@ function parseArgs(argv: string[]): CliArgs {
     cols: Number.parseInt(process.env.CLAUDE_CAPTURE_COLS ?? String(stdoutCols), 10),
     rows: Number.parseInt(process.env.CLAUDE_CAPTURE_ROWS ?? String(stdoutRows), 10),
     renderMode: process.env.CLAUDE_CAPTURE_RENDER === 'plain' ? 'plain' : 'raw',
+    continue: process.env.CLAUDE_CAPTURE_CONTINUE === '1',
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -96,6 +99,14 @@ function parseArgs(argv: string[]): CliArgs {
       }
       continue;
     }
+    if (arg === '--continue') {
+      out.continue = true;
+      continue;
+    }
+    if (arg === '--resume' && argv[i + 1]) {
+      out.resume = argv[++i];
+      continue;
+    }
     if (arg === '--help' || arg === '-h') {
       printHelp();
       process.exit(0);
@@ -118,6 +129,8 @@ Options:
   --cols <n>              Initial terminal columns (default: current terminal cols)
   --rows <n>              Initial terminal rows (default: current terminal rows)
   --render <raw|plain>    Display mode (default: raw; plain reduces TUI flicker)
+  --continue              Pass through Claude --continue
+  --resume <sessionId>    Pass through Claude --resume <id>
   -h, --help              Show this help
 
 Exit:
@@ -130,6 +143,7 @@ Env:
   CLAUDE_CAPTURE_COLS
   CLAUDE_CAPTURE_ROWS
   CLAUDE_CAPTURE_RENDER    raw | plain
+  CLAUDE_CAPTURE_CONTINUE  1 to pass --continue
   `);
 }
 
@@ -278,6 +292,8 @@ async function main(): Promise<void> {
     rows: args.rows,
     adapterConfig: {
       interactive: true,
+      continue: args.resume ? false : args.continue,
+      resume: args.resume,
     },
   });
   if (!autoRespond) {
@@ -293,6 +309,11 @@ async function main(): Promise<void> {
   process.stderr.write(`[claude-capture] session=${session.id}\n`);
   process.stderr.write(`[claude-capture] run-id=${runId}\n`);
   process.stderr.write(`[claude-capture] render=${args.renderMode}\n`);
+  if (args.resume) {
+    process.stderr.write(`[claude-capture] resume=${args.resume}\n`);
+  } else if (args.continue) {
+    process.stderr.write('[claude-capture] continue=true\n');
+  }
   process.stderr.write(`[claude-capture] auto-respond=${autoRespond ? 'on' : 'off'}\n`);
   process.stderr.write('[claude-capture] press Ctrl+] to detach\n\n');
 

@@ -253,6 +253,33 @@ describe('ClaudeAdapter', () => {
 
       expect(result.detected).toBe(false);
     });
+
+    it('should detect optional survey with dismiss response', () => {
+      const result = adapter.detectBlockingPrompt('How is Claude doing this session? (optional) 1: Bad 2: Fine 3: Good 0: Dismiss');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('config');
+      expect(result.suggestedResponse).toBe('0');
+      expect(result.canAutoRespond).toBe(true);
+    });
+
+    it('should detect dialog navigation state and suggest Esc', () => {
+      const result = adapter.detectBlockingPrompt('Enter to confirm · Esc to cancel');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('config');
+      expect(result.suggestedResponse).toBe('keys:esc');
+      expect(result.canAutoRespond).toBe(false);
+    });
+
+    it('should detect slash menu navigation state and suggest key navigation', () => {
+      const result = adapter.detectBlockingPrompt('/agents Manage agent configurations Press ↑↓ to navigate · Enter to select · Esc to go back');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('config');
+      expect(result.suggestedResponse).toBe('keys:esc');
+      expect(result.options).toContain('keys:down,enter');
+    });
   });
 
   describe('detectReady()', () => {
@@ -442,6 +469,16 @@ describe('ClaudeAdapter', () => {
     it('should match update prompt', () => {
       const rule = adapter.autoResponseRules.find(r => r.type === 'update');
       expect(rule?.pattern.test('A new update available! [y/n]')).toBe(true);
+    });
+
+    it('should include survey auto-dismiss rule (0)', () => {
+      const rule = adapter.autoResponseRules.find(r =>
+        r.description.toLowerCase().includes('session survey')
+      );
+      expect(rule).toBeDefined();
+      expect(rule?.responseType).toBe('text');
+      expect(rule?.response).toBe('0');
+      expect(rule?.once).toBe(true);
     });
   });
 
