@@ -460,6 +460,25 @@ export class PTYSession extends EventEmitter {
       return; // Status changed while timer was running
     }
 
+    // Fast path: try adapter-level task completion detection first.
+    // This must run BEFORE detectLoading because the buffer may contain
+    // both stale loading patterns (e.g. "esc to interrupt" from the spinner)
+    // and a completion signal (e.g. "Baked for 2s" + prompt). Task completion
+    // is the more specific/certain signal and should take priority.
+    if (this._status === 'busy' && this.adapter.detectTaskComplete?.(this.outputBuffer)) {
+      this._status = 'ready';
+      this._lastBlockingPromptHash = null;
+      this.outputBuffer = '';
+      this.clearStallTimer();
+      this.emit('status_changed', 'ready');
+      this.emit('task_complete');
+      this.logger.info(
+        { sessionId: this.id },
+        'Task complete (adapter fast-path) — agent returned to idle prompt'
+      );
+      return;
+    }
+
     // Loading suppression: if the adapter detects an active loading indicator
     // (thinking spinner, "esc to interrupt", "Reading N files", etc.),
     // the agent is provably working — suppress stall detection and reschedule.
@@ -483,22 +502,6 @@ export class PTYSession extends EventEmitter {
       return;
     }
     this._lastStallHash = hash;
-
-    // Fast path: try adapter-level task completion detection before
-    // falling back to the expensive LLM stall classifier.
-    if (this._status === 'busy' && this.adapter.detectTaskComplete?.(this.outputBuffer)) {
-      this._status = 'ready';
-      this._lastBlockingPromptHash = null;
-      this.outputBuffer = '';
-      this.clearStallTimer();
-      this.emit('status_changed', 'ready');
-      this.emit('task_complete');
-      this.logger.info(
-        { sessionId: this.id },
-        'Task complete (adapter fast-path) — agent returned to idle prompt'
-      );
-      return;
-    }
 
     this._stallEmissionCount++;
     if (this._stallEmissionCount > PTYSession.MAX_STALL_EMISSIONS) {
