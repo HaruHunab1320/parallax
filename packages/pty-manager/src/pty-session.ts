@@ -1401,6 +1401,7 @@ export class PTYSession extends EventEmitter {
     this._status = 'busy';
     this.outputBuffer = ''; // Clear stale startup/previous-task text so detectReady guards don't false-negative
     this.emit('status_changed', 'busy');
+    this._stallEmissionCount = 0;
     this.resetStallTimer();
 
     const msg: SessionMessage = {
@@ -1449,6 +1450,8 @@ export class PTYSession extends EventEmitter {
     }
 
     const keyList = Array.isArray(keys) ? keys : [keys];
+    this._stallEmissionCount = 0;
+    this.resetStallTimer();
 
     for (const key of keyList) {
       const normalizedKey = key.toLowerCase().trim();
