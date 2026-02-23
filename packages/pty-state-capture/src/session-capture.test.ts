@@ -38,4 +38,29 @@ describe('SessionStateCapture', () => {
     const approvalLikeGemini = await capture.feed('Do you want to proceed?');
     expect(approvalLikeGemini.state.state).toBe('unknown');
   });
+
+  it('classifies claude-specific unknown patterns into explicit states', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pty-capture-'));
+    const capture = new SessionStateCapture({
+      sessionId: 's3',
+      outputDir: dir,
+      source: 'claude',
+    });
+
+    const awaitingInput = await capture.feed('Interrupted · What should Claude do instead?');
+    expect(awaitingInput.state.state).toBe('awaiting_input');
+    expect(awaitingInput.state.ruleId).toBe('awaiting_input_claude_interrupted');
+
+    const awaitingApproval = await capture.feed('Do you want to proceed? 1. Yes 2. Yes, and don\'t ask again');
+    expect(awaitingApproval.state.state).toBe('awaiting_approval');
+    expect(awaitingApproval.state.ruleId).toBe('awaiting_approval_claude_menu');
+
+    const busy = await capture.feed('⏸ plan mode on (shift+tab to exit) · Finagling… (5m 33s · ↓ 14.5k tokens)');
+    expect(busy.state.state).toBe('busy_streaming');
+    expect(busy.state.ruleId).toBe('busy_plan_mode_claude');
+
+    const ready = await capture.feed('❯ Try "refactor eliza.ts" ? for shortcuts');
+    expect(ready.state.state).toBe('ready_for_input');
+    expect(ready.state.ruleId).toBe('ready_prompt_claude');
+  });
 });

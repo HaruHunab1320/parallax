@@ -6,6 +6,20 @@ function byPriorityDescending(a: StateRule, b: StateRule): number {
 
 export const DEFAULT_STATE_RULES: StateRule[] = [
   {
+    id: 'awaiting_input_claude_interrupted',
+    kind: 'awaiting_input',
+    pattern: /interrupted\s*·\s*what should claude do instead\?/i,
+    priority: 115,
+    source: 'claude',
+  },
+  {
+    id: 'awaiting_approval_claude_menu',
+    kind: 'awaiting_approval',
+    pattern: /do you want to proceed\?.*(?:1\.\s*yes|2\.\s*yes,?\s*and\s*don.?t\s*ask\s*again)|yes,?\s*and\s*don.?t\s*ask\s*again/i,
+    priority: 112,
+    source: 'claude',
+  },
+  {
     id: 'awaiting_approval_codex',
     kind: 'awaiting_approval',
     pattern: /would.?you.?like.?to.?run.?the.?following.?command|would.?you.?like.?to.?make.?the.?following.?edits|approve.?access/i,
@@ -34,6 +48,13 @@ export const DEFAULT_STATE_RULES: StateRule[] = [
     source: 'codex',
   },
   {
+    id: 'busy_plan_mode_claude',
+    kind: 'busy_streaming',
+    pattern: /plan mode on|entered plan mode|now exploring and designing|ctrl\+b to run in background|\b(?:[a-z][a-z-]{4,}ing…)\b|\b\d+m?\s*\d*s?\s*·\s*↓\s*\d+(?:\.\d+)?k?\s*tokens\b/i,
+    priority: 88,
+    source: 'claude',
+  },
+  {
     id: 'awaiting_input_shell_wait',
     kind: 'awaiting_input',
     pattern: /interactive.?shell.?awaiting.?input|press.?tab.?to.?focus.?shell/i,
@@ -45,6 +66,13 @@ export const DEFAULT_STATE_RULES: StateRule[] = [
     kind: 'busy_streaming',
     pattern: /esc.?to.?interrupt|esc.?to.?cancel|waiting.?for.?background.?terminal|booting.?mcp/i,
     priority: 80,
+  },
+  {
+    id: 'ready_prompt_claude',
+    kind: 'ready_for_input',
+    pattern: /(?:^|\s)(?:❯|›)\s*(?:try\s*"[^"]*")?\s*(?:\?\s*for shortcuts)?\s*$/im,
+    priority: 76,
+    source: 'claude',
   },
   {
     id: 'ready_prompt_codex',

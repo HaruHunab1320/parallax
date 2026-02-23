@@ -79,6 +79,11 @@ export interface SpawnConfig {
    *  - null value disables that rule entirely
    *  - Object value merges fields into the matching adapter rule */
   ruleOverrides?: Record<string, Partial<Omit<AutoResponseRule, 'pattern'>> | null>;
+
+  /** When true, adapter detectBlockingPrompt() results with suggestedResponse
+   *  are emitted as autoResponded=false instead of being auto-responded.
+   *  Auto-response rules (ruleOverrides) are unaffected. */
+  skipAdapterAutoResponse?: boolean;
 }
 
 /**

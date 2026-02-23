@@ -1174,7 +1174,7 @@ export class PTYSession extends EventEmitter {
         };
 
         // If we can auto-respond and have a suggested response, do it
-        if (detection.canAutoRespond && detection.suggestedResponse) {
+        if (detection.canAutoRespond && detection.suggestedResponse && !this.config.skipAdapterAutoResponse) {
           this.logger.info(
             {
               sessionId: this.id,
