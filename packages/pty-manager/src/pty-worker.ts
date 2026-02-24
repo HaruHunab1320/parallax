@@ -19,6 +19,7 @@
  *   { "cmd": "setRules", "id": string, "rules": SerializedRule[] }
  *   { "cmd": "getRules", "id": string }
  *   { "cmd": "clearRules", "id": string }
+ *   { "cmd": "writeRaw", "id": string, "data": string }
  *   { "cmd": "selectMenuOption", "id": string, "optionIndex": number }
  *
  * Events (stdout):
@@ -263,6 +264,21 @@ function handleSendKeys(id: string, keys: string | string[]): void {
     ack('sendKeys', id, true);
   } catch (err) {
     ack('sendKeys', id, false, err instanceof Error ? err.message : String(err));
+  }
+}
+
+function handleWriteRaw(id: string, data: string): void {
+  try {
+    const session = manager.getSession(id);
+    if (!session) {
+      ack('writeRaw', id, false, `Session ${id} not found`);
+      return;
+    }
+
+    session.writeRaw(data);
+    ack('writeRaw', id, true);
+  } catch (err) {
+    ack('writeRaw', id, false, err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -520,6 +536,14 @@ function processCommand(line: string): void {
         return;
       }
       handleSendKeys(command.id, command.keys);
+      break;
+
+    case 'writeRaw':
+      if (!command.id || command.data === undefined) {
+        ack('writeRaw', command.id, false, 'Missing id or data');
+        return;
+      }
+      handleWriteRaw(command.id, command.data);
       break;
 
     case 'paste':

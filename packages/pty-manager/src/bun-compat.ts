@@ -490,6 +490,17 @@ export class BunCompatiblePTYManager extends EventEmitter {
   }
 
   /**
+   * Write raw data to a session (bypasses adapter formatting)
+   */
+  async writeRaw(id: string, data: string): Promise<void> {
+    await this.waitForReady();
+
+    this.sendCommand({ cmd: 'writeRaw', id, data });
+
+    await this.createPending(`writeRaw:${id}`);
+  }
+
+  /**
    * Paste text to a session
    */
   async paste(id: string, text: string, bracketed = true): Promise<void> {

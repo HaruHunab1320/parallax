@@ -1,6 +1,6 @@
 {
   "name": "pty-console",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Operator console bridge for rendering and controlling live PTY sessions in grid UIs",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -41,7 +41,7 @@
   },
   "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/pty-console#readme",
   "dependencies": {
-    "pty-manager": "workspace:^1.7.2"
+    "pty-manager": "workspace:^1.7.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

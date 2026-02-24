@@ -6,6 +6,7 @@ import type {
   BlockingPromptInfo,
   AuthRequiredInfo,
   AutoResponseRule,
+  WorkerSessionHandle,
 } from 'pty-manager';
 
 export interface PTYConsoleBridgeOptions {
@@ -64,4 +65,19 @@ export interface PTYManagerLike {
     addAutoResponseRule: (rule: AutoResponseRule) => void;
     clearAutoResponseRules: () => void;
   } | undefined;
+}
+
+export interface PTYManagerAsyncLike {
+  on(event: string, listener: (...args: unknown[]) => void): unknown;
+  off(event: string, listener: (...args: unknown[]) => void): unknown;
+  list(): Promise<(SessionHandle | WorkerSessionHandle)[]>;
+  get(sessionId: string): SessionHandle | WorkerSessionHandle | null | undefined;
+  onSessionData(sessionId: string, callback: (data: string) => void): () => void;
+  send(sessionId: string, data: string): Promise<void>;
+  sendKeys(sessionId: string, keys: string[] | string): Promise<void>;
+  writeRaw(sessionId: string, data: string): Promise<void>;
+  resize(sessionId: string, cols: number, rows: number): Promise<void>;
+  kill(sessionId: string, signal?: string): Promise<void>;
+  addAutoResponseRule(sessionId: string, rule: AutoResponseRule): Promise<void>;
+  clearAutoResponseRules(sessionId: string): Promise<void>;
 }
