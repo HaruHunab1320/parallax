@@ -116,11 +116,23 @@ export class SessionStateCapture {
       await writeJsonLine(this.paths.rawEventsPath, rawEvent);
     }
 
+    const normalizedChunk = normalizeForMatching(chunk);
+    const shouldClassify = direction === 'stdout' && normalizedChunk.length > 0;
+
     if (direction !== 'stdin') {
       this.frame.applyChunk(chunk);
     }
 
-    const normalizedChunk = normalizeForMatching(chunk);
+    if (!shouldClassify) {
+      return {
+        stateChanged: false,
+        state: this.currentState,
+        transition: undefined,
+        frame: this.frame.snapshot(),
+        normalizedChunk,
+      };
+    }
+
     this.appendNormalized(normalizedChunk);
 
     const classified = classifyState(this.normalizedBuffer, this.rules, this.config.source);

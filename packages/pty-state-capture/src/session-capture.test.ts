@@ -104,4 +104,29 @@ describe('SessionStateCapture', () => {
     const stale = await capture.feed('x'.repeat(5000));
     expect(stale.state.state).toBe('unknown');
   });
+
+  it('ignores stdin and control-only chunks for state classification', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pty-capture-'));
+    const capture = new SessionStateCapture({
+      sessionId: 's6',
+      outputDir: dir,
+      source: 'codex',
+    });
+
+    const startupControl = await capture.feed('\x1b[?2004h\x1b[>7u\x1b[6n', 'stdout');
+    expect(startupControl.stateChanged).toBe(false);
+    expect(startupControl.state.state).toBe('unknown');
+
+    const stdinNoise = await capture.feed('\x1b[32;1:3u', 'stdin');
+    expect(stdinNoise.stateChanged).toBe(false);
+    expect(stdinNoise.state.state).toBe('unknown');
+
+    const ready = await capture.feed('› Ask Codex to do anything', 'stdout');
+    expect(ready.state.state).toBe('ready_for_input');
+    expect(ready.stateChanged).toBe(true);
+
+    const stdinAfterReady = await capture.feed('fix auth flow', 'stdin');
+    expect(stdinAfterReady.state.state).toBe('ready_for_input');
+    expect(stdinAfterReady.stateChanged).toBe(false);
+  });
 });
