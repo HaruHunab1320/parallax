@@ -41,7 +41,7 @@
   },
   "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/pty-console#readme",
   "dependencies": {
-    "pty-manager": "workspace:^1.7.3"
+    "pty-manager": "workspace:^1.8.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",
