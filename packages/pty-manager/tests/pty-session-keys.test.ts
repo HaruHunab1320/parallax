@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { SPECIAL_KEYS } from '../src/pty-session';
+import { SPECIAL_KEYS, PTYSession } from '../src/pty-session';
 
 describe('SPECIAL_KEYS', () => {
   describe('Ctrl+letter combinations', () => {
@@ -260,6 +260,48 @@ describe('SPECIAL_KEYS', () => {
         expect(value.length, `${key} has empty value`).toBeGreaterThan(0);
       }
     });
+  });
+});
+
+describe('normalizeKeyList', () => {
+  it('should pass through already-normalized keys', () => {
+    expect(PTYSession.normalizeKeyList(['ctrl+c'])).toEqual(['ctrl+c']);
+    expect(PTYSession.normalizeKeyList(['enter'])).toEqual(['enter']);
+    expect(PTYSession.normalizeKeyList(['up', 'up', 'enter'])).toEqual(['up', 'up', 'enter']);
+  });
+
+  it('should remap "control" to "ctrl" and join with next key', () => {
+    expect(PTYSession.normalizeKeyList(['control', 'c'])).toEqual(['ctrl+c']);
+    expect(PTYSession.normalizeKeyList(['control', 'd'])).toEqual(['ctrl+d']);
+  });
+
+  it('should remap "option" to "alt" and join with next key', () => {
+    expect(PTYSession.normalizeKeyList(['option', 'a'])).toEqual(['alt+a']);
+  });
+
+  it('should remap "command" and "cmd" to "meta"', () => {
+    expect(PTYSession.normalizeKeyList(['command', 'c'])).toEqual(['meta+c']);
+    expect(PTYSession.normalizeKeyList(['cmd', 'c'])).toEqual(['meta+c']);
+  });
+
+  it('should handle mixed normalized and non-normalized keys', () => {
+    expect(PTYSession.normalizeKeyList(['down', 'control', 'c'])).toEqual(['down', 'ctrl+c']);
+    expect(PTYSession.normalizeKeyList(['control', 'c', 'enter'])).toEqual(['ctrl+c', 'enter']);
+  });
+
+  it('should handle a bare modifier at end of list (no next key to join)', () => {
+    // Edge case: bare modifier with nothing following — pass through as-is
+    expect(PTYSession.normalizeKeyList(['control'])).toEqual(['ctrl']);
+  });
+
+  it('should be case-insensitive', () => {
+    expect(PTYSession.normalizeKeyList(['Control', 'C'])).toEqual(['ctrl+c']);
+    expect(PTYSession.normalizeKeyList(['CTRL+C'])).toEqual(['ctrl+c']);
+  });
+
+  it('should handle all resolved keys existing in SPECIAL_KEYS', () => {
+    const normalized = PTYSession.normalizeKeyList(['control', 'c']);
+    expect(SPECIAL_KEYS[normalized[0]]).toBe('\x03');
   });
 });
 

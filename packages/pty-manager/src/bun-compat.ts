@@ -187,11 +187,7 @@ export class BunCompatiblePTYManager extends EventEmitter {
 
     switch (eventType) {
       case 'worker_ready':
-        // Register adapter modules before marking as ready
-        if (this.adapterModules.length > 0) {
-          this.sendCommand({ cmd: 'registerAdapters', modules: this.adapterModules });
-        }
-        // Send stall detection config to worker
+        // Send stall detection config to worker (fire-and-forget, no ack needed before ready)
         if (this._stallDetectionEnabled) {
           this.sendCommand({
             cmd: 'configureStallDetection',
@@ -199,9 +195,26 @@ export class BunCompatiblePTYManager extends EventEmitter {
             timeoutMs: this._stallTimeoutMs,
           });
         }
-        this.ready = true;
-        this.readyResolve();
-        this.emit('ready');
+        // Register adapter modules and wait for ack before marking as ready.
+        // Without this, spawn() can race ahead using the default shell adapter.
+        if (this.adapterModules.length > 0) {
+          this.sendCommand({ cmd: 'registerAdapters', modules: this.adapterModules });
+          this.createPending('registerAdapters').then(() => {
+            this.ready = true;
+            this.readyResolve();
+            this.emit('ready');
+          }).catch((err) => {
+            this.emit('worker_error', `Failed to register adapters: ${err}`);
+            // Still resolve so callers aren't stuck forever — they'll get shell adapter
+            this.ready = true;
+            this.readyResolve();
+            this.emit('ready');
+          });
+        } else {
+          this.ready = true;
+          this.readyResolve();
+          this.emit('ready');
+        }
         break;
 
       case 'spawned': {

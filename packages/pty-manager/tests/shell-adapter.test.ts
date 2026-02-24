@@ -47,12 +47,25 @@ describe('ShellAdapter', () => {
     expect(detection.detected).toBe(false);
   });
 
-  it('should detect ready state', () => {
+  it('should detect ready state from prompt patterns', () => {
     const adapter = new ShellAdapter({ prompt: 'pty> ' });
     expect(adapter.detectReady('pty> ')).toBe(true);
     expect(adapter.detectReady('$ ')).toBe(true);
-    expect(adapter.detectReady('some longer output here')).toBe(true);
+    expect(adapter.detectReady('user@host:~$ ')).toBe(true);
+    expect(adapter.detectReady('root@host:~# ')).toBe(true);
     expect(adapter.detectReady('')).toBe(false);
+    // Should NOT match on arbitrary long output or bare $ in content
+    expect(adapter.detectReady('some longer output here')).toBe(false);
+  });
+
+  it('should reject continuation prompts as not ready', () => {
+    const adapter = new ShellAdapter({ prompt: 'pty> ' });
+    expect(adapter.detectReady('quote> ')).toBe(false);
+    expect(adapter.detectReady('dquote> ')).toBe(false);
+    expect(adapter.detectReady('heredoc> ')).toBe(false);
+    expect(adapter.detectReady('bquote> ')).toBe(false);
+    expect(adapter.detectReady('pipe> ')).toBe(false);
+    expect(adapter.detectReady('cmdsubst> ')).toBe(false);
   });
 
   it('should detect exit', () => {
@@ -91,7 +104,8 @@ describe('ShellAdapter', () => {
     expect(pattern.test('pty> ')).toBe(true);
     expect(pattern.test('$ ')).toBe(true);
     expect(pattern.test('# ')).toBe(true);
-    expect(pattern.test('> ')).toBe(true);
+    // Bare > is NOT matched (would collide with continuation prompts)
+    expect(pattern.test('> ')).toBe(false);
   });
 
   it('should validate installation', async () => {

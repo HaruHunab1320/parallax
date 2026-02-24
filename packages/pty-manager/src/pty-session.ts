@@ -1450,25 +1450,81 @@ export class PTYSession extends EventEmitter {
     }
 
     const keyList = Array.isArray(keys) ? keys : [keys];
+    const normalized = PTYSession.normalizeKeyList(keyList);
     this._stallEmissionCount = 0;
     this.resetStallTimer();
 
-    for (const key of keyList) {
-      const normalizedKey = key.toLowerCase().trim();
-      const sequence = SPECIAL_KEYS[normalizedKey];
+    for (const key of normalized) {
+      const sequence = SPECIAL_KEYS[key];
 
       if (sequence) {
         this._lastActivityAt = new Date();
         this.ptyProcess.write(sequence);
-        this.logger.debug({ sessionId: this.id, key: normalizedKey }, 'Sent special key');
+        this.logger.debug({ sessionId: this.id, key }, 'Sent special key');
       } else {
         this.logger.warn(
-          { sessionId: this.id, key: normalizedKey },
+          { sessionId: this.id, key },
           'Unknown special key, sending as literal'
         );
         this.ptyProcess.write(key);
       }
     }
+  }
+
+  /**
+   * Normalize a list of key names for SPECIAL_KEYS lookup.
+   *
+   * Handles two problems:
+   * 1. Modifier aliases: "control" → "ctrl", "command" → "meta", "option" → "alt"
+   * 2. Comma-separated compound keys from stall classifier: ["control", "c"] → ["ctrl+c"]
+   *    A bare modifier followed by a single char/key is joined with "+".
+   */
+  static normalizeKeyList(keys: string[]): string[] {
+    const MODIFIER_MAP: Record<string, string> = {
+      control: 'ctrl',
+      command: 'meta',
+      cmd: 'meta',
+      option: 'alt',
+      opt: 'alt',
+    };
+
+    const MODIFIER_NAMES = new Set([
+      'ctrl', 'alt', 'shift', 'meta',
+      // Also match the aliases so we can detect them before remapping
+      ...Object.keys(MODIFIER_MAP),
+    ]);
+
+    const result: string[] = [];
+    let i = 0;
+
+    while (i < keys.length) {
+      let key = keys[i].toLowerCase().trim();
+
+      // Remap modifier aliases
+      if (MODIFIER_MAP[key]) {
+        key = MODIFIER_MAP[key];
+      }
+
+      // If this is a bare modifier and the next element is a non-modifier key,
+      // join them as "modifier+key" (e.g. ["ctrl", "c"] → "ctrl+c")
+      if (MODIFIER_NAMES.has(key) && i + 1 < keys.length) {
+        let nextKey = keys[i + 1].toLowerCase().trim();
+        if (MODIFIER_MAP[nextKey]) {
+          nextKey = MODIFIER_MAP[nextKey];
+        }
+        // Only join if next is NOT a bare modifier (avoid collapsing ["ctrl", "shift", "c"])
+        if (!MODIFIER_NAMES.has(nextKey)) {
+          result.push(`${key}+${nextKey}`);
+          i += 2;
+          continue;
+        }
+      }
+
+      result.push(key);
+      i++;
+    }
+
+    return result;
   }
 
   /**

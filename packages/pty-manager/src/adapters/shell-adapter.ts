@@ -65,8 +65,26 @@ export class ShellAdapter implements CLIAdapter {
   }
 
   detectReady(output: string): boolean {
-    // Ready when we see the prompt or any meaningful output
-    return output.includes(this.promptStr) || output.includes('$') || output.length > 10;
+    // Reject continuation prompts — the shell is waiting for a closing
+    // quote/heredoc/backtick, NOT at a real prompt.
+    if (this.isContinuationPrompt(output)) {
+      return false;
+    }
+
+    // Check for our custom prompt string (PS1) or standard shell prompt at end of line
+    return this.getPromptPattern().test(this.stripAnsi(output));
+  }
+
+  /**
+   * Detect shell continuation prompts that indicate the shell is NOT ready
+   * for a new command (e.g., unclosed quote, heredoc, backtick).
+   */
+  private isContinuationPrompt(output: string): boolean {
+    const stripped = this.stripAnsi(output);
+    // Match common continuation prompts at the end of output
+    return /(?:quote|dquote|heredoc|bquote|cmdsubst|pipe|then|else|do|loop)>\s*$/.test(stripped)
+      // Also match bare > that's preceded by one of these words on the same line
+      || /(?:quote|dquote|heredoc|bquote)>\s*$/m.test(stripped);
   }
 
   detectExit(output: string): { exited: boolean; code?: number; error?: string } {
@@ -93,9 +111,11 @@ export class ShellAdapter implements CLIAdapter {
   }
 
   getPromptPattern(): RegExp {
-    // Match our custom prompt or standard shell prompts
+    // Match our custom prompt or standard shell prompts ($ or #).
+    // Does NOT match bare > because that collides with continuation prompts
+    // (quote>, dquote>, heredoc>, etc.).
     const escaped = this.promptStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(`(?:${escaped}|\\$|#|>)\\s*$`, 'm');
+    return new RegExp(`(?:${escaped}|\\$|#)\\s*$`, 'm');
   }
 
   async validateInstallation(): Promise<{ installed: boolean; version?: string; error?: string }> {
