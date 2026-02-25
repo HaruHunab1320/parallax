@@ -4,6 +4,7 @@ import type {
   SessionHandle,
   SessionMessage,
   StopOptions,
+  ToolRunningInfo,
   WorkerSessionHandle,
 } from 'pty-manager';
 import type {
@@ -226,6 +227,10 @@ export class PTYConsoleBridge extends EventEmitter {
       const session = this.manager.get(message.sessionId);
       if (!session) return;
       this.emitStatus({ kind: 'message', session: session as SessionHandle, message });
+    });
+
+    this.listen('tool_running', (session: AnySessionHandle, toolInfo: ToolRunningInfo) => {
+      this.emitStatus({ kind: 'tool_running', session: session as SessionHandle, toolInfo });
     });
   }
 

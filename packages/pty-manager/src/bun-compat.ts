@@ -9,7 +9,7 @@ import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as readline from 'readline';
-import type { SpawnConfig, AutoResponseRule, BlockingPromptType, SessionStatus, StallClassification, AuthRequiredInfo } from './types';
+import type { SpawnConfig, AutoResponseRule, BlockingPromptType, SessionStatus, StallClassification, AuthRequiredInfo, ToolRunningInfo } from './types';
 
 /**
  * Serialized auto-response rule for IPC (pattern as string instead of RegExp)
@@ -340,6 +340,14 @@ export class BunCompatiblePTYManager extends EventEmitter {
           session.status = 'ready';
           session.lastActivityAt = new Date();
           this.emit('task_complete', session);
+        }
+        break;
+      }
+
+      case 'tool_running': {
+        const session = this.sessions.get(id!);
+        if (session) {
+          this.emit('tool_running', session, event.info as ToolRunningInfo);
         }
         break;
       }

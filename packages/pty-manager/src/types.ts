@@ -271,6 +271,22 @@ export interface StallClassification {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Tool Running Detection
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Information about an external tool/process running within a session.
+ * Emitted when the adapter detects a tool is actively executing (e.g. browser,
+ * bash command, Node process). Suppresses stall detection while active.
+ */
+export interface ToolRunningInfo {
+  /** Name of the tool (e.g. "Chrome", "bash", "node", "python") */
+  toolName: string;
+  /** Optional description of what the tool is doing */
+  description?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Manager Types
 // ─────────────────────────────────────────────────────────────────────────────
 

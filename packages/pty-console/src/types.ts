@@ -6,6 +6,7 @@ import type {
   BlockingPromptInfo,
   AuthRequiredInfo,
   AutoResponseRule,
+  ToolRunningInfo,
   WorkerSessionHandle,
 } from 'pty-manager';
 
@@ -32,7 +33,8 @@ export interface SessionStatusEvent {
     | 'auth_required'
     | 'blocking_prompt'
     | 'question'
-    | 'message';
+    | 'message'
+    | 'tool_running';
   session: SessionHandle;
   reason?: string;
   error?: string;
@@ -43,6 +45,7 @@ export interface SessionStatusEvent {
   autoResponded?: boolean;
   question?: string;
   message?: SessionMessage;
+  toolInfo?: ToolRunningInfo;
 }
 
 export interface PTYConsoleSnapshot {

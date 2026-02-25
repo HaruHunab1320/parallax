@@ -46,6 +46,9 @@ export type {
   // Stall detection types
   StallClassification,
 
+  // Tool running detection
+  ToolRunningInfo,
+
   // Manager types
   Logger,
   StopOptions,

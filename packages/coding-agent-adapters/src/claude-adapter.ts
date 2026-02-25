@@ -10,6 +10,7 @@ import type {
   LoginDetection,
   BlockingPromptDetection,
   AutoResponseRule,
+  ToolRunningInfo,
 } from 'pty-manager';
 import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
 
@@ -372,6 +373,49 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     }
 
     return false;
+  }
+
+  /**
+   * Detect if an external tool/process is running within the Claude session.
+   *
+   * Claude Code can launch external tools (browser, bash, Node, Python, etc.)
+   * that show status lines like "Claude in Chrome[javascript_tool]" or
+   * "[bash_tool]", "[python_tool]", etc.
+   *
+   * When detected, stall detection is suppressed and the UI can display
+   * which tool is active.
+   */
+  detectToolRunning(output: string): ToolRunningInfo | null {
+    const stripped = this.stripAnsi(output);
+    const tail = stripped.slice(-500);
+
+    // Pattern: "[tool_name]" — Claude shows tool type in brackets
+    // e.g. "[javascript_tool]", "[bash_tool]", "[python_tool]", "[mcp_tool]"
+    const toolMatch = tail.match(/\[(\w+_tool)\]/i);
+    if (toolMatch) {
+      const toolType = toolMatch[1].toLowerCase();
+      // Extract a friendly name from the tool type
+      const friendlyName = toolType.replace(/_tool$/i, '');
+
+      // Try to extract additional context (e.g. "Claude in Chrome")
+      const contextMatch = tail.match(/(?:Claude\s+in|Running|Using)\s+(\S+)/i);
+      const description = contextMatch
+        ? `${contextMatch[1]} (${toolType})`
+        : toolType;
+
+      return { toolName: friendlyName, description };
+    }
+
+    // Pattern: "Claude in <App>" without a bracketed tool (e.g. "Claude in Chrome")
+    const appMatch = tail.match(/Claude\s+in\s+(\w+)/i);
+    if (appMatch) {
+      return {
+        toolName: appMatch[1].toLowerCase(),
+        description: `Claude in ${appMatch[1]}`,
+      };
+    }
+
+    return null;
   }
 
   /**

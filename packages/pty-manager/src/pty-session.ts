@@ -18,6 +18,7 @@ import type {
   LoginDetection,
   AutoResponseRule,
   StallClassification,
+  ToolRunningInfo,
   Logger,
 } from './types';
 import { consoleLogger } from './logger';
@@ -51,6 +52,7 @@ export interface PTYSessionEvents {
   stall_detected: (recentOutput: string, stallDurationMs: number) => void;
   status_changed: (status: SessionStatus) => void;
   task_complete: () => void;
+  tool_running: (info: ToolRunningInfo) => void;
 }
 
 
@@ -257,6 +259,9 @@ export class PTYSession extends EventEmitter {
   // Ready detection settle delay — defers session_ready until output goes quiet
   private _readySettleTimer: ReturnType<typeof setTimeout> | null = null;
   private _readySettlePending = false;
+
+  // Tool running deduplication — only emit when tool changes
+  private _lastToolRunningName: string | null = null;
 
   // Deferred output processing — prevents node-pty's synchronous data
   // delivery from starving the event loop (timers, I/O callbacks, etc.)
@@ -489,6 +494,27 @@ export class PTYSession extends EventEmitter {
       );
       this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
       return;
+    }
+
+    // Tool running suppression: if the adapter detects an external tool/process
+    // (browser, bash, node, python, etc.), the agent is working through that tool.
+    // Suppress stall detection and emit tool_running event for the UI.
+    const toolInfo = this.adapter.detectToolRunning?.(this.outputBuffer);
+    if (toolInfo) {
+      if (toolInfo.toolName !== this._lastToolRunningName) {
+        this._lastToolRunningName = toolInfo.toolName;
+        this.emit('tool_running', toolInfo);
+      }
+      this.logger.debug(
+        { sessionId: this.id, tool: toolInfo.toolName },
+        'Tool running — suppressing stall emission'
+      );
+      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+      return;
+    }
+    // Clear tool running state when no tool detected
+    if (this._lastToolRunningName) {
+      this._lastToolRunningName = null;
     }
 
     // Compute dedup hash from last 500 chars of outputBuffer
@@ -1084,6 +1110,19 @@ export class PTYSession extends EventEmitter {
     ) {
       this.scheduleReadySettle();
       return;
+    }
+
+    // Tool running detection — emit event promptly when busy so UI updates
+    if (this._status === 'busy') {
+      const toolInfo = this.adapter.detectToolRunning?.(this.outputBuffer);
+      if (toolInfo) {
+        if (toolInfo.toolName !== this._lastToolRunningName) {
+          this._lastToolRunningName = toolInfo.toolName;
+          this.emit('tool_running', toolInfo);
+        }
+      } else if (this._lastToolRunningName) {
+        this._lastToolRunningName = null;
+      }
     }
 
     // Task completion detection — when busy and the agent returns to idle.

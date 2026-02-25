@@ -10,6 +10,7 @@ import type {
   LoginDetection,
   BlockingPromptDetection,
   AutoResponseRule,
+  ToolRunningInfo,
 } from '../types';
 
 /**
@@ -114,6 +115,18 @@ export interface CLIAdapter {
    * "Reading N files", "Waiting for LLM", etc.
    */
   detectLoading?(output: string): boolean;
+
+  /**
+   * Optional: Detect if an external tool/process is currently running within
+   * the session (e.g. browser, bash command, Node server, Python script).
+   *
+   * When a tool is detected, stall detection is suppressed (the agent is
+   * working, just through an external process) and a `tool_running` event
+   * is emitted so the UI can display the active tool.
+   *
+   * Return null when no tool is detected.
+   */
+  detectToolRunning?(output: string): ToolRunningInfo | null;
 
   /**
    * Optional: Get health check command

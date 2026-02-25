@@ -35,13 +35,14 @@
  *   { "event": "question", "id": string, "question": string }
  *   { "event": "list", "sessions": SessionInfo[] }
  *   { "event": "rules", "id": string, "rules": SerializedRule[] }
+ *   { "event": "tool_running", "id": string, "info": ToolRunningInfo }
  *   { "event": "ack", "cmd": string, "id"?: string, "success": boolean, "error"?: string }
  */
 
 import * as readline from 'readline';
 import { PTYManager } from './pty-manager';
 import { ShellAdapter } from './adapters';
-import type { SpawnConfig, SessionHandle, BlockingPromptInfo, SessionMessage, AutoResponseRule, BlockingPromptType, StallClassification, AuthRequiredInfo } from './types';
+import type { SpawnConfig, SessionHandle, BlockingPromptInfo, SessionMessage, AutoResponseRule, BlockingPromptType, StallClassification, AuthRequiredInfo, ToolRunningInfo } from './types';
 
 interface SessionInfo {
   id: string;
@@ -205,6 +206,14 @@ manager.on('task_complete', (handle: SessionHandle) => {
   emit({
     event: 'task_complete',
     id: handle.id,
+  });
+});
+
+manager.on('tool_running', (handle: SessionHandle, info: ToolRunningInfo) => {
+  emit({
+    event: 'tool_running',
+    id: handle.id,
+    info,
   });
 });
 

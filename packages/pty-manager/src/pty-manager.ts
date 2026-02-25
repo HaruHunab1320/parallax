@@ -19,6 +19,7 @@ import type {
   AuthRequiredInfo,
   AutoResponseRule,
   StallClassification,
+  ToolRunningInfo,
   StopOptions,
   LogOptions,
   TerminalAttachment,
@@ -39,6 +40,7 @@ export interface PTYManagerEvents {
   stall_detected: (session: SessionHandle, recentOutput: string, stallDurationMs: number) => void;
   session_status_changed: (session: SessionHandle) => void;
   task_complete: (session: SessionHandle) => void;
+  tool_running: (session: SessionHandle, info: ToolRunningInfo) => void;
 }
 
 
@@ -178,6 +180,10 @@ export class PTYManager extends EventEmitter {
 
     session.on('task_complete', () => {
       this.emit('task_complete', session.toHandle());
+    });
+
+    session.on('tool_running', (info: ToolRunningInfo) => {
+      this.emit('tool_running', session.toHandle(), info);
     });
 
     session.on('stall_detected', (recentOutput: string, stallDurationMs: number) => {
