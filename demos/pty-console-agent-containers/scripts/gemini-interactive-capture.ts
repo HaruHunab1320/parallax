@@ -54,6 +54,7 @@ interface CliArgs {
   outputDir: string;
   cols: number;
   rows: number;
+  renderMode: 'raw' | 'plain';
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -65,6 +66,7 @@ function parseArgs(argv: string[]): CliArgs {
     outputDir: resolve(process.env.GEMINI_CAPTURE_OUTPUT_DIR ?? '.parallax/pty-captures'),
     cols: Number.parseInt(process.env.GEMINI_CAPTURE_COLS ?? String(stdoutCols), 10),
     rows: Number.parseInt(process.env.GEMINI_CAPTURE_ROWS ?? String(stdoutRows), 10),
+    renderMode: process.env.GEMINI_CAPTURE_RENDER === 'plain' ? 'plain' : 'raw',
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -85,6 +87,13 @@ function parseArgs(argv: string[]): CliArgs {
     if (arg === '--rows' && argv[i + 1]) {
       const parsed = Number.parseInt(argv[++i], 10);
       if (Number.isFinite(parsed) && parsed > 0) out.rows = parsed;
+      continue;
+    }
+    if (arg === '--render' && argv[i + 1]) {
+      const mode = argv[++i];
+      if (mode === 'raw' || mode === 'plain') {
+        out.renderMode = mode;
+      }
       continue;
     }
     if (arg === '--help' || arg === '-h') {
@@ -108,6 +117,7 @@ Options:
   --output-dir <path>     Capture output root dir (default: .parallax/pty-captures)
   --cols <n>              Initial terminal columns (default: current terminal cols)
   --rows <n>              Initial terminal rows (default: current terminal rows)
+  --render <raw|plain>    Display mode (default: raw; plain reduces TUI flicker)
   -h, --help              Show this help
 
 Exit:
@@ -119,7 +129,20 @@ Env:
   GEMINI_CAPTURE_OUTPUT_DIR
   GEMINI_CAPTURE_COLS
   GEMINI_CAPTURE_ROWS
+  GEMINI_CAPTURE_RENDER    raw | plain
   `);
+}
+
+function toPlainDisplay(data: string): string {
+  let out = data;
+  out = out.replace(/\x1b\[\d*(?:;\d+)*[ABCDGHfJKmSTu]/g, ' ');
+  out = out.replace(/\x1b\[\?[0-9;]*[hl]/g, ' ');
+  out = out.replace(/\x1b\][^\x07]*\x07/g, ' ');
+  out = out.replace(/\r/g, '\n');
+  out = out.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏✻✶✳✢⏺]/g, ' ');
+  out = out.replace(/[ \t]{2,}/g, ' ');
+  out = out.replace(/\n{3,}/g, '\n\n');
+  return out;
 }
 
 async function main(): Promise<void> {
@@ -153,6 +176,7 @@ async function main(): Promise<void> {
   let cleanupDone = false;
   let sessionClosed = false;
   let unsubOutput: (() => void) | null = null;
+  let attachment: ReturnType<InstanceType<typeof PTYManager>['attachTerminal']> | null = null;
 
   const teardown = async (reason: string): Promise<void> => {
     if (cleanupDone) return;
@@ -194,15 +218,11 @@ async function main(): Promise<void> {
   };
 
   const onResize = (): void => {
-    if (!session) return;
-    const attachment = manager.attachTerminal(session.id);
     if (!attachment) return;
     attachment.resize(process.stdout.columns || args.cols, process.stdout.rows || args.rows);
   };
 
   const onStdinData = (chunk: Buffer | string): void => {
-    if (!session) return;
-    const attachment = manager.attachTerminal(session.id);
     if (!attachment) return;
     const data = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
     if (data === '\u001d') {
@@ -261,7 +281,7 @@ async function main(): Promise<void> {
     manager.clearAutoResponseRules(session.id);
   }
 
-  const attachment = manager.attachTerminal(session.id);
+  attachment = manager.attachTerminal(session.id);
   if (!attachment) {
     await teardown('attach_failed');
     throw new Error(`Failed to attach terminal stream for session ${session.id}`);
@@ -270,10 +290,11 @@ async function main(): Promise<void> {
   process.stderr.write(`[gemini-capture] session=${session.id}\n`);
   process.stderr.write(`[gemini-capture] run-id=${runId}\n`);
   process.stderr.write(`[gemini-capture] auto-respond=${autoRespond ? 'on' : 'off'}\n`);
+  process.stderr.write(`[gemini-capture] render=${args.renderMode}\n`);
   process.stderr.write('[gemini-capture] press Ctrl+] to detach\n\n');
 
   unsubOutput = attachment.onData((data) => {
-    process.stdout.write(data);
+    process.stdout.write(args.renderMode === 'plain' ? toPlainDisplay(data) : data);
   });
 
   process.stdin.setRawMode(true);
