@@ -2,6 +2,16 @@
 
 All notable changes to `coding-agent-adapters` will be documented in this file.
 
+## [0.8.3] - 2026-02-26
+
+### Fixed
+- `ClaudeAdapter.detectBlockingPrompt()` no longer classifies startup status-bar lines as blocking menu navigation (for example: `? for shortcuts`, `Claude in Chrome enabled · /chrome`, `Update available! ...`)
+- `ClaudeAdapter.detectToolRunning()` no longer binds `Claude in Chrome enabled` status context to unrelated bracketed tool tokens in the same tail buffer
+- `checkAllAdapters()`/`checkAdapters()` timeout failures in tests by removing real CLI preflight execution from unit tests and mocking adapter installation checks
+
+### Changed
+- `checkAdapters()` now validates adapters in parallel via `Promise.all(...)` to reduce preflight latency
+
 ## [0.8.2] - 2026-02-26
 
 ### Fixed
