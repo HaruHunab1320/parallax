@@ -2,6 +2,11 @@
 
 All notable changes to `coding-agent-adapters` will be documented in this file.
 
+## [0.8.1] - 2026-02-25
+
+### Added
+- CHANGELOG.md
+
 ## [0.8.0] - 2026-02-25
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "pty-console",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Operator console bridge for rendering and controlling live PTY sessions in grid UIs",
   "type": "module",
   "main": "./dist/index.cjs",

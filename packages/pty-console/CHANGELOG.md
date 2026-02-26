@@ -2,6 +2,11 @@
 
 All notable changes to `pty-console` will be documented in this file.
 
+## [0.3.1] - 2026-02-25
+
+### Added
+- CHANGELOG.md
+
 ## [0.3.0] - 2026-02-25
 
 ### Added
