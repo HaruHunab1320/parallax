@@ -537,4 +537,48 @@ describe('ClaudeAdapter', () => {
       expect(adapter.memoryFilePath).toBe('CLAUDE.md');
     });
   });
+
+  describe('detectToolRunning', () => {
+    it('should detect active tool from bracketed pattern', () => {
+      const output = 'Claude in Chrome[javascript_tool] ───────────────';
+      const result = adapter.detectToolRunning!(output);
+      expect(result).not.toBeNull();
+      expect(result!.toolName).toBe('javascript');
+      expect(result!.description).toContain('Chrome');
+    });
+
+    it('should detect bash_tool', () => {
+      const result = adapter.detectToolRunning!('[bash_tool] running command');
+      expect(result).not.toBeNull();
+      expect(result!.toolName).toBe('bash');
+    });
+
+    it('should detect python_tool', () => {
+      const result = adapter.detectToolRunning!('[python_tool]');
+      expect(result).not.toBeNull();
+      expect(result!.toolName).toBe('python');
+    });
+
+    it('should NOT match startup status line "Claude in Chrome enabled"', () => {
+      const output = 'Claude in Chrome enabled · /chrome   for shortcuts   Update available!';
+      const result = adapter.detectToolRunning!(output);
+      expect(result).toBeNull();
+    });
+
+    it('should NOT match status bar with "Claude in Chrome" but no tool bracket', () => {
+      const output = '❯  Claude in Chrome · Connected   for shortcuts';
+      const result = adapter.detectToolRunning!(output);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for normal output', () => {
+      const result = adapter.detectToolRunning!('Here is some code:\nfunction foo() {}');
+      expect(result).toBeNull();
+    });
+
+    it('should return null for idle prompt', () => {
+      const result = adapter.detectToolRunning!('❯  How can I help you?');
+      expect(result).toBeNull();
+    });
+  });
 });

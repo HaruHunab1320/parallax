@@ -389,30 +389,23 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     const stripped = this.stripAnsi(output);
     const tail = stripped.slice(-500);
 
-    // Pattern: "[tool_name]" — Claude shows tool type in brackets
-    // e.g. "[javascript_tool]", "[bash_tool]", "[python_tool]", "[mcp_tool]"
+    // Pattern: "[tool_name]" — Claude shows tool type in brackets when actively
+    // executing. e.g. "[javascript_tool]", "[bash_tool]", "[python_tool]", "[mcp_tool]"
+    // IMPORTANT: Only match bracketed tool names — bare "Claude in Chrome" without
+    // a tool bracket is an informational status line (e.g. "Claude in Chrome enabled"),
+    // not active tool use.
     const toolMatch = tail.match(/\[(\w+_tool)\]/i);
     if (toolMatch) {
       const toolType = toolMatch[1].toLowerCase();
-      // Extract a friendly name from the tool type
       const friendlyName = toolType.replace(/_tool$/i, '');
 
       // Try to extract additional context (e.g. "Claude in Chrome")
-      const contextMatch = tail.match(/(?:Claude\s+in|Running|Using)\s+(\S+)/i);
+      const contextMatch = tail.match(/Claude\s+in\s+(\w+)/i);
       const description = contextMatch
         ? `${contextMatch[1]} (${toolType})`
         : toolType;
 
       return { toolName: friendlyName, description };
-    }
-
-    // Pattern: "Claude in <App>" without a bracketed tool (e.g. "Claude in Chrome")
-    const appMatch = tail.match(/Claude\s+in\s+(\w+)/i);
-    if (appMatch) {
-      return {
-        toolName: appMatch[1].toLowerCase(),
-        description: `Claude in ${appMatch[1]}`,
-      };
     }
 
     return null;
