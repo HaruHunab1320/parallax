@@ -15,4 +15,10 @@ describe('normalize', () => {
     expect(out).toBe('A   B');
     expect(normalizeForMatching(raw)).toBe('A B');
   });
+
+  it('strips fragmented sgr payload remnants and block elements', () => {
+    const raw = 'foo 38;2;98;138;218m ▄▄▄ bar';
+    const out = normalizeForMatching(raw);
+    expect(out).toBe('foo bar');
+  });
 });

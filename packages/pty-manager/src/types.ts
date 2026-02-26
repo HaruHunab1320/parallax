@@ -84,6 +84,18 @@ export interface SpawnConfig {
    *  are emitted as autoResponded=false instead of being auto-responded.
    *  Auto-response rules (ruleOverrides) are unaffected. */
   skipAdapterAutoResponse?: boolean;
+
+  /**
+   * Whether to inherit the parent process environment variables.
+   * When `true` (default), `process.env` is spread as the base of the spawned
+   * process environment. When `false`, only `adapter.getEnv()` output and
+   * `config.env` are used — the caller is responsible for providing any
+   * necessary system vars (PATH, HOME, etc.) via `config.env`.
+   *
+   * Set to `false` for security-sensitive contexts where the host process has
+   * secrets that spawned agents should not access.
+   */
+  inheritProcessEnv?: boolean;
 }
 
 /**

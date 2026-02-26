@@ -36,6 +36,11 @@ export class SessionStateCapture {
   private currentState: ClassifiedState;
   private transitionCount = 0;
   private feedQueue: Promise<void> = Promise.resolve();
+  private geminiReadySignalCount = 0;
+  private geminiPendingState:
+    | { kind: StateKind; ruleId?: string; count: number }
+    | null = null;
+  private lastUnknownChunk = '';
 
   public readonly paths: CapturePaths;
 
@@ -136,12 +141,14 @@ export class SessionStateCapture {
     this.appendNormalized(normalizedChunk);
 
     const classified = classifyState(this.normalizedBuffer, this.rules, this.config.source);
+    const stabilized = this.applyGeminiReadyHysteresis(classified);
+    const debounced = this.applyGeminiTransitionDebounce(stabilized);
     const nextState: ClassifiedState = {
       ts: now,
       sessionId: this.config.sessionId,
-      state: classified.kind,
-      ruleId: classified.ruleId,
-      confidence: classified.confidence,
+      state: debounced.kind,
+      ruleId: debounced.ruleId,
+      confidence: debounced.confidence,
       normalizedTail: this.normalizedBuffer,
     };
 
@@ -164,8 +171,20 @@ export class SessionStateCapture {
 
     this.currentState = nextState;
 
-    if (this.options.writeStates) {
+    const skipRepeatedUnknownStateWrite =
+      !stateChanged &&
+      nextState.state === 'unknown' &&
+      normalizedChunk.length > 0 &&
+      normalizedChunk === this.lastUnknownChunk;
+
+    if (this.options.writeStates && !skipRepeatedUnknownStateWrite) {
       await writeJsonLine(this.paths.statesPath, nextState);
+    }
+
+    if (nextState.state === 'unknown') {
+      this.lastUnknownChunk = normalizedChunk;
+    } else {
+      this.lastUnknownChunk = '';
     }
 
     return {
@@ -197,5 +216,102 @@ export class SessionStateCapture {
     const merged = `${this.normalizedBuffer} ${text}`.trim();
     const max = this.options.maxNormalizedBufferChars;
     this.normalizedBuffer = merged.length > max ? merged.slice(-max) : merged;
+  }
+
+  private applyGeminiReadyHysteresis(
+    classified: { kind: StateKind; ruleId?: string; confidence: number },
+  ): { kind: StateKind; ruleId?: string; confidence: number } {
+    if (this.config.source !== 'gemini') {
+      return classified;
+    }
+
+    const current = this.currentState.state;
+    const currentIsActive =
+      current === 'busy_streaming' ||
+      current === 'awaiting_input' ||
+      current === 'awaiting_approval' ||
+      current === 'awaiting_auth';
+
+    if (classified.kind !== 'ready_for_input') {
+      this.geminiReadySignalCount = 0;
+      return classified;
+    }
+
+    // Explicit cancel -> composer frame should restore ready immediately.
+    if (classified.ruleId === 'ready_prompt_gemini_after_cancel') {
+      this.geminiReadySignalCount = 0;
+      return classified;
+    }
+
+    // Gemini's TUI often paints the ready composer while still showing active
+    // overlays in adjacent redraw frames. Require repeated ready matches
+    // before transitioning from active -> ready.
+    if (currentIsActive) {
+      this.geminiReadySignalCount += 1;
+      if (this.geminiReadySignalCount < 3) {
+        return {
+          kind: current,
+          ruleId: this.currentState.ruleId,
+          confidence: Math.min(classified.confidence, 0.7),
+        };
+      }
+      this.geminiReadySignalCount = 0;
+    } else {
+      this.geminiReadySignalCount = 0;
+    }
+
+    return classified;
+  }
+
+  private applyGeminiTransitionDebounce(
+    classified: { kind: StateKind; ruleId?: string; confidence: number },
+  ): { kind: StateKind; ruleId?: string; confidence: number } {
+    if (this.config.source !== 'gemini') {
+      return classified;
+    }
+
+    const current = this.currentState.state;
+    if (classified.kind === current) {
+      this.geminiPendingState = null;
+      return classified;
+    }
+
+    const currentIsReady = current === 'ready_for_input';
+    const classifiedIsActive =
+      classified.kind === 'busy_streaming' ||
+      classified.kind === 'awaiting_input' ||
+      classified.kind === 'awaiting_approval' ||
+      classified.kind === 'awaiting_auth';
+
+    const threshold = currentIsReady && classifiedIsActive ? 2 : 1;
+    if (threshold <= 1) {
+      this.geminiPendingState = null;
+      return classified;
+    }
+
+    if (
+      this.geminiPendingState &&
+      this.geminiPendingState.kind === classified.kind &&
+      this.geminiPendingState.ruleId === classified.ruleId
+    ) {
+      this.geminiPendingState.count += 1;
+    } else {
+      this.geminiPendingState = {
+        kind: classified.kind,
+        ruleId: classified.ruleId,
+        count: 1,
+      };
+    }
+
+    if (this.geminiPendingState.count < threshold) {
+      return {
+        kind: current,
+        ruleId: this.currentState.ruleId,
+        confidence: Math.min(classified.confidence, 0.72),
+      };
+    }
+
+    this.geminiPendingState = null;
+    return classified;
   }
 }

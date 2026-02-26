@@ -346,6 +346,24 @@ describe('GeminiAdapter', () => {
       expect(result.suggestedResponse).toBe('keys:enter');
     });
 
+    it('should detect interactive shell y/n confirmation prompt', () => {
+      const result = adapter.detectBlockingPrompt('Do you want to continue (Y/n)?');
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('tool_wait');
+      expect(result.canAutoRespond).toBe(false);
+    });
+
+    it('should detect checkpoint prompt as config interaction', () => {
+      const result = adapter.detectBlockingPrompt(
+        'Enable checkpointing to recover your session after a crash (s)'
+      );
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('config');
+      expect(result.canAutoRespond).toBe(false);
+    });
+
     it('should return not detected for normal output', () => {
       const result = adapter.detectBlockingPrompt('Processing your request...');
 
@@ -411,6 +429,22 @@ describe('GeminiAdapter', () => {
 
     it('should return false for loading output', () => {
       expect(adapter.detectReady('Initializing...')).toBe(false);
+    });
+
+    it('should NOT detect ready while waiting for user confirmation overlay is present', () => {
+      expect(adapter.detectReady('Waiting for user confirmation... > Type your message or @path/to/file')).toBe(false);
+    });
+
+    it('should NOT detect ready while interactive shell input overlay is present', () => {
+      expect(adapter.detectReady('Interactive shell awaiting input... press tab to focus shell > Type your message')).toBe(false);
+    });
+
+    it('should NOT detect ready while shell y/n confirmation is present', () => {
+      expect(adapter.detectReady('Do you want to continue (Y/n)? > Type your message')).toBe(false);
+    });
+
+    it('should NOT detect ready while checkpoint prompt is present', () => {
+      expect(adapter.detectReady('Enable checkpointing to recover your session after a crash (s) > Type your message')).toBe(false);
     });
   });
 

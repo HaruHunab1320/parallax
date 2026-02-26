@@ -989,14 +989,7 @@ export class PTYSession extends EventEmitter {
     const args = this.adapter.getArgs(this.config);
     const adapterEnv = this.adapter.getEnv(this.config);
 
-    const env = {
-      ...process.env,
-      ...adapterEnv,
-      ...this.config.env,
-      // Force terminal settings
-      TERM: 'xterm-256color',
-      COLORTERM: 'truecolor',
-    };
+    const env = PTYSession.buildSpawnEnv(this.config, adapterEnv);
 
     this.logger.info(
       { sessionId: this.id, command, args: args.join(' ') },
@@ -1508,6 +1501,25 @@ export class PTYSession extends EventEmitter {
         this.ptyProcess.write(key);
       }
     }
+  }
+
+  /**
+   * Build the environment object for spawning a PTY process.
+   * Merges base env (process.env unless opted out), adapter env, and config env,
+   * with TERM/COLORTERM always forced.
+   */
+  static buildSpawnEnv(
+    config: SpawnConfig,
+    adapterEnv: Record<string, string>,
+  ): Record<string, string> {
+    const baseEnv = config.inheritProcessEnv !== false ? process.env : {};
+    return {
+      ...baseEnv,
+      ...adapterEnv,
+      ...config.env,
+      TERM: 'xterm-256color',
+      COLORTERM: 'truecolor',
+    } as Record<string, string>;
   }
 
   /**

@@ -18,11 +18,11 @@ export class GeminiAdapter extends BaseCodingAdapter {
   readonly displayName = 'Google Gemini';
 
   readonly installation: InstallationInfo = {
-    command: 'npm install -g @anthropics/gemini-cli',
+    command: 'npm install -g @google/gemini-cli',
     alternatives: [
       'See documentation for latest installation method',
     ],
-    docsUrl: 'https://github.com/anthropics/gemini-cli#installation',
+    docsUrl: 'https://github.com/google-gemini/gemini-cli#installation',
   };
 
   /**
@@ -247,6 +247,20 @@ export class GeminiAdapter extends BaseCodingAdapter {
       };
     }
 
+    // Interactive shell command confirmation prompts (inside tool output).
+    // Example from captures: "Do you want to continue (Y/n)?"
+    if (/do.?you.?want.?to.?continue\s*\([yY]\/[nN]\)\??/i.test(stripped) ||
+        /continue\??\s*\([yY]\/[nN]\)\??/i.test(stripped) ||
+        /are.?you.?sure\??\s*\([yY]\/[nN]\)\??/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'tool_wait',
+        prompt: 'Interactive shell confirmation required (y/n)',
+        canAutoRespond: false,
+        instructions: 'Focus shell input (Tab) and answer the y/n confirmation prompt',
+      };
+    }
+
     // Interactive shell awaiting input (usePhraseCycler.ts)
     if (/Interactive\s+shell\s+awaiting\s+input/i.test(stripped)) {
       return {
@@ -255,6 +269,17 @@ export class GeminiAdapter extends BaseCodingAdapter {
         prompt: 'Gemini interactive shell needs user focus',
         canAutoRespond: false,
         instructions: 'Press Tab to focus the interactive shell, or wait for it to complete',
+      };
+    }
+
+    // Session checkpoint prompt
+    if (/enable.?checkpointing.?to.?recover.?your.?session.?after.?a.?crash/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'config',
+        prompt: 'Gemini checkpoint setup prompt',
+        canAutoRespond: false,
+        instructions: 'Respond to checkpoint setup prompt (for example: press "s" to configure or dismiss)',
       };
     }
 
@@ -374,6 +399,16 @@ export class GeminiAdapter extends BaseCodingAdapter {
 
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    const hasActiveOverlay =
+      /interactive\s+shell\s+awaiting\s+input|press\s+tab\s+to\s+focus\s+shell/i.test(stripped) ||
+      /waiting\s+for\s+user\s+confirmation|apply.?this.?change|allow.?execution|do.?you.?want.?to.?proceed/i.test(stripped) ||
+      /do.?you.?want.?to.?continue\s*\([yY]\/[nN]\)\??|are.?you.?sure\??\s*\([yY]\/[nN]\)\??/i.test(stripped) ||
+      /enable.?checkpointing.?to.?recover.?your.?session.?after.?a.?crash/i.test(stripped) ||
+      /esc\s+to\s+cancel|esc\s+to\s+interrupt/i.test(stripped);
+
+    if (hasActiveOverlay) {
+      return false;
+    }
 
     // Definitive positive indicators — always win, even if stale auth/trust
     // dialog text is still in the buffer from a TUI re-render.
