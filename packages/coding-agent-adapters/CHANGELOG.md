@@ -2,6 +2,14 @@
 
 All notable changes to `coding-agent-adapters` will be documented in this file.
 
+## [0.8.4] - 2026-02-26
+
+### Fixed
+- Published build now matches source for Claude tool-running detection:
+  - removed legacy `"Claude in <App>"` fallback from distributed `dist` output
+  - startup/status lines such as `Claude in Chrome enabled · /chrome` no longer emit `tool_running`
+  - explicit tool markers like `[bash_tool]` and `Claude in Chrome[javascript_tool]` still emit correctly
+
 ## [0.8.3] - 2026-02-26
 
 ### Fixed
