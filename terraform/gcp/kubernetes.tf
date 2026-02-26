@@ -110,8 +110,8 @@ resource "kubernetes_deployment" "parallax_control_plane" {
 
           resources {
             requests = {
-              memory = "256Mi"
-              cpu    = "100m"
+              memory = "64Mi"
+              cpu    = "20m"
             }
             limits = {
               memory = "512Mi"
@@ -169,8 +169,8 @@ resource "kubernetes_deployment" "parallax_control_plane" {
 
           resources {
             requests = {
-              memory = "512Mi"
-              cpu    = "250m"
+              memory = "128Mi"
+              cpu    = "50m"
             }
             limits = {
               memory = "1Gi"

@@ -104,5 +104,8 @@ agent-logs/
 etcd-data/
 default.etcd/
 
+# Downloaded Helm charts (pulled via helm pull, deployed from OCI registry)
+etcd/
+
 # Git workspaces (cloned repos for coding tasks)
 .workspaces/

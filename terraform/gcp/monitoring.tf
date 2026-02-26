@@ -3,13 +3,18 @@
 # Deploy etcd using Helm
 resource "helm_release" "etcd" {
   name       = "etcd"
-  repository = "https://charts.bitnami.com/bitnami"
-  chart      = "etcd"
+  chart      = "oci://registry-1.docker.io/bitnamicharts/etcd"
+  version    = "12.0.18"
   namespace  = kubernetes_namespace.parallax.metadata[0].name
-  version    = "9.7.0"
 
   values = [
     yamlencode({
+      resources = {
+        requests = {
+          cpu    = "50m"
+          memory = "128Mi"
+        }
+      }
       auth = {
         rbac = {
           create = false
@@ -72,7 +77,7 @@ resource "helm_release" "prometheus" {
           size    = "5Gi"
         }
         dashboardProviders = {
-          dashboardproviders.yaml = {
+          "dashboardproviders.yaml" = {
             apiVersion = 1
             providers = [{
               name      = "parallax"
@@ -106,14 +111,15 @@ resource "kubernetes_config_map" "grafana_dashboards" {
   }
 
   data = {
-    "system-overview.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/system-overview.json")
-    "pattern-execution.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/pattern-execution.json")
-    "agent-performance.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/agent-performance.json")
-    "confidence-analytics.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/confidence-analytics.json")
+    "system-overview.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/parallax-system-overview.json")
+    "pattern-execution.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/parallax-pattern-execution.json")
+    "agent-performance.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/parallax-agent-performance.json")
+    "confidence-analytics.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/parallax-confidence-analytics.json")
   }
 }
 
 # Service Monitor for Parallax metrics
+/*
 resource "kubernetes_manifest" "parallax_service_monitor" {
   manifest = {
     apiVersion = "monitoring.coreos.com/v1"
@@ -141,3 +147,4 @@ resource "kubernetes_manifest" "parallax_service_monitor" {
 
   depends_on = [helm_release.prometheus]
 }
+*/

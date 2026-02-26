@@ -57,6 +57,8 @@ resource "google_sql_database_instance" "postgres" {
   }
 
   deletion_protection = var.db_deletion_protection
+
+  depends_on = [google_service_networking_connection.private_vpc_connection]
 }
 
 # Database
@@ -77,7 +79,7 @@ resource "google_secret_manager_secret" "db_password" {
   secret_id = "${var.cluster_name}-db-password"
 
   replication {
-    automatic = true
+    auto {}
   }
 }
 
