@@ -268,8 +268,15 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       };
     }
 
-    // Slash-menu screens where navigation keys are required
-    if (/\/agents\b|\/chrome\b|\/config\b|\/tasks\b|\/skills\b|\/remote-env\b|press .* to navigate .* enter .* esc/i.test(stripped)) {
+    // Slash-menu screens where navigation keys are required.
+    // Important: startup status lines can include "/chrome" (for example:
+    // "Claude in Chrome enabled · /chrome") but are not blocking prompts.
+    // Require either explicit navigation instructions or an interactive
+    // menu-style line with a prompt/selection marker.
+    if (
+      /press .* to navigate .* enter .* esc|use (?:arrow|↑↓) keys|enter to select|esc to (?:go back|close|cancel)/i.test(stripped) ||
+      /(?:^|\n)\s*(?:❯|>)\s*\/(?:agents|chrome|config|tasks|skills|remote-env)\b/im.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'config',
@@ -389,23 +396,24 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     const stripped = this.stripAnsi(output);
     const tail = stripped.slice(-500);
 
-    // Pattern: "[tool_name]" — Claude shows tool type in brackets when actively
-    // executing. e.g. "[javascript_tool]", "[bash_tool]", "[python_tool]", "[mcp_tool]"
-    // IMPORTANT: Only match bracketed tool names — bare "Claude in Chrome" without
-    // a tool bracket is an informational status line (e.g. "Claude in Chrome enabled"),
-    // not active tool use.
+    // Prefer contextual pattern: "Claude in <App>[tool_name]".
+    // Do not treat "Claude in <App> enabled · /chrome" as a running tool.
+    const contextualMatch = tail.match(/Claude\s+in\s+([A-Za-z0-9._-]+)\s*\[(\w+_tool)\]/i);
+    if (contextualMatch) {
+      const appName = contextualMatch[1];
+      const toolType = contextualMatch[2].toLowerCase();
+      const friendlyName = toolType.replace(/_tool$/i, '');
+      return { toolName: friendlyName, description: `${appName} (${toolType})` };
+    }
+
+    // Generic fallback: bracketed tool token anywhere in tail.
+    // This still detects [bash_tool], [python_tool], etc., but intentionally
+    // avoids deriving app context from unrelated status lines.
     const toolMatch = tail.match(/\[(\w+_tool)\]/i);
     if (toolMatch) {
       const toolType = toolMatch[1].toLowerCase();
       const friendlyName = toolType.replace(/_tool$/i, '');
-
-      // Try to extract additional context (e.g. "Claude in Chrome")
-      const contextMatch = tail.match(/Claude\s+in\s+(\w+)/i);
-      const description = contextMatch
-        ? `${contextMatch[1]} (${toolType})`
-        : toolType;
-
-      return { toolName: friendlyName, description };
+      return { toolName: friendlyName, description: toolType };
     }
 
     return null;

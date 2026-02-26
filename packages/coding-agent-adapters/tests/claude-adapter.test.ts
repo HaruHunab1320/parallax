@@ -280,6 +280,14 @@ describe('ClaudeAdapter', () => {
       expect(result.suggestedResponse).toBe('keys:esc');
       expect(result.options).toContain('keys:down,enter');
     });
+
+    it('should NOT treat startup status bar lines as blocking menu navigation', () => {
+      const result = adapter.detectBlockingPrompt(
+        '? for shortcuts\nClaude in Chrome enabled · /chrome\nUpdate available! Run: brew upgrade claude-code'
+      );
+
+      expect(result.detected).toBe(false);
+    });
   });
 
   describe('detectReady()', () => {
@@ -579,6 +587,19 @@ describe('ClaudeAdapter', () => {
     it('should return null for idle prompt', () => {
       const result = adapter.detectToolRunning!('❯  How can I help you?');
       expect(result).toBeNull();
+    });
+
+    it('should not bind "Claude in Chrome enabled" context to unrelated bracket token', () => {
+      const output = [
+        '? for shortcuts',
+        'Claude in Chrome enabled · /chrome',
+        'Update available! Run: brew upgrade claude-code',
+        '[bash_tool] running command',
+      ].join('\n');
+      const result = adapter.detectToolRunning!(output);
+      expect(result).not.toBeNull();
+      expect(result!.toolName).toBe('bash');
+      expect(result!.description).toBe('bash_tool');
     });
   });
 });

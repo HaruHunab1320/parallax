@@ -152,23 +152,21 @@ export interface PreflightResult {
  * ```
  */
 export async function checkAdapters(types: AdapterType[]): Promise<PreflightResult[]> {
-  const results: PreflightResult[] = [];
+  return Promise.all(
+    types.map(async (type) => {
+      const adapter = createAdapter(type);
+      const validation = await adapter.validateInstallation();
 
-  for (const type of types) {
-    const adapter = createAdapter(type);
-    const validation = await adapter.validateInstallation();
-
-    results.push({
-      adapter: adapter.displayName,
-      installed: validation.installed,
-      version: validation.version,
-      error: validation.error,
-      installCommand: adapter.installation.command,
-      docsUrl: adapter.installation.docsUrl,
-    });
-  }
-
-  return results;
+      return {
+        adapter: adapter.displayName,
+        installed: validation.installed,
+        version: validation.version,
+        error: validation.error,
+        installCommand: adapter.installation.command,
+        docsUrl: adapter.installation.docsUrl,
+      };
+    }),
+  );
 }
 
 /**
