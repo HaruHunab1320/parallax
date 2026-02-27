@@ -76,6 +76,14 @@ Cargo.lock
 .env.local
 .env.*.local
 
+# Terraform secrets (tfvars contain passwords, IPs, project IDs)
+*.tfvars
+!*.tfvars.example
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
 # Parallax specific
 .parallax.pids
 *.prism.cache

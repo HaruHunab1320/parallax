@@ -1,64 +1,147 @@
-# Parallax GCP Terraform Configuration
-# Copy this to terraform.tfvars and update with your values
+# Parallax GCP Production Configuration
+# ========================================
+# Copy this to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored and must NEVER be committed.
 #
-# Usage:
-#   1. Create state bucket: gsutil mb -l us-central1 gs://YOUR-PROJECT-parallax-tf-state
-#   2. Copy this file: cp terraform.tfvars.example terraform.tfvars
-#   3. Edit terraform.tfvars with your values
-#   4. Initialize: terraform init -backend-config="bucket=YOUR-PROJECT-parallax-tf-state"
-#   5. Plan: terraform plan
-#   6. Apply: terraform apply
+# Setup:
+#   1. Create state bucket: gsutil mb -l us-central1 gs://<PROJECT_ID>-parallax-tf-state
+#   2. cp terraform.tfvars.example terraform.tfvars
+#   3. Fill in values below
+#   4. terraform init -backend-config="bucket=<PROJECT_ID>-parallax-tf-state"
+#   5. terraform plan && terraform apply
+#
+# After terraform apply, you still need to:
+#   6. Build & push control-plane image (see Dockerfile section below)
+#   7. Run Prisma migrations (see Database section below)
+#   8. Deploy monitoring stack (see Helm section below)
 
-# ===================
-# Required Variables
-# ===================
+# ====================
+# GCP Project
+# ====================
 
-project_id = "your-gcp-project-id"
+project_id  = "your-gcp-project-id"       # e.g. "parallax-466513"
+region      = "us-central1"
+zone        = "us-central1-a"
+environment = "production"
 
-# Security - MUST be set explicitly (no defaults for security)
+# ====================
+# GKE Cluster
+# ====================
+
+cluster_name     = "parallax-cluster"
+gke_node_count   = 3                       # 3 for HA, 1 for dev
+gke_machine_type = "e2-medium"             # 2 shared vCPU, 4GB RAM (~$25/mo each)
+gke_disk_size_gb = 30
+
+# ====================
+# Cloud SQL (PostgreSQL)
+# ====================
+
+db_tier           = "db-f1-micro"          # shared vCPU, 0.6GB (~$10/mo)
+db_disk_size      = 10                     # GB
+db_backup_enabled = true
+
+# ====================
+# Network Security
+# ====================
+
+# Your IP for Cloud SQL direct access and GKE master access
 authorized_networks = [
   {
-    name  = "office"
-    value = "YOUR_OFFICE_IP/32"  # e.g., "203.0.113.50/32"
-  },
-  {
-    name  = "vpn"
-    value = "YOUR_VPN_CIDR"      # e.g., "10.8.0.0/24"
+    name  = "my-ip"
+    value = "YOUR_IP/32"                   # e.g. "203.0.113.50/32"
   }
 ]
 
 master_authorized_networks = [
   {
-    cidr_block   = "YOUR_OFFICE_IP/32"  # e.g., "203.0.113.50/32"
-    display_name = "Office"
+    cidr_block   = "YOUR_IP/32"
+    display_name = "My IP"
   }
 ]
 
-grafana_admin_password = "CHANGE_ME_min_12_chars"  # Minimum 12 characters
+# ====================
+# Application
+# ====================
 
-# ===================
-# Optional Variables
-# ===================
+parallax_image = "gcr.io/your-gcp-project-id/parallax-control-plane:latest"
 
-region = "us-central1"
-zone   = "us-central1-a"
+# ====================
+# Monitoring
+# ====================
 
-# Environment
-environment = "production"
+grafana_admin_password = "CHANGE_ME_min_12_chars"
 
-# Cluster Configuration
-cluster_name     = "parallax-cluster"
-gke_node_count   = 3
-gke_machine_type = "e2-medium"  # 2 vCPU, 4GB RAM
-gke_disk_size_gb = 30
+# Domain (optional — leave empty for IP-only access)
+domain_name = ""                           # e.g. "parallax.example.com"
 
-# Database Configuration
-db_tier           = "db-f1-micro"  # Use db-g1-small or higher for production
-db_disk_size      = 10
-db_backup_enabled = true
 
-# Docker Image
-parallax_image = "gcr.io/your-project-id/parallax-control-plane:latest"
-
-# Domain (optional - leave empty for IP-only access)
-domain_name = ""  # e.g., "parallax.example.com"
+# ============================================================================
+# POST-DEPLOY REFERENCE
+# ============================================================================
+#
+# --- Docker Image Build & Push ---
+#
+#   docker buildx build --platform linux/amd64 \
+#     -f packages/control-plane/Dockerfile \
+#     -t gcr.io/<PROJECT_ID>/parallax-control-plane:latest \
+#     --push .
+#
+# --- Kubernetes Secrets (create once, values from Cloud SQL) ---
+#
+#   kubectl create secret generic parallax-secrets -n parallax \
+#     --from-literal=DATABASE_PASSWORD='<url-encoded-password>' \
+#     --from-literal=DATABASE_URL='postgresql://parallax:<url-encoded-password>@127.0.0.1:5432/parallax' \
+#     --from-literal=JWT_SECRET='<random-64-char-string>'
+#
+#   Note: DATABASE_URL connects via Cloud SQL Proxy sidecar at 127.0.0.1:5432.
+#   Password special chars must be URL-encoded (@ -> %40, # -> %23, etc.)
+#
+# --- Kubernetes ConfigMap ---
+#
+#   kubectl create configmap parallax-config -n parallax \
+#     --from-literal=NODE_ENV=production \
+#     --from-literal=PORT=8080 \
+#     --from-literal=LOG_LEVEL=info \
+#     --from-literal=DATABASE_NAME=parallax \
+#     --from-literal=DATABASE_USER=parallax \
+#     --from-literal=PARALLAX_ETCD_ENDPOINTS=etcd:2379 \
+#     --from-literal=PARALLAX_PATTERNS_DIR=/tmp/patterns \
+#     --from-literal=REDIS_HOST=<redis-ip> \
+#     --from-literal=REDIS_PORT=6379 \
+#     --from-literal=ENABLE_METRICS=true \
+#     --from-literal=ENABLE_TRACING=true \
+#     --from-literal=PATTERNS_BUCKET=<PROJECT_ID>-parallax-patterns
+#
+# --- Database Migrations ---
+#
+#   kubectl exec <control-plane-pod> -c parallax -n parallax -- npx prisma migrate deploy
+#
+# --- Helm: Monitoring Stack ---
+#
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm install prometheus prometheus-community/kube-prometheus-stack -n parallax \
+#     --version 55.5.0 \
+#     --set alertmanager.enabled=false \
+#     --set nodeExporter.enabled=false \
+#     --set prometheus-node-exporter.enabled=false \
+#     --set kubeStateMetrics.enabled=false \
+#     --set kube-state-metrics.enabled=false \
+#     --set grafana.enabled=true \
+#     --set grafana.persistence.enabled=true \
+#     --set grafana.persistence.size=5Gi \
+#     --set grafana.adminPassword='<grafana-password>' \
+#     --set prometheus.prometheusSpec.resources.limits.cpu=200m \
+#     --set prometheus.prometheusSpec.resources.limits.memory=800Mi \
+#     --set prometheus.prometheusSpec.resources.requests.cpu=20m \
+#     --set prometheus.prometheusSpec.resources.requests.memory=200Mi \
+#     --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=10Gi
+#
+# --- Estimated Monthly Cost ---
+#
+#   GKE cluster fee:    ~$73
+#   3x e2-medium nodes: ~$75
+#   Cloud SQL f1-micro: ~$10
+#   Persistent disks:   ~$3
+#   Network:            ~$2
+#   Total:              ~$163/mo
