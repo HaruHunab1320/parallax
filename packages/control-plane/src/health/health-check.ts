@@ -133,8 +133,8 @@ export function createHealthRouter(
     try {
       const health = await healthService.checkHealth();
       
-      if (health.status === 'healthy') {
-        res.status(200).json({ ready: true });
+      if (health.status === 'healthy' || health.status === 'degraded') {
+        res.status(200).json({ ready: true, status: health.status });
       } else {
         res.status(503).json({ ready: false, reason: health.status });
       }

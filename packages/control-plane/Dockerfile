@@ -56,15 +56,18 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/control-plane ./packages/control-plane
 COPY --from=builder /app/packages/runtime ./packages/runtime
 COPY --from=builder /app/packages/telemetry ./packages/telemetry
+COPY --from=builder /app/packages/sdk-typescript ./packages/sdk-typescript
+COPY --from=builder /app/packages/security ./packages/security
+COPY --from=builder /app/packages/data-plane ./packages/data-plane
+COPY --from=builder /app/packages/runtime-interface ./packages/runtime-interface
+COPY --from=builder /app/packages/git-workspace-service ./packages/git-workspace-service
+COPY --from=builder /app/packages/auth ./packages/auth
 
 # Copy proto files for gRPC
 COPY --from=pruner /app/proto ./proto
 
 # Remove development .env files (env vars should come from K8s/container runtime)
 RUN rm -f /app/packages/control-plane/.env
-
-# Create patterns directory
-RUN mkdir -p /patterns && chown parallax:parallax /patterns
 
 # Set working directory to control-plane package
 WORKDIR /app/packages/control-plane

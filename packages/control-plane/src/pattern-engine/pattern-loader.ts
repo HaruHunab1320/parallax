@@ -15,6 +15,8 @@ export class PatternLoader {
 
   async loadPatterns(): Promise<void> {
     try {
+      // Ensure patterns directory exists
+      await fs.mkdir(this.patternsDir, { recursive: true });
       const files = await fs.readdir(this.patternsDir);
 
       // Load both .prism and .yaml/.yml files
