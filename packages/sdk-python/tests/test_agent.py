@@ -120,20 +120,29 @@ class TestParallaxAgent:
     @patch('grpc.aio.server')
     async def test_serve_starts_grpc_server(self, mock_server, agent):
         """Test that serve starts a gRPC server."""
-        mock_server_instance = AsyncMock()
-        mock_server_instance.add_insecure_port.return_value = 50051
+        mock_server_instance = Mock()
+        mock_server_instance.add_insecure_port = Mock(return_value=50051)
         mock_server_instance.start = AsyncMock()
+        # add_generic_rpc_handlers and add_registered_method_handlers are sync
+        mock_server_instance.add_generic_rpc_handlers = Mock()
+        mock_server_instance.add_registered_method_handlers = Mock()
         mock_server.return_value = mock_server_instance
-        
-        port = await agent.serve(50051)
-        
+
+        # Patch _register_with_platform to avoid real gRPC calls
+        with patch.object(agent, '_register_with_platform', new_callable=AsyncMock):
+            port = await agent.serve(50051)
+
         assert port == 50051
         mock_server.assert_called_once()
         mock_server_instance.start.assert_called_once()
     
     def test_agent_with_metadata(self):
         """Test agent with custom metadata."""
-        agent = ParallaxAgent(
+        class MetadataAgent(ParallaxAgent):
+            async def analyze(self, task, data=None):
+                return {}, 0
+
+        agent = MetadataAgent(
             "meta-1",
             "Metadata Agent",
             ["analysis", "synthesis"],
@@ -146,7 +155,7 @@ class TestParallaxAgent:
                 "version": "2.0.0"
             }
         )
-        
+
         assert agent.metadata["expertise"] == 0.9
         assert agent.metadata["version"] == "2.0.0"
         assert agent.metadata["capability_scores"]["analysis"] == 0.95

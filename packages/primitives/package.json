@@ -6,13 +6,15 @@
   "types": "index.ts",
   "scripts": {
     "validate": "node test/validate-primitives.js",
-    "test": "npm run validate"
+    "test": "vitest run"
   },
   "dependencies": {
     "@prism-lang/core": "^2.0.0",
     "@prism-lang/validator": "^1.4.0"
   },
   "devDependencies": {
-    "chalk": "^4.1.2"
+    "chalk": "^4.1.2",
+    "vitest": "^2.1.7",
+    "typescript": "^5.7.2"
   }
 }
