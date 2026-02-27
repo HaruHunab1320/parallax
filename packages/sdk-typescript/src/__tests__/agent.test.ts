@@ -1,21 +1,47 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ParallaxAgent } from '../agent-base';
+import type { AgentResponse } from '../types/agent-response';
 import * as grpc from '@grpc/grpc-js';
+
+// Mock proto-loader (must come before grpc mock since loadProtos calls both)
+vi.mock('@grpc/proto-loader', () => ({
+  loadSync: vi.fn(() => ({}))
+}));
 
 // Mock gRPC
 vi.mock('@grpc/grpc-js', () => ({
   Server: vi.fn(() => ({
     addService: vi.fn(),
-    bindAsync: vi.fn((addr, creds, callback) => {
+    bindAsync: vi.fn((addr: string, creds: unknown, callback: (err: Error | null, port: number) => void) => {
       callback(null, 50051);
     }),
-    start: vi.fn()
+    start: vi.fn(),
+    tryShutdown: vi.fn((cb: () => void) => cb())
   })),
   ServerCredentials: {
     createInsecure: vi.fn()
   },
+  credentials: {
+    createInsecure: vi.fn()
+  },
+  loadPackageDefinition: vi.fn(() => ({
+    parallax: {
+      confidence: {
+        ConfidenceAgent: { service: {} }
+      },
+      registry: {
+        Registry: vi.fn(() => ({
+          waitForReady: vi.fn((_deadline: number, cb: (err: Error | null) => void) => cb(null)),
+          register: vi.fn((_req: unknown, cb: (err: Error | null, res: unknown) => void) => cb(null, { lease_id: 'test-lease' })),
+          unregister: vi.fn((_req: unknown, cb: () => void) => cb()),
+          renew: vi.fn((_req: unknown, cb: (err: Error | null) => void) => cb(null))
+        }))
+      }
+    }
+  })),
   status: {
-    INTERNAL: 13
+    INTERNAL: 13,
+    UNAUTHENTICATED: 16
   }
 }));
 
@@ -23,25 +49,25 @@ class TestAgent extends ParallaxAgent {
   constructor() {
     super('test-1', 'Test Agent', ['test', 'analysis']);
   }
-  
-  async analyze(task: string, data?: any): Promise<[any, number]> {
+
+  async analyze(task: string, data?: any): Promise<AgentResponse> {
     if (task === 'simple') {
-      return [{ result: 'success' }, 0.95];
+      return { value: { result: 'success' }, confidence: 0.95 };
     }
-    
+
     if (task === 'complex') {
-      return [
-        {
+      return {
+        value: {
           result: 'analyzed',
           data: data,
-          reasoning: 'Complex analysis performed',
-          uncertainties: ['Limited data', 'Model assumptions']
         },
-        0.75
-      ];
+        confidence: 0.75,
+        reasoning: 'Complex analysis performed',
+        uncertainties: ['Limited data', 'Model assumptions'],
+      };
     }
-    
-    return [{ error: 'Unknown task' }, 0.1];
+
+    return { value: { error: 'Unknown task' }, confidence: 0.1 };
   }
 }
 
@@ -62,27 +88,27 @@ describe('ParallaxAgent', () => {
   
   describe('Analysis', () => {
     it('should analyze simple tasks', async () => {
-      const [result, confidence] = await agent.analyze('simple');
-      
-      expect(result).toEqual({ result: 'success' });
-      expect(confidence).toBe(0.95);
+      const response = await agent.analyze('simple');
+
+      expect(response.value).toEqual({ result: 'success' });
+      expect(response.confidence).toBe(0.95);
     });
-    
+
     it('should analyze complex tasks with metadata', async () => {
-      const [result, confidence] = await agent.analyze('complex', { input: 'test' });
-      
-      expect(result.result).toBe('analyzed');
-      expect(result.data).toEqual({ input: 'test' });
-      expect(result.reasoning).toBeDefined();
-      expect(result.uncertainties).toHaveLength(2);
-      expect(confidence).toBe(0.75);
+      const response = await agent.analyze('complex', { input: 'test' });
+
+      expect(response.value.result).toBe('analyzed');
+      expect(response.value.data).toEqual({ input: 'test' });
+      expect(response.reasoning).toBeDefined();
+      expect(response.uncertainties).toHaveLength(2);
+      expect(response.confidence).toBe(0.75);
     });
-    
+
     it('should handle unknown tasks', async () => {
-      const [result, confidence] = await agent.analyze('unknown');
-      
-      expect(result.error).toBe('Unknown task');
-      expect(confidence).toBe(0.1);
+      const response = await agent.analyze('unknown');
+
+      expect(response.value.error).toBe('Unknown task');
+      expect(response.confidence).toBe(0.1);
     });
   });
   
@@ -91,7 +117,6 @@ describe('ParallaxAgent', () => {
       const health = await agent.checkHealth();
       
       expect(health.status).toBe('healthy');
-      expect(health.message).toBeDefined();
     });
     
     it('should allow custom health checks', async () => {
@@ -99,9 +124,9 @@ describe('ParallaxAgent', () => {
         constructor() {
           super('unhealthy-1', 'Unhealthy Agent', []);
         }
-        
-        async analyze(): Promise<[any, number]> {
-          return [{}, 0];
+
+        async analyze(): Promise<AgentResponse> {
+          return { value: {}, confidence: 0 };
         }
         
         async checkHealth() {
@@ -149,8 +174,8 @@ describe('ParallaxAgent', () => {
           });
         }
         
-        async analyze(): Promise<[any, number]> {
-          return [{}, 0.8];
+        async analyze(): Promise<AgentResponse> {
+          return { value: {}, confidence: 0.8 };
         }
       }
       

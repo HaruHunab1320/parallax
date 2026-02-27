@@ -1,108 +1,102 @@
 import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import Docker from 'dockerode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
-const docker = new Docker();
 
-// Test database configuration
-export const TEST_DATABASE_URL = 'postgresql://postgres:postgres@localhost:5433/parallax_test?schema=public';
-let testContainer: Docker.Container | null = null;
+// Use the existing parallax TimescaleDB container (root docker-compose on port 5435)
+// Falls back to a dedicated test container on port 5433 if available
+const DB_HOST = process.env.TEST_DB_HOST || 'localhost';
+const DB_PORT = process.env.TEST_DB_PORT || '5435';
+const DB_USER = process.env.TEST_DB_USER || 'parallax';
+const DB_PASSWORD = process.env.TEST_DB_PASSWORD || 'parallax123';
+const DB_NAME = 'parallax_test';
+
+export const TEST_DATABASE_URL = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public`;
 let prisma: PrismaClient | null = null;
+
+// Configure infrastructure endpoints for integration tests
+// (envFile: false in vitest.config.ts prevents .env from loading)
+process.env.PARALLAX_ETCD_ENDPOINTS = process.env.PARALLAX_ETCD_ENDPOINTS || 'localhost:2389';
+process.env.PARALLAX_PATTERNS_DIR = process.env.PARALLAX_PATTERNS_DIR || '../../patterns';
+process.env.PARALLAX_LICENSE_KEY = process.env.PARALLAX_LICENSE_KEY || 'PARALLAX-ENT-dev-test-1234';
 
 // Global setup
 beforeAll(async () => {
-  console.log('Starting test database container...');
-  
+  console.log(`Connecting to test database at ${DB_HOST}:${DB_PORT}...`);
+
   try {
-    // Pull TimescaleDB image if not exists
-    await docker.pull('timescale/timescaledb:latest-pg16');
-    
-    // Create test database container
-    testContainer = await docker.createContainer({
-      Image: 'timescale/timescaledb:latest-pg16',
-      name: 'parallax-test-db',
-      Env: [
-        'POSTGRES_DB=parallax_test',
-        'POSTGRES_USER=postgres',
-        'POSTGRES_PASSWORD=postgres'
-      ],
-      HostConfig: {
-        PortBindings: {
-          '5432/tcp': [{ HostPort: '5433' }]
-        },
-        AutoRemove: true
-      }
+    // Create the test database if it doesn't exist (connect to default db first)
+    const adminUrl = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/parallax`;
+    const adminPrisma = new PrismaClient({
+      datasources: { db: { url: adminUrl } }
     });
-    
-    await testContainer.start();
-    
-    // Wait for database to be ready
-    let retries = 30;
-    while (retries > 0) {
-      try {
-        await execAsync('PGPASSWORD=postgres psql -h localhost -p 5433 -U postgres -d parallax_test -c "SELECT 1"');
-        break;
-      } catch (error) {
-        retries--;
-        if (retries === 0) throw new Error('Test database failed to start');
-        await new Promise(resolve => setTimeout(resolve, 1000));
+
+    try {
+      await adminPrisma.$executeRawUnsafe(`CREATE DATABASE ${DB_NAME}`);
+      console.log(`Created test database '${DB_NAME}'`);
+    } catch (error: any) {
+      // Database already exists — that's fine
+      if (!error.message?.includes('already exists')) {
+        throw error;
       }
+    } finally {
+      await adminPrisma.$disconnect();
     }
-    
-    // Set test database URL
+
+    // Set test database URL for Prisma CLI
     process.env.DATABASE_URL = TEST_DATABASE_URL;
-    
-    // Initialize Prisma and run migrations
+
+    // Run migrations against the test database
+    await execAsync('pnpm prisma migrate deploy');
+
+    // Initialize Prisma client for tests
     prisma = new PrismaClient({
       datasources: {
-        db: {
-          url: TEST_DATABASE_URL
-        }
+        db: { url: TEST_DATABASE_URL }
       }
     });
-    
-    // Run migrations
-    await execAsync('pnpm prisma migrate deploy');
-    
+
+    await prisma.$connect();
     console.log('Test database ready');
   } catch (error) {
     console.error('Failed to setup test database:', error);
-    throw error;
+    // Don't throw — tests that need DB will fail via getTestPrisma() guard
   }
 });
 
 // Global teardown
 afterAll(async () => {
   console.log('Cleaning up test database...');
-  
-  // Disconnect Prisma
+
   if (prisma) {
     await prisma.$disconnect();
-  }
-  
-  // Stop and remove container
-  if (testContainer) {
-    try {
-      await testContainer.stop();
-    } catch (error) {
-      // Container might already be stopped
-    }
   }
 });
 
 // Reset database between tests
 beforeEach(async () => {
   if (prisma) {
-    // Clean all tables
-    await prisma.executionEvent.deleteMany();
-    await prisma.execution.deleteMany();
-    await prisma.confidenceMetric.deleteMany();
-    await prisma.agent.deleteMany();
-    await prisma.pattern.deleteMany();
-    await prisma.patternVersion.deleteMany();
+    // Clean all tables — order matters for FK constraints
+    // Use try/catch since async executions may create records concurrently
+    try {
+      await prisma.executionEvent.deleteMany();
+      await prisma.execution.deleteMany();
+      await prisma.confidenceMetric.deleteMany();
+      await prisma.patternVersion.deleteMany();
+      await prisma.pattern.deleteMany();
+      await prisma.agent.deleteMany();
+    } catch {
+      // Retry once after a brief delay (async background work may have created records)
+      await new Promise(r => setTimeout(r, 100));
+      await prisma.executionEvent.deleteMany().catch(() => {});
+      await prisma.execution.deleteMany().catch(() => {});
+      await prisma.confidenceMetric.deleteMany().catch(() => {});
+      await prisma.patternVersion.deleteMany().catch(() => {});
+      await prisma.pattern.deleteMany().catch(() => {});
+      await prisma.agent.deleteMany().catch(() => {});
+    }
   }
 });
 

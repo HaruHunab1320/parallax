@@ -35,17 +35,6 @@ export class RuntimeManager {
       // Inject context variables into the script
       const enhancedScript = this.injectContext(script, context);
 
-      // Debug: Save the enhanced script
-      try {
-        require('fs').writeFileSync(
-          '/tmp/enhanced-script.prism',
-          enhancedScript
-        );
-        this.logger.info('Saved enhanced script to /tmp/enhanced-script.prism');
-      } catch (e) {
-        // ignore
-      }
-
       const result = await this.runPrismCode(enhancedScript, instance);
 
       return result;
@@ -160,28 +149,11 @@ export class RuntimeManager {
         return await this.runWithEnhancedRuntime(script, instance);
       }
 
-      // Debug: write to file to examine
-      try {
-        const fs = require('fs');
-        fs.writeFileSync('/tmp/prism-debug.txt', script);
-      } catch (e) {
-        // ignore
-      }
-
       // Use the simplified runPrism API for simple cases
       const result = await runPrism(script);
 
-      // Debug: Log the raw result structure
-      this.logger.info({
-        resultType: typeof result,
-        resultConstructor: result?.constructor?.name,
-        resultKeys: result && typeof result === 'object' ? Object.keys(result) : [],
-        hasValue: result && typeof result === 'object' ? '_value' in result : false,
-        hasConfidence: result && typeof result === 'object' ? '_confidence' in result : false,
-      }, 'Raw Prism result');
-
       // Extract confidence and unwrap ConfidenceValue if needed
-      let confidence = 0.5;
+      let confidence: number = 0.5;
       let unwrappedValue = result;
 
       if (result && typeof result === 'object') {
@@ -190,8 +162,13 @@ export class RuntimeManager {
           result.constructor &&
           result.constructor.name === 'ConfidenceValue'
         ) {
-          // Extract confidence from ConfidenceValue
-          confidence = result.confidence ?? result._confidence ?? 0.5;
+          // Extract confidence from ConfidenceValue - may itself be a ConfidenceValue
+          let rawConf = result.confidence ?? result._confidence ?? 0.5;
+          // Recursively unwrap if confidence is also a ConfidenceValue
+          while (rawConf && typeof rawConf === 'object' && rawConf.constructor?.name === 'ConfidenceValue') {
+            rawConf = rawConf._value ?? rawConf.value ?? 0.5;
+          }
+          confidence = typeof rawConf === 'number' ? rawConf : 0.5;
           // Unwrap the inner value
           unwrappedValue = result.value ?? result._value ?? result;
         } else if ('confidence' in result) {
@@ -212,13 +189,6 @@ export class RuntimeManager {
           unwrappedValue = this.prismValueToJS(unwrappedValue);
         }
       }
-
-      // Debug: Log what we're returning
-      this.logger.info({
-        unwrappedValueType: typeof unwrappedValue,
-        unwrappedValueKeys: unwrappedValue && typeof unwrappedValue === 'object' ? Object.keys(unwrappedValue) : [],
-        confidence,
-      }, 'Returning from executePrismScript');
 
       return {
         value: unwrappedValue,

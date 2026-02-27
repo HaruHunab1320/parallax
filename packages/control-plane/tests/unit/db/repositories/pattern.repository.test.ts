@@ -214,9 +214,9 @@ describe('PatternRepository', () => {
 
       const stats = await repository.getPerformanceStats(pattern.id);
       
-      expect(stats.total_executions).toBe('2');
-      expect(stats.successful_executions).toBe('1');
-      expect(stats.failed_executions).toBe('1');
+      expect(stats.total_executions).toBe(2n);
+      expect(stats.successful_executions).toBe(1n);
+      expect(stats.failed_executions).toBe(1n);
       expect(parseFloat(stats.avg_duration_ms)).toBe(750);
       expect(parseFloat(stats.avg_confidence)).toBe(0.7);
     });
@@ -225,10 +225,10 @@ describe('PatternRepository', () => {
       const pattern = await createTestPattern({ name: 'no-executions' });
       const stats = await repository.getPerformanceStats(pattern.id);
 
-      expect(stats.total_executions).toBe(0);
+      expect(stats.total_executions).toBe(0n);
       expect(stats.avg_duration_ms).toBeNull();
-      expect(stats.successful_executions).toBe(0);
-      expect(stats.failed_executions).toBe(0);
+      expect(stats.successful_executions).toBe(0n);
+      expect(stats.failed_executions).toBe(0n);
       expect(stats.avg_confidence).toBeNull();
     });
   });

@@ -205,13 +205,13 @@ describe('AgentRepository', () => {
       
       const analyzeStats = stats.find((s: any) => s.capability === 'analyze');
       expect(analyzeStats).toBeDefined();
-      expect(analyzeStats.agent_count).toBe('3');
-      expect(analyzeStats.active_count).toBe('2');
+      expect(analyzeStats.agent_count).toBe(3n);
+      expect(analyzeStats.active_count).toBe(2n);
 
       const processStats = stats.find((s: any) => s.capability === 'process');
       expect(processStats).toBeDefined();
-      expect(processStats.agent_count).toBe('2');
-      expect(processStats.active_count).toBe('1');
+      expect(processStats.agent_count).toBe(2n);
+      expect(processStats.active_count).toBe(1n);
     });
   });
 });

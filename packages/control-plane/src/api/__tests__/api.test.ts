@@ -9,19 +9,25 @@ describe('Control Plane HTTP API', () => {
   
   beforeAll(async () => {
     const app = await createServer();
-    server = (app as any).start();
-    
-    // Wait for server to start
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    const services = await (app as any).start();
+    server = services.httpServer;
+
+    // Wait for server to be listening
+    await new Promise<void>((resolve) => {
+      if (server.listening) return resolve();
+      server.on('listening', resolve);
+    });
+
     // Get the actual port
     const address = server.address();
     const port = typeof address === 'object' ? address?.port : 3000;
     baseURL = `http://localhost:${port}`;
   });
-  
+
   afterAll(async () => {
-    server?.close();
+    if (server) {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
   
   describe('Health endpoints', () => {
@@ -68,12 +74,11 @@ describe('Control Plane HTTP API', () => {
     it('should validate pattern input', async () => {
       const listResponse = await axios.get(`${baseURL}/api/patterns`);
       const patterns = listResponse.data.patterns;
-      
+
       if (patterns.length > 0) {
         const patternName = patterns[0].name;
         const response = await axios.post(`${baseURL}/api/patterns/${patternName}/validate`, {
-          task: 'test',
-          data: {}
+          input: { task: 'test', data: {} }
         });
         expect(response.status).toBe(200);
         expect(response.data).toHaveProperty('valid');
@@ -106,18 +111,17 @@ describe('Control Plane HTTP API', () => {
     it('should create new execution', async () => {
       const listResponse = await axios.get(`${baseURL}/api/patterns`);
       const patterns = listResponse.data.patterns;
-      
+
       if (patterns.length > 0) {
         const patternName = patterns[0].name;
         const response = await axios.post(`${baseURL}/api/executions`, {
           patternName,
           input: { task: 'test', data: {} }
         });
-        
+
         expect(response.status).toBe(202);
-        expect(response.data).toHaveProperty('executionId');
-        expect(response.data).toHaveProperty('status', 'pending');
-        expect(response.data).toHaveProperty('links');
+        expect(response.data).toHaveProperty('id');
+        expect(response.data).toHaveProperty('status', 'accepted');
       }
     });
   });

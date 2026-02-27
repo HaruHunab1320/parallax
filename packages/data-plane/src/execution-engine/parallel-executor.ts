@@ -1,13 +1,47 @@
 import { ExecutionTask, ExecutionResult, ParallelExecutionPlan } from './types';
-import pLimit from 'p-limit';
 import { EventEmitter } from 'events';
+
+type LimitFunction = <T>(fn: () => Promise<T>) => Promise<T>;
+
+function concurrencyLimit(concurrency: number): LimitFunction {
+  let active = 0;
+  const queue: (() => void)[] = [];
+
+  const next = () => {
+    if (queue.length > 0 && active < concurrency) {
+      queue.shift()!();
+    }
+  };
+
+  return <T>(fn: () => Promise<T>): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+      const run = async () => {
+        active++;
+        try {
+          resolve(await fn());
+        } catch (err) {
+          reject(err);
+        } finally {
+          active--;
+          next();
+        }
+      };
+
+      if (active < concurrency) {
+        run();
+      } else {
+        queue.push(run);
+      }
+    });
+  };
+}
 
 export class ParallelExecutor extends EventEmitter {
   async execute(
     plan: ParallelExecutionPlan,
     taskExecutor: (task: ExecutionTask) => Promise<ExecutionResult>
   ): Promise<ExecutionResult[]> {
-    const limit = pLimit(plan.maxConcurrency || 10);
+    const limit = concurrencyLimit(plan.maxConcurrency || 10);
     
     switch (plan.strategy) {
       case 'all':
@@ -173,7 +207,7 @@ export class ParallelExecutor extends EventEmitter {
     const results = new Map<string, ExecutionResult>();
     const inProgress = new Set<string>();
     const completed = new Set<string>();
-    const limit = pLimit(maxConcurrency);
+    const limit = concurrencyLimit(maxConcurrency);
 
     const canExecute = (task: ExecutionTask): boolean => {
       if (!task.metadata?.dependencies) return true;

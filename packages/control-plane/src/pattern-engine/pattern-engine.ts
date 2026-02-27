@@ -208,7 +208,7 @@ export class PatternEngine implements IPatternEngine {
     input: any,
     options?: PatternExecutionOptions
   ): Promise<PatternExecution> {
-    const pattern = this.loader.getPattern(patternName);
+    const pattern = this.getPattern(patternName);
     if (!pattern) {
       throw new Error(`Pattern ${patternName} not found`);
     }

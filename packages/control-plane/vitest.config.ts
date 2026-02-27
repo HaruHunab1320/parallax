@@ -6,6 +6,12 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./tests/setup.ts'],
+    // Override .env runtime URLs that cause ECONNREFUSED in tests
+    env: {
+      PARALLAX_LOCAL_RUNTIME_URL: '',
+      PARALLAX_DOCKER_RUNTIME_URL: '',
+      PARALLAX_K8S_RUNTIME_URL: '',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

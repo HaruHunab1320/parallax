@@ -21,10 +21,19 @@ describe('PatternEngine', () => {
   beforeEach(() => {
     logger = pino({ level: 'silent' });
     runtimeManager = new RuntimeManager({} as any, logger);
+    // Auto-mock returns undefined for methods — provide proper return values
+    vi.mocked(runtimeManager.injectParallaxContext).mockImplementation(async (s: string) => s);
+    vi.mocked(runtimeManager.executePrismScript).mockResolvedValue({});
     registry = new EtcdRegistry(['localhost:2379'], 'test', logger);
     database = new DatabaseService(logger);
-    
-    const patternsDir = path.join(__dirname, '../../../patterns');
+    // Auto-mock doesn't create nested repository objects
+    (database as any).executions = {
+      addEvent: vi.fn().mockResolvedValue(undefined),
+      create: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+    };
+
+    const patternsDir = path.join(__dirname, '../../../../../patterns');
     engine = new PatternEngine(
       runtimeManager,
       registry,
