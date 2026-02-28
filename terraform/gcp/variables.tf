@@ -74,6 +74,12 @@ variable "parallax_image" {
   default     = "gcr.io/PROJECT_ID/parallax-control-plane:latest"
 }
 
+variable "dashboard_image" {
+  description = "Parallax web dashboard Docker image"
+  type        = string
+  default     = "gcr.io/PROJECT_ID/parallax-web-dashboard:latest"
+}
+
 variable "domain_name" {
   description = "Domain name for the application (optional)"
   type        = string

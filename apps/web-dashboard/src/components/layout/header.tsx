@@ -1,10 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, LogOut, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/auth';
 
 export function Header() {
+  const { user, logout } = useAuth();
+
   return (
     <header className="h-16 glass-panel border-b border-white/10 px-6 flex items-center justify-between">
       <div className="flex items-center gap-4 flex-1">
@@ -29,10 +32,14 @@ export function Header() {
             <User className="w-4 h-4 text-parallax-accent" />
           </div>
           <div className="text-sm">
-            <p className="font-medium">Admin</p>
-            <p className="text-gray-400 text-xs">admin@parallax.ai</p>
+            <p className="font-medium">{user?.name || user?.email || 'User'}</p>
+            <p className="text-gray-400 text-xs">{user?.role || ''}</p>
           </div>
         </div>
+
+        <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
+          <LogOut className="w-4 h-4" />
+        </Button>
       </div>
     </header>
   );

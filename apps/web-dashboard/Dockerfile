@@ -31,6 +31,14 @@ COPY --from=pruner /app/out/full/ .
 # Build the Next.js app
 WORKDIR /app/apps/web-dashboard
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Accept API URL at build time (NEXT_PUBLIC_ vars are baked into the client bundle)
+ARG NEXT_PUBLIC_API_URL=http://localhost:8080
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+# Ensure dev bypasses are OFF in production builds
+ENV NEXT_PUBLIC_DEV_BYPASS_LICENSE=false
+
 RUN pnpm build
 
 # Stage 3: Production (using standalone output)

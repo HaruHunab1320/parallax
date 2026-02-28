@@ -191,6 +191,21 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   detectLogin(output: string): LoginDetection {
     const stripped = this.stripAnsi(output);
 
+    // Check for CLI login required (Claude Code >= 1.x interactive mode)
+    // Pattern: "Not logged in · Please run /login"
+    if (
+      stripped.includes('Not logged in') ||
+      stripped.includes('Please run /login') ||
+      stripped.includes('please log in') ||
+      stripped.includes('run /login')
+    ) {
+      return {
+        required: true,
+        type: 'cli_auth',
+        instructions: 'Claude Code requires authentication. Run "claude login" in your terminal.',
+      };
+    }
+
     // Check for API key issues
     if (
       stripped.includes('API key not found') ||

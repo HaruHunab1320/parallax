@@ -89,13 +89,17 @@ export class AuthService {
     // Hash password
     const passwordHash = this.hashPassword(password);
 
+    // First user gets admin role so there's always an admin
+    const userCount = await this.prisma.user.count();
+    const role = userCount === 0 ? 'admin' : 'viewer';
+
     // Create user
     const user = await this.prisma.user.create({
       data: {
         email: email.toLowerCase(),
         name,
         passwordHash,
-        role: 'viewer', // Default role
+        role,
         status: 'active',
       },
     });

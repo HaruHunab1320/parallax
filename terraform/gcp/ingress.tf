@@ -91,6 +91,20 @@ resource "kubernetes_ingress_v1" "parallax_ingress" {
             }
           }
         }
+
+        path {
+          path      = "/*"
+          path_type = "ImplementationSpecific"
+
+          backend {
+            service {
+              name = kubernetes_service.parallax_web_dashboard.metadata[0].name
+              port {
+                number = 80
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -146,6 +160,122 @@ resource "kubernetes_service" "parallax_control_plane_with_backend" {
     port {
       port        = 80
       target_port = 8080
+      protocol    = "TCP"
+    }
+
+    type = "NodePort"
+  }
+}
+
+# Web Dashboard Deployment
+resource "kubernetes_deployment" "parallax_web_dashboard" {
+  metadata {
+    name      = "parallax-web-dashboard"
+    namespace = kubernetes_namespace.parallax.metadata[0].name
+    labels = {
+      app       = "parallax-web-dashboard"
+      component = "web-dashboard"
+    }
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "parallax-web-dashboard"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app       = "parallax-web-dashboard"
+          component = "web-dashboard"
+        }
+      }
+
+      spec {
+        container {
+          name  = "web-dashboard"
+          image = var.dashboard_image
+
+          port {
+            container_port = 3002
+            protocol       = "TCP"
+          }
+
+          env {
+            name  = "NODE_ENV"
+            value = "production"
+          }
+          env {
+            name  = "PORT"
+            value = "3002"
+          }
+          env {
+            name  = "HOSTNAME"
+            value = "0.0.0.0"
+          }
+
+          resources {
+            requests = {
+              cpu    = "50m"
+              memory = "128Mi"
+            }
+            limits = {
+              cpu    = "200m"
+              memory = "256Mi"
+            }
+          }
+
+          readiness_probe {
+            http_get {
+              path = "/"
+              port = 3002
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 10
+            timeout_seconds       = 5
+          }
+
+          liveness_probe {
+            http_get {
+              path = "/"
+              port = 3002
+            }
+            initial_delay_seconds = 10
+            period_seconds        = 30
+            timeout_seconds       = 5
+          }
+        }
+      }
+    }
+  }
+}
+
+# Web Dashboard Service
+resource "kubernetes_service" "parallax_web_dashboard" {
+  metadata {
+    name      = "parallax-web-dashboard"
+    namespace = kubernetes_namespace.parallax.metadata[0].name
+    annotations = {
+      "cloud.google.com/neg" = "{\"ingress\": true}"
+    }
+    labels = {
+      app       = "parallax-web-dashboard"
+      component = "web-dashboard"
+    }
+  }
+
+  spec {
+    selector = {
+      app = "parallax-web-dashboard"
+    }
+
+    port {
+      port        = 80
+      target_port = 3002
       protocol    = "TCP"
     }
 

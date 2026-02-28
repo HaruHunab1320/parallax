@@ -64,7 +64,8 @@ master_authorized_networks = [
 # Application
 # ====================
 
-parallax_image = "gcr.io/your-gcp-project-id/parallax-control-plane:latest"
+parallax_image  = "gcr.io/your-gcp-project-id/parallax-control-plane:latest"
+dashboard_image = "gcr.io/your-gcp-project-id/parallax-web-dashboard:latest"
 
 # ====================
 # Monitoring
@@ -82,9 +83,17 @@ domain_name = ""                           # e.g. "parallax.example.com"
 #
 # --- Docker Image Build & Push ---
 #
+#   # Control Plane
 #   docker buildx build --platform linux/amd64 \
 #     -f packages/control-plane/Dockerfile \
 #     -t gcr.io/<PROJECT_ID>/parallax-control-plane:latest \
+#     --push .
+#
+#   # Web Dashboard (NEXT_PUBLIC_API_URL is baked at build time)
+#   docker buildx build --platform linux/amd64 \
+#     -f apps/web-dashboard/Dockerfile \
+#     --build-arg NEXT_PUBLIC_API_URL=http://<STATIC_IP_OR_DOMAIN> \
+#     -t gcr.io/<PROJECT_ID>/parallax-web-dashboard:latest \
 #     --push .
 #
 # --- Kubernetes Secrets (create once, values from Cloud SQL) ---

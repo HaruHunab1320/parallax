@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
 export interface Agent {
   id: string;
@@ -48,6 +48,27 @@ export interface LicenseInfo {
   features: string[];
 }
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  name?: string;
+  role: string;
+  status: string;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+export interface LoginResponse {
+  user: AuthUser;
+  tokens: AuthTokens;
+}
+
 export interface TimeSeriesData {
   time: string;
   value: number;
@@ -89,6 +110,7 @@ export interface ExecutionStats {
 class ApiClient {
   private controlPlane: AxiosInstance;
   private influxDB: AxiosInstance;
+  private refreshPromise: Promise<AuthTokens> | null = null;
 
   constructor() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -110,6 +132,106 @@ class ApiClient {
         'Authorization': `Token ${process.env.INFLUXDB_TOKEN}`,
       },
     });
+
+    // Response interceptor for automatic token refresh on 401
+    this.controlPlane.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+        // Skip auth endpoints to avoid loops
+        if (
+          error.response?.status !== 401 ||
+          originalRequest._retry ||
+          originalRequest.url?.startsWith('/api/auth/')
+        ) {
+          return Promise.reject(error);
+        }
+
+        originalRequest._retry = true;
+
+        try {
+          // Deduplicate concurrent refresh attempts
+          if (!this.refreshPromise) {
+            const storedRefresh = typeof window !== 'undefined'
+              ? localStorage.getItem('parallax_refresh_token')
+              : null;
+
+            if (!storedRefresh) {
+              throw new Error('No refresh token');
+            }
+
+            this.refreshPromise = this.refreshTokens(storedRefresh);
+          }
+
+          const tokens = await this.refreshPromise;
+          this.refreshPromise = null;
+
+          // Store new tokens
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('parallax_access_token', tokens.accessToken);
+            localStorage.setItem('parallax_refresh_token', tokens.refreshToken);
+            document.cookie = `parallax_auth=1; path=/; max-age=604800; SameSite=Lax`;
+          }
+
+          this.setAuthToken(tokens.accessToken);
+          originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
+          return this.controlPlane(originalRequest);
+        } catch {
+          this.refreshPromise = null;
+          // Clear tokens and redirect to login
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('parallax_access_token');
+            localStorage.removeItem('parallax_refresh_token');
+            document.cookie = 'parallax_auth=; path=/; max-age=0';
+            window.location.href = '/login';
+          }
+          return Promise.reject(error);
+        }
+      }
+    );
+  }
+
+  // Auth methods
+  setAuthToken(token: string | null) {
+    if (token) {
+      this.controlPlane.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete this.controlPlane.defaults.headers.common['Authorization'];
+    }
+  }
+
+  async login(email: string, password: string): Promise<LoginResponse> {
+    const response = await this.controlPlane.post('/api/auth/login', { email, password });
+    return response.data;
+  }
+
+  async register(email: string, password: string, name?: string): Promise<LoginResponse> {
+    const response = await this.controlPlane.post('/api/auth/register', { email, password, name });
+    return response.data;
+  }
+
+  async refreshTokens(refreshToken: string): Promise<AuthTokens> {
+    const response = await this.controlPlane.post('/api/auth/refresh', { refreshToken });
+    return response.data;
+  }
+
+  async getMe(): Promise<AuthUser> {
+    const response = await this.controlPlane.get('/api/auth/me');
+    return response.data;
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.controlPlane.post('/api/auth/logout');
+    } catch {
+      // Ignore errors on logout
+    }
+  }
+
+  async getUserCount(): Promise<number> {
+    const response = await this.controlPlane.get('/api/users');
+    return response.data.count ?? response.data.users?.length ?? 0;
   }
 
   // Agent endpoints
