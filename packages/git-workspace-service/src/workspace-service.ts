@@ -601,7 +601,7 @@ export class WorkspaceService {
     try {
       await this.execInDir(
         workspace.path,
-        `git clone --depth 1 --branch ${workspace.branch.baseBranch} ${cloneUrl} .`
+        `git clone --branch ${workspace.branch.baseBranch} ${cloneUrl} .`
       );
       this.log('info', { workspaceId: workspace.id }, 'Public repository cloned without authentication');
       return { success: true };
@@ -632,10 +632,10 @@ export class WorkspaceService {
       ? this.buildAuthenticatedUrl(workspace.repo, token)
       : workspace.repo;
 
-    // Clone with depth 1 for speed
+    // Full clone so agents can merge/rebase with complete history
     await this.execInDir(
       workspace.path,
-      `git clone --depth 1 --branch ${workspace.branch.baseBranch} ${cloneUrl} .`
+      `git clone --branch ${workspace.branch.baseBranch} ${cloneUrl} .`
     );
   }
 
