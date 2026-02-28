@@ -2,6 +2,11 @@
 
 All notable changes to `coding-agent-adapters` will be documented in this file.
 
+## [0.8.6] - 2026-02-28
+
+### Fixed
+- Rebuilt and refreshed published artifacts (`dist/*`) before release so package output includes the Claude CLI auth detection fix from source.
+
 ## [0.8.5] - 2026-02-28
 
 ### Fixed

@@ -154,7 +154,7 @@ export interface ParsedOutput {
  */
 export interface LoginDetection {
   required: boolean;
-  type?: 'api_key' | 'oauth' | 'browser' | 'device_code';
+  type?: 'api_key' | 'oauth' | 'browser' | 'device_code' | 'cli_auth';
   url?: string;
   deviceCode?: string;
   instructions?: string;
@@ -165,6 +165,7 @@ export interface LoginDetection {
  */
 export type AuthRequiredMethod =
   | 'api_key'
+  | 'cli_auth'
   | 'oauth_browser'
   | 'device_code'
   | 'unknown';

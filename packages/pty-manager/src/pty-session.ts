@@ -589,6 +589,8 @@ export class PTYSession extends EventEmitter {
     switch (type) {
       case 'api_key':
         return 'api_key';
+      case 'cli_auth':
+        return 'cli_auth';
       case 'device_code':
         return 'device_code';
       case 'oauth':
