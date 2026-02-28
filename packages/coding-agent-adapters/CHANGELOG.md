@@ -2,6 +2,16 @@
 
 All notable changes to `coding-agent-adapters` will be documented in this file.
 
+## [0.8.5] - 2026-02-28
+
+### Fixed
+- `ClaudeAdapter.detectLogin()` now detects Claude Code CLI auth prompts when the user is not logged in:
+  - `Not logged in`
+  - `Please run /login`
+  - `please log in`
+  - `run /login`
+- This now returns a `cli_auth` login requirement with instructions to run `claude login`, and the check is evaluated before API key patterns so it takes priority.
+
 ## [0.8.4] - 2026-02-26
 
 ### Fixed
