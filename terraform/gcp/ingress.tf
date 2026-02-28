@@ -30,63 +30,58 @@ resource "kubernetes_ingress_v1" "parallax_ingress" {
   }
 
   spec {
+    # Single rule with all paths — GCE ingress requires one rule per host
+    # to avoid catch-all path conflicts between services
     rule {
       host = var.domain_name != "" ? var.domain_name : null
-      
+
       http {
         path {
           path      = "/api/*"
           path_type = "ImplementationSpecific"
-          
+
           backend {
             service {
-              name = kubernetes_service.parallax_control_plane.metadata[0].name
+              name = kubernetes_service.parallax_control_plane_with_backend.metadata[0].name
               port {
                 number = 80
               }
             }
           }
         }
-        
+
         path {
           path      = "/health/*"
           path_type = "ImplementationSpecific"
-          
+
           backend {
             service {
-              name = kubernetes_service.parallax_control_plane.metadata[0].name
+              name = kubernetes_service.parallax_control_plane_with_backend.metadata[0].name
               port {
                 number = 80
               }
             }
           }
         }
-        
+
         path {
           path      = "/metrics"
-          path_type = "Exact"
-          
+          path_type = "ImplementationSpecific"
+
           backend {
             service {
-              name = kubernetes_service.parallax_control_plane.metadata[0].name
+              name = kubernetes_service.parallax_control_plane_with_backend.metadata[0].name
               port {
                 number = 80
               }
             }
           }
         }
-      }
-    }
-    
-    # Grafana ingress
-    rule {
-      host = var.domain_name != "" ? "grafana.${var.domain_name}" : null
-      
-      http {
+
         path {
-          path      = "/*"
+          path      = "/grafana/*"
           path_type = "ImplementationSpecific"
-          
+
           backend {
             service {
               name = "prometheus-grafana"
