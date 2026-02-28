@@ -1,4 +1,5 @@
 import { Logger } from 'pino';
+import { verifyLicenseKey } from './license-keys';
 
 export type LicenseType = 'opensource' | 'enterprise' | 'enterprise-plus';
 
@@ -89,41 +90,24 @@ export class LicenseEnforcer {
   }
 
   private validateLicenseKey(key: string): LicenseInfo {
-    // License key format: PARALLAX-{TIER}-{RANDOM}
-    // Examples: PARALLAX-ENT-a1b2c3d4, PARALLAX-PLUS-x9y8z7w6
+    // Signed license keys contain a dot separator: <payload>.<signature>
+    if (key.includes('.')) {
+      return this.validateSignedLicenseKey(key);
+    }
 
-    if (key.startsWith('PARALLAX-PLUS-')) {
+    // Legacy prefix-based keys — fall back to opensource with deprecation warning
+    if (key.startsWith('PARALLAX-ENT-') || key.startsWith('PARALLAX-PLUS-') ||
+        key.startsWith('PARALLAX-ENTERPRISE-')) {
+      this.logger.warn(
+        'Legacy prefix-based license key detected. ' +
+        'Prefix keys are deprecated and no longer grant enterprise features. ' +
+        'Please upgrade to a cryptographically signed license key. ' +
+        'See https://parallax.ai/enterprise for details.',
+      );
       return {
-        type: 'enterprise-plus',
-        validUntil: this.extractExpiry(key) || new Date('2030-12-31'),
-        clusterId: this.extractClusterId(key),
-        features: [
-          ...OPENSOURCE_FEATURES,
-          ...ENTERPRISE_ONLY_FEATURES,
-        ],
+        type: 'opensource',
+        features: [...OPENSOURCE_FEATURES],
       };
-    }
-
-    if (key.startsWith('PARALLAX-ENT-')) {
-      // Enterprise gets most features, but not Enterprise Plus exclusives
-      const enterprisePlusOnly = ['multi_region', 'advanced_analytics', 'pattern_marketplace', 'priority_support_24_7'];
-      return {
-        type: 'enterprise',
-        validUntil: this.extractExpiry(key) || new Date('2030-12-31'),
-        clusterId: this.extractClusterId(key),
-        features: [
-          ...OPENSOURCE_FEATURES,
-          ...ENTERPRISE_ONLY_FEATURES.filter(f => !enterprisePlusOnly.includes(f)),
-        ],
-      };
-    }
-
-    // Legacy format support
-    if (key.startsWith('PARALLAX-ENTERPRISE-PLUS-')) {
-      return this.validateLicenseKey(key.replace('PARALLAX-ENTERPRISE-PLUS-', 'PARALLAX-PLUS-'));
-    }
-    if (key.startsWith('PARALLAX-ENTERPRISE-')) {
-      return this.validateLicenseKey(key.replace('PARALLAX-ENTERPRISE-', 'PARALLAX-ENT-'));
     }
 
     this.logger.warn({ key: key.substring(0, 15) + '...' }, 'Invalid license key format');
@@ -133,14 +117,59 @@ export class LicenseEnforcer {
     };
   }
 
-  private extractExpiry(_key: string): Date | undefined {
-    // In production, decode from key or check license server
-    return undefined;
-  }
+  private validateSignedLicenseKey(key: string): LicenseInfo {
+    // Allow tests to inject a different public key via env
+    const publicKeyOverride = process.env.PARALLAX_LICENSE_PUBLIC_KEY || undefined;
+    const result = verifyLicenseKey(key, publicKeyOverride);
 
-  private extractClusterId(key: string): string {
-    // In production, decode from key
-    return `cluster-${key.split('-').pop()?.substring(0, 8) || 'unknown'}`;
+    if (!result.valid) {
+      this.logger.warn({ reason: result.reason }, 'License key verification failed');
+      return {
+        type: 'opensource',
+        features: [...OPENSOURCE_FEATURES],
+      };
+    }
+
+    const { payload } = result;
+
+    // Check expiry (exp=0 means perpetual)
+    if (payload.exp !== 0) {
+      const expiryDate = new Date(payload.exp * 1000);
+      if (expiryDate < new Date()) {
+        this.logger.warn(
+          { expiry: expiryDate.toISOString(), org: payload.org },
+          'License key has expired',
+        );
+        return {
+          type: 'opensource',
+          features: [...OPENSOURCE_FEATURES],
+        };
+      }
+    }
+
+    const enterprisePlusOnly = ['multi_region', 'advanced_analytics', 'pattern_marketplace', 'priority_support_24_7'];
+
+    if (payload.tier === 'enterprise-plus') {
+      return {
+        type: 'enterprise-plus',
+        validUntil: payload.exp === 0 ? undefined : new Date(payload.exp * 1000),
+        clusterId: payload.cluster,
+        features: [
+          ...OPENSOURCE_FEATURES,
+          ...ENTERPRISE_ONLY_FEATURES,
+        ],
+      };
+    }
+
+    return {
+      type: 'enterprise',
+      validUntil: payload.exp === 0 ? undefined : new Date(payload.exp * 1000),
+      clusterId: payload.cluster,
+      features: [
+        ...OPENSOURCE_FEATURES,
+        ...ENTERPRISE_ONLY_FEATURES.filter(f => !enterprisePlusOnly.includes(f)),
+      ],
+    };
   }
 
   private logLicenseInfo() {
