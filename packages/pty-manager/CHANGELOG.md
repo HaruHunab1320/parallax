@@ -2,6 +2,13 @@
 
 All notable changes to `pty-manager` will be documented in this file.
 
+## [1.9.2] - 2026-02-28
+
+### Changed
+- Added `cli_auth` to `LoginDetection.type` for CLI-native authentication prompts (for example Claude Code login-required flows).
+- Added `cli_auth` to `AuthRequiredMethod`.
+- Updated `PTYSession` auth mapping so `LoginDetection.type === "cli_auth"` emits `auth_required.method = "cli_auth"`.
+
 ## [1.9.1] - 2026-02-25
 
 ### Added
