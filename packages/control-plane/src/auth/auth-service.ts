@@ -89,9 +89,16 @@ export class AuthService {
     // Hash password
     const passwordHash = this.hashPassword(password);
 
-    // First user gets admin role so there's always an admin
+    // Only the first user can self-register (becomes admin).
+    // After that, new users must be created by an admin via /api/users.
     const userCount = await this.prisma.user.count();
-    const role = userCount === 0 ? 'admin' : 'viewer';
+    if (userCount > 0) {
+      throw new AuthError(
+        'Registration is closed. Ask an admin to create your account.',
+        'REGISTRATION_CLOSED'
+      );
+    }
+    const role = 'admin';
 
     // Create user
     const user = await this.prisma.user.create({
@@ -472,6 +479,7 @@ export class AuthError extends Error {
         this.statusCode = 404;
         break;
       case 'FORBIDDEN':
+      case 'REGISTRATION_CLOSED':
         this.statusCode = 403;
         break;
       default:
