@@ -1135,10 +1135,13 @@ export class PTYSession extends EventEmitter {
 
     // Auto-response / blocking prompt detection — runs after detectReady.
     // Handles trust confirmations, permission prompts, apply changes, etc.
-    // throughout the entire session lifecycle.
-    const blockingPrompt = this.detectAndHandleBlockingPrompt();
-    if (blockingPrompt) {
-      return;
+    // Skip when stopping/stopped to prevent blocking_prompt spam between
+    // stopSession() and PTY exit.
+    if (this._status !== 'stopping' && this._status !== 'stopped') {
+      const blockingPrompt = this.detectAndHandleBlockingPrompt();
+      if (blockingPrompt) {
+        return;
+      }
     }
 
     // Login detection — only during startup/auth (not after ready/busy)

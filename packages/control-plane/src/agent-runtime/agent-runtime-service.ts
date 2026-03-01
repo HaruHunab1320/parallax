@@ -77,6 +77,9 @@ export class AgentRuntimeService extends EventEmitter {
     client.on('agent_error', (data) => this.emit('agent_error', { ...data, runtime: name }));
     client.on('message', (data) => this.emit('message', { ...data, runtime: name }));
     client.on('question', (data) => this.emit('question', { ...data, runtime: name }));
+    client.on('error', (error) => {
+      this.logger.warn({ runtime: name, error }, 'Runtime client error');
+    });
 
     // Try to connect
     try {
