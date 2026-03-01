@@ -500,6 +500,41 @@ export async function createServer(): Promise<express.Application> {
   // Metrics endpoint
   app.get('/metrics', metrics.metricsHandler());
 
+  // Global auth gate for all /api/* routes (Enterprise multi_user feature)
+  // When authService is available, require JWT/API key auth on all API routes
+  // except explicitly public paths (auth flow, license, webhooks).
+  // When authService is not available (open-source mode), routes stay open.
+  if (authService) {
+    const globalRequireAuth = requireAuth(authService, logger);
+    const globalOptionalAuth = optionalAuth(authService, logger);
+
+    app.use('/api', (req, res, next) => {
+      const path = req.path;
+
+      // Auth endpoints — must be reachable without a token
+      if (path.startsWith('/auth')) return next();
+
+      // License info — public
+      if (path.startsWith('/license')) return next();
+
+      // GitHub webhook receiver — verified by HMAC, not JWT
+      if (path.startsWith('/webhooks/github')) return next();
+
+      // Inbound trigger webhook receivers — not JWT-protected
+      if (/^\/triggers\/webhook\/[^/]+\/receive/.test(path)) return next();
+
+      // GET /api/users without auth header → optional auth (returns count only for setup detection)
+      if (req.method === 'GET' && (path === '/users' || path === '/users/')) {
+        return globalOptionalAuth(req, res, next);
+      }
+
+      // Everything else requires authentication
+      return globalRequireAuth(req, res, next);
+    });
+
+    logger.info('Global API authentication gate enabled');
+  }
+
   // API Routes
   const patternsRouter = createPatternsRouter(patternEngine as PatternEngine, metrics, logger, licenseEnforcer);
   const agentsRouter = createAgentsRouter(registry, metrics, logger, database);

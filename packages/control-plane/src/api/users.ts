@@ -41,6 +41,12 @@ export function createUsersRouter(
    */
   router.get('/', async (req: any, res: any) => {
     try {
+      // Unauthenticated callers get count only (used for dashboard setup detection)
+      if (!req.user) {
+        const count = await prisma.user.count();
+        return res.json({ count });
+      }
+
       const { status, role, limit, offset } = req.query;
 
       const where: any = {};

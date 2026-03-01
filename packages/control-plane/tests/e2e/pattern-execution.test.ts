@@ -1,16 +1,26 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import { createServer } from '@/server';
 
 describe('Pattern Execution E2E', () => {
   let app: express.Application;
   let server: any;
+  let authToken: string;
 
   beforeAll(async () => {
     app = await createServer();
     const services = await (app as any).start();
     server = services.httpServer;
+
+    // Generate a valid JWT for authenticated test requests
+    const secret = process.env.JWT_SECRET || 'test-secret';
+    authToken = jwt.sign(
+      { sub: 'test-user', email: 'test@test.com', role: 'admin', type: 'access' },
+      secret,
+      { expiresIn: 3600 }
+    );
   });
 
   afterAll(async () => {
@@ -24,6 +34,7 @@ describe('Pattern Execution E2E', () => {
     // Without real agents, the pattern runs with 0 agents and produces a weak result
     const executeResponse = await request(app)
       .post('/api/patterns/ConsensusBuilder/execute')
+      .set('Authorization', `Bearer ${authToken}`)
       .send({
         input: {
           task: 'analyze test data',
@@ -51,6 +62,7 @@ describe('Pattern Execution E2E', () => {
   it('should handle pattern not found gracefully', async () => {
     const executeResponse = await request(app)
       .post('/api/patterns/non-existent-pattern/execute')
+      .set('Authorization', `Bearer ${authToken}`)
       .send({
         input: { task: 'test' }
       })
@@ -64,6 +76,7 @@ describe('Pattern Execution E2E', () => {
     // Create execution (async) via the executions endpoint
     const createResponse = await request(app)
       .post('/api/executions')
+      .set('Authorization', `Bearer ${authToken}`)
       .send({
         patternName: 'ConsensusBuilder',
         input: { task: 'async test', data: {} },
@@ -83,6 +96,7 @@ describe('Pattern Execution E2E', () => {
     while (attempts < 10 && !completed) {
       const statusResponse = await request(app)
         .get(`/api/executions/${executionId}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
       if (statusResponse.body.status === 'completed' ||
