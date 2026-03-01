@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { apiClient } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
 import {
   Zap,
@@ -41,8 +42,7 @@ export default function ExecutionsPage() {
   const fetchExecutions = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/executions?limit=100');
-      const data = await response.json();
+      const data = await apiClient.get('/api/executions?limit=100');
       setExecutions(data.executions || data || []);
     } catch (error) {
       console.error('Failed to fetch executions:', error);

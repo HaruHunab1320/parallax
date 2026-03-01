@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { apiClient } from '@/lib/api-client';
 import { Activity, RefreshCw, Search, ChevronRight, Clock, CheckCircle, XCircle } from 'lucide-react';
 
 interface ExecutionTrace {
@@ -25,13 +26,10 @@ export default function TracingPage() {
   const [selectedTrace, setSelectedTrace] = useState<ExecutionTrace | null>(null);
   const [searchId, setSearchId] = useState('');
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-
   const fetchTraces = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${apiUrl}/api/executions`);
-      const data = await response.json();
+      const data = await apiClient.get('/api/executions');
       setTraces(data.executions || []);
     } catch (error) {
       console.error('Failed to fetch traces:', error);
@@ -43,13 +41,8 @@ export default function TracingPage() {
   const searchTrace = async () => {
     if (!searchId.trim()) return;
     try {
-      const response = await fetch(`${apiUrl}/api/executions/${searchId}`);
-      if (response.ok) {
-        const trace = await response.json();
-        setSelectedTrace(trace);
-      } else {
-        alert('Execution not found');
-      }
+      const trace = await apiClient.get(`/api/executions/${searchId}`);
+      setSelectedTrace(trace);
     } catch (error) {
       console.error('Failed to search trace:', error);
     }

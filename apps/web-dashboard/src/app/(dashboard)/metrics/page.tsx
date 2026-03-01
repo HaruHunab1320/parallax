@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { apiClient } from '@/lib/api-client';
 import { BarChart3, RefreshCw, Activity, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 interface MetricsData {
@@ -26,21 +27,17 @@ export default function MetricsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-
   const fetchMetrics = async () => {
     try {
       setLoading(true);
       setError(null);
 
       // Fetch executions
-      const execResponse = await fetch(`${apiUrl}/api/executions`);
-      const execData = await execResponse.json();
+      const execData = await apiClient.get('/api/executions');
       const executions = execData.executions || [];
 
       // Fetch agents
-      const agentsResponse = await fetch(`${apiUrl}/api/agents`);
-      const agentsData = await agentsResponse.json();
+      const agentsData = await apiClient.get('/api/agents');
       const agents = agentsData.agents || [];
 
       // Calculate metrics

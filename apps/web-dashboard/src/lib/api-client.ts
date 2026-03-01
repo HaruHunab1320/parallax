@@ -423,6 +423,27 @@ class ApiClient {
     }
   }
 
+  // Generic authenticated request methods
+  async get<T = any>(url: string, params?: Record<string, any>): Promise<T> {
+    const response = await this.controlPlane.get(url, { params });
+    return response.data;
+  }
+
+  async post<T = any>(url: string, data?: any): Promise<T> {
+    const response = await this.controlPlane.post(url, data);
+    return response.data;
+  }
+
+  async put<T = any>(url: string, data?: any): Promise<T> {
+    const response = await this.controlPlane.put(url, data);
+    return response.data;
+  }
+
+  async del<T = any>(url: string): Promise<T> {
+    const response = await this.controlPlane.delete(url);
+    return response.data;
+  }
+
   // WebSocket connection for real-time updates
   connectWebSocket(
     onMessage: (event: MessageEvent) => void,

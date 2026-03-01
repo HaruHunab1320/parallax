@@ -52,19 +52,16 @@ export default function UsersPage() {
   });
 
   const fetchUsers = async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       setLoading(true);
-      const response = await fetch(`${apiUrl}/api/users`);
-      if (response.status === 403) {
-        // Feature not available
-        setUsers([]);
-        return;
-      }
-      const data = await response.json();
+      const data = await apiClient.get('/api/users');
       setUsers(data.users || []);
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        setUsers([]);
+      } else {
+        console.error('Failed to fetch users:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -85,19 +82,9 @@ export default function UsersPage() {
   }, []);
 
   const handleCreate = async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       setActionLoading('create');
-      const response = await fetch(`${apiUrl}/api/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create user');
-      }
-
+      await apiClient.post('/api/users', formData);
       setShowCreateModal(false);
       setFormData({ email: '', name: '', role: 'viewer' });
       fetchUsers();
@@ -109,14 +96,9 @@ export default function UsersPage() {
   };
 
   const handleUpdateRole = async (userId: string, role: User['role']) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       setActionLoading(userId);
-      await fetch(`${apiUrl}/api/users/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
-      });
+      await apiClient.put(`/api/users/${userId}`, { role });
       fetchUsers();
     } catch (error) {
       console.error('Failed to update user role:', error);
@@ -126,15 +108,10 @@ export default function UsersPage() {
   };
 
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       setActionLoading(userId);
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-      await fetch(`${apiUrl}/api/users/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      await apiClient.put(`/api/users/${userId}`, { status: newStatus });
       fetchUsers();
     } catch (error) {
       console.error('Failed to toggle user status:', error);
@@ -146,10 +123,9 @@ export default function UsersPage() {
   const handleDelete = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       setActionLoading(userId);
-      await fetch(`${apiUrl}/api/users/${userId}`, { method: 'DELETE' });
+      await apiClient.del(`/api/users/${userId}`);
       setSelectedUser(null);
       fetchUsers();
     } catch (error) {

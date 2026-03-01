@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { apiClient } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
 import {
   Clock,
@@ -56,8 +57,7 @@ export default function SchedulesPage() {
   const fetchSchedules = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/schedules');
-      const data = await response.json();
+      const data = await apiClient.get('/api/schedules');
       setSchedules(data.schedules || []);
     } catch (error) {
       console.error('Failed to fetch schedules:', error);
@@ -89,15 +89,7 @@ export default function SchedulesPage() {
         body.intervalMs = parseInt(formData.intervalMs, 10);
       }
 
-      const response = await fetch('/api/schedules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create schedule');
-      }
+      await apiClient.post('/api/schedules', body);
 
       setShowCreateModal(false);
       setFormData({
@@ -120,7 +112,7 @@ export default function SchedulesPage() {
   const handlePause = async (id: string) => {
     try {
       setActionLoading(id);
-      await fetch(`/api/schedules/${id}/pause`, { method: 'POST' });
+      await apiClient.post(`/api/schedules/${id}/pause`);
       fetchSchedules();
     } catch (error) {
       console.error('Failed to pause schedule:', error);
@@ -132,7 +124,7 @@ export default function SchedulesPage() {
   const handleResume = async (id: string) => {
     try {
       setActionLoading(id);
-      await fetch(`/api/schedules/${id}/resume`, { method: 'POST' });
+      await apiClient.post(`/api/schedules/${id}/resume`);
       fetchSchedules();
     } catch (error) {
       console.error('Failed to resume schedule:', error);
@@ -144,7 +136,7 @@ export default function SchedulesPage() {
   const handleTrigger = async (id: string) => {
     try {
       setActionLoading(id);
-      await fetch(`/api/schedules/${id}/trigger`, { method: 'POST' });
+      await apiClient.post(`/api/schedules/${id}/trigger`);
       fetchSchedules();
     } catch (error) {
       console.error('Failed to trigger schedule:', error);
@@ -158,7 +150,7 @@ export default function SchedulesPage() {
 
     try {
       setActionLoading(id);
-      await fetch(`/api/schedules/${id}`, { method: 'DELETE' });
+      await apiClient.del(`/api/schedules/${id}`);
       setSelectedSchedule(null);
       fetchSchedules();
     } catch (error) {

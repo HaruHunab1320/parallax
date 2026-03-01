@@ -13,7 +13,7 @@ export function middleware(request: NextRequest) {
   // Unauthenticated user → redirect to /login
   if (!hasAuth) {
     const loginUrl = new URL('/login', request.url);
-    if (pathname !== '/') {
+    if (pathname !== '/' && pathname !== '') {
       loginUrl.searchParams.set('redirect', pathname);
     }
     return NextResponse.redirect(loginUrl);

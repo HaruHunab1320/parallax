@@ -38,8 +38,7 @@ export default function PatternsPage() {
   const fetchPatterns = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/patterns');
-      const data = await response.json();
+      const data = await apiClient.get('/api/patterns');
       setPatterns(data.patterns || []);
     } catch (error) {
       console.error('Failed to fetch patterns:', error);
@@ -66,12 +65,7 @@ export default function PatternsPage() {
 
     try {
       const input = JSON.parse(executeInput);
-      const response = await fetch(`/api/patterns/${executeModal.name}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input }),
-      });
-      const result = await response.json();
+      const result = await apiClient.post(`/api/patterns/${executeModal.name}/execute`, { input });
       setExecuteResult(result);
     } catch (error) {
       setExecuteResult({ error: (error as Error).message });
