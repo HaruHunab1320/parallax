@@ -1,0 +1,20 @@
+{
+  "name": "parallax-pi5-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-registering Parallax agent for Raspberry Pi 5",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@parallaxai/sdk-typescript": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

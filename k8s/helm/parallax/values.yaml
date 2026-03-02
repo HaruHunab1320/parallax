@@ -33,6 +33,7 @@ controlPlane:
   env:
     LOG_LEVEL: info
     PARALLAX_PATTERNS_DIR: /patterns
+    PARALLAX_K8S_RUNTIME_URL: http://parallax-runtime-k8s:9878
 
   # Enterprise license key (optional - enables enterprise features)
   # Format: PARALLAX-ENT-xxxx or PARALLAX-PLUS-xxxx
@@ -375,6 +376,13 @@ ingress:
   #  - secretName: parallax-tls
   #    hosts:
   #      - parallax.example.com
+
+  # gRPC ingress for external agent registration
+  grpc:
+    enabled: false
+    annotations: {}
+    hosts: []
+    tls: []
 
 # Monitoring and Alerting
 monitoring:

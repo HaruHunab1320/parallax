@@ -1,0 +1,63 @@
+/**
+ * @name EdgeCloudCoordination
+ * @version 1.0.0
+ * @description Coordinate managed cloud agents and self-registered edge agents
+ * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "any"}}}
+ * @agents {"capabilities": ["system-metrics", "edge-compute"], "minConfidence": 0.5}
+ * @minAgents 2
+ */
+
+// Phase 1: Fan-out — dispatch tasks to all agents
+// The managed agent (K8s) runs a compute task
+// The Pi 5 agent (self-registered) collects system metrics and runs a latency probe
+results = agentResults
+successCount = successfulResults.length
+
+// Separate results by agent source
+cloudResults = results.filter(r => r?.metadata?.type !== "self-registered")
+edgeResults = results.filter(r => r?.metadata?.type === "self-registered")
+
+// Phase 2: Aggregate — merge cloud and edge results
+cloudConfidence = cloudResults.reduce((sum, r) => sum + (r?.confidence ?? 0), 0)
+cloudAvg = cloudResults.length > 0 ? cloudConfidence / cloudResults.length : 0
+
+edgeConfidence = edgeResults.reduce((sum, r) => sum + (r?.confidence ?? 0), 0)
+edgeAvg = edgeResults.length > 0 ? edgeConfidence / edgeResults.length : 0
+
+// Phase 3: Consensus — weighted merge with edge premium for latency-sensitive tasks
+totalWeight = cloudResults.length + edgeResults.length
+weightedConfidence = totalWeight > 0 ? (cloudConfidence + edgeConfidence) / totalWeight : 0
+
+// Determine coordination quality
+coordinationType = ""
+message = ""
+if (successCount >= 2 && weightedConfidence > 0.8) {
+  coordinationType = "full_coordination"
+  message = "Both cloud and edge agents contributed high-confidence results"
+} else if (successCount >= 1 && weightedConfidence > 0.5) {
+  coordinationType = "partial_coordination"
+  message = "Partial results available — some agents did not respond or had low confidence"
+} else {
+  coordinationType = "degraded"
+  message = "Insufficient agent responses for reliable coordination"
+}
+
+finalResult = {
+  type: coordinationType,
+  confidence: weightedConfidence,
+  message: message,
+  cloud: {
+    agent_count: cloudResults.length,
+    avg_confidence: cloudAvg,
+    results: cloudResults
+  },
+  edge: {
+    agent_count: edgeResults.length,
+    avg_confidence: edgeAvg,
+    results: edgeResults
+  },
+  total_agents: agentCount,
+  successful_agents: successCount
+}
+
+finalResult ~> weightedConfidence

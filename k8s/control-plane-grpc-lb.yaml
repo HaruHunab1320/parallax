@@ -1,0 +1,23 @@
+---
+# LoadBalancer service exposing the control plane gRPC port for external agents.
+# External agents (e.g. Pi 5) connect to this endpoint to register with the platform.
+apiVersion: v1
+kind: Service
+metadata:
+  name: parallax-control-plane-grpc
+  namespace: parallax
+  labels:
+    app.kubernetes.io/name: parallax-control-plane-grpc
+    app.kubernetes.io/component: control-plane
+    app.kubernetes.io/part-of: parallax
+  annotations:
+    cloud.google.com/backend-config: '{"default": "parallax-grpc-backendconfig"}'
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8081
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+  selector:
+    app.kubernetes.io/component: control-plane

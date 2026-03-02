@@ -1,0 +1,63 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: parallax-runtime-k8s
+  namespace: parallax
+  labels:
+    app.kubernetes.io/name: parallax-runtime-k8s
+    app.kubernetes.io/component: runtime
+    app.kubernetes.io/part-of: parallax
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: parallax-runtime-k8s
+  labels:
+    app.kubernetes.io/name: parallax-runtime-k8s
+    app.kubernetes.io/component: runtime
+    app.kubernetes.io/part-of: parallax
+rules:
+  # Manage ParallaxAgent CRDs
+  - apiGroups: ["parallax.ai"]
+    resources: ["parallaxagents", "parallaxagents/status"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Manage deployments for agent pods
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Manage services for agent endpoints
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Read pods and logs for agent monitoring
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  # Manage namespaces for agent isolation
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "create", "patch"]
+  # Read secrets for agent credentials
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: parallax-runtime-k8s
+  labels:
+    app.kubernetes.io/name: parallax-runtime-k8s
+    app.kubernetes.io/component: runtime
+    app.kubernetes.io/part-of: parallax
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: parallax-runtime-k8s
+subjects:
+  - kind: ServiceAccount
+    name: parallax-runtime-k8s
+    namespace: parallax

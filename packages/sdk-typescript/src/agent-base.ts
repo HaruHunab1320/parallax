@@ -1,9 +1,13 @@
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
+import fs from 'fs';
 import { AgentResponse, ensureConfidence } from './types/agent-response';
 
-const PROTO_DIR = process.env.PARALLAX_PROTO_DIR || path.join(__dirname, '../../../proto');
+const PROTO_DIR = process.env.PARALLAX_PROTO_DIR
+  || (fs.existsSync(path.join(__dirname, '../proto'))
+      ? path.join(__dirname, '../proto')
+      : path.join(__dirname, '../../../proto'));
 
 /**
  * Base class for Parallax agents in TypeScript.

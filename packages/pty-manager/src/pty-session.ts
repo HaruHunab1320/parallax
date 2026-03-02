@@ -1489,6 +1489,8 @@ export class PTYSession extends EventEmitter {
     const keyList = Array.isArray(keys) ? keys : [keys];
     const normalized = PTYSession.normalizeKeyList(keyList);
     this._stallEmissionCount = 0;
+    this._lastBlockingPromptHash = null;
+    this.outputBuffer = '';
     this.resetStallTimer();
 
     for (const key of normalized) {

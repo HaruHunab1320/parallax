@@ -2,9 +2,10 @@
 
 All notable changes to `pty-manager` will be documented in this file.
 
-## [1.9.3] - 2026-03-01
+## [1.9.4] - 2026-03-01
 
 ### Fixed
+- **Blocking prompt re-detection loop** — `sendKeys()` now clears `outputBuffer` and `_lastBlockingPromptHash` before writing, matching the behavior of `send()` and internal auto-response. Prevents the coordinator from re-detecting the same blocking prompt after sending a key response.
 - **Blocking prompt spam after session stop** — `processOutputBuffer()` now skips blocking prompt detection when session status is `stopping` or `stopped`, preventing a flood of `blocking_prompt` events between `stopSession()` and PTY process exit
 
 ## [1.9.2] - 2026-02-28
