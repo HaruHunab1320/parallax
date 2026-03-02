@@ -10,7 +10,7 @@
     "test:demo": "tsx src/index.ts"
   },
   "dependencies": {
-    "@parallax/sdk-typescript": "workspace:*",
+    "@parallaxai/sdk-typescript": "workspace:*",
     "dotenv": "^16.3.1"
   },
   "devDependencies": {

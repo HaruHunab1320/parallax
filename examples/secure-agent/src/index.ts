@@ -2,7 +2,7 @@
  * Example secure agent with mTLS authentication
  */
 
-import { SecureParallaxAgent, serveSecureAgent } from '@parallax/sdk-typescript';
+import { SecureParallaxAgent, serveSecureAgent } from '@parallaxai/sdk-typescript';
 import { getMTLSConfig } from '@parallax/security';
 import pino from 'pino';
 

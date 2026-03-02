@@ -5,7 +5,7 @@
  * Demonstrates a TypeScript agent in the Parallax multi-language ecosystem.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Style patterns to check (fallback when no LLM)

@@ -8,7 +8,7 @@
  * - Performance concerns
  */
 
-import { ParallaxAgent, serveAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 interface CodeReviewRequest {
   code: string;

@@ -7,7 +7,7 @@ import {
   Health,
   Health_Status,
   GoogleEmpty,
-} from '@parallax/sdk-typescript';
+} from '@parallaxai/sdk-typescript';
 import { Agent, AgentResult } from './types';
 
 /**

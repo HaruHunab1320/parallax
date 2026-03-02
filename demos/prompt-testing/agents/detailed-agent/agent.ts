@@ -5,7 +5,7 @@
  * Good for educational content, documentation, or detailed explanations.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const MODEL_NAME = 'gemini-2.0-flash';

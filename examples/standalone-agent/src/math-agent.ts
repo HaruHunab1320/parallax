@@ -1,4 +1,4 @@
-import { ParallaxAgent, serveAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 /**
  * Example mathematical computation agent

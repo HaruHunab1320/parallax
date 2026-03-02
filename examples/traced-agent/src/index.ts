@@ -2,7 +2,7 @@
  * Example agent with OpenTelemetry tracing
  */
 
-import { ParallaxAgent, serveAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { 
   initializeTracing, 
   getTracingConfig

@@ -10,7 +10,7 @@
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
-    "@parallax/sdk-typescript": "workspace:*",
+    "@parallaxai/sdk-typescript": "workspace:*",
     "@parallax/telemetry": "workspace:*",
     "pino": "^9.5.0",
     "pino-pretty": "^13.0.0"

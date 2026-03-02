@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
-    "@parallax/sdk-typescript": "workspace:*"
+    "@parallaxai/sdk-typescript": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.7.0",

@@ -6,7 +6,7 @@
 import { 
   ParallaxAgent, 
   serveAgent
-} from '@parallax/sdk-typescript';
+} from '@parallaxai/sdk-typescript';
 
 // Create a custom agent
 class DemoAgent extends ParallaxAgent {

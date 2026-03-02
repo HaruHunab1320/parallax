@@ -16,8 +16,8 @@ spec:
   type: LoadBalancer
   ports:
     - port: 8081
-      targetPort: grpc
+      targetPort: 8081
       protocol: TCP
       name: grpc
   selector:
-    app.kubernetes.io/component: control-plane
+    app: parallax-control-plane

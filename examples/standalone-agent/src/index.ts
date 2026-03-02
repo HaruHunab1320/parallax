@@ -1,4 +1,4 @@
-import { ParallaxAgent, serveAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 /**
  * Example sentiment analysis agent that runs as a standalone gRPC service

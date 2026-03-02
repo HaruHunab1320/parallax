@@ -13,7 +13,7 @@
     "stop:infra": "docker compose -f ../../docker-compose.yml --profile monitoring down"
   },
   "dependencies": {
-    "@parallax/sdk-typescript": "workspace:*"
+    "@parallaxai/sdk-typescript": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

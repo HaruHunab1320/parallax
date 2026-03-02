@@ -10,7 +10,7 @@
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
-    "@parallax/sdk-typescript": "workspace:*"
+    "@parallaxai/sdk-typescript": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

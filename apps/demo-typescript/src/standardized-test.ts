@@ -3,7 +3,7 @@
  * All SDKs must pass these exact same tests
  */
 
-import { ParallaxAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 
 // Test agent implementation
 class TestAgent extends ParallaxAgent {

@@ -5,7 +5,7 @@
  * with confidence scoring based on validation completeness
  */
 
-import { ParallaxAgent, serveAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 interface ValidationRequest {
   data: any;
