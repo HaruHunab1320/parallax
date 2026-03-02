@@ -2,6 +2,11 @@
 
 All notable changes to `coding-agent-adapters` will be documented in this file.
 
+## [0.8.7] - 2026-03-01
+
+### Fixed
+- **False blocking prompt detection on Claude idle output** — `detectBlockingPrompt()` now returns `detected: false` when the output contains `❯` (idle prompt) or matches `detectTaskComplete()`. Prevents the base-class "last line ends with ?" fallback from misclassifying partial TUI chunks (e.g. `?` arriving before `for shortcuts`) as blocking prompts, which caused an enter-key loop that destroyed the task completion evidence in the output buffer.
+
 ## [0.8.6] - 2026-02-28
 
 ### Fixed

@@ -363,9 +363,18 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       };
     }
 
-    // If explicit blocking patterns did not match and output is clearly idle,
-    // avoid generic fallback misclassifying residual text as a prompt.
-    if (this.detectReady(output)) {
+    // If explicit blocking patterns did not match and output is clearly idle
+    // or task-complete, avoid generic fallback misclassifying residual text
+    // (e.g. "? for shortcuts", status bar fragments) as a blocking prompt.
+    if (this.detectReady(output) || this.detectTaskComplete(output)) {
+      return { detected: false };
+    }
+
+    // Suppress the base-class "last line ends with ?" fallback when the output
+    // contains Claude's idle prompt (❯) — the "? for shortcuts" hint and TUI
+    // status bar lines arrive in separate chunks, so detectReady may not match
+    // yet, but a bare "?" is not a real blocking prompt.
+    if (/❯/.test(stripped.slice(-300))) {
       return { detected: false };
     }
 

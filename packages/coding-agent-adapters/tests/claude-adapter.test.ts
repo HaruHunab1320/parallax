@@ -288,6 +288,28 @@ describe('ClaudeAdapter', () => {
 
       expect(result.detected).toBe(false);
     });
+
+    it('should NOT trigger on partial idle prompt chunks with ❯ and trailing ?', () => {
+      // When Claude finishes a task, TUI output arrives in chunks.
+      // A partial chunk may contain ❯ and a line ending with "?" before
+      // the full "? for shortcuts" text arrives. This should not be
+      // misclassified as a blocking prompt.
+      const partialChunk = 'Crunched for 4m 41s\n\n❯ \n?';
+      const result = adapter.detectBlockingPrompt(partialChunk);
+      expect(result.detected).toBe(false);
+    });
+
+    it('should NOT trigger on idle prompt with task completion output', () => {
+      const output = [
+        '✻ Crunched for 4m 41s',
+        '',
+        '❯ commit this',
+        '? for shortcuts',
+        'Update available! Run: brew upgrade claude-co…',
+      ].join('\n');
+      const result = adapter.detectBlockingPrompt(output);
+      expect(result.detected).toBe(false);
+    });
   });
 
   describe('detectReady()', () => {
