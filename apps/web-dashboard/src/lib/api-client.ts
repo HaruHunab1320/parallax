@@ -213,7 +213,7 @@ class ApiClient {
 
   async refreshTokens(refreshToken: string): Promise<AuthTokens> {
     const response = await this.controlPlane.post('/api/auth/refresh', { refreshToken });
-    return response.data;
+    return response.data.tokens;
   }
 
   async getMe(): Promise<AuthUser> {
