@@ -48,6 +48,15 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       once: true,
     },
     {
+      pattern: /wants? (?:your )?permission|needs your permission|(?:Allow|Approve)\s[\s\S]{0,50}(?:Deny|Don't allow)/i,
+      type: 'permission',
+      response: '',
+      responseType: 'keys',
+      keys: ['enter'],
+      description: 'Auto-approve tool permission prompts (file access, MCP tools, etc.)',
+      safe: true,
+    },
+    {
       pattern: /update available.*\[y\/n\]/i,
       type: 'update',
       response: 'n',

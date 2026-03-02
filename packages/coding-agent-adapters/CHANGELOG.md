@@ -2,6 +2,11 @@
 
 All notable changes to `coding-agent-adapters` will be documented in this file.
 
+## [0.8.8] - 2026-03-02
+
+### Added
+- Auto-response rule for Claude Code tool permission prompts (MCP tools, file access, etc.). Previously these were detected as blocking prompts but had no matching auto-response rule, causing 4-8 second stall-detector delays per permission. Now instantly auto-approved with Enter key.
+
 ## [0.8.7] - 2026-03-01
 
 ### Fixed
