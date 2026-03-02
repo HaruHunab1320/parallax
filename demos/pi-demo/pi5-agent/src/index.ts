@@ -1,6 +1,8 @@
 import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 import { AgentResponse } from '@parallaxai/sdk-typescript';
 import os from 'os';
+import { TamagotchiDisplay } from './display/tamagotchi';
+import { TamagotchiState } from './display/types';
 
 /**
  * Pi 5 self-registering agent.
@@ -10,6 +12,8 @@ import os from 'os';
  * registration model.
  */
 class Pi5Agent extends ParallaxAgent {
+  readonly display = new TamagotchiDisplay();
+
   constructor() {
     super(
       process.env.AGENT_ID || `pi5-${os.hostname()}`,
@@ -28,29 +32,48 @@ class Pi5Agent extends ParallaxAgent {
   async analyze(task: string, data?: any): Promise<AgentResponse> {
     const lower = task.toLowerCase();
 
-    if (lower.includes('system') || lower.includes('metrics')) {
-      return this.collectSystemMetrics();
-    }
+    // Display: receiving
+    this.display.setState(TamagotchiState.RECEIVING);
+    this.display.addTextLine(`> ${task.slice(0, 12)}`);
 
-    if (lower.includes('latency') || lower.includes('ping')) {
-      return this.measureLatency(data?.target);
-    }
+    // Pick working vs thinking based on task type
+    const isHeavy = lower.includes('compute') || lower.includes('benchmark');
+    // Brief pause to show receiving animation
+    await new Promise((r) => setTimeout(r, 500));
+    this.display.setState(isHeavy ? TamagotchiState.WORKING : TamagotchiState.THINKING);
 
-    if (lower.includes('compute') || lower.includes('benchmark')) {
-      return this.edgeBenchmark();
-    }
+    try {
+      let result: AgentResponse;
 
-    // Default: return system summary with the task echo
-    return this.createResult(
-      {
-        echo: task,
-        agent: this.name,
-        hostname: os.hostname(),
-        platform: `${os.platform()}/${os.arch()}`,
-      },
-      0.8,
-      'Default echo response from Pi 5 edge agent'
-    );
+      if (lower.includes('system') || lower.includes('metrics')) {
+        result = this.collectSystemMetrics();
+      } else if (lower.includes('latency') || lower.includes('ping')) {
+        result = this.measureLatency(data?.target);
+      } else if (lower.includes('compute') || lower.includes('benchmark')) {
+        result = this.edgeBenchmark();
+      } else {
+        result = this.createResult(
+          {
+            echo: task,
+            agent: this.name,
+            hostname: os.hostname(),
+            platform: `${os.platform()}/${os.arch()}`,
+          },
+          0.8,
+          'Default echo response from Pi 5 edge agent'
+        );
+      }
+
+      // Display: responding
+      this.display.setState(TamagotchiState.RESPONDING);
+      this.display.addTextLine(`< conf:${result.confidence.toFixed(2)}`);
+
+      return result;
+    } catch (err: any) {
+      this.display.setState(TamagotchiState.ERROR);
+      this.display.addTextLine(`! ${(err.message || 'error').slice(0, 12)}`);
+      throw err;
+    }
   }
 
   private collectSystemMetrics(): AgentResponse {
@@ -143,6 +166,17 @@ class Pi5Agent extends ParallaxAgent {
 async function main() {
   const agent = new Pi5Agent();
 
+  // Start tamagotchi display
+  agent.display.start();
+  agent.display.addTextLine('* booting...');
+
+  // Heartbeat indicator on lease renewal interval
+  let leaseCount = 0;
+  const heartbeat = setInterval(() => {
+    leaseCount++;
+    agent.display.updateLastMatchingLine('\x03 lease', `\x03 lease x${leaseCount}`);
+  }, 30_000);
+
   const port = parseInt(process.env.AGENT_PORT || '0', 10);
   const registryEndpoint = process.env.PARALLAX_REGISTRY;
 
@@ -152,9 +186,12 @@ async function main() {
 
   const actualPort = await agent.serve(port, { registryEndpoint });
   console.log(`Pi 5 agent serving on port ${actualPort}`);
+  agent.display.addTextLine('* ready');
 
   const shutdown = async () => {
     console.log('Shutting down Pi 5 agent...');
+    clearInterval(heartbeat);
+    agent.display.stop();
     await agent.shutdown();
     process.exit(0);
   };

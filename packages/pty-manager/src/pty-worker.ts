@@ -321,9 +321,10 @@ function handleResize(id: string, cols: number, rows: number): void {
   }
 }
 
-async function handleKill(id: string): Promise<void> {
+async function handleKill(id: string, signal?: string): Promise<void> {
   try {
-    await manager.stop(id);
+    const force = signal === 'SIGKILL';
+    await manager.stop(id, force ? { force: true } : undefined);
     ack('kill', id, true);
   } catch (err) {
     ack('kill', id, false, err instanceof Error ? err.message : String(err));
@@ -576,7 +577,7 @@ function processCommand(line: string): void {
         ack('kill', command.id, false, 'Missing id');
         return;
       }
-      handleKill(command.id);
+      handleKill(command.id, command.signal);
       break;
 
     case 'list':

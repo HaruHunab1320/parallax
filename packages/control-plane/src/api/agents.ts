@@ -65,17 +65,15 @@ export function createAgentsRouter(
         
         agents = Array.from(agentMap.values());
         
-        // Persist registry agents to database
+        // Sync registry agents to database via upsert (prevents duplicate rows)
         for (const agent of registryAgents) {
-          if (!dbAgents.find(db => db.id === agent.id)) {
-            await database.agents.create({
-              name: agent.name,
-              endpoint: agent.endpoint,
-              capabilities: agent.metadata.capabilities || [],
-              status: 'active',
-              metadata: agent.metadata
-            }).catch(() => {}); // Ignore duplicates
-          }
+          await database.agents.upsert(agent.id, {
+            name: agent.name,
+            endpoint: agent.endpoint,
+            capabilities: agent.metadata.capabilities || [],
+            status: 'active',
+            metadata: agent.metadata,
+          }).catch(() => {});
         }
       } else {
         // Fallback to registry only
@@ -283,6 +281,62 @@ export function createAgentsRouter(
       logger.error({ error }, 'Failed to get capability statistics');
       return res.status(500).json({
         error: error instanceof Error ? error.message : 'Failed to get statistics'
+      });
+    }
+  });
+
+  // Delete a specific agent
+  router.delete('/:id', async (req: any, res: any) => {
+    const { id } = req.params;
+
+    try {
+      // Remove from etcd registry
+      await registry.unregister('agent', id).catch(() => {});
+
+      // Remove from database
+      if (database) {
+        await database.agents.delete(id).catch(() => {});
+      }
+
+      logger.info({ agentId: id }, 'Agent deleted');
+      return res.json({ deleted: id });
+    } catch (error) {
+      logger.error({ error, agentId: id }, 'Failed to delete agent');
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to delete agent'
+      });
+    }
+  });
+
+  // Bulk delete stale agents
+  router.delete('/', async (req: any, res: any) => {
+    const { stale, threshold } = req.query;
+
+    if (stale !== 'true') {
+      return res.status(400).json({
+        error: 'Use ?stale=true to delete stale agents'
+      });
+    }
+
+    const thresholdSeconds = parseInt(threshold as string) || 300;
+
+    try {
+      let deletedCount = 0;
+
+      if (database) {
+        const cutoff = new Date(Date.now() - thresholdSeconds * 1000);
+        deletedCount = await database.agents.deleteStale(cutoff);
+      }
+
+      logger.info({ deletedCount, thresholdSeconds }, 'Stale agents purged');
+      return res.json({
+        deleted: deletedCount,
+        thresholdSeconds,
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to delete stale agents');
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to delete stale agents'
       });
     }
   });

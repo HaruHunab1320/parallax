@@ -79,12 +79,63 @@ export class AgentRepository extends BaseRepository {
     );
   }
 
+  async upsert(
+    id: string,
+    data: {
+      name: string;
+      endpoint: string;
+      capabilities?: any;
+      status?: string;
+      metadata?: any;
+    }
+  ): Promise<Agent> {
+    return this.executeQuery(
+      () => this.prisma.agent.upsert({
+        where: { id },
+        update: {
+          endpoint: data.endpoint,
+          status: data.status ?? 'active',
+          lastSeen: new Date(),
+          metadata: data.metadata ?? {},
+          capabilities: data.capabilities ?? [],
+        },
+        create: {
+          id,
+          name: data.name,
+          endpoint: data.endpoint,
+          capabilities: data.capabilities ?? [],
+          status: data.status ?? 'active',
+          metadata: data.metadata ?? {},
+          lastSeen: new Date(),
+        },
+      }),
+      'AgentRepository.upsert'
+    );
+  }
+
   async delete(id: string): Promise<Agent> {
     return this.executeQuery(
       () => this.prisma.agent.delete({
         where: { id },
       }),
       'AgentRepository.delete'
+    );
+  }
+
+  async deleteStale(threshold: Date): Promise<number> {
+    return this.executeQuery(
+      async () => {
+        const result = await this.prisma.agent.deleteMany({
+          where: {
+            status: 'inactive',
+            lastSeen: {
+              lt: threshold,
+            },
+          },
+        });
+        return result.count;
+      },
+      'AgentRepository.deleteStale'
     );
   }
 

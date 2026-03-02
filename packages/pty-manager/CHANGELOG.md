@@ -2,6 +2,11 @@
 
 All notable changes to `pty-manager` will be documented in this file.
 
+## [1.9.5] - 2026-03-02
+
+### Fixed
+- **Worker `handleKill` ignores signal parameter** — `handleKill()` now accepts and forwards the `signal` field from the JSON-RPC kill command. When `signal` is `"SIGKILL"`, passes `{ force: true }` to `manager.stop()` so completed sessions are immediately killed instead of waiting for graceful SIGTERM shutdown. Prevents orphaned child processes when the orchestrator calls `stopSession(id, force=true)`.
+
 ## [1.9.4] - 2026-03-01
 
 ### Fixed
