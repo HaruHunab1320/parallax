@@ -2,6 +2,11 @@
 
 All notable changes to `coding-agent-adapters` will be documented in this file.
 
+## [0.8.9] - 2026-03-02
+
+### Fixed
+- Re-publish with built dist artifacts (0.8.8 was published without build)
+
 ## [0.8.8] - 2026-03-02
 
 ### Added
