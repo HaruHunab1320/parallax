@@ -75,6 +75,7 @@ Cargo.lock
 .env
 .env.local
 .env.*.local
+.env.production
 
 # Terraform secrets (tfvars contain passwords, IPs, project IDs)
 *.tfvars
