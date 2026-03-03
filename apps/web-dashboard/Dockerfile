@@ -33,7 +33,9 @@ WORKDIR /app/apps/web-dashboard
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Accept API URL at build time (NEXT_PUBLIC_ vars are baked into the client bundle)
-ARG NEXT_PUBLIC_API_URL=http://localhost:8080
+# When empty, the browser makes relative requests (e.g. /api/auth/login)
+# which the ingress routes to the control-plane service.
+ARG NEXT_PUBLIC_API_URL=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Ensure dev bypasses are OFF in production builds

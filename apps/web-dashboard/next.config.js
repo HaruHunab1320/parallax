@@ -2,7 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
   },
   // Disable image optimization in standalone mode (no sharp in Alpine)
   images: {

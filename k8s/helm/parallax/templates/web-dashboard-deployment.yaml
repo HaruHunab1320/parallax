@@ -35,8 +35,9 @@ spec:
               containerPort: 3002
               protocol: TCP
           env:
-            - name: NEXT_PUBLIC_API_URL
-              value: "http://{{ include "parallax.fullname" . }}-control-plane:{{ .Values.controlPlane.service.port }}"
+            # NEXT_PUBLIC_ vars are baked at build time in Next.js standalone mode.
+            # The API URL is empty so the browser makes relative requests (e.g. /api/...)
+            # which the ingress routes to the control-plane service.
             {{- range $key, $value := .Values.webDashboard.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

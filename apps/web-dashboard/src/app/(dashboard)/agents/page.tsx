@@ -11,6 +11,7 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | Agent['status']>('active');
 
   const fetchAgents = async () => {
     try {
@@ -57,8 +58,28 @@ export default function AgentsPage() {
         </div>
       </div>
 
+      <div className="flex items-center gap-2">
+        {(['all', 'active', 'inactive', 'error'] as const).map((status) => {
+          const count = status === 'all' ? agents.length : agents.filter(a => a.status === status).length;
+          return (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                statusFilter === status
+                  ? 'bg-parallax-accent text-white'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+              <span className="ml-1.5 text-xs opacity-70">{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {agents.map((agent) => (
+        {agents.filter(a => statusFilter === 'all' || a.status === statusFilter).map((agent) => (
           <Card
             key={agent.id}
             className="cursor-pointer hover:border-parallax-accent/50 transition-colors"

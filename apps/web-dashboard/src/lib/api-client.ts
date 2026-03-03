@@ -113,7 +113,7 @@ class ApiClient {
   private refreshPromise: Promise<AuthTokens> | null = null;
 
   constructor() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
     console.log('[ApiClient] Using API URL:', apiUrl);
 
     this.controlPlane = axios.create({

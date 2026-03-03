@@ -33,7 +33,8 @@ spec:
       serviceAccountName: parallax-runtime-k8s
       containers:
         - name: runtime-k8s
-          image: gcr.io/parallax-466513/parallax-runtime-k8s:latest
+          # Overridden at deploy time by CI/CD (kubectl set image)
+          image: REGISTRY/parallax-runtime-k8s:latest
           imagePullPolicy: Always
           ports:
             - name: http
@@ -46,8 +47,9 @@ spec:
               value: "0.0.0.0"
             - name: PARALLAX_NAMESPACE
               value: "parallax-agents"
+            # Overridden at deploy time by CI/CD (kubectl set env)
             - name: IMAGE_PREFIX
-              value: "gcr.io/parallax-466513/"
+              value: "REGISTRY/"
             - name: LOG_LEVEL
               value: "info"
           livenessProbe:

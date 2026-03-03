@@ -1,0 +1,93 @@
+name: Build & Push Images
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Which image(s) to build"
+        required: false
+        type: choice
+        options:
+          - all
+          - control-plane
+          - web-dashboard
+          - runtime-k8s
+        default: all
+  workflow_call:
+
+env:
+  REGISTRY: us-central1-docker.pkg.dev/parallax-466513/parallax
+
+jobs:
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: control-plane
+            dockerfile: packages/control-plane/Dockerfile
+            image: parallax-control-plane
+          - service: web-dashboard
+            dockerfile: apps/web-dashboard/Dockerfile
+            image: parallax-web-dashboard
+            build-args: NEXT_PUBLIC_API_URL=
+          - service: runtime-k8s
+            dockerfile: packages/runtime-k8s/Dockerfile
+            image: parallax-runtime-k8s
+
+    steps:
+      - name: Check if build is needed
+        id: should-build
+        run: |
+          if [[ "${{ github.event_name }}" != "workflow_dispatch" ]] || \
+             [[ "${{ github.event.inputs.image }}" == "all" ]] || \
+             [[ "${{ github.event.inputs.image }}" == "${{ matrix.service }}" ]]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout repository
+        if: steps.should-build.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        if: steps.should-build.outputs.run == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        if: steps.should-build.outputs.run == 'true'
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Set up Docker Buildx
+        if: steps.should-build.outputs.run == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        if: steps.should-build.outputs.run == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ matrix.image }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ matrix.image }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+          build-args: |
+            VERSION=${{ github.sha }}
+            ${{ matrix.build-args }}
