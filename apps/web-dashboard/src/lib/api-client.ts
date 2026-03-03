@@ -254,6 +254,16 @@ class ApiClient {
     await this.controlPlane.patch(`/api/agents/${id}/status`, { status });
   }
 
+  async deleteAgent(id: string): Promise<void> {
+    await this.controlPlane.delete(`/api/agents/${id}`);
+  }
+
+  async deleteStaleAgents(thresholdSeconds?: number): Promise<{ deleted: number }> {
+    const params = thresholdSeconds ? `?stale=true&threshold=${thresholdSeconds}` : '?stale=true';
+    const response = await this.controlPlane.delete(`/api/agents${params}`);
+    return response.data;
+  }
+
   // Pattern endpoints
   async getPatterns(): Promise<Pattern[]> {
     const response = await this.controlPlane.get('/api/patterns');

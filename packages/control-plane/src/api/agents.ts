@@ -285,6 +285,35 @@ export function createAgentsRouter(
     }
   });
 
+  // Update agent status
+  router.patch('/:id/status', async (req: any, res: any) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status || !['active', 'inactive', 'error'].includes(status)) {
+      return res.status(400).json({
+        error: 'Invalid status. Must be one of: active, inactive, error'
+      });
+    }
+
+    try {
+      if (database) {
+        const agent = await database.agents.update(id, { status });
+        logger.info({ agentId: id, status }, 'Agent status updated');
+        return res.json(agent);
+      }
+
+      return res.status(501).json({
+        error: 'Database not available — cannot update agent status'
+      });
+    } catch (error) {
+      logger.error({ error, agentId: id }, 'Failed to update agent status');
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to update agent status'
+      });
+    }
+  });
+
   // Delete a specific agent
   router.delete('/:id', async (req: any, res: any) => {
     const { id } = req.params;
