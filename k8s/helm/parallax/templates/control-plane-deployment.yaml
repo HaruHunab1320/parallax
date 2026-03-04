@@ -85,6 +85,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.controlPlane.existingSecret }}
                   key: JWT_SECRET
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.controlPlane.existingSecret }}
+                  key: DATABASE_URL
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:

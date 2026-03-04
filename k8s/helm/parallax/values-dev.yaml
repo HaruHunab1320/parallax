@@ -32,12 +32,7 @@ etcd:
       memory: 64Mi
 
 postgresql:
-  persistence:
-    enabled: false
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
+  enabled: false
 
 webDashboard:
   enabled: true
