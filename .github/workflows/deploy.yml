@@ -182,13 +182,13 @@ jobs:
 
       - name: Health check
         run: |
-          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=parallax-control-plane -n parallax --timeout=5m
-          POD=$(kubectl get pod -l app.kubernetes.io/name=parallax-control-plane -n parallax -o jsonpath='{.items[0].metadata.name}')
-          kubectl exec "$POD" -n parallax -- curl -sf http://localhost:3000/health/live
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=parallax,app.kubernetes.io/component=control-plane -n parallax --timeout=5m
+          POD=$(kubectl get pod -l app.kubernetes.io/name=parallax,app.kubernetes.io/component=control-plane -n parallax -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec "$POD" -n parallax -- curl -sf http://localhost:8080/health/live
 
       - name: Run database migrations
         run: |
-          POD=$(kubectl get pod -l app.kubernetes.io/name=parallax-control-plane -n parallax -o jsonpath='{.items[0].metadata.name}')
+          POD=$(kubectl get pod -l app.kubernetes.io/name=parallax,app.kubernetes.io/component=control-plane -n parallax -o jsonpath='{.items[0].metadata.name}')
           kubectl exec "$POD" -n parallax -- npx prisma migrate deploy || true
 
       - name: Post deployment summary
