@@ -79,6 +79,19 @@ spec:
             - name: PARALLAX_LICENSE_KEY
               value: {{ .Values.controlPlane.licenseKey | quote }}
             {{- end }}
+            {{- if .Values.controlPlane.existingSecret }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.controlPlane.existingSecret }}
+                  key: JWT_SECRET
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.controlPlane.existingSecret }}
+                  key: DATABASE_PASSWORD
+                  optional: true
+            {{- end }}
             {{- range $key, $value := .Values.controlPlane.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

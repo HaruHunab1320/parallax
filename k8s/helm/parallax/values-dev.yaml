@@ -3,6 +3,8 @@
 
 controlPlane:
   replicaCount: 1
+  existingSecret: parallax-secrets
+  licenseKey: "eyJpc3MiOiJwYXJhbGxheCIsInYiOjEsInRpZXIiOiJlbnRlcnByaXNlIiwib3JnIjoicGFyYWxsYXhhaSIsInN1YiI6InBhcmFsbGF4YWkiLCJpYXQiOjE3NzI1OTkxNDIsImV4cCI6MH0.5Bvr8AsxPtNF2RW34IRjceW0w6TzifhEpdyXGzye4ukXGs7qouBLyj51y2xBjlataU2uJs2-OD3Ylrg7FtuxDg"
   resources:
     requests:
       cpu: 100m
