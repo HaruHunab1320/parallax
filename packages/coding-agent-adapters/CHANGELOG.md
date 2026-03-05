@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.10.0] - 2026-03-05
+
+### Added
+- Claude hook telemetry integration (optional) in `ClaudeAdapter`:
+  - Marker protocol support for `PARALLAX_CLAUDE_HOOK {json}` lines.
+  - Deterministic state detection from Claude hook events:
+    - `Notification` (`permission_prompt`, `elicitation_dialog`, `idle_prompt`)
+    - `PreToolUse` (tool-running/loading)
+    - `TaskCompleted` (turn completion)
+    - `SessionEnd` (exit detection)
+- `ClaudeAdapter.getHookTelemetryProtocol()` helper to generate a minimal hook script + settings hook map for `.claude/settings.json`.
+
+### Changed
+- `ClaudeAdapter.parseOutput()` now strips hook marker lines from final parsed content.
+- `CodingAgentConfig.adapterConfig` now documents Claude hook telemetry flags:
+  - `claudeHookTelemetry`
+  - `claudeHookMarkerPrefix`
+- README now documents Claude hooks telemetry mode, marker protocol, and setup flow.
+
 ## [0.9.0] - 2026-03-05
 
 ### Added

@@ -407,6 +407,63 @@ const session = await manager.spawn({
 });
 ```
 
+## Claude Hook Telemetry (Optional)
+
+Claude Code hooks can emit deterministic lifecycle markers so PTY orchestration does not rely only on screen-text heuristics.
+
+`ClaudeAdapter` supports this as an opt-in mode:
+
+```typescript
+const session = await manager.spawn({
+  name: 'claude-agent',
+  type: 'claude',
+  workdir: '/project',
+  adapterConfig: {
+    anthropicKey: process.env.ANTHROPIC_API_KEY,
+    claudeHookTelemetry: true,
+  },
+});
+```
+
+When enabled, the adapter sets:
+- `PARALLAX_CLAUDE_HOOK_TELEMETRY=1`
+- `PARALLAX_CLAUDE_HOOK_MARKER_PREFIX=PARALLAX_CLAUDE_HOOK` (or your override)
+
+### Marker Protocol
+
+Hook scripts should print single-line markers:
+
+```text
+PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"permission_prompt","message":"..."}
+```
+
+Supported high-value events:
+- `Notification` (`permission_prompt`, `elicitation_dialog`, `idle_prompt`)
+- `PreToolUse` (includes `tool_name`)
+- `TaskCompleted`
+- `SessionEnd`
+
+The adapter consumes these markers in:
+- `detectBlockingPrompt()`
+- `detectLoading()`
+- `detectToolRunning()`
+- `detectTaskComplete()`
+- `detectReady()`
+- `detectExit()`
+
+### Generate Hook Config Template
+
+```typescript
+const claude = new ClaudeAdapter();
+const protocol = claude.getHookTelemetryProtocol();
+
+// protocol.scriptPath
+// protocol.scriptContent
+// protocol.settingsHooks
+```
+
+`settingsHooks` is ready to merge into `.claude/settings.json` under `hooks`.
+
 ## Creating Custom Adapters
 
 Extend `BaseCodingAdapter` to create adapters for other coding CLIs:

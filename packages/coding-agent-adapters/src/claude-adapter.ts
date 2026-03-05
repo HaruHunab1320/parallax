@@ -14,6 +14,22 @@ import type {
 } from 'pty-manager';
 import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
 
+const CLAUDE_HOOK_MARKER_PREFIX = 'PARALLAX_CLAUDE_HOOK';
+
+interface ClaudeHookMarker {
+  event: string;
+  notification_type?: string;
+  tool_name?: string;
+  message?: string;
+}
+
+interface ClaudeAdapterConfig {
+  continue?: boolean;
+  resume?: string;
+  claudeHookTelemetry?: boolean;
+  claudeHookMarkerPrefix?: string;
+}
+
 export class ClaudeAdapter extends BaseCodingAdapter {
   readonly adapterType = 'claude';
   readonly displayName = 'Claude Code';
@@ -146,7 +162,7 @@ export class ClaudeAdapter extends BaseCodingAdapter {
 
   getArgs(config: SpawnConfig): string[] {
     const args: string[] = [];
-    const adapterConfig = config.adapterConfig as { continue?: boolean; resume?: string } | undefined;
+    const adapterConfig = config.adapterConfig as ClaudeAdapterConfig | undefined;
 
     // Print mode for non-interactive usage (skip if interactive mode)
     if (!this.isInteractive(config)) {
@@ -178,6 +194,7 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   getEnv(config: SpawnConfig): Record<string, string> {
     const env: Record<string, string> = {};
     const credentials = this.getCredentials(config);
+    const adapterConfig = config.adapterConfig as ClaudeAdapterConfig | undefined;
 
     // API key from credentials or env
     if (credentials.anthropicKey) {
@@ -194,7 +211,108 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       env.CLAUDE_CODE_DISABLE_INTERACTIVE = 'true';
     }
 
+    // Optional: hook telemetry mode. When enabled, hook scripts can emit
+    // deterministic marker lines that this adapter consumes.
+    if (adapterConfig?.claudeHookTelemetry) {
+      env.PARALLAX_CLAUDE_HOOK_TELEMETRY = '1';
+      env.PARALLAX_CLAUDE_HOOK_MARKER_PREFIX =
+        adapterConfig.claudeHookMarkerPrefix || CLAUDE_HOOK_MARKER_PREFIX;
+    }
+
     return env;
+  }
+
+  getHookTelemetryProtocol(options?: { scriptPath?: string; markerPrefix?: string }): {
+    markerPrefix: string;
+    scriptPath: string;
+    scriptContent: string;
+    settingsHooks: Record<string, unknown>;
+  } {
+    const markerPrefix = options?.markerPrefix || CLAUDE_HOOK_MARKER_PREFIX;
+    const scriptPath = options?.scriptPath || '.claude/hooks/parallax-hook-telemetry.sh';
+    const scriptCommand = `"${'$'}CLAUDE_PROJECT_DIR"/${scriptPath}`;
+    const hookEntry = [{ matcher: '', hooks: [{ type: 'command', command: scriptCommand }] }];
+
+    const settingsHooks: Record<string, unknown> = {
+      Notification: hookEntry,
+      PreToolUse: hookEntry,
+      TaskCompleted: hookEntry,
+      SessionEnd: hookEntry,
+    };
+
+    const scriptContent = `#!/usr/bin/env bash
+set -euo pipefail
+
+INPUT="$(cat)"
+[ -z "${'$'}INPUT" ] && exit 0
+
+if ! command -v jq >/dev/null 2>&1; then
+  exit 0
+fi
+
+EVENT="$(printf '%s' "${'$'}INPUT" | jq -r '.hook_event_name // empty')"
+[ -z "${'$'}EVENT" ] && exit 0
+
+NOTIFICATION_TYPE="$(printf '%s' "${'$'}INPUT" | jq -r '.notification_type // empty')"
+TOOL_NAME="$(printf '%s' "${'$'}INPUT" | jq -r '.tool_name // empty')"
+MESSAGE="$(printf '%s' "${'$'}INPUT" | jq -r '.message // empty')"
+
+printf '%s ' '${markerPrefix}'
+jq -nc \
+  --arg event "${'$'}EVENT" \
+  --arg notification_type "${'$'}NOTIFICATION_TYPE" \
+  --arg tool_name "${'$'}TOOL_NAME" \
+  --arg message "${'$'}MESSAGE" \
+  '({event: $event}
+   + (if $notification_type != "" then {notification_type: $notification_type} else {} end)
+   + (if $tool_name != "" then {tool_name: $tool_name} else {} end)
+   + (if $message != "" then {message: $message} else {} end))'
+`;
+
+    return {
+      markerPrefix,
+      scriptPath,
+      scriptContent,
+      settingsHooks,
+    };
+  }
+
+  private getHookMarkers(output: string): ClaudeHookMarker[] {
+    const markers: ClaudeHookMarker[] = [];
+    const markerRegex = /(?:^|\n)\s*([A-Z0-9_]+)\s+(\{[^\n\r]+\})/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = markerRegex.exec(output)) !== null) {
+      const markerToken = match[1];
+      if (!markerToken.includes('CLAUDE_HOOK')) {
+        continue;
+      }
+      const payload = match[2];
+      try {
+        const parsed = JSON.parse(payload) as Record<string, unknown>;
+        const event = typeof parsed.event === 'string' ? parsed.event : undefined;
+        if (!event) continue;
+        markers.push({
+          event,
+          notification_type: typeof parsed.notification_type === 'string' ? parsed.notification_type : undefined,
+          tool_name: typeof parsed.tool_name === 'string' ? parsed.tool_name : undefined,
+          message: typeof parsed.message === 'string' ? parsed.message : undefined,
+        });
+      } catch {
+        // Ignore malformed marker payloads.
+      }
+    }
+
+    return markers;
+  }
+
+  private getLatestHookMarker(output: string): ClaudeHookMarker | null {
+    const markers = this.getHookMarkers(output);
+    return markers.length > 0 ? markers[markers.length - 1] : null;
+  }
+
+  private stripHookMarkers(output: string): string {
+    return output.replace(/(?:^|\n)\s*[A-Z0-9_]*CLAUDE_HOOK[A-Z0-9_]*\s+\{[^\n\r]+\}\s*/g, '\n');
   }
 
   detectLogin(output: string): LoginDetection {
@@ -252,6 +370,7 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    */
   detectBlockingPrompt(output: string): BlockingPromptDetection {
     const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
 
     // First check for login (highest priority)
     const loginDetection = this.detectLogin(output);
@@ -264,6 +383,28 @@ export class ClaudeAdapter extends BaseCodingAdapter {
         canAutoRespond: false,
         instructions: loginDetection.instructions,
       };
+    }
+
+    if (marker?.event === 'Notification') {
+      if (marker.notification_type === 'permission_prompt') {
+        return {
+          detected: true,
+          type: 'permission',
+          prompt: marker.message || 'Claude permission prompt',
+          suggestedResponse: 'keys:enter',
+          canAutoRespond: true,
+          instructions: 'Claude is waiting for permission approval',
+        };
+      }
+      if (marker.notification_type === 'elicitation_dialog') {
+        return {
+          detected: true,
+          type: 'tool_wait',
+          prompt: marker.message || 'Claude elicitation dialog',
+          canAutoRespond: false,
+          instructions: 'Claude is waiting for required user input',
+        };
+      }
     }
 
     // Claude survey/feedback prompt (optional)
@@ -400,7 +541,12 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    */
   detectLoading(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
     const tail = stripped.slice(-500);
+
+    if (marker?.event === 'PreToolUse') {
+      return true;
+    }
 
     // Active spinner with "esc to interrupt" — agent is working
     if (/esc\s+to\s+interrupt/i.test(tail)) {
@@ -427,7 +573,15 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    */
   detectToolRunning(output: string): ToolRunningInfo | null {
     const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
     const tail = stripped.slice(-500);
+
+    if (marker?.event === 'PreToolUse' && marker.tool_name) {
+      return {
+        toolName: marker.tool_name.toLowerCase(),
+        description: `${marker.tool_name} (hook)`,
+      };
+    }
 
     // Prefer contextual pattern: "Claude in <App>[tool_name]".
     // Do not treat "Claude in <App> enabled · /chrome" as a running tool.
@@ -465,7 +619,15 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    */
   detectTaskComplete(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
     if (!stripped.trim()) return false;
+
+    if (marker?.event === 'TaskCompleted') {
+      return true;
+    }
+    if (marker?.event === 'Notification' && marker.notification_type === 'idle_prompt') {
+      return true;
+    }
     // NOTE: Do NOT call detectLoading() here. The buffer often contains stale
     // loading patterns (e.g. "esc to interrupt" from the spinner) alongside
     // completion signals. Task completion is a more specific signal and should
@@ -501,7 +663,17 @@ export class ClaudeAdapter extends BaseCodingAdapter {
 
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
     if (!stripped.trim()) return false;
+
+    if (marker?.event === 'Notification') {
+      if (marker.notification_type === 'permission_prompt' || marker.notification_type === 'elicitation_dialog') {
+        return false;
+      }
+      if (marker.notification_type === 'idle_prompt') {
+        return true;
+      }
+    }
     // Same rationale as detectTaskComplete: don't let stale loading patterns
     // in the buffer suppress ready detection.
 
@@ -531,7 +703,8 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   }
 
   parseOutput(output: string): ParsedOutput | null {
-    const stripped = this.stripAnsi(output);
+    const withoutHookMarkers = this.stripHookMarkers(output);
+    const stripped = this.stripAnsi(withoutHookMarkers);
 
     // Check if this looks like a complete response
     const isComplete = this.isResponseComplete(stripped);
@@ -565,5 +738,14 @@ export class ClaudeAdapter extends BaseCodingAdapter {
 
   getHealthCheckCommand(): string {
     return 'claude --version';
+  }
+
+  override detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+    const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
+    if (marker?.event === 'SessionEnd') {
+      return { exited: true, code: 0 };
+    }
+    return super.detectExit(output);
   }
 }

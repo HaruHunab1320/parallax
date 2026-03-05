@@ -99,6 +99,15 @@ export interface CodingAgentConfig extends SpawnConfig {
      * Translates to CLI-specific config files and flags.
      */
     approvalPreset?: ApprovalPreset;
+    /**
+     * Claude-only: enable hook marker telemetry parsing.
+     * Requires Claude hook config that emits PARALLAX_CLAUDE_HOOK lines.
+     */
+    claudeHookTelemetry?: boolean;
+    /**
+     * Claude-only: override hook marker prefix token.
+     */
+    claudeHookMarkerPrefix?: string;
   } & Record<string, unknown>;
 }
 

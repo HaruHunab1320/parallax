@@ -158,6 +158,21 @@ describe('ClaudeAdapter', () => {
       expect(env.ANTHROPIC_API_KEY).toBe('sk-ant-test-key');
       expect(env.CLAUDE_CODE_DISABLE_INTERACTIVE).toBeUndefined();
     });
+
+    it('should enable hook telemetry env vars when configured', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'claude',
+        adapterConfig: {
+          claudeHookTelemetry: true,
+          claudeHookMarkerPrefix: 'PARALLAX_CLAUDE_HOOK',
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.PARALLAX_CLAUDE_HOOK_TELEMETRY).toBe('1');
+      expect(env.PARALLAX_CLAUDE_HOOK_MARKER_PREFIX).toBe('PARALLAX_CLAUDE_HOOK');
+    });
   });
 
   describe('detectLogin()', () => {
@@ -310,6 +325,24 @@ describe('ClaudeAdapter', () => {
       const result = adapter.detectBlockingPrompt(output);
       expect(result.detected).toBe(false);
     });
+
+    it('should detect permission prompt from hook marker', () => {
+      const result = adapter.detectBlockingPrompt(
+        'PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"permission_prompt","message":"Allow tool?"}'
+      );
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('permission');
+      expect(result.suggestedResponse).toBe('keys:enter');
+    });
+
+    it('should detect elicitation dialog from hook marker', () => {
+      const result = adapter.detectBlockingPrompt(
+        'PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"elicitation_dialog","message":"Need your input"}'
+      );
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('tool_wait');
+      expect(result.canAutoRespond).toBe(false);
+    });
   });
 
   describe('detectReady()', () => {
@@ -361,6 +394,24 @@ describe('ClaudeAdapter', () => {
     it('should return false for active spinner output', () => {
       expect(adapter.detectReady('• Working (12s • esc to interrupt)')).toBe(false);
     });
+
+    it('should detect ready from idle_prompt hook marker', () => {
+      expect(
+        adapter.detectReady('PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"idle_prompt"}')
+      ).toBe(true);
+    });
+
+    it('should detect ready from custom hook marker prefix', () => {
+      expect(
+        adapter.detectReady('TEAM_CLAUDE_HOOK_MARKER {"event":"Notification","notification_type":"idle_prompt"}')
+      ).toBe(true);
+    });
+
+    it('should not detect ready for permission_prompt hook marker', () => {
+      expect(
+        adapter.detectReady('PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"permission_prompt"}')
+      ).toBe(false);
+    });
   });
 
   describe('parseOutput()', () => {
@@ -391,6 +442,16 @@ describe('ClaudeAdapter', () => {
       const result = adapter.parseOutput(rawOutput);
 
       expect(result?.metadata?.raw).toBe(rawOutput);
+    });
+
+    it('should strip hook marker lines from parsed content', () => {
+      const result = adapter.parseOutput(
+        'PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"idle_prompt"}\nHere is the answer.\n> '
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.content).toContain('Here is the answer.');
+      expect(result?.content).not.toContain('PARALLAX_CLAUDE_HOOK');
     });
   });
 
@@ -536,6 +597,18 @@ describe('ClaudeAdapter', () => {
     });
   });
 
+  describe('getHookTelemetryProtocol()', () => {
+    it('should return a default marker protocol and script path', () => {
+      const protocol = adapter.getHookTelemetryProtocol();
+      expect(protocol.markerPrefix).toBe('PARALLAX_CLAUDE_HOOK');
+      expect(protocol.scriptPath).toBe('.claude/hooks/parallax-hook-telemetry.sh');
+      expect(protocol.settingsHooks).toHaveProperty('Notification');
+      expect(protocol.settingsHooks).toHaveProperty('PreToolUse');
+      expect(protocol.settingsHooks).toHaveProperty('TaskCompleted');
+      expect(protocol.settingsHooks).toHaveProperty('SessionEnd');
+    });
+  });
+
   describe('getWorkspaceFiles()', () => {
     it('should return CLAUDE.md as primary memory file', () => {
       const files = adapter.getWorkspaceFiles();
@@ -569,6 +642,15 @@ describe('ClaudeAdapter', () => {
   });
 
   describe('detectToolRunning', () => {
+    it('should detect PreToolUse marker tool', () => {
+      const result = adapter.detectToolRunning!(
+        'PARALLAX_CLAUDE_HOOK {"event":"PreToolUse","tool_name":"Bash"}'
+      );
+      expect(result).not.toBeNull();
+      expect(result!.toolName).toBe('bash');
+      expect(result!.description).toContain('(hook)');
+    });
+
     it('should detect active tool from bracketed pattern', () => {
       const output = 'Claude in Chrome[javascript_tool] ───────────────';
       const result = adapter.detectToolRunning!(output);
@@ -622,6 +704,22 @@ describe('ClaudeAdapter', () => {
       expect(result).not.toBeNull();
       expect(result!.toolName).toBe('bash');
       expect(result!.description).toBe('bash_tool');
+    });
+  });
+
+  describe('hook-marker lifecycle helpers', () => {
+    it('should detect loading from PreToolUse hook marker', () => {
+      expect(adapter.detectLoading('PARALLAX_CLAUDE_HOOK {"event":"PreToolUse","tool_name":"Read"}')).toBe(true);
+    });
+
+    it('should detect task completion from TaskCompleted hook marker', () => {
+      expect(adapter.detectTaskComplete('PARALLAX_CLAUDE_HOOK {"event":"TaskCompleted"}')).toBe(true);
+    });
+
+    it('should detect exit from SessionEnd hook marker', () => {
+      const result = adapter.detectExit('PARALLAX_CLAUDE_HOOK {"event":"SessionEnd"}');
+      expect(result.exited).toBe(true);
+      expect(result.code).toBe(0);
     });
   });
 });
