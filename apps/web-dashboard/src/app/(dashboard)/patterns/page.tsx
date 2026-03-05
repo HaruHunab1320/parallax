@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api-client';
-import { GitBranch, RefreshCw, Play, Eye, Search, CheckCircle, XCircle } from 'lucide-react';
+import { GitBranch, RefreshCw, Play, Eye, Search, CheckCircle, XCircle, Info } from 'lucide-react';
 
 interface Pattern {
   name: string;
@@ -72,6 +72,26 @@ export default function PatternsPage() {
     } finally {
       setExecuting(false);
     }
+  };
+
+  const scaffoldFromSchema = (schema: any): string => {
+    if (!schema?.properties) return '{}';
+    const obj: Record<string, any> = {};
+    for (const [key, prop] of Object.entries<any>(schema.properties)) {
+      if (prop.default !== undefined) {
+        obj[key] = prop.default;
+      } else {
+        switch (prop.type) {
+          case 'string': obj[key] = ''; break;
+          case 'number': case 'integer': obj[key] = 0; break;
+          case 'boolean': obj[key] = false; break;
+          case 'array': obj[key] = []; break;
+          case 'object': obj[key] = {}; break;
+          default: obj[key] = null;
+        }
+      }
+    }
+    return JSON.stringify(obj, null, 2);
   };
 
   const getPatternTypeColor = (type?: string) => {
@@ -193,7 +213,7 @@ export default function PatternsPage() {
                       onClick={(e) => {
                         e.stopPropagation();
                         setExecuteModal(pattern);
-                        setExecuteInput('{}');
+                        setExecuteInput(scaffoldFromSchema(pattern.metadata?.inputSchema));
                         setExecuteResult(null);
                       }}
                     >
@@ -271,7 +291,7 @@ export default function PatternsPage() {
                     onClick={() => {
                       setSelectedPattern(null);
                       setExecuteModal(selectedPattern);
-                      setExecuteInput('{}');
+                      setExecuteInput(scaffoldFromSchema(selectedPattern.metadata?.inputSchema));
                       setExecuteResult(null);
                     }}
                   >
@@ -294,6 +314,34 @@ export default function PatternsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {executeModal.metadata?.inputSchema && (
+                  <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Info className="w-4 h-4 text-parallax-accent" />
+                      <span className="text-sm font-medium text-gray-300">Expected Input</span>
+                    </div>
+                    <div className="space-y-1">
+                      {Object.entries<any>(executeModal.metadata.inputSchema.properties || {}).map(
+                        ([key, prop]) => {
+                          const isRequired = (executeModal.metadata?.inputSchema?.required || []).includes(key);
+                          return (
+                            <div key={key} className="flex items-baseline gap-2 text-sm">
+                              <code className="text-parallax-accent">{key}</code>
+                              <span className="text-gray-500">{prop.type || 'any'}</span>
+                              {isRequired && (
+                                <span className="text-xs text-red-400">required</span>
+                              )}
+                              {prop.description && (
+                                <span className="text-gray-400">— {prop.description}</span>
+                              )}
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="text-sm font-medium text-gray-400 mb-2 block">
                     Input (JSON)
