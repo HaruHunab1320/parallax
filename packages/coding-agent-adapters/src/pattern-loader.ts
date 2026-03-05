@@ -160,6 +160,41 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
     exit: [],
     source: 'baseline',
   },
+  hermes: {
+    ready: [
+      "❯",
+      "⚕ Hermes",
+      "Welcome to Hermes Agent",
+    ],
+    auth: [
+      "isn't configured yet",
+      "no API keys or providers found",
+      "Run setup now? [Y/n]",
+    ],
+    blocking: [
+      "Hermes needs your input",
+      "Sudo Password Required",
+      "Dangerous Command",
+    ],
+    loading: [
+      "deliberating...",
+      "(0.0s)",
+      "⚕ ❯",
+    ],
+    turnComplete: [
+      "╭─ ⚕ Hermes",
+      "❯",
+    ],
+    toolWait: [
+      "Hermes needs your input",
+      "Sudo Password Required",
+      "Dangerous Command",
+    ],
+    exit: [
+      "Goodbye! ⚕",
+    ],
+    source: "baseline",
+  },
 };
 
 /**

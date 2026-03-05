@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.0] - 2026-03-05
+
+### Added
+- New `HermesAdapter` for Hermes Agent CLI integration:
+  - startup/auth detection for Hermes setup gate prompts
+  - blocking prompt detection for clarify, sudo password, and dangerous-command approval flows
+  - loading/working detection for Hermes thinking/tool spinner output
+  - ready/task-complete detection for Hermes prompt and response box output
+- `hermes` added to adapter exports and factory helpers:
+  - `createAdapter('hermes')`
+  - `createAllAdapters()` now includes Hermes
+  - `ADAPTER_TYPES.hermes`
+- Baseline dynamic pattern-loader support for Hermes (`ready`, `auth`, `blocking`, `loading`, `turnComplete`, `toolWait`, `exit`).
+- Hermes approval preset translation (`generateHermesApprovalConfig`) and support in `generateApprovalConfig()` dispatch.
+- New Hermes-specific test suite and expanded index/preset/task-complete coverage.
+
+### Changed
+- `AdapterType` now includes `hermes`.
+- README and package metadata now document Hermes alongside Claude/Gemini/Codex/Aider (tables, examples, lifecycle, `ADAPTER_TYPES`, keywords/description).
+
 All notable changes to `coding-agent-adapters` will be documented in this file.
 
 ## [0.8.9] - 2026-03-02

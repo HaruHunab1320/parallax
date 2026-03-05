@@ -9,6 +9,7 @@ import {
   GeminiAdapter,
   CodexAdapter,
   AiderAdapter,
+  HermesAdapter,
   BaseCodingAdapter,
 
   // Helper functions
@@ -52,6 +53,12 @@ describe('Exports', () => {
       expect(adapter.adapterType).toBe('aider');
     });
 
+    it('should export HermesAdapter', () => {
+      expect(HermesAdapter).toBeDefined();
+      const adapter = new HermesAdapter();
+      expect(adapter.adapterType).toBe('hermes');
+    });
+
     it('should export BaseCodingAdapter', () => {
       expect(BaseCodingAdapter).toBeDefined();
     });
@@ -63,10 +70,11 @@ describe('Exports', () => {
       expect(ADAPTER_TYPES.gemini).toBe(GeminiAdapter);
       expect(ADAPTER_TYPES.codex).toBe(CodexAdapter);
       expect(ADAPTER_TYPES.aider).toBe(AiderAdapter);
+      expect(ADAPTER_TYPES.hermes).toBe(HermesAdapter);
     });
 
-    it('should have exactly 4 adapter types', () => {
-      expect(Object.keys(ADAPTER_TYPES)).toHaveLength(4);
+    it('should have exactly 5 adapter types', () => {
+      expect(Object.keys(ADAPTER_TYPES)).toHaveLength(5);
     });
   });
 });
@@ -92,15 +100,20 @@ describe('createAdapter()', () => {
     expect(adapter).toBeInstanceOf(AiderAdapter);
   });
 
+  it('should create HermesAdapter for "hermes"', () => {
+    const adapter = createAdapter('hermes');
+    expect(adapter).toBeInstanceOf(HermesAdapter);
+  });
+
   it('should throw for unknown adapter type', () => {
     expect(() => createAdapter('unknown' as AdapterType)).toThrow('Unknown adapter type');
   });
 });
 
 describe('createAllAdapters()', () => {
-  it('should create all 4 adapters', () => {
+  it('should create all 5 adapters', () => {
     const adapters = createAllAdapters();
-    expect(adapters).toHaveLength(4);
+    expect(adapters).toHaveLength(5);
   });
 
   it('should include ClaudeAdapter', () => {
@@ -121,6 +134,11 @@ describe('createAllAdapters()', () => {
   it('should include AiderAdapter', () => {
     const adapters = createAllAdapters();
     expect(adapters.some(a => a instanceof AiderAdapter)).toBe(true);
+  });
+
+  it('should include HermesAdapter', () => {
+    const adapters = createAllAdapters();
+    expect(adapters.some(a => a instanceof HermesAdapter)).toBe(true);
   });
 
   it('should create new instances each time', () => {
@@ -146,6 +164,10 @@ describe('checkAdapters()', () => {
       version: '1.0.0',
     });
     vi.spyOn(AiderAdapter.prototype, 'validateInstallation').mockResolvedValue({
+      installed: true,
+      version: '1.0.0',
+    });
+    vi.spyOn(HermesAdapter.prototype, 'validateInstallation').mockResolvedValue({
       installed: true,
       version: '1.0.0',
     });
@@ -221,16 +243,20 @@ describe('checkAllAdapters()', () => {
       installed: true,
       version: '1.0.0',
     });
+    vi.spyOn(HermesAdapter.prototype, 'validateInstallation').mockResolvedValue({
+      installed: true,
+      version: '1.0.0',
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('should check all 4 adapters', async () => {
+  it('should check all 5 adapters', async () => {
     const results = await checkAllAdapters();
 
-    expect(results).toHaveLength(4);
+    expect(results).toHaveLength(5);
   });
 
   it('should include all adapter names', async () => {
@@ -241,6 +267,7 @@ describe('checkAllAdapters()', () => {
     expect(names).toContain('Google Gemini');
     expect(names).toContain('OpenAI Codex');
     expect(names).toContain('Aider');
+    expect(names).toContain('Hermes Agent');
   });
 });
 

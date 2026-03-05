@@ -1,6 +1,6 @@
 # coding-agent-adapters
 
-CLI adapters for AI coding agents. Works with [pty-manager](https://www.npmjs.com/package/pty-manager) to spawn and manage coding agents like Claude Code, Gemini CLI, OpenAI Codex, and Aider.
+CLI adapters for AI coding agents. Works with [pty-manager](https://www.npmjs.com/package/pty-manager) to spawn and manage coding agents like Claude Code, Gemini CLI, OpenAI Codex, Aider, and Hermes Agent.
 
 Each adapter provides source-derived detection patterns for the full session lifecycle: login/auth, blocking prompts, ready state, exit conditions, and auto-response rules — all based on deep analysis of each CLI's open-source codebase.
 
@@ -14,13 +14,14 @@ npm install coding-agent-adapters pty-manager
 
 ```typescript
 import { PTYManager, AdapterRegistry } from 'pty-manager';
-import { ClaudeAdapter, GeminiAdapter, AiderAdapter } from 'coding-agent-adapters';
+import { ClaudeAdapter, GeminiAdapter, AiderAdapter, HermesAdapter } from 'coding-agent-adapters';
 
 // Create adapter registry and register the adapters you need
 const registry = new AdapterRegistry();
 registry.register(new ClaudeAdapter());
 registry.register(new GeminiAdapter());
 registry.register(new AiderAdapter());
+registry.register(new HermesAdapter());
 
 // Create PTY manager with the registry
 const manager = new PTYManager({ adapters: registry });
@@ -50,6 +51,7 @@ session.send('Help me refactor this function to use async/await');
 | `GeminiAdapter` | Gemini CLI | `gemini` | TUI menus | 3 rules | 300ms |
 | `CodexAdapter` | OpenAI Codex | `codex` | TUI menus | 6 rules | 300ms |
 | `AiderAdapter` | Aider | `aider` | Text `(Y)es/(N)o` | 17 rules | 200ms |
+| `HermesAdapter` | Hermes Agent | `hermes` | TUI prompts | 0 rules | 400ms |
 
 ## Session Lifecycle Detection
 
@@ -73,6 +75,7 @@ const login = adapter.detectLogin(output);
 | Gemini | Google OAuth, API key entry, auth in-progress (ignores "Both keys set" success messages) | `AuthDialog.tsx`, `ApiAuthDialog.tsx`, `AuthInProgress.tsx` |
 | Codex | Device code flow, onboarding auth menu | `auth.rs`, `headless_chatgpt_login.rs` |
 | Aider | API key missing/invalid, OpenRouter OAuth | `onboarding.py`, `models.py` |
+| Hermes | First-run setup gate (`no API keys/providers found`, `Run setup now?`) | `hermes_cli/setup.py`, `hermes_cli/main.py` |
 
 ### Ready State Detection
 
@@ -84,6 +87,7 @@ Each adapter knows exactly what "ready for input" looks like:
 | Gemini | Prompt glyphs (`>`, `!`, `*`, `(r:)`), composer placeholder | `InputPrompt.tsx`, `Composer.tsx` |
 | Codex | `>` glyph, placeholder suggestions | `chat_composer.rs` |
 | Aider | `ask>`, `code>`, `architect>`, `help>`, `multi>`, startup banner | `io.py`, `base_coder.py` |
+| Hermes | Idle `❯` prompt when not working; completion response box | `cli.py`, `agent/display.py` |
 
 ### Ready Settle Delay
 
@@ -95,6 +99,7 @@ Each adapter sets `readySettleMs` to control how long pty-manager waits after `d
 | Gemini CLI | 300ms | Moderate Ink TUI (inherits base default) |
 | Codex | 300ms | Moderate Rust TUI (inherits base default) |
 | Aider | 200ms | Minimal TUI, mostly text output |
+| Hermes Agent | 400ms | Prompt-toolkit UI with spinner + activity feed that settles after render |
 
 ### Blocking Prompt Detection
 
@@ -106,6 +111,7 @@ Adapters detect prompts that block the session and require user action:
 | Gemini | Folder trust, tool execution, validation dialogs, privacy consent |
 | Codex | Directory trust, tool approval, update available, model migration, CWD selection |
 | Aider | File operations, shell commands, git init, pip install, destructive operations |
+| Hermes | Clarify prompts, sudo password prompts, dangerous command approval choices |
 
 ### Loading / Active-Work Detection
 
@@ -117,6 +123,7 @@ Each adapter implements `detectLoading(output)` to detect when the CLI is active
 | Gemini | `esc to cancel`, `Waiting for user confirmation` | `gemini_active_loading_line` |
 | Codex | `esc to interrupt`, `Booting MCP server`, `Searching the web` | `codex_active_status_row`, `codex_active_booting_mcp` |
 | Aider | `Waiting for LLM/<model>`, `Generating commit message with` | `aider_active_waiting_model`, `aider_active_waiting_llm_default` |
+| Hermes | Thinking spinner verb + elapsed time (`deliberating... (2.4s)`), working prompt (`⚕ ❯`) | `HermesAdapter.detectLoading()` |
 
 ```typescript
 const claude = new ClaudeAdapter();
@@ -139,6 +146,7 @@ Each adapter implements `detectTaskComplete(output)` to recognize when the CLI h
 | Gemini | `◇ Ready` window title, `Type your message` composer | `gemini_ready_title` |
 | Codex | `Worked for 1m 05s` separator + `›` prompt | `codex_completed_worked_for_separator`, `codex_ready_prompt` |
 | Aider | `Aider is waiting for your input`, mode prompts (including plain `>`) with edit/cost markers | `aider_completed_llm_response_ready` |
+| Hermes | Final response box (`╭─ ⚕ Hermes ... ╰`), or tool-feed line + idle prompt | `HermesAdapter.detectTaskComplete()` |
 
 ```typescript
 const claude = new ClaudeAdapter();
@@ -160,12 +168,13 @@ Adapters detect when a CLI session has ended:
 | Gemini | Folder trust rejection, logout confirmation |
 | Codex | Session end, update completion |
 | Aider | Ctrl+C / KeyboardInterrupt, version update requiring restart |
+| Hermes | `Goodbye! ⚕` |
 
 ## Auto-Response Rules
 
 Adapters include pre-configured rules to automatically handle known prompts. Rules use two response modes depending on the CLI's input style.
 
-### TUI Menu CLIs (Gemini, Codex, Claude)
+### TUI Menu CLIs (Gemini, Codex, Claude, Hermes)
 
 These CLIs use arrow-key menus rendered with Ink/Ratatui. Rules send key sequences:
 
@@ -200,7 +209,7 @@ aider.autoResponseRules;
 
 Adapters declare their input style via `usesTuiMenus`. This affects how auto-response rules with no explicit `responseType` are delivered:
 
-- `usesTuiMenus: true` (Gemini, Codex, Claude) — defaults to `sendKeys('enter')`
+- `usesTuiMenus: true` (Gemini, Codex, Claude, Hermes) — defaults to `sendKeys('enter')`
 - `usesTuiMenus: false` (Aider) — defaults to `writeRaw(response + '\r')`
 
 ## Model Recommendations
@@ -248,6 +257,7 @@ aider.memoryFilePath; // '.aider.conventions.md'
 | Gemini | `GEMINI.md` | `.gemini/settings.json` | `.gemini/styles` |
 | Codex | `AGENTS.md` | `.codex/config.json` | `codex.md` |
 | Aider | `.aider.conventions.md` | `.aider.conf.yml` | `.aiderignore` |
+| Hermes | `AGENTS.md` | `cli-config.yaml` | `SOUL.md` |
 
 ### Writing Memory Files
 
@@ -344,6 +354,7 @@ const writtenFiles = await adapter.writeApprovalConfig('/path/to/workspace', {
 | Gemini CLI | `.gemini/settings.json` | `general.defaultApprovalMode`, `tools.allowed`, `tools.exclude` |
 | Codex | `.codex/config.json` | `approval_policy`, `sandbox_mode`, `tools.web_search` |
 | Aider | `.aider.conf.yml` | `yes-always`, `no-auto-commits` |
+| Hermes Agent | none (CLI-managed) | approvals currently handled in-session by Hermes safety prompts |
 
 ## Preflight Check
 
@@ -479,7 +490,7 @@ const allAdapters = createAllAdapters();
 const claude = createAdapter('claude');
 
 // Available adapter types
-console.log(Object.keys(ADAPTER_TYPES)); // ['claude', 'gemini', 'codex', 'aider']
+console.log(Object.keys(ADAPTER_TYPES)); // ['claude', 'gemini', 'codex', 'aider', 'hermes']
 ```
 
 ## License

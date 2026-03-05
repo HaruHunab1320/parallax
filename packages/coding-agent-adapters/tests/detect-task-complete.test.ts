@@ -3,6 +3,7 @@ import { ClaudeAdapter } from '../src/claude-adapter';
 import { GeminiAdapter } from '../src/gemini-adapter';
 import { CodexAdapter } from '../src/codex-adapter';
 import { AiderAdapter } from '../src/aider-adapter';
+import { HermesAdapter } from '../src/hermes-adapter';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Claude Code - detectTaskComplete
@@ -239,6 +240,33 @@ describe('AiderAdapter.detectTaskComplete', () => {
 
   it('rejects active waiting output', () => {
     const output = 'Waiting for claude-sonnet-4-20250514';
+    expect(adapter.detectTaskComplete(output)).toBe(false);
+  });
+
+  it('rejects empty output', () => {
+    expect(adapter.detectTaskComplete('')).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hermes - detectTaskComplete
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('HermesAdapter.detectTaskComplete', () => {
+  const adapter = new HermesAdapter();
+
+  it('detects Hermes response box', () => {
+    const output = '╭─ ⚕ Hermes ─╮\nfinal answer\n\n╰─────────────╯';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
+  it('detects idle prompt after tool feed', () => {
+    const output = '┊ 💻 $ ls -la  0.2s\n❯ ';
+    expect(adapter.detectTaskComplete(output)).toBe(true);
+  });
+
+  it('rejects active loading output', () => {
+    const output = '(⌐■_■) deliberating... (1.1s)';
     expect(adapter.detectTaskComplete(output)).toBe(false);
   });
 

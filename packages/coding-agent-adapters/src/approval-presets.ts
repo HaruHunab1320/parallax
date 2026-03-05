@@ -431,6 +431,20 @@ export function generateAiderApprovalConfig(preset: ApprovalPreset): ApprovalCon
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+export function generateHermesApprovalConfig(preset: ApprovalPreset): ApprovalConfig {
+  const def = getPresetDefinition(preset);
+
+  // Hermes CLI handles dangerous command approvals internally and does not
+  // currently expose a stable approval-policy CLI/file matrix like other adapters.
+  return {
+    preset,
+    cliFlags: [],
+    workspaceFiles: [],
+    envVars: {},
+    summary: `Hermes Agent: ${def.description}`,
+  };
+}
+
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -447,6 +461,8 @@ export function generateApprovalConfig(
       return generateCodexApprovalConfig(preset);
     case 'aider':
       return generateAiderApprovalConfig(preset);
+    case 'hermes':
+      return generateHermesApprovalConfig(preset);
     default:
       throw new Error(`Unknown adapter type: ${adapterType}`);
   }

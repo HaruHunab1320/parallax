@@ -45,6 +45,7 @@ export { ClaudeAdapter } from './claude-adapter';
 export { GeminiAdapter } from './gemini-adapter';
 export { CodexAdapter } from './codex-adapter';
 export { AiderAdapter } from './aider-adapter';
+export { HermesAdapter } from './hermes-adapter';
 
 // Pattern loading (dynamic patterns from adapter-monitor, with baseline fallback)
 export {
@@ -64,6 +65,7 @@ export {
   generateGeminiApprovalConfig,
   generateCodexApprovalConfig,
   generateAiderApprovalConfig,
+  generateHermesApprovalConfig,
   listPresets,
   getPresetDefinition,
   TOOL_CATEGORIES,
@@ -90,6 +92,7 @@ import { ClaudeAdapter } from './claude-adapter';
 import { GeminiAdapter } from './gemini-adapter';
 import { CodexAdapter } from './codex-adapter';
 import { AiderAdapter } from './aider-adapter';
+import { HermesAdapter } from './hermes-adapter';
 
 /**
  * Create instances of all available adapters
@@ -100,6 +103,7 @@ export function createAllAdapters() {
     new GeminiAdapter(),
     new CodexAdapter(),
     new AiderAdapter(),
+    new HermesAdapter(),
   ];
 }
 
@@ -108,11 +112,12 @@ export function createAllAdapters() {
  */
 import type { AdapterType } from './base-coding-adapter';
 
-export const ADAPTER_TYPES: Record<AdapterType, typeof ClaudeAdapter | typeof GeminiAdapter | typeof CodexAdapter | typeof AiderAdapter> = {
+export const ADAPTER_TYPES: Record<AdapterType, typeof ClaudeAdapter | typeof GeminiAdapter | typeof CodexAdapter | typeof AiderAdapter | typeof HermesAdapter> = {
   claude: ClaudeAdapter,
   gemini: GeminiAdapter,
   codex: CodexAdapter,
   aider: AiderAdapter,
+  hermes: HermesAdapter,
 };
 
 /**

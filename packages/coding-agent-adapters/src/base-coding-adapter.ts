@@ -14,7 +14,7 @@ import { generateApprovalConfig, type ApprovalPreset, type ApprovalConfig } from
 /**
  * Supported adapter types
  */
-export type AdapterType = 'claude' | 'gemini' | 'codex' | 'aider';
+export type AdapterType = 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes';
 
 /**
  * Credentials that can be passed via SpawnConfig.adapterConfig
@@ -328,7 +328,7 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   getApprovalConfig(config: SpawnConfig): ApprovalConfig | null {
     const preset = this.getApprovalPreset(config);
     if (!preset) return null;
-    return generateApprovalConfig(this.adapterType as 'claude' | 'gemini' | 'codex' | 'aider', preset);
+    return generateApprovalConfig(this.adapterType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes', preset);
   }
 
   /**

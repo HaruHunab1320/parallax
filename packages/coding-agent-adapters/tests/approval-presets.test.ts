@@ -5,6 +5,7 @@ import {
   generateGeminiApprovalConfig,
   generateCodexApprovalConfig,
   generateAiderApprovalConfig,
+  generateHermesApprovalConfig,
   listPresets,
   getPresetDefinition,
   TOOL_CATEGORIES,
@@ -125,6 +126,9 @@ describe('Approval Presets', () => {
 
       const aider = generateApprovalConfig('aider', 'standard');
       expect(aider.summary).toContain('Aider');
+
+      const hermes = generateApprovalConfig('hermes', 'standard');
+      expect(hermes.summary).toContain('Hermes Agent');
     });
 
     it('throws for unknown adapter type', () => {
@@ -341,6 +345,23 @@ describe('Approval Presets', () => {
           }
         });
       }
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Hermes config generation (4 presets)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('generateHermesApprovalConfig()', () => {
+  it('returns a no-op translation for all presets', () => {
+    for (const preset of ['readonly', 'standard', 'permissive', 'autonomous'] as const) {
+      const config = generateHermesApprovalConfig(preset);
+      expect(config.preset).toBe(preset);
+      expect(config.cliFlags).toEqual([]);
+      expect(config.workspaceFiles).toEqual([]);
+      expect(config.envVars).toEqual({});
+      expect(config.summary).toContain('Hermes Agent');
     }
   });
 });
