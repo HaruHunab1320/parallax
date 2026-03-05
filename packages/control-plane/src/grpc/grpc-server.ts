@@ -18,6 +18,7 @@ import { RegistryServiceImpl } from './services/registry-service';
 import { PatternServiceImpl } from './services/pattern-service';
 import { CoordinatorServiceImpl } from './services/coordinator-service';
 import { ExecutionServiceImpl } from './services/execution-service';
+import { GatewayService } from './services/gateway-service';
 import { ExecutionEventBus } from '../execution-events';
 
 // Proto paths (using generated files from sdk-typescript)
@@ -29,15 +30,18 @@ export class GrpcServer {
   private patternService: PatternServiceImpl;
   private coordinatorService: CoordinatorServiceImpl;
   private executionService: ExecutionServiceImpl;
+  private gatewayService?: GatewayService;
 
   constructor(
     patternEngine: IPatternEngine,
     agentRegistry: IAgentRegistry,
     database: DatabaseService,
     private logger: Logger,
-    executionEvents?: ExecutionEventBus
+    executionEvents?: ExecutionEventBus,
+    gatewayService?: GatewayService
   ) {
     this.server = new grpc.Server();
+    this.gatewayService = gatewayService;
 
     // Initialize service implementations
     this.registryService = new RegistryServiceImpl(agentRegistry, logger);
@@ -81,6 +85,16 @@ export class GrpcServer {
       executionsProto.parallax.executions.ExecutionService.service,
       this.executionService.getImplementation()
     );
+
+    // Add Agent Gateway Service (if available)
+    if (this.gatewayService) {
+      const gatewayProto = this.loadProto('gateway.proto');
+      this.server.addService(
+        gatewayProto.parallax.gateway.AgentGateway.service,
+        this.gatewayService.getImplementation()
+      );
+      this.logger.info('Agent Gateway service registered');
+    }
 
     this.logger.info('gRPC services registered');
   }

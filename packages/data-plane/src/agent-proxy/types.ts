@@ -15,7 +15,7 @@ export interface ProxyConfig {
 export interface AgentConnection {
   id: string;
   endpoint: string;
-  protocol: 'grpc' | 'http';
+  protocol: 'grpc' | 'http' | 'gateway';
   status: 'connected' | 'disconnected' | 'error';
   lastSeen: Date;
   metrics: ConnectionMetrics;

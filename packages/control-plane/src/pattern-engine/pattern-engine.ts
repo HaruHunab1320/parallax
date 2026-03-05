@@ -38,6 +38,8 @@ export class PatternEngine implements IPatternEngine {
   private executionEngine?: ExecutionEngine;
   private agentRuntimeService?: AgentRuntimeService;
   private spawnedAgents: Map<string, AgentHandle[]> = new Map(); // executionId -> spawned agents
+  private shuttingDown: boolean = false;
+  private nodeId?: string;
 
   constructor(
     private runtimeManager: RuntimeManager,
@@ -70,6 +72,15 @@ export class PatternEngine implements IPatternEngine {
   }
 
   /**
+   * Set the gateway service on the internal AgentProxy (for deferred initialization)
+   */
+  setGatewayService(service: any): void {
+    if (this.agentProxy && typeof (this.agentProxy as any).setGatewayService === 'function') {
+      (this.agentProxy as any).setGatewayService(service);
+    }
+  }
+
+  /**
    * Set the workspace service (for deferred initialization)
    */
   setWorkspaceService(service: WorkspaceService): void {
@@ -81,6 +92,29 @@ export class PatternEngine implements IPatternEngine {
    */
   setAgentRuntimeService(service: AgentRuntimeService): void {
     this.agentRuntimeService = service;
+  }
+
+  /**
+   * Set the node ID for this control plane instance (for execution resilience)
+   */
+  setNodeId(id: string): void {
+    this.nodeId = id;
+  }
+
+  /**
+   * Set the shutting down flag — prevents new executions from starting
+   */
+  setShuttingDown(value: boolean): void {
+    this.shuttingDown = value;
+  }
+
+  /**
+   * Get IDs of currently in-flight executions
+   */
+  getInFlightExecutionIds(): string[] {
+    return Array.from(this.executions.entries())
+      .filter(([_, exec]) => exec.status === 'running')
+      .map(([id]) => id);
   }
 
   /**
@@ -208,10 +242,20 @@ export class PatternEngine implements IPatternEngine {
     input: any,
     options?: PatternExecutionOptions
   ): Promise<PatternExecution> {
+    // Reject new executions if shutting down
+    if (this.shuttingDown) {
+      throw new Error('Server is shutting down — not accepting new executions');
+    }
+
     const pattern = this.getPattern(patternName);
     if (!pattern) {
       throw new Error(`Pattern ${patternName} not found`);
     }
+
+    // Resolve timeout: options > pattern metadata > default (5 min)
+    const timeoutMs = options?.timeout
+      ?? (pattern.metadata as any)?.timeout
+      ?? 300000;
 
     const executionId = options?.executionId || uuidv4();
     const execution: PatternExecution = {
@@ -224,6 +268,37 @@ export class PatternEngine implements IPatternEngine {
 
     this.executions.set(execution.id, execution);
     this.currentExecutionId = execution.id;
+
+    // Wrap execution in a timeout race
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Execution timed out after ${timeoutMs}ms`)), timeoutMs);
+    });
+
+    try {
+      return await Promise.race([
+        this._executePatternInner(pattern, execution, executionId, input, options, timeoutMs),
+        timeoutPromise,
+      ]);
+    } catch (error) {
+      // Ensure the execution is marked as failed on timeout
+      if (execution.status === 'running') {
+        execution.endTime = new Date();
+        execution.status = 'failed';
+        execution.error = error instanceof Error ? error.message : String(error);
+      }
+      throw error;
+    }
+  }
+
+  private async _executePatternInner(
+    pattern: Pattern,
+    execution: PatternExecution,
+    executionId: string,
+    input: any,
+    options: PatternExecutionOptions | undefined,
+    timeoutMs: number
+  ): Promise<PatternExecution> {
+    const patternName = pattern.name;
 
     const emitEvent = (type: string, data?: any) => {
       this.executionEvents?.emitEvent({

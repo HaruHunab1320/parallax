@@ -15,6 +15,12 @@ import path from 'path';
 
 const PROTO_DIR = path.join(__dirname, '../../../../proto');
 
+export type GatewayDispatcher = (
+  agentId: string,
+  request: { description: string; data?: any; metadata?: Record<string, any> },
+  timeout: number
+) => Promise<any>;
+
 export class AgentProxy extends EventEmitter {
   private connections: Map<string, AgentConnection> = new Map();
   private circuitBreakers: Map<string, CircuitBreaker> = new Map();
@@ -22,6 +28,7 @@ export class AgentProxy extends EventEmitter {
   private requestTimestamps: Map<string, number[]> = new Map();
   private grpcClients: Map<string, any> = new Map();
   private confidenceProto: any;
+  private gatewayDispatcher?: GatewayDispatcher;
 
   constructor(
     private config: ProxyConfig,
@@ -31,6 +38,14 @@ export class AgentProxy extends EventEmitter {
     super();
     this.loadBalancer = new LoadBalancer(loadBalancingStrategy);
     this.loadProto();
+  }
+
+  /**
+   * Set a gateway dispatcher for routing tasks to gateway-connected agents.
+   * This is injected by the control plane when GatewayService is available.
+   */
+  setGatewayDispatcher(fn: GatewayDispatcher): void {
+    this.gatewayDispatcher = fn;
   }
 
   private loadProto(): void {
@@ -48,11 +63,15 @@ export class AgentProxy extends EventEmitter {
     this.confidenceProto = protoDescriptor.parallax.confidence;
   }
 
-  async registerAgent(id: string, endpoint: string, protocol: 'grpc' | 'http' = 'grpc'): Promise<void> {
+  async registerAgent(id: string, endpoint: string, protocol?: 'grpc' | 'http' | 'gateway'): Promise<void> {
+    // Auto-detect gateway protocol from endpoint scheme
+    const detectedProtocol = protocol
+      || (endpoint.startsWith('gateway://') ? 'gateway' : endpoint.startsWith('http') ? 'http' : 'grpc');
+
     const connection: AgentConnection = {
       id,
       endpoint,
-      protocol,
+      protocol: detectedProtocol,
       status: 'disconnected',
       lastSeen: new Date(),
       metrics: {
@@ -85,7 +104,14 @@ export class AgentProxy extends EventEmitter {
     if (!connection) return;
 
     try {
-      if (connection.protocol === 'http') {
+      if (connection.protocol === 'gateway') {
+        // Gateway agents are already connected via their stream — mark as connected
+        connection.status = 'connected';
+        connection.lastSeen = new Date();
+        this.logger.info({ agentId: id }, 'Gateway agent registered');
+        this.emit('agent-connected', id);
+        return;
+      } else if (connection.protocol === 'http') {
         const url = this.resolveHttpUrl(connection.endpoint, 'health');
         const response = await fetch(url, { method: 'GET' });
         if (!response.ok) {
@@ -106,7 +132,7 @@ export class AgentProxy extends EventEmitter {
 
       connection.status = 'connected';
       connection.lastSeen = new Date();
-      
+
       this.logger.info({ agentId: id }, 'Agent connected');
       this.emit('agent-connected', id);
     } catch (error) {
@@ -189,11 +215,36 @@ export class AgentProxy extends EventEmitter {
       this.logger.warn({ agentId: agent.id, status: agent.status }, 'Agent not marked as connected, attempting request anyway');
     }
 
+    if (agent.protocol === 'gateway') {
+      return this.executeGatewayRequest<T>(agent, request);
+    }
+
     if (agent.protocol === 'http') {
       return this.executeHttpRequest<T>(agent, request);
     }
 
     return this.executeGrpcRequest<T>(agent, request);
+  }
+
+  private async executeGatewayRequest<T>(
+    agent: AgentConnection,
+    request: ProxyRequest
+  ): Promise<T> {
+    if (!this.gatewayDispatcher) {
+      throw new Error(`No gateway dispatcher configured for agent ${agent.id}`);
+    }
+
+    const taskDescription =
+      request.payload?.task || request.payload?.description || request.method;
+    const data = request.payload?.data ?? request.payload ?? {};
+
+    const result = await this.gatewayDispatcher(
+      agent.id,
+      { description: taskDescription, data },
+      request.timeout ?? this.config.timeout
+    );
+
+    return result as T;
   }
 
   private async executeHttpRequest<T>(

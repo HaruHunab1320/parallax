@@ -21,11 +21,12 @@ model Pattern {
   input       Json?
   minAgents   Int?
   maxAgents   Int?
+  timeout     Int?        // Default timeout in ms for this pattern
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  
+
   executions  Execution[]
-  
+
   @@index([name])
 }
 
@@ -47,26 +48,30 @@ model Agent {
 
 // Time-series data (will be converted to TimescaleDB hypertables)
 model Execution {
-  id           String   @id @default(uuid())
-  time         DateTime @default(now()) @db.Timestamptz
+  id           String    @id @default(uuid())
+  time         DateTime  @default(now()) @db.Timestamptz
   patternId    String
-  pattern      Pattern  @relation(fields: [patternId], references: [id])
-  status       String   @default("pending") // pending, running, completed, failed, cancelled
+  pattern      Pattern   @relation(fields: [patternId], references: [id])
+  status       String    @default("pending") // pending, running, completed, failed, cancelled
   input        Json
   result       Json?
-  error        String?  @db.Text
+  error        String?   @db.Text
   confidence   Float?
   metrics      Json?
   warnings     Json?
   durationMs   Int?
   agentCount   Int?
-  createdAt    DateTime @default(now())
-  
+  nodeId       String?   // Which control plane instance owns this execution
+  timeoutMs    Int?      // Per-execution timeout override
+  startedAt    DateTime? @db.Timestamptz // When execution actually started
+  createdAt    DateTime  @default(now())
+
   events       ExecutionEvent[]
-  
+
   @@index([time, patternId])
   @@index([status])
   @@index([time])
+  @@index([nodeId, status])
 }
 
 model ExecutionEvent {

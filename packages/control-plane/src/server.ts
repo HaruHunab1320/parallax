@@ -41,7 +41,8 @@ import { AuthService, requireAuth, optionalAuth } from './auth';
 import { AuditService } from './audit';
 import { LicenseEnforcer } from './licensing/license-enforcer';
 import { DatabaseService } from './db/database.service';
-import { GrpcServer } from './grpc';
+import { GrpcServer, GatewayService } from './grpc';
+import { StartupRecoveryService, TimeoutChecker, GracefulShutdownHandler } from './resilience';
 import path from 'path';
 import { createServer as createHttpServer } from 'http';
 import { WebSocketServer } from 'ws';
@@ -97,6 +98,19 @@ export async function createServer(): Promise<express.Application> {
   // Initialize database
   const database = new DatabaseService(logger);
   await database.initialize();
+
+  // Generate nodeId for this control plane instance
+  const nodeId = process.env.PARALLAX_NODE_ID
+    || process.env.HOSTNAME
+    || `node-${process.pid}`;
+  logger.info({ nodeId }, 'Control plane node ID');
+
+  // Run startup recovery — find and fail orphaned executions from previous runs
+  const startupRecovery = new StartupRecoveryService(database.executions, nodeId, logger);
+  const recoveredCount = await startupRecovery.recoverOrphanedExecutions();
+  if (recoveredCount > 0) {
+    logger.info({ recoveredCount }, 'Recovered orphaned executions from previous run');
+  }
 
   // Initialize license enforcer
   const licenseEnforcer = new LicenseEnforcer(logger);
@@ -230,6 +244,9 @@ export async function createServer(): Promise<express.Application> {
     logger.info('ExecutionEngine initialized with data plane integration');
   }
 
+  // Initialize Gateway Service for NAT-traversing agents
+  const gatewayService = new GatewayService(registry, logger);
+
   // Use traced pattern engine if tracing is enabled
   // Note: workspaceService and agentRuntimeService will be set later after they're initialized
   const patternEngine: IPatternEngine = tracingConfig.exporterType !== 'none'
@@ -267,6 +284,9 @@ export async function createServer(): Promise<express.Application> {
     logger.info('Nested pattern execution enabled via PatternExecutorAdapter');
   }
 
+  // Wire nodeId into pattern engine for resilience tracking
+  (patternEngine as PatternEngine).setNodeId(nodeId);
+
   // Initialize metrics
   const metrics = new MetricsCollector();
 
@@ -289,6 +309,23 @@ export async function createServer(): Promise<express.Application> {
     } catch (error) {
       logger.error({ error }, 'Failed to initialize HA services - continuing without HA');
     }
+  }
+
+  // Start timeout checker — periodically fails timed-out executions
+  const timeoutChecker = new TimeoutChecker(database.executions, logger, {
+    defaultTimeoutMs: parseInt(process.env.PARALLAX_DEFAULT_EXECUTION_TIMEOUT || '300000'),
+    isLeader: haEnabled && haServices
+      ? () => haServices!.leaderElection.isLeader()
+      : () => true,
+  });
+  timeoutChecker.start();
+
+  // In HA mode, leader also recovers dead nodes' orphans
+  if (haEnabled && haServices) {
+    haServices.leaderElection.on('elected', async () => {
+      logger.info('Became HA leader — running full orphan recovery');
+      await startupRecovery.recoverAllOrphanedExecutions();
+    });
   }
 
   // Initialize Scheduler service (Enterprise feature)
@@ -680,9 +717,32 @@ export async function createServer(): Promise<express.Application> {
   // Store gRPC server instance for shutdown
   let grpcServerInstance: GrpcServer | null = null;
 
+  // Create graceful shutdown handler for execution resilience
+  const gracefulShutdown = new GracefulShutdownHandler(
+    database.executions,
+    nodeId,
+    logger,
+    {
+      setShuttingDown: (value: boolean) => (patternEngine as PatternEngine).setShuttingDown(value),
+      getInFlightExecutionIds: () => (patternEngine as PatternEngine).getInFlightExecutionIds(),
+    },
+    {
+      drainTimeoutMs: parseInt(process.env.PARALLAX_SHUTDOWN_DRAIN_TIMEOUT || '30000'),
+    }
+  );
+
   // Graceful shutdown handler
   const shutdown = async () => {
     logger.info('Shutting down control plane...');
+
+    // 1. Graceful execution drain — stop accepting new, wait for in-flight
+    await gracefulShutdown.shutdown();
+
+    // 2. Stop timeout checker
+    timeoutChecker.stop();
+
+    // 3. Disconnect all gateway agents
+    await gatewayService.shutdown();
 
     // Stop scheduler
     if (schedulerService) {
@@ -710,8 +770,22 @@ export async function createServer(): Promise<express.Application> {
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
 
+  // Wire gateway dispatcher into the data-plane AgentProxy (for ExecutionEngine path)
+  if (enableExecutionEngine && executionEngine) {
+    const dpProxy = executionEngine.getAgentProxy() as any;
+    if (typeof dpProxy.setGatewayDispatcher === 'function') {
+      dpProxy.setGatewayDispatcher(async (agentId: string, request: any, timeout: number) => {
+        return gatewayService.dispatchTask(agentId, request, timeout);
+      });
+      logger.info('Gateway dispatcher wired to data-plane AgentProxy');
+    }
+  }
+
+  // Wire gateway service into control-plane AgentProxy (used by PatternEngine)
+  (patternEngine as any).setGatewayService?.(gatewayService);
+
   // Initialize gRPC server
-  const grpcServer = new GrpcServer(patternEngine, registry, database, logger, executionEvents);
+  const grpcServer = new GrpcServer(patternEngine, registry, database, logger, executionEvents, gatewayService);
   grpcServerInstance = grpcServer;
   const grpcPort = parseInt(process.env.GRPC_PORT || '50051');
 

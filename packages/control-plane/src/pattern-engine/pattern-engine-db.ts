@@ -8,7 +8,11 @@ export async function createExecutionInDb(
   database: DatabaseService,
   patternName: string,
   input: any,
-  options?: any
+  options?: {
+    nodeId?: string;
+    timeoutMs?: number;
+    [key: string]: any;
+  }
 ): Promise<string> {
   // First, ensure the pattern exists in the database
   let pattern = await database.patterns.findByName(patternName);
@@ -22,15 +26,22 @@ export async function createExecutionInDb(
     });
   }
 
-  // Create execution record
-  const execution = await database.executions.create({
+  // Create execution record with resilience fields
+  const createData: any = {
     pattern: {
       connect: { id: pattern.id }
     },
     input: input,
     status: 'running',
     metrics: options || {},
-  });
+  };
+
+  // Add resilience fields if provided (columns added via migration)
+  if (options?.nodeId) createData.nodeId = options.nodeId;
+  if (options?.timeoutMs) createData.timeoutMs = options.timeoutMs;
+  createData.startedAt = new Date();
+
+  const execution = await database.executions.create(createData);
 
   // Add initial event
   await database.executions.addEvent(execution.id, {
@@ -38,7 +49,8 @@ export async function createExecutionInDb(
     data: {
       patternName,
       input,
-      options,
+      nodeId: options?.nodeId,
+      timeoutMs: options?.timeoutMs,
     },
   });
 

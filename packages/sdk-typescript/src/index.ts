@@ -1,5 +1,6 @@
 export * from './agent';
 export * from './agent-base';
+export type { GatewayOptions } from './agent-base';
 export * from './executions';
 export * from './patterns-client';
 export * from './registry-client';

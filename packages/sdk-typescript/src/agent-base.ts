@@ -66,14 +66,35 @@ function normalizeStruct(input: any): any {
   return input;
 }
 
+export interface GatewayOptions {
+  /** Credentials for the gateway connection */
+  credentials?: grpc.ChannelCredentials;
+  /** Heartbeat interval in ms (default: 10000) */
+  heartbeatIntervalMs?: number;
+  /** Reconnect on disconnect (default: true) */
+  autoReconnect?: boolean;
+  /** Max reconnect attempts before giving up (default: Infinity) */
+  maxReconnectAttempts?: number;
+  /** Initial reconnect delay in ms (default: 1000) */
+  initialReconnectDelayMs?: number;
+  /** Max reconnect delay in ms (default: 30000) */
+  maxReconnectDelayMs?: number;
+}
+
 export abstract class ParallaxAgent {
   protected server: grpc.Server;
   protected registryClient: any;
   protected confidenceProto: any;
   protected registryProto: any;
+  protected gatewayProto: any;
   protected leaseId?: string;
   protected renewInterval?: NodeJS.Timeout;
-  
+  private gatewayStream?: grpc.ClientDuplexStream<any, any>;
+  private gatewayHeartbeatTimer?: NodeJS.Timeout;
+  private gatewayReconnecting: boolean = false;
+  private gatewayEndpoint?: string;
+  private gatewayOptions?: GatewayOptions;
+
   constructor(
     public readonly id: string,
     public readonly name: string,
@@ -147,9 +168,24 @@ export abstract class ParallaxAgent {
       oneofs: true,
       includeDirs: [PROTO_DIR]
     });
-    
+
     const registryDescriptor = grpc.loadPackageDefinition(registryDefinition) as unknown as GrpcProto;
     this.registryProto = registryDescriptor.parallax.registry;
+
+    // Load gateway proto
+    const gatewayPath = path.join(PROTO_DIR, 'gateway.proto');
+    if (fs.existsSync(gatewayPath)) {
+      const gatewayDefinition = protoLoader.loadSync(gatewayPath, {
+        keepCase: true,
+        longs: String,
+        enums: String,
+        defaults: true,
+        oneofs: true,
+        includeDirs: [PROTO_DIR]
+      });
+      const gatewayDescriptor = grpc.loadPackageDefinition(gatewayDefinition) as any;
+      this.gatewayProto = gatewayDescriptor.parallax.gateway;
+    }
   }
 
   /**
@@ -444,14 +480,233 @@ export abstract class ParallaxAgent {
   }
 
   /**
+   * Connect to the control plane via the Agent Gateway (bidirectional stream).
+   * Use this instead of serve() for agents behind NAT or without a public endpoint.
+   * The agent opens an outbound connection; tasks are received through the stream.
+   */
+  async connectViaGateway(
+    endpoint: string,
+    options?: GatewayOptions
+  ): Promise<void> {
+    if (!this.gatewayProto) {
+      throw new Error('Gateway proto not loaded. Ensure gateway.proto exists in the proto directory.');
+    }
+
+    this.gatewayEndpoint = endpoint;
+    this.gatewayOptions = options;
+
+    const credentials = options?.credentials || grpc.credentials.createInsecure();
+    const heartbeatIntervalMs = options?.heartbeatIntervalMs || 10000;
+
+    const client = new this.gatewayProto.AgentGateway(endpoint, credentials);
+
+    // Open bidirectional stream
+    const stream = client.connect();
+    this.gatewayStream = stream;
+
+    // Send AgentHello
+    stream.write({
+      request_id: `hello-${this.id}`,
+      hello: {
+        agent_id: this.id,
+        agent_name: this.name,
+        capabilities: this.capabilities,
+        metadata: this.metadata,
+        heartbeat_interval_ms: heartbeatIntervalMs,
+      },
+    });
+
+    console.log(`Agent ${this.name} (${this.id}) connecting via gateway to ${endpoint}`);
+
+    // Start heartbeat
+    this.gatewayHeartbeatTimer = setInterval(() => {
+      try {
+        stream.write({
+          request_id: '',
+          heartbeat: {
+            agent_id: this.id,
+            load: 0,
+            status: 'healthy',
+          },
+        });
+      } catch {
+        // Stream might be closed; reconnect logic will handle it
+      }
+    }, heartbeatIntervalMs);
+
+    // Listen for messages from control plane
+    stream.on('data', async (message: any) => {
+      if (message.ack) {
+        if (message.ack.accepted) {
+          console.log(`Agent ${this.name} connected via gateway (node: ${message.ack.assigned_node_id})`);
+        } else {
+          console.error(`Gateway rejected agent: ${message.ack.message}`);
+          stream.end();
+        }
+      } else if (message.task_request) {
+        await this.handleGatewayTask(stream, message.request_id, message.task_request);
+      } else if (message.cancel_task) {
+        console.log(`Task cancelled: ${message.cancel_task.task_id} (${message.cancel_task.reason})`);
+        // Cancellation support can be extended in subclasses
+      } else if (message.ping) {
+        // Respond to ping with a heartbeat
+        stream.write({
+          request_id: '',
+          heartbeat: {
+            agent_id: this.id,
+            load: 0,
+            status: 'healthy',
+          },
+        });
+      }
+    });
+
+    stream.on('error', (error: any) => {
+      console.error(`Gateway stream error: ${error.message}`);
+      this.handleGatewayDisconnect(error);
+    });
+
+    stream.on('end', () => {
+      console.log('Gateway stream ended');
+      this.handleGatewayDisconnect(new Error('Stream ended'));
+    });
+
+    // Wait for the ack before returning
+    return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Gateway connection timed out waiting for ack'));
+      }, 10000);
+
+      const onData = (message: any) => {
+        if (message.ack) {
+          clearTimeout(timeout);
+          stream.removeListener('data', onData);
+          if (message.ack.accepted) {
+            resolve();
+          } else {
+            reject(new Error(`Gateway rejected: ${message.ack.message}`));
+          }
+        }
+      };
+
+      // Add a temporary listener just for the initial ack
+      // Note: the permanent 'data' listener above will also fire
+      stream.on('data', onData);
+    });
+  }
+
+  /**
+   * Handle a task received via the gateway stream.
+   */
+  private async handleGatewayTask(
+    stream: grpc.ClientDuplexStream<any, any>,
+    requestId: string,
+    taskRequest: any
+  ): Promise<void> {
+    try {
+      const taskDescription = taskRequest.task_description || '';
+      const data = normalizeStruct(taskRequest.data);
+
+      const result = await this.analyze(taskDescription, data);
+
+      stream.write({
+        request_id: requestId,
+        task_result: {
+          task_id: taskRequest.task_id,
+          value_json: JSON.stringify(result.value),
+          confidence: result.confidence,
+          reasoning: result.reasoning || '',
+          metadata: result.metadata || {},
+        },
+      });
+    } catch (error: any) {
+      stream.write({
+        request_id: requestId,
+        task_error: {
+          task_id: taskRequest.task_id,
+          error_message: error.message || 'Unknown error',
+          error_code: 'INTERNAL',
+        },
+      });
+    }
+  }
+
+  /**
+   * Handle gateway disconnection with auto-reconnect.
+   */
+  private handleGatewayDisconnect(_error: Error): void {
+    // Clean up heartbeat timer
+    if (this.gatewayHeartbeatTimer) {
+      clearInterval(this.gatewayHeartbeatTimer);
+      this.gatewayHeartbeatTimer = undefined;
+    }
+
+    this.gatewayStream = undefined;
+
+    const autoReconnect = this.gatewayOptions?.autoReconnect !== false;
+    if (!autoReconnect || this.gatewayReconnecting) return;
+
+    if (!this.gatewayEndpoint) return;
+
+    this.gatewayReconnecting = true;
+    const initialDelay = this.gatewayOptions?.initialReconnectDelayMs || 1000;
+    const maxDelay = this.gatewayOptions?.maxReconnectDelayMs || 30000;
+    const maxAttempts = this.gatewayOptions?.maxReconnectAttempts ?? Infinity;
+
+    let attempt = 0;
+    const reconnect = async () => {
+      if (attempt >= maxAttempts) {
+        console.error(`Gateway reconnect failed after ${attempt} attempts`);
+        this.gatewayReconnecting = false;
+        return;
+      }
+
+      const delay = Math.min(initialDelay * Math.pow(2, attempt), maxDelay);
+      attempt++;
+
+      console.log(`Gateway reconnecting in ${delay}ms (attempt ${attempt})...`);
+      await new Promise(r => setTimeout(r, delay));
+
+      try {
+        await this.connectViaGateway(this.gatewayEndpoint!, this.gatewayOptions);
+        console.log('Gateway reconnected successfully');
+        this.gatewayReconnecting = false;
+      } catch (reconnectError: any) {
+        console.error(`Gateway reconnect attempt ${attempt} failed: ${reconnectError.message}`);
+        await reconnect();
+      }
+    };
+
+    reconnect().catch(() => {
+      this.gatewayReconnecting = false;
+    });
+  }
+
+  /**
    * Shutdown the agent
    */
   async shutdown(): Promise<void> {
+    // Stop gateway connection
+    if (this.gatewayHeartbeatTimer) {
+      clearInterval(this.gatewayHeartbeatTimer);
+      this.gatewayHeartbeatTimer = undefined;
+    }
+    if (this.gatewayStream) {
+      try {
+        this.gatewayStream.end();
+      } catch {
+        // Ignore errors on stream close
+      }
+      this.gatewayStream = undefined;
+    }
+    // Prevent reconnect during shutdown
+    this.gatewayReconnecting = true;
+
     // Stop lease renewal
     if (this.renewInterval) {
       clearInterval(this.renewInterval);
     }
-    
+
     // Unregister from control plane
     if (this.registryClient && this.id) {
       try {
@@ -464,7 +719,7 @@ export abstract class ParallaxAgent {
         console.error('Failed to unregister:', error);
       }
     }
-    
+
     // Stop gRPC server
     return new Promise((resolve) => {
       this.server.tryShutdown(() => {

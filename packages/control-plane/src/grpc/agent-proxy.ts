@@ -8,6 +8,7 @@ import path from 'path';
 import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
+import type { GatewayService, GatewayDispatchResult } from './services/gateway-service';
 
 const PROTO_DIR = path.join(__dirname, '../../../../proto');
 
@@ -29,9 +30,17 @@ export class AgentProxy {
   private clients: Map<string, any> = new Map();
   private confidenceProto: any;
   private agentCredentials?: grpc.ChannelCredentials;
+  private gatewayService?: GatewayService;
 
   constructor(private logger: Logger) {
     this.loadProto();
+  }
+
+  /**
+   * Set the gateway service for routing tasks to gateway-connected agents.
+   */
+  setGatewayService(service: GatewayService): void {
+    this.gatewayService = service;
   }
 
   private toStructValue(value: any): any {
@@ -125,6 +134,11 @@ export class AgentProxy {
     task: AgentTask,
     timeout: number = 30000
   ): Promise<AgentResult> {
+    // Route gateway:// endpoints through GatewayService
+    if (agentAddress.startsWith('gateway://')) {
+      return this.executeViaGateway(agentAddress, task, timeout);
+    }
+
     const client = this.getClient(agentAddress);
     
     return new Promise((resolve) => {
@@ -174,6 +188,13 @@ export class AgentProxy {
     onResult: (result: AgentResult) => void,
     timeout: number = 30000
   ): Promise<void> {
+    // Gateway agents: dispatch and return single result (no true streaming yet)
+    if (agentAddress.startsWith('gateway://')) {
+      const result = await this.executeViaGateway(agentAddress, task, timeout);
+      onResult(result);
+      return;
+    }
+
     const client = this.getClient(agentAddress);
     
     return new Promise((resolve, reject) => {
@@ -218,6 +239,12 @@ export class AgentProxy {
    * Get capabilities from an agent
    */
   async getCapabilities(agentAddress: string, timeout: number = 5000): Promise<string[]> {
+    // Gateway agents: return capabilities from session
+    if (agentAddress.startsWith('gateway://') && this.gatewayService) {
+      const agentId = agentAddress.replace('gateway://', '');
+      return this.gatewayService.getCapabilities(agentId);
+    }
+
     const client = this.getClient(agentAddress);
     
     return new Promise((resolve) => {
@@ -240,6 +267,12 @@ export class AgentProxy {
    * Health check an agent
    */
   async healthCheck(agentAddress: string, timeout: number = 5000): Promise<boolean> {
+    // Gateway agents: check session status
+    if (agentAddress.startsWith('gateway://') && this.gatewayService) {
+      const agentId = agentAddress.replace('gateway://', '');
+      return this.gatewayService.healthCheck(agentId);
+    }
+
     const client = this.getClient(agentAddress);
     
     return new Promise((resolve) => {
@@ -256,6 +289,44 @@ export class AgentProxy {
         resolve(response.status === 'HEALTHY');
       });
     });
+  }
+
+  /**
+   * Execute a task via the gateway service.
+   */
+  private async executeViaGateway(
+    agentAddress: string,
+    task: AgentTask,
+    timeout: number
+  ): Promise<AgentResult> {
+    if (!this.gatewayService) {
+      return { confidence: 0, error: 'Gateway service not available' };
+    }
+
+    const agentId = agentAddress.replace('gateway://', '');
+
+    try {
+      const result = await this.gatewayService.dispatchTask(
+        agentId,
+        {
+          description: task.description,
+          data: task.data,
+          metadata: task.metadata,
+        },
+        timeout
+      );
+
+      return {
+        value: result.value,
+        confidence: result.confidence,
+        reasoning: result.reasoning,
+        metadata: result.metadata as Record<string, any>,
+        error: result.error,
+      };
+    } catch (error: any) {
+      this.logger.error({ error, agentId }, 'Gateway dispatch failed');
+      return { confidence: 0, error: error.message };
+    }
   }
 
   /**

@@ -178,6 +178,70 @@ export class ExecutionRepository extends BaseRepository {
     );
   }
 
+  /**
+   * Find orphaned executions — stuck in running/pending state.
+   * If nodeId is provided, finds executions owned by that node or unowned.
+   * If nodeId is omitted, finds all orphaned executions.
+   */
+  async findOrphanedExecutions(nodeId?: string): Promise<any[]> {
+    return this.executeQuery(
+      async () => {
+        if (nodeId) {
+          // Use raw query to reference new columns before prisma generate
+          return this.prisma.$queryRaw`
+            SELECT * FROM "Execution"
+            WHERE status IN ('running', 'pending')
+            AND ("nodeId" = ${nodeId} OR "nodeId" IS NULL)
+          ` as Promise<any[]>;
+        }
+        return this.prisma.$queryRaw`
+          SELECT * FROM "Execution"
+          WHERE status IN ('running', 'pending')
+        ` as Promise<any[]>;
+      },
+      'ExecutionRepository.findOrphanedExecutions'
+    );
+  }
+
+  /**
+   * Find executions that have exceeded their timeout.
+   * Uses startedAt + timeoutMs (or defaultTimeoutMs) < NOW().
+   */
+  async findTimedOutExecutions(defaultTimeoutMs: number): Promise<any[]> {
+    return this.executeQuery(
+      async () => {
+        return this.prisma.$queryRaw`
+          SELECT * FROM "Execution"
+          WHERE status = 'running'
+          AND "startedAt" IS NOT NULL
+          AND (
+            ("timeoutMs" IS NOT NULL AND "startedAt" + make_interval(secs => "timeoutMs" / 1000.0) < NOW())
+            OR
+            ("timeoutMs" IS NULL AND "startedAt" + make_interval(secs => ${defaultTimeoutMs} / 1000.0) < NOW())
+          )
+        ` as Promise<any[]>;
+      },
+      'ExecutionRepository.findTimedOutExecutions'
+    );
+  }
+
+  /**
+   * Atomically mark an execution as failed due to orphan recovery.
+   * Only updates if the execution is still in running/pending status.
+   */
+  async markOrphaned(id: string, reason: string): Promise<Execution> {
+    return this.executeQuery(
+      () => this.prisma.execution.update({
+        where: { id },
+        data: {
+          status: 'failed',
+          error: reason,
+        },
+      }),
+      'ExecutionRepository.markOrphaned'
+    );
+  }
+
   async cleanup(olderThan: Date): Promise<number> {
     return this.executeQuery(
       async () => {
