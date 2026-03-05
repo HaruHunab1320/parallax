@@ -212,7 +212,7 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-medium text-white">{execution.pattern}</p>
                     <p className="text-sm text-gray-400">
-                      {execution.agents.length} agents
+                      {execution.agents?.length || 0} agents
                     </p>
                   </div>
                   <div className="text-right">

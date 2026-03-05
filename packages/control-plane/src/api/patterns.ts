@@ -3,12 +3,15 @@ import { PatternEngine } from '../pattern-engine';
 import { MetricsCollector } from '../metrics/metrics-collector';
 import { Logger } from 'pino';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
+import { DatabaseService } from '../db/database.service';
+import { createExecutionInDb, updateExecutionInDb } from '../pattern-engine/pattern-engine-db';
 
 export function createPatternsRouter(
   patternEngine: PatternEngine,
   metrics: MetricsCollector,
   logger: Logger,
-  licenseEnforcer?: LicenseEnforcer
+  licenseEnforcer?: LicenseEnforcer,
+  database?: DatabaseService
 ): Router {
   const router = Router();
 
@@ -119,39 +122,77 @@ export function createPatternsRouter(
   router.post('/:name/execute', async (req: any, res: any) => {
     const { name } = req.params;
     const { input, options } = req.body;
-    
+
     if (!input) {
-      return res.status(400).json({ 
-        error: 'Missing required field: input' 
+      return res.status(400).json({
+        error: 'Missing required field: input'
       });
     }
-    
+
+    let dbExecutionId: string | undefined;
+
     try {
       const startTime = Date.now();
-      
+
+      // Create database record before execution
+      if (database) {
+        try {
+          dbExecutionId = await createExecutionInDb(database, name, input, options);
+        } catch (dbError) {
+          logger.warn({ error: dbError }, 'Failed to create execution record in database');
+        }
+      }
+
       // Execute pattern
       const result = await patternEngine.executePattern(name, input, options);
-      
+
       const duration = Date.now() - startTime;
-      
+
+      // Persist result to database
+      if (database && dbExecutionId) {
+        try {
+          await updateExecutionInDb(database, dbExecutionId, {
+            status: 'completed',
+            result: result.result,
+            confidence: result.metrics?.averageConfidence ?? result.confidence ?? 0,
+            durationMs: duration,
+            agentCount: result.metrics?.agentsUsed ?? 0,
+          });
+        } catch (dbError) {
+          logger.warn({ error: dbError }, 'Failed to update execution record in database');
+        }
+      }
+
       // Update metrics
       metrics.recordApiCall('patterns', 'execute', 200);
       metrics.recordPatternExecution(name, duration, true);
-      
-      return res.json({ 
-        execution: result,
+
+      return res.json({
+        execution: { ...result, id: dbExecutionId || result.id },
         duration
       });
     } catch (error) {
+      // Persist failure to database
+      if (database && dbExecutionId) {
+        try {
+          await updateExecutionInDb(database, dbExecutionId, {
+            status: 'failed',
+            error: error instanceof Error ? error.message : String(error),
+          });
+        } catch (dbError) {
+          logger.warn({ error: dbError }, 'Failed to update failed execution in database');
+        }
+      }
+
       metrics.recordApiCall('patterns', 'execute', 500);
       metrics.recordPatternExecution(name, 0, false);
-      
+
       logger.error({ error, patternName: name }, 'Failed to execute pattern');
-      
+
       if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: error.message });
       }
-      
+
       return res.status(500).json({
         error: error instanceof Error ? error.message : 'Failed to execute pattern'
       });

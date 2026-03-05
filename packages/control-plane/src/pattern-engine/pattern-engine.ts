@@ -287,13 +287,14 @@ export class PatternEngine implements IPatternEngine {
       // Select agents based on pattern requirements (may spawn agents if needed)
       const agents = await this.selectAgents(pattern, executionId, workspace);
       emitEvent('agents_selected', { count: agents.length });
-      
+      this.logger.info({ agentCount: agents.length, agents: agents.map((a: any) => ({ id: a.id, endpoint: a.address || a.endpoint })) }, 'Agents selected for execution');
+
       // Pre-execute async agent operations based on pattern requirements
       const preProcessedData: any = {
         agentResults: [],
         successfulResults: []
       };
-      
+
       // Check if pattern needs agent analysis results
       const patternNameLower = pattern.name.toLowerCase();
       if (patternNameLower.includes('consensus') || patternNameLower.includes('cascade') ||
@@ -306,9 +307,12 @@ export class PatternEngine implements IPatternEngine {
           patternNameLower.includes('qualitygate') ||
           patternNameLower.includes('translation') ||
           patternNameLower.includes('documentanalysis') ||
+          patternNameLower.includes('coordination') ||
           patternNameLower.includes('prompttest')) {
 
         let agentResults: any[];
+
+        this.logger.info({ hasExecutionEngine: !!this.executionEngine, patternNameLower }, 'Entering agent dispatch block');
 
         // Use ExecutionEngine if available, otherwise fall back to direct AgentProxy calls
         if (this.executionEngine) {
@@ -338,8 +342,9 @@ export class PatternEngine implements IPatternEngine {
           };
 
           // Execute via ExecutionEngine
-          this.logger.debug({ planId: plan.id, taskCount: tasks.length }, 'Executing agents via ExecutionEngine');
+          this.logger.info({ planId: plan.id, taskCount: tasks.length }, 'Executing agents via ExecutionEngine');
           const results = await this.executionEngine.executeParallel(plan);
+          this.logger.info({ resultCount: results.length, results: results.map((r: any) => ({ taskId: r.taskId, status: r.status, error: r.error, confidence: r.confidence })) }, 'ExecutionEngine results received');
 
           // Map results back to expected format
           agentResults = this.mapExecutionResultsToAgentResults(results, agents);

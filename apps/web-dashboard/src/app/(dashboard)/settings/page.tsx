@@ -68,8 +68,6 @@ export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
 
   const fetchSettings = async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-
     try {
       setLoading(true);
 
@@ -81,10 +79,9 @@ export default function SettingsPage() {
         setLicenseInfo({ type: 'opensource', features: [] });
       }
 
-      // Fetch health info
+      // Fetch health info via apiClient (routes through ingress /api/ prefix)
       try {
-        const healthResponse = await fetch(`${apiUrl}/health`);
-        const health = await healthResponse.json();
+        const health = await apiClient.get('/health/');
         setSystemHealth({
           patternEngine: health.services?.patternEngine?.status || 'unknown',
           runtime: health.services?.runtime?.status || 'unknown',
@@ -100,8 +97,7 @@ export default function SettingsPage() {
 
       // Fetch cluster info (if available)
       try {
-        const clusterResponse = await fetch(`${apiUrl}/health/cluster`);
-        const cluster = await clusterResponse.json();
+        const cluster = await apiClient.get('/health/cluster');
         setClusterInfo(cluster);
       } catch (e) {
         setClusterInfo(null);
@@ -364,7 +360,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between py-2 border-b border-white/10">
                   <span className="text-gray-300">API URL</span>
                   <span className="text-white font-mono text-sm">
-                    {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}
+                    {process.env.NEXT_PUBLIC_API_URL || '(relative)'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-white/10">

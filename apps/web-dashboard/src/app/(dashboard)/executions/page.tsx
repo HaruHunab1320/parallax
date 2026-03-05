@@ -28,8 +28,34 @@ interface Execution {
   confidence?: number;
   durationMs?: number;
   agentCount?: number;
-  createdAt: string;
+  createdAt?: string;
   time?: string;
+  startTime?: string;
+  endTime?: string;
+  metrics?: {
+    confidence?: number;
+    duration?: number;
+    agentCount?: number;
+    [key: string]: any;
+  };
+}
+
+function getExecutionTime(e: Execution): string {
+  return e.startTime || e.createdAt || e.time || '';
+}
+
+function safeFormatDate(dateStr: string): string {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? 'N/A' : d.toLocaleString();
+}
+
+function getConfidence(e: Execution): number | undefined {
+  return e.confidence ?? e.metrics?.confidence ?? e.result?.confidence;
+}
+
+function getDuration(e: Execution): number | undefined {
+  return e.durationMs ?? e.metrics?.duration;
 }
 
 export default function ExecutionsPage() {
@@ -39,9 +65,9 @@ export default function ExecutionsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedExecution, setSelectedExecution] = useState<Execution | null>(null);
 
-  const fetchExecutions = async () => {
+  const fetchExecutions = async (showLoading = false) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const data = await apiClient.get('/api/executions?limit=100');
       setExecutions(data.executions || data || []);
     } catch (error) {
@@ -52,9 +78,9 @@ export default function ExecutionsPage() {
   };
 
   useEffect(() => {
-    fetchExecutions();
-    // Refresh every 5 seconds for live updates
-    const interval = setInterval(fetchExecutions, 5000);
+    fetchExecutions(true);
+    // Refresh every 10 seconds for live updates (no loading flash)
+    const interval = setInterval(() => fetchExecutions(false), 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -117,7 +143,7 @@ export default function ExecutionsPage() {
           <h1 className="text-3xl font-bold text-white">Executions</h1>
           <p className="text-gray-400 mt-1">Monitor pattern execution history</p>
         </div>
-        <Button variant="outline" onClick={fetchExecutions}>
+        <Button variant="outline" onClick={() => fetchExecutions(true)}>
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
         </Button>
@@ -192,17 +218,17 @@ export default function ExecutionsPage() {
                     <div className="text-right hidden md:block">
                       <p className="text-sm text-gray-400">Duration</p>
                       <p className="text-white">
-                        {execution.durationMs
-                          ? `${(execution.durationMs / 1000).toFixed(2)}s`
+                        {getDuration(execution)
+                          ? `${(getDuration(execution)! / 1000).toFixed(2)}s`
                           : '-'}
                       </p>
                     </div>
 
-                    {execution.confidence !== undefined && (
+                    {getConfidence(execution) !== undefined && (
                       <div className="text-right hidden md:block">
                         <p className="text-sm text-gray-400">Confidence</p>
-                        <p className={getConfidenceColor(execution.confidence)}>
-                          {(execution.confidence * 100).toFixed(1)}%
+                        <p className={getConfidenceColor(getConfidence(execution)!)}>
+                          {(getConfidence(execution)! * 100).toFixed(1)}%
                         </p>
                       </div>
                     )}
@@ -210,7 +236,7 @@ export default function ExecutionsPage() {
                     <div className="text-right hidden sm:block">
                       <p className="text-sm text-gray-400">Time</p>
                       <p className="text-white text-sm">
-                        {formatRelativeTime(execution.createdAt || execution.time || '')}
+                        {getExecutionTime(execution) ? formatRelativeTime(getExecutionTime(execution)) : 'N/A'}
                       </p>
                     </div>
 
@@ -263,23 +289,23 @@ export default function ExecutionsPage() {
                   <div className="bg-white/5 p-4 rounded-lg">
                     <p className="text-sm text-gray-400">Duration</p>
                     <p className="font-medium text-white">
-                      {selectedExecution.durationMs
-                        ? `${(selectedExecution.durationMs / 1000).toFixed(2)}s`
+                      {getDuration(selectedExecution)
+                        ? `${(getDuration(selectedExecution)! / 1000).toFixed(2)}s`
                         : 'N/A'}
                     </p>
                   </div>
-                  {selectedExecution.confidence !== undefined && (
+                  {getConfidence(selectedExecution) !== undefined && (
                     <div className="bg-white/5 p-4 rounded-lg">
                       <p className="text-sm text-gray-400">Confidence</p>
-                      <p className={`font-medium ${getConfidenceColor(selectedExecution.confidence)}`}>
-                        {(selectedExecution.confidence * 100).toFixed(1)}%
+                      <p className={`font-medium ${getConfidenceColor(getConfidence(selectedExecution)!)}`}>
+                        {(getConfidence(selectedExecution)! * 100).toFixed(1)}%
                       </p>
                     </div>
                   )}
-                  {selectedExecution.agentCount !== undefined && (
+                  {(selectedExecution.agentCount ?? selectedExecution.metrics?.agentCount) !== undefined && (
                     <div className="bg-white/5 p-4 rounded-lg">
                       <p className="text-sm text-gray-400">Agents</p>
-                      <p className="font-medium text-white">{selectedExecution.agentCount}</p>
+                      <p className="font-medium text-white">{selectedExecution.agentCount ?? selectedExecution.metrics?.agentCount}</p>
                     </div>
                   )}
                 </div>
@@ -313,8 +339,7 @@ export default function ExecutionsPage() {
 
                 {/* Timestamp */}
                 <div className="text-sm text-gray-400">
-                  Started:{' '}
-                  {new Date(selectedExecution.createdAt || selectedExecution.time || '').toLocaleString()}
+                  Started: {safeFormatDate(getExecutionTime(selectedExecution))}
                 </div>
               </div>
             </CardContent>

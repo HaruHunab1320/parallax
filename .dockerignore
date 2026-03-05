@@ -40,6 +40,5 @@ docs
 .prettierrc
 .eslintrc*
 vitest.config.*
-demos
 **/.parallax
 

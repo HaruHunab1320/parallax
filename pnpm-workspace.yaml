@@ -2,6 +2,6 @@ packages:
   - packages/*
   - apps/*
   - examples/*
-  - demos/*
+  - demos/**
 onlyBuiltDependencies:
   - node-pty

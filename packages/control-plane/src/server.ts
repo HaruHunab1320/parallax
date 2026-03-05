@@ -536,7 +536,7 @@ export async function createServer(): Promise<express.Application> {
   }
 
   // API Routes
-  const patternsRouter = createPatternsRouter(patternEngine as PatternEngine, metrics, logger, licenseEnforcer);
+  const patternsRouter = createPatternsRouter(patternEngine as PatternEngine, metrics, logger, licenseEnforcer, database);
   const agentsRouter = createAgentsRouter(registry, metrics, logger, database);
   const executionsRouter = createExecutionsRouter(
     patternEngine as PatternEngine,

@@ -200,15 +200,16 @@ export class ExecutionRepository extends BaseRepository {
   async getHourlyStats(hours: number = 24): Promise<any[]> {
     return this.executeQuery(
       async () => {
+        const since = new Date(Date.now() - hours * 60 * 60 * 1000);
         const result = await this.prisma.$queryRaw<any[]>`
           SELECT
             date_trunc('hour', time) as hour,
-            COUNT(*) as executions,
-            COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful,
-            COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
+            COUNT(*)::int as executions,
+            COUNT(CASE WHEN status = 'completed' THEN 1 END)::int as successful,
+            COUNT(CASE WHEN status = 'failed' THEN 1 END)::int as failed,
             AVG(confidence) as avg_confidence
           FROM "Execution"
-          WHERE time >= NOW() - INTERVAL '${hours} hours'
+          WHERE time >= ${since}
           GROUP BY hour
           ORDER BY hour ASC`;
         return result;
@@ -220,16 +221,17 @@ export class ExecutionRepository extends BaseRepository {
   async getDailyStats(days: number = 7): Promise<any[]> {
     return this.executeQuery(
       async () => {
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
         const result = await this.prisma.$queryRaw<any[]>`
           SELECT
             date_trunc('day', time) as day,
-            COUNT(*) as executions,
-            COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful,
-            COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
+            COUNT(*)::int as executions,
+            COUNT(CASE WHEN status = 'completed' THEN 1 END)::int as successful,
+            COUNT(CASE WHEN status = 'failed' THEN 1 END)::int as failed,
             AVG(confidence) as avg_confidence,
             AVG("durationMs") as avg_duration_ms
           FROM "Execution"
-          WHERE time >= NOW() - INTERVAL '${days} days'
+          WHERE time >= ${since}
           GROUP BY day
           ORDER BY day ASC`;
         return result;

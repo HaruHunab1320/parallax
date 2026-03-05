@@ -208,7 +208,7 @@ export abstract class ParallaxAgent {
       const bindAddr = `0.0.0.0:${port}`;
       const advertisedHost = process.env.PARALLAX_AGENT_HOST || '127.0.0.1';
       const credentials = options?.serverCredentials || grpc.ServerCredentials.createInsecure();
-      
+
       this.server.bindAsync(
         bindAddr,
         credentials,
@@ -217,13 +217,18 @@ export abstract class ParallaxAgent {
             reject(error);
             return;
           }
-          
+
           console.log(`Agent ${this.name} (${this.id}) listening on port ${actualPort}`);
-          
+
+          // Use PARALLAX_AGENT_PORT to override advertised port (e.g. for ngrok tunnels)
+          const advertisedPort = process.env.PARALLAX_AGENT_PORT
+            ? parseInt(process.env.PARALLAX_AGENT_PORT, 10)
+            : actualPort;
+
           // Register with control plane
           try {
             await this.register(
-              `${advertisedHost}:${actualPort}`,
+              `${advertisedHost}:${advertisedPort}`,
               options?.registryEndpoint,
               options?.registryCredentials
             );

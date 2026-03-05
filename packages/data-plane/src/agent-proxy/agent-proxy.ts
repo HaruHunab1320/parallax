@@ -186,7 +186,7 @@ export class AgentProxy extends EventEmitter {
     request: ProxyRequest
   ): Promise<T> {
     if (agent.status !== 'connected') {
-      throw new Error(`Agent ${agent.id} is not connected`);
+      this.logger.warn({ agentId: agent.id, status: agent.status }, 'Agent not marked as connected, attempting request anyway');
     }
 
     if (agent.protocol === 'http') {

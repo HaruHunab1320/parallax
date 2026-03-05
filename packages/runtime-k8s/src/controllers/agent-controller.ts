@@ -210,7 +210,8 @@ export class AgentController {
       await this.appsApi.replaceNamespacedDeployment({ name, namespace, body: deployment });
       this.logger.debug({ name }, 'Updated deployment');
     } catch (error: any) {
-      if (error.statusCode === 404) {
+      const status = error.statusCode ?? error.code ?? error.response?.statusCode;
+      if (status === 404) {
         // Create new
         await this.appsApi.createNamespacedDeployment({ namespace, body: deployment });
         this.logger.debug({ name }, 'Created deployment');
@@ -264,7 +265,8 @@ export class AgentController {
       await this.coreApi.replaceNamespacedService({ name, namespace, body: service });
       this.logger.debug({ name }, 'Updated service');
     } catch (error: any) {
-      if (error.statusCode === 404) {
+      const status = error.statusCode ?? error.code ?? error.response?.statusCode;
+      if (status === 404) {
         // Create new
         await this.coreApi.createNamespacedService({ namespace, body: service });
         this.logger.debug({ name }, 'Created service');
@@ -324,7 +326,8 @@ export class AgentController {
         plural: CRD_PLURAL,
         name,
         body: patch,
-      });
+        options: { headers: { 'Content-Type': 'application/merge-patch+json' } },
+      } as any);
     } catch (error) {
       this.logger.warn({ error, name }, 'Failed to update status');
     }

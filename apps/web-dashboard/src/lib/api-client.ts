@@ -218,7 +218,7 @@ class ApiClient {
 
   async getMe(): Promise<AuthUser> {
     const response = await this.controlPlane.get('/api/auth/me');
-    return response.data;
+    return response.data.user ?? response.data;
   }
 
   async logout(): Promise<void> {

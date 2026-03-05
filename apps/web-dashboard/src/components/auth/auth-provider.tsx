@@ -95,6 +95,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Redirect unauthenticated users to login
+  if (!user) {
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
+    return null;
+  }
+
   return (
     <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, register, logout }}>
       {children}

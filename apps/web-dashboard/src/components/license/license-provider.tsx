@@ -97,7 +97,7 @@ export function LicenseProvider({
           <p className="text-parallax-gray mb-4">
             Unable to connect to the Parallax control plane at{' '}
             <code className="bg-parallax-card px-2 py-1 rounded text-xs">
-              {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}
+              {process.env.NEXT_PUBLIC_API_URL || window.location.origin}
             </code>
           </p>
           <p className="text-parallax-gray text-sm">
