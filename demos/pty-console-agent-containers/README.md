@@ -27,6 +27,12 @@ Run local-CLI variant (no Docker):
 pnpm --filter @parallax/pty-console-agent-containers-demo test:smoke:local
 ```
 
+Run automated hook-marker PTY smoke (no external CLIs required):
+
+```bash
+pnpm --filter @parallax/pty-console-agent-containers-demo test:hooks
+```
+
 Run both:
 
 ```bash

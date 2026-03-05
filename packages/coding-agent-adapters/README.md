@@ -464,6 +464,63 @@ const protocol = claude.getHookTelemetryProtocol();
 
 `settingsHooks` is ready to merge into `.claude/settings.json` under `hooks`.
 
+## Gemini Hook Telemetry (Optional)
+
+Gemini CLI hooks can emit deterministic lifecycle markers so PTY orchestration does not rely only on screen-text heuristics.
+
+`GeminiAdapter` supports this as an opt-in mode:
+
+```typescript
+const session = await manager.spawn({
+  name: 'gemini-agent',
+  type: 'gemini',
+  workdir: '/project',
+  adapterConfig: {
+    googleKey: process.env.GEMINI_API_KEY,
+    geminiHookTelemetry: true,
+  },
+});
+```
+
+When enabled, the adapter sets:
+- `PARALLAX_GEMINI_HOOK_TELEMETRY=1`
+- `PARALLAX_GEMINI_HOOK_MARKER_PREFIX=PARALLAX_GEMINI_HOOK` (or your override)
+
+### Marker Protocol
+
+Gemini hook command output must be valid JSON. The helper script emits marker lines via `systemMessage`:
+
+```text
+PARALLAX_GEMINI_HOOK {"event":"BeforeTool","tool_name":"run_shell_command"}
+```
+
+Supported high-value events:
+- `Notification` (`ToolPermission`)
+- `BeforeTool` (includes `tool_name`)
+- `AfterAgent`
+- `SessionEnd`
+
+The adapter consumes these markers in:
+- `detectBlockingPrompt()`
+- `detectLoading()`
+- `detectToolRunning()`
+- `detectTaskComplete()`
+- `detectReady()`
+- `detectExit()`
+
+### Generate Hook Config Template
+
+```typescript
+const gemini = new GeminiAdapter();
+const protocol = gemini.getHookTelemetryProtocol();
+
+// protocol.scriptPath
+// protocol.scriptContent
+// protocol.settingsHooks
+```
+
+`settingsHooks` is ready to merge into `.gemini/settings.json` under `hooks`.
+
 ## Creating Custom Adapters
 
 Extend `BaseCodingAdapter` to create adapters for other coding CLIs:

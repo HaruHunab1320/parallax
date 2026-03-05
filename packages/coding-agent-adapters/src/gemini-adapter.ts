@@ -10,8 +10,23 @@ import type {
   LoginDetection,
   BlockingPromptDetection,
   AutoResponseRule,
+  ToolRunningInfo,
 } from 'pty-manager';
 import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
+
+const GEMINI_HOOK_MARKER_PREFIX = 'PARALLAX_GEMINI_HOOK';
+
+interface GeminiHookMarker {
+  event: string;
+  notification_type?: string;
+  tool_name?: string;
+  message?: string;
+}
+
+interface GeminiAdapterConfig {
+  geminiHookTelemetry?: boolean;
+  geminiHookMarkerPrefix?: string;
+}
 
 export class GeminiAdapter extends BaseCodingAdapter {
   readonly adapterType = 'gemini';
@@ -128,6 +143,7 @@ export class GeminiAdapter extends BaseCodingAdapter {
   getEnv(config: SpawnConfig): Record<string, string> {
     const env: Record<string, string> = {};
     const credentials = this.getCredentials(config);
+    const adapterConfig = config.adapterConfig as GeminiAdapterConfig | undefined;
 
     // Google API key from credentials
     if (credentials.googleKey) {
@@ -145,7 +161,114 @@ export class GeminiAdapter extends BaseCodingAdapter {
       env.NO_COLOR = '1';
     }
 
+    // Optional: hook telemetry mode. Gemini hooks can emit marker lines
+    // via systemMessage in valid JSON responses.
+    if (adapterConfig?.geminiHookTelemetry) {
+      env.PARALLAX_GEMINI_HOOK_TELEMETRY = '1';
+      env.PARALLAX_GEMINI_HOOK_MARKER_PREFIX =
+        adapterConfig.geminiHookMarkerPrefix || GEMINI_HOOK_MARKER_PREFIX;
+    }
+
     return env;
+  }
+
+  getHookTelemetryProtocol(options?: { scriptPath?: string; markerPrefix?: string }): {
+    markerPrefix: string;
+    scriptPath: string;
+    scriptContent: string;
+    settingsHooks: Record<string, unknown>;
+  } {
+    const markerPrefix = options?.markerPrefix || GEMINI_HOOK_MARKER_PREFIX;
+    const scriptPath = options?.scriptPath || '.gemini/hooks/parallax-hook-telemetry.sh';
+    const scriptCommand = `"${'$'}GEMINI_PROJECT_ROOT"/${scriptPath}`;
+    const hookEntry = [{ matcher: '', hooks: [{ type: 'command', command: scriptCommand }] }];
+
+    const settingsHooks: Record<string, unknown> = {
+      Notification: hookEntry,
+      BeforeTool: hookEntry,
+      AfterAgent: hookEntry,
+      SessionEnd: hookEntry,
+    };
+
+    // Gemini hook stdout must be valid JSON. We encode marker output through
+    // systemMessage so the marker still appears in terminal output.
+    const scriptContent = `#!/usr/bin/env bash
+set -euo pipefail
+
+INPUT="$(cat)"
+[ -z "${'$'}INPUT" ] && exit 0
+
+if ! command -v jq >/dev/null 2>&1; then
+  # Valid no-op response
+  printf '%s\n' '{"continue":true}'
+  exit 0
+fi
+
+EVENT="$(printf '%s' "${'$'}INPUT" | jq -r '.hookEventName // .hook_event_name // empty')"
+[ -z "${'$'}EVENT" ] && { printf '%s\n' '{"continue":true}'; exit 0; }
+
+NOTIFICATION_TYPE="$(printf '%s' "${'$'}INPUT" | jq -r '.notificationType // .notification_type // empty')"
+TOOL_NAME="$(printf '%s' "${'$'}INPUT" | jq -r '.toolName // .tool_name // empty')"
+MESSAGE="$(printf '%s' "${'$'}INPUT" | jq -r '.message // empty')"
+
+PAYLOAD="$(jq -nc \\
+  --arg event "${'$'}EVENT" \\
+  --arg notification_type "${'$'}NOTIFICATION_TYPE" \\
+  --arg tool_name "${'$'}TOOL_NAME" \\
+  --arg message "${'$'}MESSAGE" \\
+  '({event: $event}
+   + (if $notification_type != "" then {notification_type: $notification_type} else {} end)
+   + (if $tool_name != "" then {tool_name: $tool_name} else {} end)
+   + (if $message != "" then {message: $message} else {} end))')"
+
+MARKER="${markerPrefix} ${'$'}PAYLOAD"
+jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMessage: $m}'
+`;
+
+    return {
+      markerPrefix,
+      scriptPath,
+      scriptContent,
+      settingsHooks,
+    };
+  }
+
+  private getHookMarkers(output: string): GeminiHookMarker[] {
+    const markers: GeminiHookMarker[] = [];
+    const markerRegex = /(?:^|\n)\s*([A-Z0-9_]+)\s+(\{[^\n\r]+\})/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = markerRegex.exec(output)) !== null) {
+      const markerToken = match[1];
+      if (!markerToken.includes('GEMINI_HOOK')) {
+        continue;
+      }
+      const payload = match[2];
+      try {
+        const parsed = JSON.parse(payload) as Record<string, unknown>;
+        const event = typeof parsed.event === 'string' ? parsed.event : undefined;
+        if (!event) continue;
+        markers.push({
+          event,
+          notification_type: typeof parsed.notification_type === 'string' ? parsed.notification_type : undefined,
+          tool_name: typeof parsed.tool_name === 'string' ? parsed.tool_name : undefined,
+          message: typeof parsed.message === 'string' ? parsed.message : undefined,
+        });
+      } catch {
+        // Ignore malformed marker payloads.
+      }
+    }
+
+    return markers;
+  }
+
+  private getLatestHookMarker(output: string): GeminiHookMarker | null {
+    const markers = this.getHookMarkers(output);
+    return markers.length > 0 ? markers[markers.length - 1] : null;
+  }
+
+  private stripHookMarkers(output: string): string {
+    return output.replace(/(?:^|\n)\s*[A-Z0-9_]*GEMINI_HOOK[A-Z0-9_]*\s+\{[^\n\r]+\}\s*/g, '\n');
   }
 
   detectLogin(output: string): LoginDetection {
@@ -228,6 +351,18 @@ export class GeminiAdapter extends BaseCodingAdapter {
 
   detectBlockingPrompt(output: string): BlockingPromptDetection {
     const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
+
+    if (marker?.event === 'Notification' && marker.notification_type === 'ToolPermission') {
+      return {
+        detected: true,
+        type: 'permission',
+        prompt: marker.message || 'Gemini tool permission',
+        suggestedResponse: 'keys:enter',
+        canAutoRespond: true,
+        instructions: 'Gemini is asking to allow a tool action',
+      };
+    }
 
     // Tool permission / execution confirmation (ToolConfirmationMessage.tsx)
     // Check BEFORE login — permission prompts contain "API key" banner text
@@ -356,7 +491,12 @@ export class GeminiAdapter extends BaseCodingAdapter {
    */
   detectLoading(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
     const tail = stripped.slice(-500);
+
+    if (marker?.event === 'BeforeTool') {
+      return true;
+    }
 
     // Active loading indicator with "esc to cancel" + timer
     if (/esc\s+to\s+cancel/i.test(tail)) {
@@ -371,6 +511,18 @@ export class GeminiAdapter extends BaseCodingAdapter {
     return false;
   }
 
+  detectToolRunning(output: string): ToolRunningInfo | null {
+    const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
+    if (marker?.event === 'BeforeTool' && marker.tool_name) {
+      return {
+        toolName: marker.tool_name.toLowerCase(),
+        description: `${marker.tool_name} (hook)`,
+      };
+    }
+    return null;
+  }
+
   /**
    * Detect task completion for Gemini CLI.
    *
@@ -383,6 +535,11 @@ export class GeminiAdapter extends BaseCodingAdapter {
    */
   detectTaskComplete(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
+
+    if (marker?.event === 'AfterAgent') {
+      return true;
+    }
 
     // Window title "◇ Ready" is a strong task-complete signal
     if (/◇\s+Ready/.test(stripped)) {
@@ -399,6 +556,15 @@ export class GeminiAdapter extends BaseCodingAdapter {
 
   detectReady(output: string): boolean {
     const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
+
+    if (marker?.event === 'Notification' && marker.notification_type === 'ToolPermission') {
+      return false;
+    }
+    if (marker?.event === 'AfterAgent') {
+      return true;
+    }
+
     const hasActiveOverlay =
       /interactive\s+shell\s+awaiting\s+input|press\s+tab\s+to\s+focus\s+shell/i.test(stripped) ||
       /waiting\s+for\s+user\s+confirmation|apply.?this.?change|allow.?execution|do.?you.?want.?to.?proceed/i.test(stripped) ||
@@ -441,7 +607,8 @@ export class GeminiAdapter extends BaseCodingAdapter {
   }
 
   parseOutput(output: string): ParsedOutput | null {
-    const stripped = this.stripAnsi(output);
+    const withoutHookMarkers = this.stripHookMarkers(output);
+    const stripped = this.stripAnsi(withoutHookMarkers);
 
     const isComplete = this.isResponseComplete(stripped);
 
@@ -472,6 +639,14 @@ export class GeminiAdapter extends BaseCodingAdapter {
    */
   override detectExit(output: string): { exited: boolean; code?: number; error?: string } {
     const stripped = this.stripAnsi(output);
+    const marker = this.getLatestHookMarker(stripped);
+
+    if (marker?.event === 'SessionEnd') {
+      return {
+        exited: true,
+        code: 0,
+      };
+    }
 
     if (/folder.?trust.?level.?must.?be.?selected.*exiting/i.test(stripped)) {
       return {

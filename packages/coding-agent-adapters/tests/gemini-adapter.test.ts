@@ -161,6 +161,21 @@ describe('GeminiAdapter', () => {
       expect(env.GOOGLE_API_KEY).toBe('google-test-key');
       expect(env.NO_COLOR).toBeUndefined();
     });
+
+    it('should enable hook telemetry env vars when configured', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'gemini',
+        adapterConfig: {
+          geminiHookTelemetry: true,
+          geminiHookMarkerPrefix: 'PARALLAX_GEMINI_HOOK',
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.PARALLAX_GEMINI_HOOK_TELEMETRY).toBe('1');
+      expect(env.PARALLAX_GEMINI_HOOK_MARKER_PREFIX).toBe('PARALLAX_GEMINI_HOOK');
+    });
   });
 
   describe('detectLogin()', () => {
@@ -250,6 +265,16 @@ describe('GeminiAdapter', () => {
   });
 
   describe('detectBlockingPrompt()', () => {
+    it('should detect ToolPermission from hook marker', () => {
+      const result = adapter.detectBlockingPrompt(
+        'PARALLAX_GEMINI_HOOK {"event":"Notification","notification_type":"ToolPermission","message":"Need approval"}'
+      );
+
+      expect(result.detected).toBe(true);
+      expect(result.type).toBe('permission');
+      expect(result.suggestedResponse).toBe('keys:enter');
+    });
+
     it('should detect login as blocking prompt', () => {
       const result = adapter.detectBlockingPrompt('API key not found');
 
@@ -372,6 +397,20 @@ describe('GeminiAdapter', () => {
   });
 
   describe('detectReady()', () => {
+    it('should detect ready from AfterAgent hook marker', () => {
+      expect(adapter.detectReady('PARALLAX_GEMINI_HOOK {"event":"AfterAgent"}')).toBe(true);
+    });
+
+    it('should not detect ready for ToolPermission hook marker', () => {
+      expect(
+        adapter.detectReady('PARALLAX_GEMINI_HOOK {"event":"Notification","notification_type":"ToolPermission"}')
+      ).toBe(false);
+    });
+
+    it('should detect ready from custom hook marker prefix', () => {
+      expect(adapter.detectReady('TEAM_GEMINI_HOOK_MARKER {"event":"AfterAgent"}')).toBe(true);
+    });
+
     it('should detect Type your message prompt (Composer.tsx)', () => {
       expect(adapter.detectReady('> Type your message or @path/to/file')).toBe(true);
     });
@@ -473,6 +512,16 @@ describe('GeminiAdapter', () => {
       const result = adapter.parseOutput('Generating response');
 
       expect(result).toBeNull();
+    });
+
+    it('should strip hook marker lines from parsed content', () => {
+      const result = adapter.parseOutput(
+        'PARALLAX_GEMINI_HOOK {"event":"AfterAgent"}\nHere is the answer.\n'
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.content).toContain('Here is the answer.');
+      expect(result?.content).not.toContain('PARALLAX_GEMINI_HOOK');
     });
   });
 
@@ -585,6 +634,41 @@ describe('GeminiAdapter', () => {
   describe('getHealthCheckCommand()', () => {
     it('should return version command', () => {
       expect(adapter.getHealthCheckCommand()).toBe('gemini --version');
+    });
+  });
+
+  describe('getHookTelemetryProtocol()', () => {
+    it('should return a default marker protocol and script path', () => {
+      const protocol = adapter.getHookTelemetryProtocol();
+      expect(protocol.markerPrefix).toBe('PARALLAX_GEMINI_HOOK');
+      expect(protocol.scriptPath).toBe('.gemini/hooks/parallax-hook-telemetry.sh');
+      expect(protocol.settingsHooks).toHaveProperty('Notification');
+      expect(protocol.settingsHooks).toHaveProperty('BeforeTool');
+      expect(protocol.settingsHooks).toHaveProperty('AfterAgent');
+      expect(protocol.settingsHooks).toHaveProperty('SessionEnd');
+    });
+  });
+
+  describe('hook-marker lifecycle helpers', () => {
+    it('should detect loading from BeforeTool hook marker', () => {
+      expect(adapter.detectLoading('PARALLAX_GEMINI_HOOK {"event":"BeforeTool","tool_name":"run_shell_command"}')).toBe(true);
+    });
+
+    it('should detect tool running from BeforeTool hook marker', () => {
+      const result = adapter.detectToolRunning!('PARALLAX_GEMINI_HOOK {"event":"BeforeTool","tool_name":"read_file"}');
+      expect(result).not.toBeNull();
+      expect(result!.toolName).toBe('read_file');
+      expect(result!.description).toContain('(hook)');
+    });
+
+    it('should detect task completion from AfterAgent hook marker', () => {
+      expect(adapter.detectTaskComplete('PARALLAX_GEMINI_HOOK {"event":"AfterAgent"}')).toBe(true);
+    });
+
+    it('should detect exit from SessionEnd hook marker', () => {
+      const result = adapter.detectExit('PARALLAX_GEMINI_HOOK {"event":"SessionEnd"}');
+      expect(result.exited).toBe(true);
+      expect(result.code).toBe(0);
     });
   });
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.11.0] - 2026-03-05
+
+### Added
+- Gemini hook telemetry integration (optional) in `GeminiAdapter`:
+  - Marker protocol support for `PARALLAX_GEMINI_HOOK {json}` lines.
+  - Deterministic state detection from Gemini hook events:
+    - `Notification` (`ToolPermission`)
+    - `BeforeTool` (tool-running/loading)
+    - `AfterAgent` (turn completion + ready)
+    - `SessionEnd` (exit detection)
+- `GeminiAdapter.getHookTelemetryProtocol()` helper to generate a minimal hook script + settings hook map for `.gemini/settings.json`.
+
+### Changed
+- `GeminiAdapter.parseOutput()` now strips hook marker lines from final parsed content.
+- `CodingAgentConfig.adapterConfig` now documents Gemini hook telemetry flags:
+  - `geminiHookTelemetry`
+  - `geminiHookMarkerPrefix`
+- README now documents Gemini hooks telemetry mode and setup flow.
+
 ## [0.10.0] - 2026-03-05
 
 ### Added

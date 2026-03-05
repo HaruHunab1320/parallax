@@ -108,6 +108,15 @@ export interface CodingAgentConfig extends SpawnConfig {
      * Claude-only: override hook marker prefix token.
      */
     claudeHookMarkerPrefix?: string;
+    /**
+     * Gemini-only: enable hook marker telemetry parsing.
+     * Requires Gemini hook config that emits PARALLAX_GEMINI_HOOK markers.
+     */
+    geminiHookTelemetry?: boolean;
+    /**
+     * Gemini-only: override hook marker prefix token.
+     */
+    geminiHookMarkerPrefix?: string;
   } & Record<string, unknown>;
 }
 
