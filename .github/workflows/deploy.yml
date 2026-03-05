@@ -186,11 +186,6 @@ jobs:
           POD=$(kubectl get pod -l app.kubernetes.io/name=parallax,app.kubernetes.io/component=control-plane -n parallax -o jsonpath='{.items[0].metadata.name}')
           kubectl exec "$POD" -n parallax -- node -e "fetch('http://localhost:3000/health/live').then(r=>{if(!r.ok)process.exit(1);r.text().then(t=>console.log(t))})"
 
-      - name: Run database migrations
-        run: |
-          POD=$(kubectl get pod -l app.kubernetes.io/name=parallax,app.kubernetes.io/component=control-plane -n parallax -o jsonpath='{.items[0].metadata.name}')
-          kubectl exec "$POD" -n parallax -- npx prisma migrate deploy || true
-
       - name: Post deployment summary
         if: always()
         run: |

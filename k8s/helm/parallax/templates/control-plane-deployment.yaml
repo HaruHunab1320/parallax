@@ -26,6 +26,26 @@ spec:
       serviceAccountName: {{ include "parallax.fullname" . }}-control-plane
       securityContext:
         {{- toYaml .Values.security.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: migrate
+          image: "{{ .Values.controlPlane.image.repository }}:{{ .Values.controlPlane.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.controlPlane.image.pullPolicy }}
+          command: ["npx", "prisma", "migrate", "deploy"]
+          env:
+            {{- if .Values.postgresql.enabled }}
+            - name: DATABASE_URL
+              value: "postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ include "parallax.fullname" . }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?schema=public"
+            {{- end }}
+            {{- if .Values.controlPlane.existingSecret }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.controlPlane.existingSecret }}
+                  key: DATABASE_URL
+            {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: control-plane
           securityContext:
@@ -122,6 +142,8 @@ spec:
             - name: config
               mountPath: /app/config
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: patterns
           configMap:
@@ -129,6 +151,8 @@ spec:
         - name: config
           configMap:
             name: {{ include "parallax.fullname" . }}-control-plane
+        - name: tmp
+          emptyDir: {}
       {{- with .Values.controlPlane.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

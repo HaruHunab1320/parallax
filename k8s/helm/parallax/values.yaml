@@ -328,14 +328,14 @@ security:
   # Pod Security Standards
   podSecurityContext:
     runAsNonRoot: true
-    runAsUser: 1000
-    fsGroup: 1000
-  
+    runAsUser: 1001
+    fsGroup: 1001
+
   containerSecurityContext:
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
     runAsNonRoot: true
-    runAsUser: 1000
+    runAsUser: 1001
 
 # RBAC
 rbac:
