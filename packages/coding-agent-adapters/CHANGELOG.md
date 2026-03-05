@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.11.1] - 2026-03-05
+
+### Fixed
+- Claude permission prompt auto-response rule now has `once: true`, preventing an infinite Enter-spam loop when TUI re-renders trigger repeated rule matches.
+
 ## [0.11.0] - 2026-03-05
 
 ### Added

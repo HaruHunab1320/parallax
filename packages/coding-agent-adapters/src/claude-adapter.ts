@@ -71,6 +71,7 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       keys: ['enter'],
       description: 'Auto-approve tool permission prompts (file access, MCP tools, etc.)',
       safe: true,
+      once: true,
     },
     {
       pattern: /update available.*\[y\/n\]/i,
