@@ -227,6 +227,24 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   }
 
   /**
+   * Generate hook telemetry protocol configuration.
+   * Returns null by default — only Claude adapter supports hooks.
+   */
+  getHookTelemetryProtocol(_options?: {
+    scriptPath?: string;
+    markerPrefix?: string;
+    httpUrl?: string;
+    sessionId?: string;
+  }): {
+    markerPrefix: string;
+    scriptPath: string;
+    scriptContent: string;
+    settingsHooks: Record<string, unknown>;
+  } | null {
+    return null;
+  }
+
+  /**
    * Override detectExit to include installation instructions
    */
   detectExit(output: string): { exited: boolean; code?: number; error?: string } {

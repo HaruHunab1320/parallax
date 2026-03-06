@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.0] - 2026-03-05
+
+### Added
+- HTTP hook mode for `ClaudeAdapter.getHookTelemetryProtocol()`:
+  - When `httpUrl` is provided, generates HTTP hook entries (`type: "http"`) instead of command-based hooks.
+  - Supports `sessionId` option to inject `X-Parallax-Session-Id` header for session correlation.
+  - Covers `PermissionRequest`, `PreToolUse`, `Stop`, `Notification`, and `TaskCompleted` events.
+- `BaseCodingAdapter.getHookTelemetryProtocol()` base method (returns `null` by default) so all adapters share the interface.
+
+### Changed
+- `ClaudeAdapter.getHookTelemetryProtocol()` now accepts `httpUrl` and `sessionId` options alongside the existing `scriptPath`/`markerPrefix` options.
+- Command-based hook generation preserved as fallback when `httpUrl` is not provided.
+
 ## [0.11.1] - 2026-03-05
 
 ### Fixed

@@ -223,12 +223,49 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     return env;
   }
 
-  getHookTelemetryProtocol(options?: { scriptPath?: string; markerPrefix?: string }): {
+  override getHookTelemetryProtocol(options?: {
+    scriptPath?: string;
+    markerPrefix?: string;
+    httpUrl?: string;
+    sessionId?: string;
+  }): {
     markerPrefix: string;
     scriptPath: string;
     scriptContent: string;
     settingsHooks: Record<string, unknown>;
   } {
+    // HTTP hook mode: generate HTTP hook entries instead of command hooks
+    if (options?.httpUrl) {
+      const httpHookBase: Record<string, unknown> = {
+        type: 'http',
+        url: options.httpUrl,
+        timeout: 5,
+      };
+      // Inject session ID header if available (env var resolved at runtime)
+      if (options.sessionId) {
+        httpHookBase.headers = { 'X-Parallax-Session-Id': options.sessionId };
+      }
+
+      const hookEntry = [{ matcher: '', hooks: [{ ...httpHookBase }] }];
+      const hookEntryNoMatcher = [{ hooks: [{ ...httpHookBase }] }];
+
+      const settingsHooks: Record<string, unknown> = {
+        PermissionRequest: hookEntryNoMatcher,
+        PreToolUse: hookEntry,
+        Stop: hookEntryNoMatcher,
+        Notification: hookEntry,
+        TaskCompleted: hookEntryNoMatcher,
+      };
+
+      return {
+        markerPrefix: '',
+        scriptPath: '',
+        scriptContent: '',
+        settingsHooks,
+      };
+    }
+
+    // Command hook mode (fallback): emit marker lines to stdout
     const markerPrefix = options?.markerPrefix || CLAUDE_HOOK_MARKER_PREFIX;
     const scriptPath = options?.scriptPath || '.claude/hooks/parallax-hook-telemetry.sh';
     const scriptCommand = `"${'$'}CLAUDE_PROJECT_DIR"/${scriptPath}`;
