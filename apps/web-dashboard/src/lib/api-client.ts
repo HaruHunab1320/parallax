@@ -280,6 +280,15 @@ class ApiClient {
     return response.data;
   }
 
+  // Pattern upload
+  async uploadPatterns(
+    files: Array<{ filename: string; content: string }>,
+    overwrite?: boolean
+  ): Promise<{ results: Array<{ filename: string; success: boolean; pattern?: any; error?: string }> }> {
+    const response = await this.controlPlane.post('/api/patterns/upload/batch', { files, overwrite });
+    return response.data;
+  }
+
   // Execution endpoints
   async getExecutions(limit = 100): Promise<PatternExecution[]> {
     const response = await this.controlPlane.get(`/api/executions?limit=${limit}`);

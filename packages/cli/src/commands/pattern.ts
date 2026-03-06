@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { table } from 'table';
 import ora from 'ora';
 import * as fs from 'fs/promises';
+import * as path from 'path';
 import { ParallaxHttpClient } from '../utils/http-client';
 
 export const patternCommand = new Command('pattern')
@@ -154,6 +155,108 @@ patternCommand
       process.exit(1);
     }
   });
+
+// Upload pattern file
+patternCommand
+  .command('upload')
+  .description('Upload a .prism or .yaml pattern file')
+  .argument('<path>', 'Path to pattern file')
+  .option('--overwrite', 'Overwrite existing pattern', false)
+  .action(async (filePath, options) => {
+    const spinner = ora('Uploading pattern...').start();
+
+    try {
+      const resolvedPath = path.resolve(filePath);
+      const content = await fs.readFile(resolvedPath, 'utf-8');
+      const filename = path.basename(resolvedPath);
+
+      const ext = path.extname(filename).toLowerCase();
+      if (!['.prism', '.yaml', '.yml'].includes(ext)) {
+        spinner.fail(chalk.red(`Unsupported file type: ${ext}. Use .prism, .yaml, or .yml`));
+        return;
+      }
+
+      const client = new ParallaxHttpClient();
+      const pattern = await client.uploadPattern(filename, content, options.overwrite);
+
+      spinner.succeed(chalk.green(`Pattern "${pattern.name}" uploaded successfully`));
+      console.log(chalk.white('  Name: ') + chalk.cyan(pattern.name));
+      console.log(chalk.white('  Version: ') + pattern.version);
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to upload pattern'));
+      console.error(error instanceof Error ? error.message : error);
+    }
+  });
+
+// Upload all patterns from a directory
+patternCommand
+  .command('upload-dir')
+  .description('Upload all patterns from a directory')
+  .argument('<dir>', 'Directory containing pattern files')
+  .option('--overwrite', 'Overwrite existing patterns', false)
+  .option('-r, --recursive', 'Search subdirectories', false)
+  .action(async (dir, options) => {
+    const spinner = ora('Scanning for pattern files...').start();
+
+    try {
+      const resolvedDir = path.resolve(dir);
+      const files = await findPatternFiles(resolvedDir, options.recursive);
+
+      if (files.length === 0) {
+        spinner.fail(chalk.yellow('No pattern files found'));
+        return;
+      }
+
+      spinner.text = `Uploading ${files.length} pattern file(s)...`;
+
+      const fileContents = await Promise.all(
+        files.map(async (f) => ({
+          filename: path.basename(f),
+          content: await fs.readFile(f, 'utf-8'),
+        }))
+      );
+
+      const client = new ParallaxHttpClient();
+      const { results } = await client.uploadPatterns(fileContents, options.overwrite);
+
+      spinner.stop();
+
+      const succeeded = results.filter(r => r.success);
+      const failed = results.filter(r => !r.success);
+
+      if (succeeded.length > 0) {
+        console.log(chalk.green(`\n${succeeded.length} pattern(s) uploaded successfully:`));
+        succeeded.forEach(r => console.log(chalk.gray(`  ✓ ${r.filename}`)));
+      }
+
+      if (failed.length > 0) {
+        console.log(chalk.red(`\n${failed.length} pattern(s) failed:`));
+        failed.forEach(r => console.log(chalk.red(`  ✗ ${r.filename}: ${r.error}`)));
+      }
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to upload patterns'));
+      console.error(error instanceof Error ? error.message : error);
+    }
+  });
+
+async function findPatternFiles(dir: string, recursive: boolean): Promise<string[]> {
+  const results: string[] = [];
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory() && recursive) {
+      results.push(...await findPatternFiles(fullPath, true));
+    } else if (entry.isFile()) {
+      const ext = path.extname(entry.name).toLowerCase();
+      if (['.prism', '.yaml', '.yml'].includes(ext)) {
+        results.push(fullPath);
+      }
+    }
+  }
+
+  return results;
+}
 
 // Show pattern details
 patternCommand

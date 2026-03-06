@@ -5,6 +5,10 @@ import { Logger } from 'pino';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
 import { DatabaseService } from '../db/database.service';
 import { createExecutionInDb, updateExecutionInDb } from '../pattern-engine/pattern-engine-db';
+import { PatternLoader } from '../pattern-engine/pattern-loader';
+import { compileOrgPattern, OrgPattern } from '../org-patterns';
+import * as yaml from 'js-yaml';
+import * as path from 'path';
 
 export function createPatternsRouter(
   patternEngine: PatternEngine,
@@ -351,6 +355,122 @@ export function createPatternsRouter(
       return res.status(500).json({ error: message });
     }
   });
+
+  // Upload pattern file (Enterprise)
+  router.post('/upload', requirePatternManagement, async (req: any, res: any) => {
+    const { filename, content, overwrite } = req.body;
+
+    if (!filename || !content) {
+      metrics.recordApiCall('patterns', 'upload', 400);
+      return res.status(400).json({
+        error: 'Missing required fields: filename and content are required',
+      });
+    }
+
+    try {
+      const result = await parseAndSavePattern(filename, content, overwrite ?? false);
+      metrics.recordApiCall('patterns', 'upload', 201);
+      logger.info({ filename, patternName: result.pattern.name }, 'Pattern uploaded via API');
+      return res.status(201).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to upload pattern';
+
+      if (message.includes('already exists')) {
+        metrics.recordApiCall('patterns', 'upload', 409);
+        return res.status(409).json({ error: message });
+      }
+
+      metrics.recordApiCall('patterns', 'upload', 500);
+      logger.error({ error, filename }, 'Failed to upload pattern');
+      return res.status(500).json({ error: message });
+    }
+  });
+
+  // Batch upload pattern files (Enterprise)
+  router.post('/upload/batch', requirePatternManagement, async (req: any, res: any) => {
+    const { files, overwrite } = req.body;
+
+    if (!Array.isArray(files) || files.length === 0) {
+      metrics.recordApiCall('patterns', 'upload-batch', 400);
+      return res.status(400).json({
+        error: 'Missing required field: files must be a non-empty array',
+      });
+    }
+
+    const results: Array<{ filename: string; success: boolean; pattern?: any; error?: string }> = [];
+
+    for (const file of files) {
+      if (!file.filename || !file.content) {
+        results.push({ filename: file.filename || 'unknown', success: false, error: 'Missing filename or content' });
+        continue;
+      }
+
+      try {
+        const result = await parseAndSavePattern(file.filename, file.content, overwrite ?? false);
+        results.push({ filename: file.filename, success: true, pattern: result.pattern });
+      } catch (error) {
+        results.push({
+          filename: file.filename,
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to upload pattern',
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    metrics.recordApiCall('patterns', 'upload-batch', 200);
+    logger.info({ total: files.length, success: successCount }, 'Batch pattern upload completed');
+    return res.json({ results });
+  });
+
+  async function parseAndSavePattern(
+    filename: string,
+    content: string,
+    overwrite: boolean
+  ): Promise<{ pattern: any; compiled?: boolean }> {
+    const ext = path.extname(filename).toLowerCase();
+
+    if (ext === '.prism') {
+      const fallbackName = path.basename(filename, '.prism');
+      const parsed = PatternLoader.parsePrismPattern(content, fallbackName);
+      const pattern = await patternEngine.savePattern(parsed, { overwrite });
+      return { pattern };
+    }
+
+    if (ext === '.yaml' || ext === '.yml') {
+      const orgPattern = yaml.load(content) as OrgPattern;
+      if (!orgPattern.name) {
+        orgPattern.name = path.basename(filename).replace(/\.ya?ml$/, '');
+      }
+
+      const compiled = compileOrgPattern(orgPattern, { includeComments: true });
+
+      const inputConfig = compiled.metadata.input;
+      const patternInput = inputConfig && typeof inputConfig === 'object' && 'type' in inputConfig
+        ? inputConfig as { type: string; required?: boolean; schema?: any }
+        : { type: 'object', schema: inputConfig };
+
+      const patternData = {
+        name: compiled.name,
+        version: compiled.metadata.version,
+        description: compiled.metadata.description,
+        input: patternInput,
+        agents: compiled.metadata.agents,
+        minAgents: compiled.metadata.agents.minAgents,
+        maxAgents: compiled.metadata.agents.maxAgents,
+        script: compiled.script,
+        metadata: {
+          source: 'yaml',
+          orgChart: true,
+        },
+      };
+
+      const pattern = await patternEngine.savePattern(patternData, { overwrite });
+      return { pattern, compiled: true };
+    }
+
+    throw new Error(`Unsupported file extension: ${ext}. Use .prism, .yaml, or .yml`);
+  }
 
   // Get pattern versions (Enterprise)
   router.get('/:name/versions', requirePatternManagement, async (req: any, res: any) => {

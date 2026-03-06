@@ -172,12 +172,52 @@ export class GeminiAdapter extends BaseCodingAdapter {
     return env;
   }
 
-  getHookTelemetryProtocol(options?: { scriptPath?: string; markerPrefix?: string }): {
+  override getHookTelemetryProtocol(options?: {
+    scriptPath?: string;
+    markerPrefix?: string;
+    httpUrl?: string;
+    sessionId?: string;
+  }): {
     markerPrefix: string;
     scriptPath: string;
     scriptContent: string;
     settingsHooks: Record<string, unknown>;
   } {
+    // HTTP hook mode: generate command hooks that curl the orchestrator endpoint.
+    // Gemini CLI only supports command hooks (no native HTTP), so we bridge
+    // stdin JSON → curl POST → pipe response JSON back to stdout.
+    if (options?.httpUrl) {
+      const sessionHeader = options.sessionId
+        ? ` -H 'X-Parallax-Session-Id: ${options.sessionId}'`
+        : '';
+      // The command reads Gemini's hook JSON from stdin, POSTs it to the
+      // orchestrator, and pipes the JSON response back to stdout. On curl
+      // failure, emit a safe no-op JSON so Gemini continues normally.
+      const curlCommand =
+        `bash -c 'curl -sf -X POST "${options.httpUrl}"` +
+        ` -H "Content-Type: application/json"${sessionHeader}` +
+        ` -d @- --max-time 4 2>/dev/null || echo "{\\"continue\\":true}"'`;
+
+      const hookEntry = [{ matcher: '', hooks: [{ type: 'command', command: curlCommand, timeout: 5000 }] }];
+      const hookEntryNoMatcher = [{ hooks: [{ type: 'command', command: curlCommand, timeout: 5000 }] }];
+
+      const settingsHooks: Record<string, unknown> = {
+        BeforeTool: hookEntry,
+        AfterTool: hookEntry,
+        AfterAgent: hookEntryNoMatcher,
+        SessionEnd: hookEntryNoMatcher,
+        Notification: hookEntry,
+      };
+
+      return {
+        markerPrefix: '',
+        scriptPath: '',
+        scriptContent: '',
+        settingsHooks,
+      };
+    }
+
+    // Command hook mode (fallback): emit marker lines via systemMessage
     const markerPrefix = options?.markerPrefix || GEMINI_HOOK_MARKER_PREFIX;
     const scriptPath = options?.scriptPath || '.gemini/hooks/parallax-hook-telemetry.sh';
     const scriptCommand = `"${'$'}GEMINI_PROJECT_ROOT"/${scriptPath}`;

@@ -105,7 +105,7 @@ export class PatternLoader {
   private async loadPrismPattern(filePath: string): Promise<void> {
     try {
       const content = await fs.readFile(filePath, 'utf-8');
-      const pattern = this.parsePrismPattern(content, filePath);
+      const pattern = this.parsePrismPatternInstance(content, filePath);
 
       if (this.validatePattern(pattern)) {
         this.patterns.set(pattern.name, pattern);
@@ -116,18 +116,22 @@ export class PatternLoader {
     }
   }
 
-  private parsePrismPattern(content: string, filePath: string): Pattern {
+  private parsePrismPatternInstance(content: string, filePath: string): Pattern {
+    return PatternLoader.parsePrismPattern(content, path.basename(filePath, '.prism'));
+  }
+
+  static parsePrismPattern(content: string, fallbackName: string): Pattern {
     // Parse pattern metadata from comments
     const metadataMatch = content.match(/\/\*\*([\s\S]*?)\*\//);
-    const metadata = metadataMatch ? this.parseMetadata(metadataMatch[1]) : {};
+    const metadata = metadataMatch ? PatternLoader.parseMetadata(metadataMatch[1]) : {};
 
     // Extract the actual script by removing the metadata comment block
-    const script = metadataMatch 
+    const script = metadataMatch
       ? content.replace(metadataMatch[0], '').trim()
       : content.trim();
 
-    const name = metadata.name || path.basename(filePath, '.prism');
-    
+    const name = metadata.name || fallbackName;
+
     return {
       name,
       version: metadata.version || '1.0.0',
@@ -141,7 +145,7 @@ export class PatternLoader {
     };
   }
 
-  private parseMetadata(metadataText: string): any {
+  static parseMetadata(metadataText: string): any {
     // Simple metadata parser for pattern files
     const lines = metadataText.split('\n');
     const metadata: any = {};

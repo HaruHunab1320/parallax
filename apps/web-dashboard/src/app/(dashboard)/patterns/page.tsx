@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api-client';
-import { GitBranch, RefreshCw, Play, Eye, Search, CheckCircle, XCircle, Info } from 'lucide-react';
+import { GitBranch, RefreshCw, Play, Eye, Search, CheckCircle, XCircle, Info, Upload, X, FileUp } from 'lucide-react';
 
 interface Pattern {
   name: string;
@@ -34,6 +34,11 @@ export default function PatternsPage() {
   const [executeInput, setExecuteInput] = useState('{}');
   const [executing, setExecuting] = useState(false);
   const [executeResult, setExecuteResult] = useState<any>(null);
+  const [uploadModal, setUploadModal] = useState(false);
+  const [uploadFiles, setUploadFiles] = useState<Array<{ name: string; content: string }>>([]);
+  const [uploadOverwrite, setUploadOverwrite] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResults, setUploadResults] = useState<Array<{ filename: string; success: boolean; error?: string }> | null>(null);
 
   const fetchPatterns = async () => {
     try {
@@ -94,6 +99,66 @@ export default function PatternsPage() {
     return JSON.stringify(obj, null, 2);
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadFiles((prev) => {
+          if (prev.some((f) => f.name === file.name)) return prev;
+          return [...prev, { name: file.name, content: reader.result as string }];
+        });
+      };
+      reader.readAsText(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+
+    Array.from(files).forEach((file) => {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (!['prism', 'yaml', 'yml'].includes(ext || '')) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadFiles((prev) => {
+          if (prev.some((f) => f.name === file.name)) return prev;
+          return [...prev, { name: file.name, content: reader.result as string }];
+        });
+      };
+      reader.readAsText(file);
+    });
+  };
+
+  const handleUpload = async () => {
+    if (uploadFiles.length === 0) return;
+
+    setUploading(true);
+    setUploadResults(null);
+
+    try {
+      const { results } = await apiClient.uploadPatterns(
+        uploadFiles.map((f) => ({ filename: f.name, content: f.content })),
+        uploadOverwrite
+      );
+      setUploadResults(results);
+
+      if (results.some((r) => r.success)) {
+        fetchPatterns();
+      }
+    } catch (error) {
+      setUploadResults([{ filename: 'batch', success: false, error: (error as Error).message }]);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const getPatternTypeColor = (type?: string) => {
     switch (type) {
       case 'voting':
@@ -118,10 +183,24 @@ export default function PatternsPage() {
           <h1 className="text-3xl font-bold text-white">Patterns</h1>
           <p className="text-gray-400 mt-1">View and execute coordination patterns</p>
         </div>
-        <Button variant="outline" onClick={fetchPatterns}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setUploadModal(true);
+              setUploadFiles([]);
+              setUploadResults(null);
+              setUploadOverwrite(false);
+            }}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Upload Pattern
+          </Button>
+          <Button variant="outline" onClick={fetchPatterns}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -396,6 +475,128 @@ export default function PatternsPage() {
                         <>
                           <Play className="w-4 h-4 mr-2" />
                           Execute
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Upload Modal */}
+      {uploadModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[80vh] overflow-auto">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Upload Patterns</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => setUploadModal(false)}>
+                  Close
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Drop zone */}
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center hover:border-parallax-accent/50 transition-colors"
+                >
+                  <FileUp className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-300 mb-2">Drag & drop pattern files here</p>
+                  <p className="text-sm text-gray-500 mb-3">Accepts .prism, .yaml, .yml files</p>
+                  <label className="cursor-pointer">
+                    <span className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md text-sm text-white transition-colors">
+                      Browse Files
+                    </span>
+                    <input
+                      type="file"
+                      accept=".prism,.yaml,.yml"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* File list */}
+                {uploadFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-gray-400">
+                      Selected Files ({uploadFiles.length})
+                    </h3>
+                    {uploadFiles.map((file) => (
+                      <div
+                        key={file.name}
+                        className="flex items-center justify-between p-2 bg-white/5 rounded-md"
+                      >
+                        <span className="text-sm text-white">{file.name}</span>
+                        <button
+                          onClick={() => setUploadFiles((prev) => prev.filter((f) => f.name !== file.name))}
+                          className="text-gray-400 hover:text-red-400"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Overwrite toggle */}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={uploadOverwrite}
+                    onChange={(e) => setUploadOverwrite(e.target.checked)}
+                    className="rounded border-white/20"
+                  />
+                  <span className="text-sm text-gray-300">Overwrite existing patterns</span>
+                </label>
+
+                {/* Upload results */}
+                {uploadResults && (
+                  <div className="space-y-2">
+                    {uploadResults.map((result, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        {result.success ? (
+                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                        )}
+                        <span className={result.success ? 'text-green-400' : 'text-red-400'}>
+                          {result.filename}
+                        </span>
+                        {result.error && (
+                          <span className="text-gray-500">— {result.error}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button variant="outline" onClick={() => setUploadModal(false)}>
+                    {uploadResults ? 'Close' : 'Cancel'}
+                  </Button>
+                  {!uploadResults && (
+                    <Button
+                      onClick={handleUpload}
+                      disabled={uploading || uploadFiles.length === 0}
+                    >
+                      {uploading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload {uploadFiles.length > 0 ? `(${uploadFiles.length})` : ''}
                         </>
                       )}
                     </Button>

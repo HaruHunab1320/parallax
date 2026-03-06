@@ -192,6 +192,20 @@ export class ParallaxHttpClient {
     return ws;
   }
 
+  // Pattern upload methods
+  async uploadPattern(filename: string, content: string, overwrite?: boolean): Promise<Pattern> {
+    const response = await this.client.post('/api/patterns/upload', { filename, content, overwrite });
+    return response.data.pattern;
+  }
+
+  async uploadPatterns(
+    files: Array<{ filename: string; content: string }>,
+    overwrite?: boolean
+  ): Promise<{ results: Array<{ filename: string; success: boolean; pattern?: Pattern; error?: string }> }> {
+    const response = await this.client.post('/api/patterns/upload/batch', { files, overwrite });
+    return response.data;
+  }
+
   // Utility methods
   async reloadPatterns() {
     if (process.env.NODE_ENV !== 'development') {
