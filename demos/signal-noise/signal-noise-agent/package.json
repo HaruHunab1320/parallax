@@ -1,0 +1,24 @@
+{
+  "name": "parallax-signal-noise-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Signal//Noise persona agents for the ARG portfolio demo",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "upload-pattern": "tsx src/upload-pattern.ts"
+  },
+  "dependencies": {
+    "@parallaxai/sdk-typescript": "^0.1.0",
+    "@google/generative-ai": "^0.21.0",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.14.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

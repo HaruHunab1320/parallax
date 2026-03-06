@@ -370,24 +370,14 @@ export class PatternEngine implements IPatternEngine {
         successfulResults: []
       };
 
-      // Check if pattern needs agent analysis results
-      const patternNameLower = pattern.name.toLowerCase();
-      if (patternNameLower.includes('consensus') || patternNameLower.includes('cascade') ||
-          patternNameLower.includes('orchestrator') || patternNameLower.includes('router') ||
-          patternNameLower.includes('robust') || patternNameLower.includes('validator') ||
-          patternNameLower.includes('balancer') || patternNameLower.includes('mapreduce') ||
-          patternNameLower.includes('exploration') || patternNameLower.includes('refinement') ||
-          patternNameLower.includes('voting') ||
-          patternNameLower.includes('extraction') ||
-          patternNameLower.includes('qualitygate') ||
-          patternNameLower.includes('translation') ||
-          patternNameLower.includes('documentanalysis') ||
-          patternNameLower.includes('coordination') ||
-          patternNameLower.includes('prompttest')) {
+      // Check if pattern needs agent analysis results — dispatch fan-out
+      // when the pattern declares agent requirements (minAgents or agents config)
+      const needsAgentDispatch = (pattern.minAgents != null && pattern.minAgents >= 1) || !!pattern.agents;
+      if (needsAgentDispatch) {
 
         let agentResults: any[];
 
-        this.logger.info({ hasExecutionEngine: !!this.executionEngine, patternNameLower }, 'Entering agent dispatch block');
+        this.logger.info({ hasExecutionEngine: !!this.executionEngine, patternName }, 'Entering agent dispatch block');
 
         // Use ExecutionEngine if available, otherwise fall back to direct AgentProxy calls
         if (this.executionEngine) {

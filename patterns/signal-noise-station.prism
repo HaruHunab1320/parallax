@@ -1,0 +1,86 @@
+/**
+ * @name SignalNoiseStation
+ * @version 1.0.0
+ * @description Signal//Noise station pattern — orchestrates persona agents with frequency tuning and priority weights
+ * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "object"}}}
+ * @agents {"capabilities": ["conversation", "portfolio"]}
+ * @minAgents 2
+ */
+
+// Access pre-processed agent results
+results = agentResults
+count = agentCount
+
+// Extract tuning parameters from the input data
+primaryChannel = input.data ? (input.data.primaryChannel ? input.data.primaryChannel : "prism") : "prism"
+weights = input.data ? (input.data.priorityWeights ? input.data.priorityWeights : {}) : {}
+
+// Separate primary and background results
+primaryResult = null
+backgroundResults = []
+i = 0
+while (i < results.length) {
+  agentChannel = results[i].result ? (results[i].result.value ? (results[i].result.value.channel ? results[i].result.value.channel : "") : "") : ""
+  if (agentChannel == primaryChannel) {
+    primaryResult = results[i]
+  } else {
+    backgroundResults = backgroundResults.concat([results[i]])
+  }
+  i = i + 1
+}
+
+// Apply priority weights to compute dominance scores
+rankedBackground = []
+j = 0
+while (j < backgroundResults.length) {
+  bgChannel = backgroundResults[j].result ? (backgroundResults[j].result.value ? (backgroundResults[j].result.value.channel ? backgroundResults[j].result.value.channel : "") : "") : ""
+  rawConf = backgroundResults[j].confidence ? backgroundResults[j].confidence : 0.5
+  weight = weights[bgChannel] ? weights[bgChannel] : 0.25
+  dominance = rawConf * weight
+  entry = {
+    channel: bgChannel,
+    agent: backgroundResults[j].agentName,
+    message: backgroundResults[j].result ? (backgroundResults[j].result.value ? (backgroundResults[j].result.value.message ? backgroundResults[j].result.value.message : "") : "") : "",
+    confidence: rawConf,
+    weight: weight,
+    dominance: dominance
+  }
+  rankedBackground = rankedBackground.concat([entry])
+  j = j + 1
+}
+
+// Compute primary info
+primaryChannel_out = primaryResult ? (primaryResult.result ? (primaryResult.result.value ? (primaryResult.result.value.channel ? primaryResult.result.value.channel : primaryChannel) : primaryChannel) : primaryChannel) : primaryChannel
+primaryMessage = primaryResult ? (primaryResult.result ? (primaryResult.result.value ? (primaryResult.result.value.message ? primaryResult.result.value.message : "") : "") : "") : ""
+primaryConf = primaryResult ? (primaryResult.confidence ? primaryResult.confidence : 0.5) : 0.5
+primaryWeight = weights[primaryChannel_out] ? weights[primaryChannel_out] : 0.5
+primaryDominance = primaryConf * primaryWeight
+
+// Compute station-wide confidence
+totalConf = primaryConf
+k = 0
+while (k < rankedBackground.length) {
+  totalConf = totalConf + rankedBackground[k].confidence
+  k = k + 1
+}
+stationConfidence = count > 0 ? totalConf / count : 0
+
+// Build final result
+result = {
+  primary: {
+    channel: primaryChannel_out,
+    agent: primaryResult ? primaryResult.agentName : null,
+    message: primaryMessage,
+    confidence: primaryConf,
+    dominance: primaryDominance
+  },
+  background: rankedBackground,
+  stationConfidence: stationConfidence,
+  agentCount: count,
+  tuning: {
+    primaryChannel: primaryChannel,
+    weights: weights
+  }
+}
+
+result ~> stationConfidence
