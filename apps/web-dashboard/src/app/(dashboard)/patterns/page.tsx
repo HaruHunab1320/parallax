@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api-client';
-import { GitBranch, RefreshCw, Play, Eye, Search, CheckCircle, XCircle, Info, Upload, X, FileUp } from 'lucide-react';
+import { GitBranch, RefreshCw, Play, Eye, Search, CheckCircle, XCircle, Info, Upload, X, FileUp, Copy, Check } from 'lucide-react';
 
 interface Pattern {
   name: string;
@@ -12,10 +12,16 @@ interface Pattern {
   version?: string;
   type?: string;
   agentCount?: number;
+  script?: string;
+  minAgents?: number;
+  maxAgents?: number;
+  agents?: { capabilities?: string[]; minConfidence?: number };
+  input?: { type: string; required?: boolean; schema?: any };
   metadata?: {
     inputSchema?: any;
     outputSchema?: any;
     tags?: string[];
+    source?: string;
   };
 }
 
@@ -39,6 +45,8 @@ export default function PatternsPage() {
   const [uploadOverwrite, setUploadOverwrite] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResults, setUploadResults] = useState<Array<{ filename: string; success: boolean; error?: string }> | null>(null);
+  const [detailTab, setDetailTab] = useState<'overview' | 'source'>('overview');
+  const [copied, setCopied] = useState(false);
 
   const fetchPatterns = async () => {
     try {
@@ -281,6 +289,8 @@ export default function PatternsPage() {
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedPattern(pattern);
+                        setDetailTab('overview');
+                        setCopied(false);
                       }}
                     >
                       <Eye className="w-4 h-4 mr-1" />
@@ -325,60 +335,155 @@ export default function PatternsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-400 mb-2">Description</h3>
-                  <p className="text-white">{selectedPattern.description || 'No description'}</p>
-                </div>
-
-                {selectedPattern.type && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-2">Pattern Type</h3>
-                    <span className={`px-3 py-1 text-sm rounded-md ${getPatternTypeColor(selectedPattern.type)}`}>
-                      {selectedPattern.type}
-                    </span>
-                  </div>
-                )}
-
-                {selectedPattern.metadata?.inputSchema && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-2">Input Schema</h3>
-                    <pre className="text-sm bg-white/5 p-4 rounded-lg overflow-auto">
-                      {JSON.stringify(selectedPattern.metadata.inputSchema, null, 2)}
-                    </pre>
-                  </div>
-                )}
-
-                {selectedPattern.metadata?.tags && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-2">Tags</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedPattern.metadata.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-3 py-1 text-sm bg-parallax-accent/20 text-parallax-accent rounded-md"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button
-                    onClick={() => {
-                      setSelectedPattern(null);
-                      setExecuteModal(selectedPattern);
-                      setExecuteInput(scaffoldFromSchema(selectedPattern.metadata?.inputSchema));
-                      setExecuteResult(null);
-                    }}
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    Execute Pattern
-                  </Button>
-                </div>
+              {/* Tab Navigation */}
+              <div className="flex gap-4 border-b border-white/10 mb-6">
+                <button
+                  onClick={() => setDetailTab('overview')}
+                  className={`pb-2 text-sm font-medium transition-colors ${
+                    detailTab === 'overview'
+                      ? 'text-parallax-accent border-b-2 border-parallax-accent'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => { setDetailTab('source'); setCopied(false); }}
+                  className={`pb-2 text-sm font-medium transition-colors ${
+                    detailTab === 'source'
+                      ? 'text-parallax-accent border-b-2 border-parallax-accent'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  Source
+                </button>
               </div>
+
+              {detailTab === 'overview' ? (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-400 mb-2">Description</h3>
+                    <p className="text-white">{selectedPattern.description || 'No description'}</p>
+                  </div>
+
+                  {/* Configuration */}
+                  {(selectedPattern.type || selectedPattern.minAgents != null || selectedPattern.maxAgents != null || selectedPattern.agents || selectedPattern.metadata?.source) && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-400 mb-3">Configuration</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        {selectedPattern.type && (
+                          <div className="p-3 bg-white/5 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">Pattern Type</p>
+                            <span className={`px-2 py-0.5 text-xs rounded-md ${getPatternTypeColor(selectedPattern.type)}`}>
+                              {selectedPattern.type}
+                            </span>
+                          </div>
+                        )}
+                        {(selectedPattern.minAgents != null || selectedPattern.maxAgents != null) && (
+                          <div className="p-3 bg-white/5 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">Agents</p>
+                            <p className="text-sm text-white">
+                              {selectedPattern.minAgents != null && selectedPattern.maxAgents != null
+                                ? `${selectedPattern.minAgents} – ${selectedPattern.maxAgents}`
+                                : selectedPattern.minAgents != null
+                                  ? `Min ${selectedPattern.minAgents}`
+                                  : `Max ${selectedPattern.maxAgents}`}
+                            </p>
+                          </div>
+                        )}
+                        {selectedPattern.agents?.capabilities && selectedPattern.agents.capabilities.length > 0 && (
+                          <div className="p-3 bg-white/5 rounded-lg col-span-2">
+                            <p className="text-xs text-gray-500 mb-1">Agent Capabilities</p>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedPattern.agents.capabilities.map((cap) => (
+                                <span key={cap} className="px-2 py-0.5 text-xs bg-white/10 rounded-md text-gray-300">
+                                  {cap}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {selectedPattern.agents?.minConfidence != null && (
+                          <div className="p-3 bg-white/5 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">Min Confidence</p>
+                            <p className="text-sm text-white">{selectedPattern.agents.minConfidence}</p>
+                          </div>
+                        )}
+                        {selectedPattern.metadata?.source && (
+                          <div className="p-3 bg-white/5 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">Source</p>
+                            <p className="text-sm text-white">{selectedPattern.metadata.source}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedPattern.metadata?.inputSchema && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-400 mb-2">Input Schema</h3>
+                      <pre className="text-sm bg-white/5 p-4 rounded-lg overflow-auto">
+                        {JSON.stringify(selectedPattern.metadata.inputSchema, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+
+                  {selectedPattern.metadata?.tags && selectedPattern.metadata.tags.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-400 mb-2">Tags</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedPattern.metadata.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-3 py-1 text-sm bg-parallax-accent/20 text-parallax-accent rounded-md"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button
+                      onClick={() => {
+                        setSelectedPattern(null);
+                        setExecuteModal(selectedPattern);
+                        setExecuteInput(scaffoldFromSchema(selectedPattern.metadata?.inputSchema));
+                        setExecuteResult(null);
+                      }}
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      Execute Pattern
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {selectedPattern.script ? (
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedPattern.script!);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                        className="absolute top-3 right-3 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white transition-colors"
+                        title="Copy to clipboard"
+                      >
+                        {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                      <pre className="font-mono text-sm bg-white/5 p-4 rounded-lg overflow-auto max-h-[50vh]">
+                        <code>{selectedPattern.script}</code>
+                      </pre>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-400">
+                      No source available
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
