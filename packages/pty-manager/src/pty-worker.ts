@@ -96,6 +96,8 @@ interface Command {
   enabled?: boolean;
   timeoutMs?: number;
   classification?: StallClassification | null;
+  // Hook event notification
+  hookEvent?: string;
 }
 
 interface Event {
@@ -513,6 +515,20 @@ function handleClassifyStallResult(id: string, classification: StallClassificati
   }
 }
 
+function handleNotifyHookEvent(id: string, hookEvent: string): void {
+  try {
+    const session = manager.getSession(id);
+    if (!session) {
+      ack('notifyHookEvent', id, false, `Session ${id} not found`);
+      return;
+    }
+    session.notifyHookEvent(hookEvent);
+    ack('notifyHookEvent', id, true);
+  } catch (err) {
+    ack('notifyHookEvent', id, false, err instanceof Error ? err.message : String(err));
+  }
+}
+
 function processCommand(line: string): void {
   let command: Command;
 
@@ -654,6 +670,14 @@ function processCommand(line: string): void {
         return;
       }
       handleClassifyStallResult(command.id, command.classification ?? null);
+      break;
+
+    case 'notifyHookEvent':
+      if (!command.id || !command.hookEvent) {
+        ack('notifyHookEvent', command.id, false, 'Missing id or hookEvent');
+        return;
+      }
+      handleNotifyHookEvent(command.id, command.hookEvent);
       break;
 
     default:

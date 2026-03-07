@@ -2,6 +2,15 @@
 
 All notable changes to `pty-manager` will be documented in this file.
 
+## [1.9.6] - 2026-03-07
+
+### Added
+- **Hook event notification** — new `notifyHookEvent(event)` method on `PTYSession` bridges external hook events (e.g. Claude Code HTTP hooks) into the session state machine. Supports `tool_running` (resets stall timer), `task_complete` (transitions to ready), and `permission_approved` (clears blocking prompt hash).
+- **`notifyHookEvent` IPC command** — added to pty-worker and `BunCompatiblePTYManager` so hook events can be forwarded from the orchestrator through the Bun↔Node IPC bridge.
+
+### Fixed
+- **Blocking prompt deduplication with TUI re-renders** — prompt hash now normalizes whitespace, numbers, and length before comparison, preventing re-emission of the same blocking prompt when TUI cursor repositioning causes minor text differences.
+
 ## [1.9.5] - 2026-03-02
 
 ### Fixed

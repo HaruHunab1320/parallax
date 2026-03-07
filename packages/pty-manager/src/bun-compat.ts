@@ -511,6 +511,15 @@ export class BunCompatiblePTYManager extends EventEmitter {
   }
 
   /**
+   * Notify a session of an external hook event (resets stall timer, updates status).
+   */
+  async notifyHookEvent(id: string, hookEvent: string): Promise<void> {
+    await this.waitForReady();
+    this.sendCommand({ cmd: 'notifyHookEvent', id, hookEvent });
+    await this.createPending(`notifyHookEvent:${id}`);
+  }
+
+  /**
    * Write raw data to a session (bypasses adapter formatting)
    */
   async writeRaw(id: string, data: string): Promise<void> {

@@ -1196,8 +1196,16 @@ export class PTYSession extends EventEmitter {
       const detection = this.adapter.detectBlockingPrompt(this.outputBuffer);
 
       if (detection.detected) {
-        // Deduplicate: don't re-emit the same blocking prompt
-        const promptHash = `${detection.type}:${detection.prompt || ''}`;
+        // Deduplicate: don't re-emit the same blocking prompt.
+        // Normalize the prompt text for hashing — strip whitespace variations,
+        // line numbers, and cursor artifacts that change on every TUI re-render
+        // (e.g. pager prompts, permission dialogs with changing line counts).
+        const normalizedPrompt = (detection.prompt || '')
+          .replace(/\s+/g, ' ')       // collapse whitespace
+          .replace(/\d+/g, '#')       // normalize numbers (line counts, etc.)
+          .trim()
+          .slice(0, 100);             // cap length for consistent hashing
+        const promptHash = `${detection.type}:${normalizedPrompt}`;
         if (promptHash === this._lastBlockingPromptHash) {
           // Still blocked by same prompt, but don't spam events
           return true;
@@ -1643,6 +1651,43 @@ export class PTYSession extends EventEmitter {
   /**
    * Kill the PTY process
    */
+  /**
+   * Notify the session of an external hook event (e.g. from Claude Code HTTP hooks).
+   * Resets the stall timer so hook-managed sessions don't get false stall escalations.
+   * For "task_complete" events, transitions the session to ready.
+   */
+  notifyHookEvent(event: string): void {
+    switch (event) {
+      case 'tool_running':
+        // Hook confirms a tool is running — reset stall timer to avoid false escalation.
+        this._lastActivityAt = new Date();
+        this.resetStallTimer();
+        // Intentionally silent — fires on every tool use and is too noisy even at debug level.
+        break;
+      case 'task_complete':
+        // Hook says the agent finished — transition to ready.
+        this._status = 'ready';
+        this._lastBlockingPromptHash = null;
+        this.outputBuffer = '';
+        this.clearStallTimer();
+        this.emit('status_changed', 'ready');
+        this.emit('task_complete');
+        this.logger.info({ sessionId: this.id, event }, 'Hook event: task_complete → ready');
+        break;
+      case 'permission_approved':
+        // Permission handled by hook — reset stall timer.
+        this._lastActivityAt = new Date();
+        this._lastBlockingPromptHash = null;
+        this.resetStallTimer();
+        break;
+      default:
+        // Generic activity signal — just reset stall timer.
+        this._lastActivityAt = new Date();
+        this.resetStallTimer();
+        break;
+    }
+  }
+
   kill(signal?: string): void {
     if (this.ptyProcess) {
       this._status = 'stopping';
