@@ -13,48 +13,42 @@ count = agentCount
 
 // Extract tuning parameters from the input data
 primaryChannel = input.data ? (input.data.primaryChannel ? input.data.primaryChannel : "prism") : "prism"
-weights = input.data ? (input.data.priorityWeights ? input.data.priorityWeights : {}) : {}
 
 // Separate primary and background results
 primaryResult = null
 backgroundResults = []
 i = 0
 while (i < results.length) {
-  agentChannel = results[i].result ? (results[i].result.value ? (results[i].result.value.channel ? results[i].result.value.channel : "") : "") : ""
+  agentChannel = results[i].result ? (results[i].result.channel ? results[i].result.channel : "") : ""
   if (agentChannel == primaryChannel) {
     primaryResult = results[i]
   } else {
-    backgroundResults = backgroundResults.concat([results[i]])
+    backgroundResults = backgroundResults.push(results[i])
   }
   i = i + 1
 }
 
-// Apply priority weights to compute dominance scores
+// Rank background results by confidence
 rankedBackground = []
 j = 0
 while (j < backgroundResults.length) {
-  bgChannel = backgroundResults[j].result ? (backgroundResults[j].result.value ? (backgroundResults[j].result.value.channel ? backgroundResults[j].result.value.channel : "") : "") : ""
+  bgChannel = backgroundResults[j].result ? (backgroundResults[j].result.channel ? backgroundResults[j].result.channel : "") : ""
   rawConf = backgroundResults[j].confidence ? backgroundResults[j].confidence : 0.5
-  weight = weights[bgChannel] ? weights[bgChannel] : 0.25
-  dominance = rawConf * weight
   entry = {
     channel: bgChannel,
     agent: backgroundResults[j].agentName,
-    message: backgroundResults[j].result ? (backgroundResults[j].result.value ? (backgroundResults[j].result.value.message ? backgroundResults[j].result.value.message : "") : "") : "",
+    message: backgroundResults[j].result ? (backgroundResults[j].result.message ? backgroundResults[j].result.message : "") : "",
     confidence: rawConf,
-    weight: weight,
-    dominance: dominance
+    dominance: rawConf
   }
-  rankedBackground = rankedBackground.concat([entry])
+  rankedBackground = rankedBackground.push(entry)
   j = j + 1
 }
 
 // Compute primary info
-primaryChannel_out = primaryResult ? (primaryResult.result ? (primaryResult.result.value ? (primaryResult.result.value.channel ? primaryResult.result.value.channel : primaryChannel) : primaryChannel) : primaryChannel) : primaryChannel
-primaryMessage = primaryResult ? (primaryResult.result ? (primaryResult.result.value ? (primaryResult.result.value.message ? primaryResult.result.value.message : "") : "") : "") : ""
+primaryChannel_out = primaryResult ? (primaryResult.result ? (primaryResult.result.channel ? primaryResult.result.channel : primaryChannel) : primaryChannel) : primaryChannel
+primaryMessage = primaryResult ? (primaryResult.result ? (primaryResult.result.message ? primaryResult.result.message : "") : "") : ""
 primaryConf = primaryResult ? (primaryResult.confidence ? primaryResult.confidence : 0.5) : 0.5
-primaryWeight = weights[primaryChannel_out] ? weights[primaryChannel_out] : 0.5
-primaryDominance = primaryConf * primaryWeight
 
 // Compute station-wide confidence
 totalConf = primaryConf
@@ -71,15 +65,13 @@ result = {
     channel: primaryChannel_out,
     agent: primaryResult ? primaryResult.agentName : null,
     message: primaryMessage,
-    confidence: primaryConf,
-    dominance: primaryDominance
+    confidence: primaryConf
   },
   background: rankedBackground,
   stationConfidence: stationConfidence,
   agentCount: count,
   tuning: {
-    primaryChannel: primaryChannel,
-    weights: weights
+    primaryChannel: primaryChannel
   }
 }
 

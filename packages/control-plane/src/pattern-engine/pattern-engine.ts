@@ -1213,7 +1213,7 @@ export class PatternEngine implements IPatternEngine {
 
     for (const agent of agents) {
       const endpoint = agent.address || agent.endpoint;
-      const protocol = endpoint.startsWith('http') ? 'http' : 'grpc';
+      const protocol = endpoint.startsWith('gateway://') ? 'gateway' : endpoint.startsWith('http') ? 'http' : 'grpc';
 
       try {
         await agentProxy.registerAgent(agent.id, endpoint, protocol);

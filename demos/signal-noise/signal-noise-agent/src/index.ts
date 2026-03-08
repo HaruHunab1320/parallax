@@ -33,16 +33,28 @@ async function main() {
     );
   }, 30_000);
 
-  const port = parseInt(process.env.AGENT_PORT || '0', 10);
+  const gatewayEndpoint = process.env.PARALLAX_GATEWAY;
   const registryEndpoint = process.env.PARALLAX_REGISTRY;
 
-  console.log(`Starting Signal//Noise Agent: ${persona.name}...`);
-  console.log(`  Registry: ${registryEndpoint || 'localhost:50051'}`);
-  console.log(`  Host:     ${process.env.PARALLAX_AGENT_HOST || '127.0.0.1'}`);
+  if (gatewayEndpoint) {
+    // Gateway mode: outbound connection to remote control plane (no public endpoint needed)
+    console.log(`Starting Signal//Noise Agent: ${persona.name} (gateway mode)...`);
+    console.log(`  Gateway: ${gatewayEndpoint}`);
 
-  const actualPort = await agent.serve(port, { registryEndpoint });
-  console.log(`${persona.name} agent serving on port ${actualPort}`);
-  agent.display.addTextLine('* ready');
+    await agent.connectViaGateway(gatewayEndpoint);
+    console.log(`${persona.name} agent connected via gateway`);
+    agent.display.addTextLine('* ready (gw)');
+  } else {
+    // Local mode: start gRPC server and register with registry
+    const port = parseInt(process.env.AGENT_PORT || '0', 10);
+    console.log(`Starting Signal//Noise Agent: ${persona.name}...`);
+    console.log(`  Registry: ${registryEndpoint || 'localhost:50051'}`);
+    console.log(`  Host:     ${process.env.PARALLAX_AGENT_HOST || '127.0.0.1'}`);
+
+    const actualPort = await agent.serve(port, { registryEndpoint });
+    console.log(`${persona.name} agent serving on port ${actualPort}`);
+    agent.display.addTextLine('* ready');
+  }
 
   const shutdown = async () => {
     console.log(`Shutting down ${persona.name} agent...`);
