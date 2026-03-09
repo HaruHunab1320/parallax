@@ -12,6 +12,7 @@ import {
 } from 'coding-agent-adapters';
 import type { AgentManager } from '../agent-manager.js';
 import type { AgentType, AgentStatus } from '../types.js';
+import { cleanForChat } from '../ansi-utils.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Schemas
@@ -78,6 +79,7 @@ export const SendInputSchema = z.object({
 export const LogsInputSchema = z.object({
   agentId: z.string().describe('ID of the agent'),
   tail: z.number().optional().describe('Number of lines from the end'),
+  clean: z.boolean().default(false).describe('Strip TUI noise (ANSI codes, spinners, loading indicators, box-drawing). Recommended for coordinating agents reading sub-agent output.'),
 });
 
 export const MetricsInputSchema = z.object({
@@ -292,12 +294,13 @@ export const TOOLS = [
   },
   {
     name: 'logs',
-    description: 'Get terminal output logs from an agent',
+    description: 'Get terminal output logs from an agent. Use clean=true when a coordinating agent needs to read sub-agent output without TUI noise.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         agentId: { type: 'string', description: 'ID of the agent' },
         tail: { type: 'number', description: 'Number of lines from the end' },
+        clean: { type: 'boolean', description: 'Strip TUI noise (ANSI codes, spinners, loading indicators, box-drawing). Recommended for coordinating agents.', default: false },
       },
       required: ['agentId'],
     },
@@ -617,6 +620,20 @@ export async function executeLogs(manager: AgentManager, input: LogsInput) {
 
   for await (const line of manager.logs(validated.agentId, { tail: validated.tail })) {
     lines.push(line);
+  }
+
+  // When clean=true, strip TUI noise so coordinating agents get readable output
+  // instead of raw terminal escape codes, spinners, and box-drawing characters.
+  if (validated.clean) {
+    const raw = lines.join('\n');
+    const cleaned = cleanForChat(raw);
+    const cleanedLines = cleaned ? cleaned.split('\n') : [];
+    return {
+      success: true,
+      agentId: validated.agentId,
+      lines: cleanedLines,
+      count: cleanedLines.length,
+    };
   }
 
   return {

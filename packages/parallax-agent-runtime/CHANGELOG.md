@@ -2,6 +2,12 @@
 
 All notable changes to `parallax-agent-runtime` will be documented in this file.
 
+## [0.8.8] - 2026-03-09
+
+### Added
+- **Terminal output cleaning utilities** — `stripAnsi()`, `cleanForChat()`, `extractCompletionSummary()`, `extractDevServerUrl()` exported from the public API. Enables coordinating agents to read sub-agent output without TUI noise (ANSI codes, spinner characters, box-drawing, loading lines, status bars).
+- **`clean` option on `logs` tool** — when `clean: true`, the `logs` MCP tool runs `cleanForChat()` on the output before returning, stripping TUI decorative characters, loading/status lines, and ANSI escape sequences. Coordinating agents can now get readable sub-agent output in one call.
+
 ## [0.8.7] - 2026-03-09
 
 ### Added

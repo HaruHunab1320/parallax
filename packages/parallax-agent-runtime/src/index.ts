@@ -46,6 +46,14 @@ export {
 // PTY preflight check (re-exported from pty-manager)
 export { ensurePty } from 'pty-manager';
 
+// Terminal output cleaning utilities
+export {
+  stripAnsi,
+  cleanForChat,
+  extractCompletionSummary,
+  extractDevServerUrl,
+} from './ansi-utils.js';
+
 // Agent manager (for direct usage without MCP)
 export {
   AgentManager,
