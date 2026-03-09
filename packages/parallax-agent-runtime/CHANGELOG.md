@@ -2,7 +2,7 @@
 
 All notable changes to `parallax-agent-runtime` will be documented in this file.
 
-## [0.8.6] - 2026-03-09
+## [0.8.7] - 2026-03-09
 
 ### Added
 - **`ensurePty()` re-exported from `pty-manager`** — lazy preflight check called once before the first PTY spawn (instead of a `postinstall` script, which is an npm supply-chain attack vector). The check now lives in `pty-manager` and runs automatically in `PTYSession.start()`, so all consumers get it. Re-exported for direct usage.
@@ -13,6 +13,11 @@ All notable changes to `parallax-agent-runtime` will be documented in this file.
 
 ### Changed
 - Bumped `pty-manager` dependency from `^1.9.6` to `^1.9.8`
+
+## [0.8.6] - 2026-03-09
+
+### Added
+- **`postinstall` script** — ensures node-pty's native addon is usable after install (superseded by 0.8.7)
 
 ## [0.8.5] - 2026-03-08
 
