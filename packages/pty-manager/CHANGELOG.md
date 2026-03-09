@@ -2,6 +2,11 @@
 
 All notable changes to `pty-manager` will be documented in this file.
 
+## [1.9.8] - 2026-03-09
+
+### Added
+- **`ensurePty()` runtime preflight** — lazy check called once before the first PTY spawn in `PTYSession.start()`. Finds prebuilt `pty.node` under `prebuilds/<platform>-<arch>/` (node-pty >=1.0), falls back to `build/Release/pty.node` from node-gyp. Fixes spawn-helper permissions that `bun install` can strip (causing `posix_spawnp failed` at runtime). Rebuilds via `node-gyp rebuild` with a 2-minute timeout as a last resort. Idempotent — subsequent calls are no-ops. Exported for direct usage by consumers.
+
 ## [1.9.7] - 2026-03-09
 
 ### Fixed

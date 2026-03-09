@@ -43,6 +43,9 @@ export {
   type ParallaxMcpServerOptions,
 } from './mcp-server.js';
 
+// PTY preflight check (re-exported from pty-manager)
+export { ensurePty } from 'pty-manager';
+
 // Agent manager (for direct usage without MCP)
 export {
   AgentManager,

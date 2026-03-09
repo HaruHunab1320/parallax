@@ -5,6 +5,9 @@
  * pluggable adapters, and blocking prompt detection.
  */
 
+// PTY preflight check
+export { ensurePty } from './ensure-pty';
+
 // Core classes
 export { PTYManager } from './pty-manager';
 export { PTYSession, SPECIAL_KEYS } from './pty-session';

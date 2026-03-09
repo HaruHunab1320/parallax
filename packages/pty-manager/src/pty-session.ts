@@ -22,6 +22,7 @@ import type {
   Logger,
 } from './types';
 import { consoleLogger } from './logger';
+import { ensurePty } from './ensure-pty';
 
 // Lazy-load node-pty to avoid issues in environments where it's not installed
 let ptyCache: typeof ptyModule | null = null;
@@ -981,6 +982,9 @@ export class PTYSession extends EventEmitter {
     if (this.ptyProcess) {
       throw new Error('Session already started');
     }
+
+    // Ensure node-pty native addon is usable before first spawn
+    ensurePty((msg) => this.logger.info({ sessionId: this.id }, msg));
 
     const nodePty = loadPty();
 
