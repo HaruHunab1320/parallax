@@ -2,6 +2,15 @@
 
 All notable changes to `parallax-agent-runtime` will be documented in this file.
 
+## [0.8.6] - 2026-03-09
+
+### Added
+- **`postinstall` script** — ensures node-pty's native addon is usable after install. Finds prebuilt `pty.node` under `prebuilds/<platform>-<arch>/` (node-pty >=1.0), falls back to `build/Release/pty.node` from node-gyp. Fixes spawn-helper permissions that `bun install` can strip (causing `posix_spawnp failed` at runtime). Rebuilds via `node-gyp rebuild` with a 2-minute timeout as a last resort. Checks both `node_modules/node-pty` and `node_modules/pty-manager/node_modules/node-pty`.
+
+### Changed
+- Bumped `pty-manager` dependency from `^1.9.6` to `^1.9.7`
+- Added `scripts` directory to published `files` field
+
 ## [0.8.5] - 2026-03-08
 
 ### Added
