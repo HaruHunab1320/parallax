@@ -1,6 +1,6 @@
 {
   "name": "pty-state-capture",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Raw PTY capture, VT-aware frame reduction, and interaction-state extraction for CLI orchestration",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -15,7 +15,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsup",

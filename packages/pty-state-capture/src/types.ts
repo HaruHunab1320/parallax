@@ -107,3 +107,67 @@ export interface FeedOutputResult {
   frame: FrameSnapshot;
   normalizedChunk: string;
 }
+
+// ── Session Replay & Regression Detection ──────────────────────────
+
+export type IdleStateKind =
+  | 'ready_for_input'
+  | 'awaiting_input'
+  | 'awaiting_approval'
+  | 'awaiting_auth'
+  | 'completed';
+
+export interface TurnTiming {
+  startedAt: string;
+  endedAt: string;
+  durationMs: number;
+}
+
+export interface Turn {
+  index: number;
+  timing: TurnTiming;
+  input: string;
+  rawOutput: string;
+  cleanOutput: string;
+  transitions: StateTransition[];
+  finalState: StateKind;
+  eventCount: number;
+}
+
+export interface SessionTranscript {
+  sessionId: string;
+  source?: string;
+  startedAt: string;
+  endedAt: string;
+  totalDurationMs: number;
+  turns: Turn[];
+  finalState: StateKind;
+  totalTransitions: number;
+}
+
+export interface TranscriptBuilderOptions {
+  sessionId: string;
+  source?: string;
+  idleStates?: IdleStateKind[];
+  maxRawOutputPerTurn?: number;
+  maxCleanOutputPerTurn?: number;
+}
+
+export interface TurnComparison {
+  baselineTurnIndex: number | null;
+  candidateTurnIndex: number | null;
+  outputSimilarity: number;
+  durationDeltaMs: number;
+  finalStateMatch: boolean;
+  candidateStuck: boolean;
+}
+
+export type RegressionSeverity = 'none' | 'info' | 'warning' | 'regression';
+
+export interface SessionDiffResult {
+  severity: RegressionSeverity;
+  score: number;
+  summary: string;
+  flags: string[];
+  turnComparisons: TurnComparison[];
+}
