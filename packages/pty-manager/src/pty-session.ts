@@ -1239,8 +1239,9 @@ export class PTYSession extends EventEmitter {
           } else {
             this.writeRaw(resp + '\r');
           }
-          this._lastBlockingPromptHash = null; // Clear after auto-response
-          this.outputBuffer = ''; // Prevent stale text from triggering false detections
+          // Keep the hash so TUI re-renders of the same prompt are deduped.
+          // Clear the buffer to prevent stale text from triggering false detections.
+          this.outputBuffer = '';
           this.emit('blocking_prompt', promptInfo, true);
           return true;
         }
@@ -1675,9 +1676,14 @@ export class PTYSession extends EventEmitter {
         this.logger.info({ sessionId: this.id, event }, 'Hook event: task_complete → ready');
         break;
       case 'permission_approved':
-        // Permission handled by hook — reset stall timer.
+        // Permission handled by hook — reset stall timer and clear the output
+        // buffer so stale prompt text doesn't re-trigger detection. Keep the
+        // hash intact: TUI re-renders may briefly show the same prompt text
+        // before the agent processes the approval. With the hash preserved,
+        // detectBlockingPrompt deduplicates those re-renders instead of
+        // emitting a flood of duplicate blocking_prompt events.
         this._lastActivityAt = new Date();
-        this._lastBlockingPromptHash = null;
+        this.outputBuffer = '';
         this.resetStallTimer();
         break;
       default:

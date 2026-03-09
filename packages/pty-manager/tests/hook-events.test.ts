@@ -198,14 +198,26 @@ describe('notifyHookEvent', () => {
   // notifyHookEvent — permission_approved
   // ---------------------------------------------------------------------------
   describe('permission_approved', () => {
-    it('clears blocking prompt hash', () => {
+    it('preserves blocking prompt hash for TUI re-render dedup', () => {
       const session = createSessionWithStatus('busy');
       const internals = getInternals(session);
       internals._lastBlockingPromptHash = 'permission:Allow?';
 
       session.notifyHookEvent('permission_approved');
 
-      expect(internals._lastBlockingPromptHash).toBeNull();
+      // Hash is preserved so TUI re-renders of the same prompt are deduped
+      // instead of emitting a flood of duplicate blocking_prompt events.
+      expect(internals._lastBlockingPromptHash).toBe('permission:Allow?');
+    });
+
+    it('clears output buffer to prevent stale re-detection', () => {
+      const session = createSessionWithStatus('busy');
+      const internals = getInternals(session);
+      internals.outputBuffer = 'Allow tool access? (y/n)';
+
+      session.notifyHookEvent('permission_approved');
+
+      expect(internals.outputBuffer).toBe('');
     });
 
     it('resets lastActivityAt', () => {

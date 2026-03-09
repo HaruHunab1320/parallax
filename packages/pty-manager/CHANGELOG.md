@@ -2,6 +2,12 @@
 
 All notable changes to `pty-manager` will be documented in this file.
 
+## [1.9.7] - 2026-03-09
+
+### Fixed
+- **Blocking prompt flood after permission approval** — `notifyHookEvent('permission_approved')` no longer clears `_lastBlockingPromptHash`. The hash is preserved so TUI re-renders of the same prompt are deduped, preventing a wall of duplicate `blocking_prompt` events. The output buffer is still cleared to avoid stale text re-triggering detection.
+- **Adapter auto-response re-detection loop** — after an adapter auto-responds to a blocking prompt, the hash is now preserved (previously cleared) so the same prompt re-rendered by the TUI doesn't fire again.
+
 ## [1.9.6] - 2026-03-07
 
 ### Added

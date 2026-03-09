@@ -183,7 +183,7 @@ describe('blocking prompt deduplication', () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
-  it('emits again after hash is cleared by notifyHookEvent(permission_approved)', () => {
+  it('does NOT re-emit same prompt after notifyHookEvent(permission_approved)', () => {
     const adapter = createBlockingAdapter('Allow write to /src/index.ts?');
     const session = createSessionWithAdapter(adapter);
 
@@ -195,13 +195,13 @@ describe('blocking prompt deduplication', () => {
     (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
     expect(handler).toHaveBeenCalledOnce();
 
-    // Clear via hook event
+    // permission_approved preserves the hash to prevent TUI re-render floods
     session.notifyHookEvent('permission_approved');
 
-    // Same prompt again — should emit because hash was cleared
+    // Same prompt again — should NOT emit because hash is preserved
     internals.outputBuffer = 'dummy2';
     (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
-    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenCalledOnce(); // still 1, not 2
   });
 
   it('deduplicates prompts longer than 100 chars by truncation', () => {
