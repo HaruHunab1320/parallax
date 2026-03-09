@@ -1068,10 +1068,10 @@ importers:
         specifier: ^1.0.0
         version: 1.26.0(zod@3.25.76)
       coding-agent-adapters:
-        specifier: workspace:^0.7.2
+        specifier: workspace:^0.12.0
         version: link:../coding-agent-adapters
       git-workspace-service:
-        specifier: workspace:^0.4.0
+        specifier: workspace:^0.4.4
         version: link:../git-workspace-service
       jsonwebtoken:
         specifier: ^9.0.0
@@ -1083,7 +1083,7 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       pty-manager:
-        specifier: workspace:^1.6.6
+        specifier: workspace:^1.9.6
         version: link:../pty-manager
       uuid:
         specifier: ^11.0.5

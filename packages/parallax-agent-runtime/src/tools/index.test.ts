@@ -164,8 +164,8 @@ describe('Tool schemas', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('TOOLS', () => {
-  it('defines 15 tools', () => {
-    expect(TOOLS).toHaveLength(15);
+  it('defines 21 tools', () => {
+    expect(TOOLS).toHaveLength(21);
   });
 
   it('includes spawn with ruleOverrides and stallTimeoutMs properties', () => {
@@ -221,6 +221,7 @@ describe('Tool executors', () => {
         type: 'claude',
         capabilities: ['code'],
         waitForReady: true,
+        interactive: true,
         ruleOverrides: { 'trust.*folder': null },
         stallTimeoutMs: 12000,
       });
@@ -236,7 +237,7 @@ describe('Tool executors', () => {
     it('returns agent info on success', async () => {
       const manager = createMockManager();
       const result = await executeSpawn(manager, {
-        name: 'test', type: 'claude', capabilities: ['code'], waitForReady: true,
+        name: 'test', type: 'claude', capabilities: ['code'], waitForReady: true, interactive: true,
       });
 
       expect(result.success).toBe(true);
@@ -361,6 +362,7 @@ describe('Tool executors', () => {
         type: 'claude',
         capabilities: ['code'],
         waitForReady: true,
+        interactive: true,
         approvalPreset: 'permissive',
       });
 

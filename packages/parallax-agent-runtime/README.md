@@ -36,7 +36,7 @@ parallax-agent-runtime
 
 ## Features
 
-- **Spawn AI Agents** - Create Claude, Codex, Gemini, or Aider agents
+- **Spawn AI Agents** - Create Claude, Codex, Gemini, Aider, or Hermes agents
 - **Approval Presets** - Unified tool permission control across all CLIs (`readonly`, `standard`, `permissive`, `autonomous`)
 - **Multi-Agent Coordination** - Agents can communicate and collaborate
 - **Real-time Logs** - Stream agent terminal output
@@ -44,6 +44,11 @@ parallax-agent-runtime
 - **Loading Suppression** - Stall detection suppressed when agents are actively working (thinking, reading files, streaming)
 - **Stall Backoff** - Exponential backoff (up to 30s) on repeated `still_working` classifications reduces classifier overhead
 - **Ready Settle Delay** - Defers input until TUI agents finish rendering, preventing swallowed keystrokes
+- **Hook Telemetry** - Deterministic state detection via hook scripts or HTTP callbacks
+- **Git Worktrees** - Parallel workspaces sharing `.git` for fast multi-agent workflows
+- **Environment Isolation** - `inheritProcessEnv: false` prevents credential leakage to child agents
+- **Task Completion Events** - Real-time notifications when agents finish tasks
+- **Tool Activity Tracking** - Events when agents run external tools (browser, bash, etc.)
 - **Metrics & Health** - Monitor agent resource usage
 - **Authentication** - Optional JWT/API key auth for remote access
 
@@ -66,6 +71,12 @@ parallax-agent-runtime
 | `write_workspace_file` | Write an agent instruction/memory file into a workspace |
 | `list_presets` | List available approval presets with descriptions and permissions |
 | `get_preset_config` | Generate CLI-specific approval config for an agent type and preset |
+| `notify_hook_event` | Forward a hook event into an agent session (resets stall timers, signals completion) |
+| `write_raw` | Write raw data (escape sequences, control chars) to an agent terminal |
+| `get_hook_config` | Get hook telemetry protocol config for an agent type (scripts, settings, HTTP endpoints) |
+| `add_worktree` | Add a git worktree to an existing clone workspace for parallel work |
+| `list_worktrees` | List all worktrees for a parent workspace |
+| `remove_worktree` | Remove a git worktree |
 
 ## MCP Resources
 
@@ -158,6 +169,58 @@ When branchName is provided, it is used verbatim instead of
 auto-generating from executionId/role/slug.
 ```
 
+### Spawn with Environment Isolation
+
+```
+{
+  "name": "sandboxed-worker",
+  "type": "claude",
+  "capabilities": ["code"],
+  "workdir": "/path/to/project",
+  "inheritProcessEnv": false
+}
+
+When inheritProcessEnv is false, the agent process only receives
+adapter-specific and explicitly configured env vars — no host
+credentials leak into the child process.
+```
+
+### Hook Telemetry
+
+```
+User: "Set up hook-based state detection for the Claude agent"
+
+Claude uses the get_hook_config tool:
+{
+  "agentType": "claude",
+  "httpUrl": "http://localhost:8080/hooks",
+  "sessionId": "session-abc"
+}
+
+Returns the hook script, settings.json config, and marker prefix
+needed for deterministic agent state detection via hooks instead
+of heuristic output parsing.
+```
+
+### Git Worktrees for Parallel Work
+
+```
+User: "Create parallel workspaces for the review team"
+
+1. Provision the base workspace:
+   provision_workspace({ repo: "...", executionId: "exec-1" })
+
+2. Add worktrees for parallel agents:
+   add_worktree({
+     parentWorkspaceId: "ws-1",
+     branch: "main",
+     executionId: "exec-1"
+   })
+
+Worktrees share the .git directory, making them faster to create
+than full clones while providing isolated working directories.
+```
+
 ### Send a Task to an Agent
 
 ```
@@ -245,6 +308,7 @@ Permissions use a colon-separated format with wildcard support:
 - `*` - Full access to all operations
 - `agents:*` - All agent operations (spawn, stop, list, get, send)
 - `agents:spawn` - Only spawn agents
+- `agents:hook` - Forward hook events into sessions
 - `logs:read` - Read agent logs
 - `health:check` - Health check only
 - `workspace:*` - All workspace operations
@@ -263,6 +327,7 @@ Permissions use a colon-separated format with wildcard support:
 | `codex` | Codex CLI | OpenAI's Codex CLI |
 | `gemini` | Gemini CLI | Google's Gemini CLI |
 | `aider` | Aider | AI pair programming tool |
+| `hermes` | Hermes | Hermes agent CLI |
 | `custom` | Custom | User-defined agent |
 
 ## Requirements

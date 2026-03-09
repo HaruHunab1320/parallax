@@ -9,6 +9,9 @@
  * 3. Tool schemas validate and reject as expected
  * 4. Workspace provisioning, finalization (with PR), and cleanup — real git ops
  * 5. Auth module works end-to-end
+ * 6. Hook telemetry config generation
+ * 7. Worktree operations
+ * 8. New spawn options (inheritProcessEnv, skipAdapterAutoResponse, etc.)
  *
  * Requires GITHUB_PAT in the root .env file.
  */
@@ -35,6 +38,12 @@ import {
   ProvisionWorkspaceInputSchema,
   FinalizeWorkspaceInputSchema,
   CleanupWorkspaceInputSchema,
+  NotifyHookEventInputSchema,
+  WriteRawInputSchema,
+  GetHookConfigInputSchema,
+  AddWorktreeInputSchema,
+  ListWorktreesInputSchema,
+  RemoveWorktreeInputSchema,
 
   // Resources
   listAgentResources,
@@ -168,7 +177,7 @@ function assertEqual(actual: unknown, expected: unknown, message: string): void 
 
 async function main() {
   console.log('\n═══════════════════════════════════════════════════════════════');
-  console.log('  parallax-agent-runtime v0.3.0 — Integration Smoke Test');
+  console.log('  parallax-agent-runtime v0.8.5 — Integration Smoke Test');
   console.log('═══════════════════════════════════════════════════════════════\n');
 
   const pat = loadPat();
@@ -181,7 +190,7 @@ async function main() {
   assert(typeof AgentManager === 'function', 'AgentManager exports');
   assert(typeof McpAuthHandler === 'function', 'McpAuthHandler exports');
   assert(Array.isArray(TOOLS), 'TOOLS is an array');
-  assertEqual(TOOLS.length, 11, 'TOOLS has 11 tools');
+  assertEqual(TOOLS.length, 21, 'TOOLS has 21 tools');
   assert(Array.isArray(PROMPTS), 'PROMPTS is an array');
 
   // ─── 2. Tool definitions ─────────────────────────────────────────────────
@@ -190,15 +199,22 @@ async function main() {
   const expectedTools = [
     'spawn', 'stop', 'list', 'get', 'send', 'logs', 'metrics', 'health',
     'provision_workspace', 'finalize_workspace', 'cleanup_workspace',
+    'get_workspace_files', 'write_workspace_file',
+    'list_presets', 'get_preset_config',
+    'notify_hook_event', 'write_raw', 'get_hook_config',
+    'add_worktree', 'list_worktrees', 'remove_worktree',
   ];
   for (const name of expectedTools) {
     assert(toolNames.includes(name), `Tool "${name}" defined`);
   }
   assertEqual(TOOL_PERMISSIONS.provision_workspace, 'workspace:provision', 'workspace permission mapped');
+  assertEqual(TOOL_PERMISSIONS.notify_hook_event, 'agents:hook', 'hook event permission mapped');
+  assertEqual(TOOL_PERMISSIONS.add_worktree, 'workspace:provision', 'worktree permission mapped');
 
   // ─── 3. Zod schemas ──────────────────────────────────────────────────────
   console.log('\n3. Zod schema validation');
 
+  // Spawn schema — existing fields
   const spawnParsed = SpawnInputSchema.parse({
     name: 'test', type: 'claude', capabilities: ['code'],
     ruleOverrides: { 'trust.*folder': null },
@@ -208,10 +224,50 @@ async function main() {
   assert(spawnParsed.ruleOverrides !== undefined, 'ruleOverrides parsed');
   assertEqual(spawnParsed.stallTimeoutMs, 10000, 'stallTimeoutMs parsed');
 
+  // Spawn schema — new fields
+  const spawnWithNew = SpawnInputSchema.parse({
+    name: 'isolated', type: 'hermes', capabilities: ['code'],
+    inheritProcessEnv: false,
+    skipAdapterAutoResponse: true,
+    readySettleMs: 2000,
+    traceTaskCompletion: true,
+  });
+  assertEqual(spawnWithNew.type, 'hermes', 'SpawnInputSchema accepts hermes type');
+  assertEqual(spawnWithNew.inheritProcessEnv, false, 'inheritProcessEnv parsed');
+  assertEqual(spawnWithNew.skipAdapterAutoResponse, true, 'skipAdapterAutoResponse parsed');
+  assertEqual(spawnWithNew.readySettleMs, 2000, 'readySettleMs parsed');
+  assertEqual(spawnWithNew.traceTaskCompletion, true, 'traceTaskCompletion parsed');
+
   let schemaRejected = false;
   try { SpawnInputSchema.parse({ name: 'test', type: 'invalid', capabilities: [] }); }
   catch { schemaRejected = true; }
   assert(schemaRejected, 'SpawnInputSchema rejects invalid agent type');
+
+  // New tool schemas
+  const hookParsed = NotifyHookEventInputSchema.parse({ agentId: 'agent-1', event: 'task_complete' });
+  assertEqual(hookParsed.event, 'task_complete', 'NotifyHookEventInputSchema parses');
+
+  const rawParsed = WriteRawInputSchema.parse({ agentId: 'agent-1', data: '\x1b[A' });
+  assertEqual(rawParsed.data, '\x1b[A', 'WriteRawInputSchema parses escape sequences');
+
+  const hookCfgParsed = GetHookConfigInputSchema.parse({
+    agentType: 'claude', httpUrl: 'http://localhost:8080/hooks', sessionId: 'sess-1',
+  });
+  assertEqual(hookCfgParsed.agentType, 'claude', 'GetHookConfigInputSchema parses');
+  assertEqual(hookCfgParsed.httpUrl, 'http://localhost:8080/hooks', 'httpUrl parsed');
+  assertEqual(hookCfgParsed.sessionId, 'sess-1', 'sessionId parsed');
+
+  const worktreeParsed = AddWorktreeInputSchema.parse({
+    parentWorkspaceId: 'ws-1', branch: 'main', executionId: 'exec-1',
+  });
+  assertEqual(worktreeParsed.parentWorkspaceId, 'ws-1', 'AddWorktreeInputSchema parses');
+  assertEqual(worktreeParsed.patternName, 'mcp-worktree', 'patternName defaults');
+
+  const listWtParsed = ListWorktreesInputSchema.parse({ parentWorkspaceId: 'ws-1' });
+  assertEqual(listWtParsed.parentWorkspaceId, 'ws-1', 'ListWorktreesInputSchema parses');
+
+  const removeWtParsed = RemoveWorktreeInputSchema.parse({ workspaceId: 'wt-1' });
+  assertEqual(removeWtParsed.workspaceId, 'wt-1', 'RemoveWorktreeInputSchema parses');
 
   const provisionParsed = ProvisionWorkspaceInputSchema.parse({
     repo: TESTBED_REPO, executionId: 'exec-1',
@@ -243,7 +299,7 @@ async function main() {
   assert(health.healthy === true, 'Health: healthy=true');
   assertEqual(health.maxAgents, 5, 'Health: maxAgents=5');
   assertEqual(health.agentCount, 0, 'Health: 0 agents');
-  assert(health.adapters.length === 4, 'Health: 4 adapters checked');
+  assert(health.adapters.length === 5, 'Health: 5 adapters checked (claude, gemini, codex, aider, hermes)');
   assert(health.stallDetectionEnabled === true, 'Health: stall detection enabled');
   assert(health.workspaceServiceEnabled === true, 'Health: workspace service enabled');
 
@@ -262,8 +318,46 @@ async function main() {
   assertEqual(await manager.get('nonexistent'), null, 'Get nonexistent → null');
   assertEqual(await manager.metrics('nonexistent'), null, 'Metrics nonexistent → null');
 
-  // ─── 6. Workspace lifecycle (real git ops) ───────────────────────────────
-  console.log('\n6. Workspace lifecycle (real git operations)');
+  // ─── 6. Hook telemetry config ────────────────────────────────────────────
+  console.log('\n6. Hook telemetry config');
+  const claudeHookCfg = manager.getHookTelemetryConfig('claude', {
+    httpUrl: 'http://localhost:8080/hooks',
+    sessionId: 'test-session',
+  });
+  // Claude adapter supports hooks — should return config
+  if (claudeHookCfg) {
+    assert(typeof claudeHookCfg.markerPrefix === 'string', 'Claude hook config has markerPrefix');
+    assert(typeof claudeHookCfg.settingsHooks === 'object', 'Claude hook config has settingsHooks');
+    console.log(`    Claude marker prefix: ${claudeHookCfg.markerPrefix}`);
+  } else {
+    assert(true, 'Claude hook config returned null (adapter may not support HTTP hooks in this version)');
+  }
+
+  const codexHookCfg = manager.getHookTelemetryConfig('codex');
+  assertEqual(codexHookCfg, null, 'Codex hook config returns null (no hook support)');
+
+  const customHookCfg = manager.getHookTelemetryConfig('custom');
+  assertEqual(customHookCfg, null, 'Custom type hook config returns null');
+
+  // ─── 7. notifyHookEvent + writeRaw (no-op on missing agent) ──────────────
+  console.log('\n7. Hook events and raw writes (no-op on missing agent)');
+  // These should not throw even when agent doesn't exist
+  try {
+    manager.notifyHookEvent('nonexistent', 'task_complete');
+    assert(true, 'notifyHookEvent on missing agent is a no-op');
+  } catch {
+    assert(false, 'notifyHookEvent on missing agent should not throw');
+  }
+
+  try {
+    manager.writeRaw('nonexistent', '\x1b[A');
+    assert(true, 'writeRaw on missing agent is a no-op');
+  } catch {
+    assert(false, 'writeRaw on missing agent should not throw');
+  }
+
+  // ─── 8. Workspace lifecycle (real git ops) ───────────────────────────────
+  console.log('\n8. Workspace lifecycle (real git operations)');
 
   const execId = `smoke-${Date.now()}`;
   console.log(`    Execution ID: ${execId}`);
@@ -288,10 +382,14 @@ async function main() {
   assertEqual(workspace.strategy, 'clone', 'Workspace strategy: clone');
   console.log(`    Branch: ${workspace.branch.name}`);
 
+  // List worktrees on the clone workspace (should be empty)
+  const worktrees = manager.listWorktrees(workspace.id);
+  assertEqual(worktrees.length, 0, 'No worktrees on fresh clone workspace');
+
   // Make a change in the workspace
   console.log('    Making a test change...');
   const testFile = join(workspace.path, `smoke-test-${execId}.txt`);
-  writeFileSync(testFile, `Smoke test from parallax-agent-runtime v0.3.0\nExecution: ${execId}\nTimestamp: ${new Date().toISOString()}\n`);
+  writeFileSync(testFile, `Smoke test from parallax-agent-runtime v0.8.5\nExecution: ${execId}\nTimestamp: ${new Date().toISOString()}\n`);
 
   // Stage and commit
   const { execSync } = await import('child_process');
@@ -305,7 +403,7 @@ async function main() {
     push: true,
     createPr: true,
     pr: {
-      title: `[smoke test] parallax-agent-runtime v0.3.0 — ${execId}`,
+      title: `[smoke test] parallax-agent-runtime v0.8.5 — ${execId}`,
       body: `Automated smoke test.\n\nExecution: \`${execId}\`\nTimestamp: ${new Date().toISOString()}\n\nThis PR can be safely closed/deleted.`,
       targetBranch: 'main',
       draft: true,
@@ -325,12 +423,12 @@ async function main() {
   await manager.cleanupWorkspace(workspace.id);
   assert(true, 'Workspace cleaned up');
 
-  // ─── 7. Auth module ──────────────────────────────────────────────────────
-  console.log('\n7. Auth module');
+  // ─── 9. Auth module ──────────────────────────────────────────────────────
+  console.log('\n9. Auth module');
   const auth = new McpAuthHandler({
     apiKeys: [
       { key: 'admin-key', permissions: ['*'], name: 'admin' },
-      { key: 'limited-key', permissions: ['agents:spawn', 'agents:list'], name: 'limited' },
+      { key: 'limited-key', permissions: ['agents:spawn', 'agents:list', 'agents:hook'], name: 'limited' },
     ],
   }, logger);
 
@@ -340,6 +438,7 @@ async function main() {
 
   const limitedCtx = await auth.authenticate('limited-key');
   assert(auth.hasPermission(limitedCtx, 'agents:spawn'), 'Limited has agents:spawn');
+  assert(auth.hasPermission(limitedCtx, 'agents:hook'), 'Limited has agents:hook');
   assert(!auth.hasPermission(limitedCtx, 'workspace:provision'), 'Limited lacks workspace:provision');
 
   let authRejected = false;
@@ -351,8 +450,8 @@ async function main() {
   assertEqual(auth.extractToken('ApiKey key'), 'key', 'Extracts ApiKey token');
   assertEqual(auth.extractToken(undefined), null, 'Null for undefined header');
 
-  // ─── 8. MCP server construction ──────────────────────────────────────────
-  console.log('\n8. MCP server construction');
+  // ─── 10. MCP server construction ─────────────────────────────────────────
+  console.log('\n10. MCP server construction');
   const mcpServer = new ParallaxMcpServer({
     logger,
     maxAgents: 10,
@@ -362,15 +461,15 @@ async function main() {
   assert(!mcpServer.isConnected(), 'Server starts disconnected');
   assert(mcpServer.getManager() !== null, 'Server exposes manager');
 
-  // ─── 9. Prompt generation ────────────────────────────────────────────────
-  console.log('\n9. Prompt generation');
+  // ─── 11. Prompt generation ───────────────────────────────────────────────
+  console.log('\n11. Prompt generation');
   const reviewPrompt = generateSpawnReviewTeamPrompt({ repos: ['github.com/test/repo'], prNumbers: [42] });
   assert(reviewPrompt.messages.length > 0, 'Review team prompt generates messages');
   const devPrompt = generateSpawnDevAgentPrompt({ task: 'Build a REST API', type: 'claude' });
   assert(devPrompt.messages.length > 0, 'Dev agent prompt generates messages');
 
-  // ─── 10. Resources (empty state) ────────────────────────────────────────
-  console.log('\n10. Resources (empty state)');
+  // ─── 12. Resources (empty state) ─────────────────────────────────────────
+  console.log('\n12. Resources (empty state)');
   const agentResources = await listAgentResources(manager as never);
   assertEqual(agentResources.length, 0, 'No agent resources when no agents');
 

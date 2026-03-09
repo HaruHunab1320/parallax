@@ -96,6 +96,12 @@ vi.mock('./agent-manager.js', () => ({
     initialize: mockInitialize,
     shutdown: mockShutdown,
     attachTerminal: mockAttachTerminal,
+    notifyHookEvent: vi.fn(),
+    writeRaw: vi.fn(),
+    getHookTelemetryConfig: vi.fn().mockReturnValue(null),
+    addWorktree: vi.fn(),
+    listWorktrees: vi.fn().mockReturnValue([]),
+    removeWorktree: vi.fn(),
   })),
 }));
 
@@ -249,7 +255,7 @@ describe('ParallaxMcpServer', () => {
 
       expect(listToolsHandler).not.toBeNull();
       const result = await listToolsHandler!();
-      expect((result as { tools: unknown[] }).tools).toHaveLength(15);
+      expect((result as { tools: unknown[] }).tools).toHaveLength(21);
     });
 
     it('routes spawn tool', async () => {

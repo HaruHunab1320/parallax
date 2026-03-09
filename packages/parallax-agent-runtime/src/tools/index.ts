@@ -17,7 +17,7 @@ import type { AgentType, AgentStatus } from '../types.js';
 // Schemas
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const AgentTypeSchema = z.enum(['claude', 'codex', 'gemini', 'aider', 'custom']);
+export const AgentTypeSchema = z.enum(['claude', 'codex', 'gemini', 'aider', 'hermes', 'custom']);
 export const AgentStatusSchema = z.enum([
   'pending', 'starting', 'authenticating', 'ready', 'busy', 'stopping', 'stopped', 'error'
 ]);
@@ -41,6 +41,14 @@ export const SpawnInputSchema = z.object({
     .describe('Approval preset controlling tool permissions for the agent'),
   interactive: z.boolean().default(true)
     .describe('Run in interactive mode (default: true). When true, skips non-interactive CLI flags (--print, --quiet, --non-interactive) that are incompatible with PTY sessions.'),
+  inheritProcessEnv: z.boolean().optional()
+    .describe('When false, only adapter and config env vars are passed to the agent. Prevents credential leakage. Default: true.'),
+  skipAdapterAutoResponse: z.boolean().optional()
+    .describe('Emit blocking prompts without auto-responding. The orchestrator handles all prompts.'),
+  readySettleMs: z.number().optional()
+    .describe('Override the ready-settle delay (ms) for this agent.'),
+  traceTaskCompletion: z.boolean().optional()
+    .describe('Enable verbose trace logging for task-completion detection.'),
 });
 
 export const StopInputSchema = z.object({
@@ -115,15 +123,51 @@ export const CleanupWorkspaceInputSchema = z.object({
 });
 
 export const GetWorkspaceFilesInputSchema = z.object({
-  agentType: z.enum(['claude', 'codex', 'gemini', 'aider']).describe('Agent type to get workspace files for'),
+  agentType: z.enum(['claude', 'codex', 'gemini', 'aider', 'hermes']).describe('Agent type to get workspace files for'),
 });
 
 export const WriteWorkspaceFileInputSchema = z.object({
-  agentType: z.enum(['claude', 'codex', 'gemini', 'aider']).describe('Agent type to write workspace file for'),
+  agentType: z.enum(['claude', 'codex', 'gemini', 'aider', 'hermes']).describe('Agent type to write workspace file for'),
   workspacePath: z.string().describe('Absolute path to the workspace directory'),
   content: z.string().describe('Content to write to the file'),
   fileName: z.string().optional().describe('Custom file name override (default: agent primary memory file)'),
   append: z.boolean().optional().describe('Append to existing file instead of overwriting'),
+});
+
+export const NotifyHookEventInputSchema = z.object({
+  agentId: z.string().describe('ID of the agent'),
+  event: z.enum(['tool_running', 'task_complete', 'permission_approved'])
+    .describe('Hook event type to forward into the session'),
+});
+
+export const WriteRawInputSchema = z.object({
+  agentId: z.string().describe('ID of the agent'),
+  data: z.string().describe('Raw data to write (escape sequences, control characters)'),
+});
+
+export const GetHookConfigInputSchema = z.object({
+  agentType: z.enum(['claude', 'codex', 'gemini', 'aider', 'hermes']).describe('Agent type to get hook config for'),
+  scriptPath: z.string().optional().describe('Path where the hook script will be written'),
+  markerPrefix: z.string().optional().describe('Custom prefix for hook markers'),
+  httpUrl: z.string().optional().describe('HTTP endpoint URL for hook callbacks'),
+  sessionId: z.string().optional().describe('Session ID for hook correlation'),
+});
+
+export const AddWorktreeInputSchema = z.object({
+  parentWorkspaceId: z.string().describe('ID of the parent clone workspace'),
+  branch: z.string().describe('Branch to create the worktree from'),
+  executionId: z.string().describe('Execution ID for branch naming'),
+  patternName: z.string().default('mcp-worktree').describe('Pattern name for branch naming'),
+  role: z.string().default('engineer').describe('Role for branch naming'),
+  slug: z.string().optional().describe('Human-readable slug for branch name'),
+});
+
+export const ListWorktreesInputSchema = z.object({
+  parentWorkspaceId: z.string().describe('ID of the parent workspace'),
+});
+
+export const RemoveWorktreeInputSchema = z.object({
+  workspaceId: z.string().describe('ID of the worktree to remove'),
 });
 
 export const ApprovalPresetSchema = z.enum(['readonly', 'standard', 'permissive', 'autonomous']);
@@ -131,7 +175,7 @@ export const ApprovalPresetSchema = z.enum(['readonly', 'standard', 'permissive'
 export const ListPresetsInputSchema = z.object({});
 
 export const GetPresetConfigInputSchema = z.object({
-  agentType: z.enum(['claude', 'codex', 'gemini', 'aider']).describe('Agent type to generate config for'),
+  agentType: z.enum(['claude', 'codex', 'gemini', 'aider', 'hermes']).describe('Agent type to generate config for'),
   preset: ApprovalPresetSchema.describe('Approval preset level'),
 });
 
@@ -151,6 +195,12 @@ export type FinalizeWorkspaceInput = z.infer<typeof FinalizeWorkspaceInputSchema
 export type CleanupWorkspaceInput = z.infer<typeof CleanupWorkspaceInputSchema>;
 export type GetWorkspaceFilesInput = z.infer<typeof GetWorkspaceFilesInputSchema>;
 export type WriteWorkspaceFileInput = z.infer<typeof WriteWorkspaceFileInputSchema>;
+export type NotifyHookEventInput = z.infer<typeof NotifyHookEventInputSchema>;
+export type WriteRawInput = z.infer<typeof WriteRawInputSchema>;
+export type GetHookConfigInput = z.infer<typeof GetHookConfigInputSchema>;
+export type AddWorktreeInput = z.infer<typeof AddWorktreeInputSchema>;
+export type ListWorktreesInput = z.infer<typeof ListWorktreesInputSchema>;
+export type RemoveWorktreeInput = z.infer<typeof RemoveWorktreeInputSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tool Definitions (JSON Schema format for MCP)
@@ -164,7 +214,7 @@ export const TOOLS = [
       type: 'object' as const,
       properties: {
         name: { type: 'string', description: 'Human-readable name for the agent' },
-        type: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider', 'custom'], description: 'CLI agent type' },
+        type: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider', 'hermes', 'custom'], description: 'CLI agent type' },
         capabilities: { type: 'array', items: { type: 'string' }, description: 'List of capabilities' },
         role: { type: 'string', description: 'Org role: architect, engineer, qa, etc.' },
         workdir: { type: 'string', description: 'Working directory for the agent' },
@@ -181,6 +231,10 @@ export const TOOLS = [
         stallTimeoutMs: { type: 'number', description: 'Per-agent stall timeout in ms. Overrides manager default.' },
         approvalPreset: { type: 'string', enum: ['readonly', 'standard', 'permissive', 'autonomous'], description: 'Approval preset controlling tool permissions for the agent' },
         interactive: { type: 'boolean', description: 'Run in interactive mode (default: true). When true, skips non-interactive CLI flags (--print, --quiet, --non-interactive) that are incompatible with PTY sessions.', default: true },
+        inheritProcessEnv: { type: 'boolean', description: 'When false, only adapter and config env vars are passed. Prevents credential leakage. Default: true.' },
+        skipAdapterAutoResponse: { type: 'boolean', description: 'Emit blocking prompts without auto-responding.' },
+        readySettleMs: { type: 'number', description: 'Override the ready-settle delay (ms) for this agent.' },
+        traceTaskCompletion: { type: 'boolean', description: 'Enable verbose trace logging for task-completion detection.' },
       },
       required: ['name', 'type', 'capabilities'],
     },
@@ -339,7 +393,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider'], description: 'Agent type' },
+        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider', 'hermes'], description: 'Agent type' },
       },
       required: ['agentType'],
     },
@@ -350,7 +404,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider'], description: 'Agent type' },
+        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider', 'hermes'], description: 'Agent type' },
         workspacePath: { type: 'string', description: 'Absolute path to the workspace directory' },
         content: { type: 'string', description: 'Content to write to the file' },
         fileName: { type: 'string', description: 'Custom file name override' },
@@ -373,10 +427,87 @@ export const TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider'], description: 'Agent type' },
+        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider', 'hermes'], description: 'Agent type' },
         preset: { type: 'string', enum: ['readonly', 'standard', 'permissive', 'autonomous'], description: 'Approval preset level' },
       },
       required: ['agentType', 'preset'],
+    },
+  },
+  {
+    name: 'notify_hook_event',
+    description: 'Forward an external hook event into an agent session. Bridges events from hook telemetry into the session state machine — resets stall timers, clears blocking prompts, signals task completion.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agentId: { type: 'string', description: 'ID of the agent' },
+        event: { type: 'string', enum: ['tool_running', 'task_complete', 'permission_approved'], description: 'Hook event type' },
+      },
+      required: ['agentId', 'event'],
+    },
+  },
+  {
+    name: 'write_raw',
+    description: 'Write raw data (escape sequences, control characters) directly to an agent terminal.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agentId: { type: 'string', description: 'ID of the agent' },
+        data: { type: 'string', description: 'Raw data to write' },
+      },
+      required: ['agentId', 'data'],
+    },
+  },
+  {
+    name: 'get_hook_config',
+    description: 'Get hook telemetry protocol configuration for an agent type. Returns the hook script, settings, and marker prefix needed to enable deterministic state detection via hooks.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider', 'hermes'], description: 'Agent type' },
+        scriptPath: { type: 'string', description: 'Path where the hook script will be written' },
+        markerPrefix: { type: 'string', description: 'Custom prefix for hook markers' },
+        httpUrl: { type: 'string', description: 'HTTP endpoint URL for hook callbacks' },
+        sessionId: { type: 'string', description: 'Session ID for hook correlation' },
+      },
+      required: ['agentType'],
+    },
+  },
+  {
+    name: 'add_worktree',
+    description: 'Add a git worktree to an existing clone workspace. Worktrees share the .git directory for faster parallel work on the same repository.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        parentWorkspaceId: { type: 'string', description: 'ID of the parent clone workspace' },
+        branch: { type: 'string', description: 'Branch to create the worktree from' },
+        executionId: { type: 'string', description: 'Execution ID for branch naming' },
+        patternName: { type: 'string', description: 'Pattern name for branch naming', default: 'mcp-worktree' },
+        role: { type: 'string', description: 'Role for branch naming', default: 'engineer' },
+        slug: { type: 'string', description: 'Human-readable slug for branch name' },
+      },
+      required: ['parentWorkspaceId', 'branch', 'executionId'],
+    },
+  },
+  {
+    name: 'list_worktrees',
+    description: 'List all worktrees for a parent workspace.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        parentWorkspaceId: { type: 'string', description: 'ID of the parent workspace' },
+      },
+      required: ['parentWorkspaceId'],
+    },
+  },
+  {
+    name: 'remove_worktree',
+    description: 'Remove a git worktree.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        workspaceId: { type: 'string', description: 'ID of the worktree to remove' },
+      },
+      required: ['workspaceId'],
     },
   },
 ];
@@ -401,6 +532,10 @@ export async function executeSpawn(manager: AgentManager, input: SpawnInput) {
     stallTimeoutMs: validated.stallTimeoutMs,
     approvalPreset: validated.approvalPreset as ApprovalPreset | undefined,
     interactive: validated.interactive,
+    inheritProcessEnv: validated.inheritProcessEnv,
+    skipAdapterAutoResponse: validated.skipAdapterAutoResponse,
+    readySettleMs: validated.readySettleMs,
+    traceTaskCompletion: validated.traceTaskCompletion,
   });
 
   return {
@@ -607,10 +742,76 @@ export function executeListPresets() {
 export function executeGetPresetConfig(input: GetPresetConfigInput) {
   const validated = GetPresetConfigInputSchema.parse(input);
   const config = generateApprovalConfig(
-    validated.agentType as 'claude' | 'codex' | 'gemini' | 'aider',
+    validated.agentType as 'claude' | 'codex' | 'gemini' | 'aider' | 'hermes',
     validated.preset,
   );
   return { success: true, config };
+}
+
+export function executeNotifyHookEvent(manager: AgentManager, input: NotifyHookEventInput) {
+  const validated = NotifyHookEventInputSchema.parse(input);
+  manager.notifyHookEvent(validated.agentId, validated.event);
+  return { success: true, agentId: validated.agentId, event: validated.event };
+}
+
+export function executeWriteRaw(manager: AgentManager, input: WriteRawInput) {
+  const validated = WriteRawInputSchema.parse(input);
+  manager.writeRaw(validated.agentId, validated.data);
+  return { success: true, agentId: validated.agentId };
+}
+
+export function executeGetHookConfig(manager: AgentManager, input: GetHookConfigInput) {
+  const validated = GetHookConfigInputSchema.parse(input);
+  const config = manager.getHookTelemetryConfig(validated.agentType as AgentType, {
+    scriptPath: validated.scriptPath,
+    markerPrefix: validated.markerPrefix,
+    httpUrl: validated.httpUrl,
+    sessionId: validated.sessionId,
+  });
+  return { success: true, agentType: validated.agentType, config };
+}
+
+export async function executeAddWorktree(manager: AgentManager, input: AddWorktreeInput) {
+  const validated = AddWorktreeInputSchema.parse(input);
+  const workspace = await manager.addWorktree(validated.parentWorkspaceId, {
+    branch: validated.branch,
+    execution: { id: validated.executionId, patternName: validated.patternName },
+    task: { id: validated.executionId, role: validated.role, slug: validated.slug },
+  });
+  return {
+    success: true,
+    workspace: {
+      id: workspace.id,
+      path: workspace.path,
+      repo: workspace.repo,
+      branch: workspace.branch.name,
+      status: workspace.status,
+      strategy: workspace.strategy,
+    },
+  };
+}
+
+export function executeListWorktrees(manager: AgentManager, input: ListWorktreesInput) {
+  const validated = ListWorktreesInputSchema.parse(input);
+  const worktrees = manager.listWorktrees(validated.parentWorkspaceId);
+  return {
+    success: true,
+    parentWorkspaceId: validated.parentWorkspaceId,
+    worktrees: worktrees.map(w => ({
+      id: w.id,
+      path: w.path,
+      repo: w.repo,
+      branch: w.branch.name,
+      status: w.status,
+    })),
+    count: worktrees.length,
+  };
+}
+
+export async function executeRemoveWorktree(manager: AgentManager, input: RemoveWorktreeInput) {
+  const validated = RemoveWorktreeInputSchema.parse(input);
+  await manager.removeWorktree(validated.workspaceId);
+  return { success: true, workspaceId: validated.workspaceId };
 }
 
 // Tool permission mapping
@@ -630,4 +831,10 @@ export const TOOL_PERMISSIONS: Record<string, string> = {
   write_workspace_file: 'workspace:write',
   list_presets: 'presets:list',
   get_preset_config: 'presets:read',
+  notify_hook_event: 'agents:hook',
+  write_raw: 'agents:send',
+  get_hook_config: 'agents:read',
+  add_worktree: 'workspace:provision',
+  list_worktrees: 'workspace:read',
+  remove_worktree: 'workspace:cleanup',
 };

@@ -13,12 +13,14 @@ import {
   type PTYManagerConfig,
   type AuthRequiredInfo as PtyAuthRequiredInfo,
   type AutoResponseRule,
+  type ToolRunningInfo as PtyToolRunningInfo,
 } from 'pty-manager';
 import {
   ClaudeAdapter,
   GeminiAdapter,
   CodexAdapter,
   AiderAdapter,
+  HermesAdapter,
   checkAdapters,
   createAdapter,
   generateApprovalConfig,
@@ -47,6 +49,8 @@ import type {
   BlockingPromptInfo,
   AuthRequiredInfo,
   StallClassification,
+  ToolRunningInfo,
+  HookEventType,
 } from './types.js';
 
 export interface AgentManagerOptions {
@@ -80,6 +84,8 @@ export interface AgentManagerEvents {
   message: (message: AgentMessage) => void;
   question: (agent: AgentHandle, question: string) => void;
   stall_detected: (agent: AgentHandle, recentOutput: string, stallDurationMs: number) => void;
+  task_complete: (agent: AgentHandle) => void;
+  tool_running: (agent: AgentHandle, tool: ToolRunningInfo) => void;
 }
 
 /** Adapter preflight status included in health checks */
@@ -121,6 +127,7 @@ export class AgentManager extends EventEmitter {
     this.ptyManager.registerAdapter(new GeminiAdapter());
     this.ptyManager.registerAdapter(new CodexAdapter());
     this.ptyManager.registerAdapter(new AiderAdapter());
+    this.ptyManager.registerAdapter(new HermesAdapter());
 
     // Initialize workspace service if configured
     if (options.workspace) {
@@ -215,6 +222,16 @@ export class AgentManager extends EventEmitter {
       const agentHandle = this.toAgentHandle(handle);
       this.emit('stall_detected', agentHandle, recentOutput, stallDurationMs);
     });
+
+    this.ptyManager.on('task_complete', (handle: SessionHandle) => {
+      const agentHandle = this.toAgentHandle(handle);
+      this.emit('task_complete', agentHandle);
+    });
+
+    this.ptyManager.on('tool_running', (handle: SessionHandle, toolInfo: PtyToolRunningInfo) => {
+      const agentHandle = this.toAgentHandle(handle);
+      this.emit('tool_running', agentHandle, toolInfo as ToolRunningInfo);
+    });
   }
 
   private toAgentHandle(handle: SessionHandle): AgentHandle {
@@ -270,7 +287,7 @@ export class AgentManager extends EventEmitter {
     // Write approval config files to workspace before spawning
     if (config.approvalPreset && config.workdir && config.type !== 'custom') {
       const approvalConfig = generateApprovalConfig(
-        config.type as 'claude' | 'gemini' | 'codex' | 'aider',
+        config.type as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes',
         config.approvalPreset,
       );
       const { writeFile: fsWriteFile, mkdir: fsMkdir } = await import('node:fs/promises');
@@ -305,9 +322,13 @@ export class AgentManager extends EventEmitter {
       workdir: config.workdir,
       env: config.env,
       adapterConfig: Object.keys(adapterConfig).length > 0 ? adapterConfig : undefined,
-      // Pass through new pty-manager features
+      // Pass through pty-manager features
       ruleOverrides: config.ruleOverrides as Record<string, Record<string, unknown> | null> | undefined,
       stallTimeoutMs: config.stallTimeoutMs,
+      inheritProcessEnv: config.inheritProcessEnv,
+      skipAdapterAutoResponse: config.skipAdapterAutoResponse,
+      readySettleMs: config.readySettleMs,
+      traceTaskCompletion: config.traceTaskCompletion,
     };
 
     this.logger.info({ agentId: id, type: config.type, name: config.name }, 'Spawning agent');
@@ -503,7 +524,7 @@ export class AgentManager extends EventEmitter {
    */
   getWorkspaceFiles(agentType: AgentType): AgentFileDescriptor[] {
     if (agentType === 'custom') return [];
-    const adapter = createAdapter(agentType as 'claude' | 'gemini' | 'codex' | 'aider');
+    const adapter = createAdapter(agentType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes');
     return adapter.getWorkspaceFiles();
   }
 
@@ -520,8 +541,96 @@ export class AgentManager extends EventEmitter {
     if (agentType === 'custom') {
       throw new Error('Custom agents have no default workspace files');
     }
-    const adapter = createAdapter(agentType as 'claude' | 'gemini' | 'codex' | 'aider');
+    const adapter = createAdapter(agentType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes');
     return adapter.writeMemoryFile(workspacePath, content, options);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Hook Events & Raw I/O (pty-manager v1.9.x)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Forward an external hook event into an agent's PTY session.
+   * Bridges events from hook telemetry (e.g. Claude HTTP hooks) into the
+   * session state machine — resets stall timers, clears blocking prompts, etc.
+   */
+  notifyHookEvent(agentId: string, event: HookEventType): void {
+    const session = this.ptyManager.getSession(agentId);
+    if (session) {
+      session.notifyHookEvent(event);
+      this.logger.debug({ agentId, event }, 'Hook event forwarded to session');
+    }
+  }
+
+  /**
+   * Write raw data (escape sequences, control characters) to an agent's terminal.
+   */
+  writeRaw(agentId: string, data: string): void {
+    const session = this.ptyManager.getSession(agentId);
+    if (session) {
+      session.writeRaw(data);
+    }
+  }
+
+  /**
+   * Get hook telemetry protocol configuration for an agent type.
+   * Returns the hook script, marker prefix, and settings needed to enable
+   * deterministic state detection via hooks rather than heuristic output parsing.
+   */
+  getHookTelemetryConfig(
+    agentType: AgentType,
+    options?: { scriptPath?: string; markerPrefix?: string; httpUrl?: string; sessionId?: string },
+  ) {
+    if (agentType === 'custom') return null;
+    const adapter = createAdapter(agentType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes');
+    return adapter.getHookTelemetryProtocol(options);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Worktree Management (git-workspace-service v0.4.2+)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Add a worktree to an existing clone workspace.
+   * Worktrees share the .git directory for faster parallel work.
+   */
+  async addWorktree(
+    parentWorkspaceId: string,
+    options: {
+      branch: string;
+      execution: { id: string; patternName: string };
+      task: { id: string; role: string; slug?: string };
+    },
+  ): Promise<Workspace> {
+    if (!this.workspaceService) {
+      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+    }
+
+    this.logger.info({ parentWorkspaceId, branch: options.branch }, 'Adding worktree');
+    return this.workspaceService.addWorktree(parentWorkspaceId, options);
+  }
+
+  /**
+   * List all worktrees for a parent workspace.
+   */
+  listWorktrees(parentWorkspaceId: string): Workspace[] {
+    if (!this.workspaceService) {
+      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+    }
+
+    return this.workspaceService.listWorktrees(parentWorkspaceId);
+  }
+
+  /**
+   * Remove a worktree.
+   */
+  async removeWorktree(workspaceId: string): Promise<void> {
+    if (!this.workspaceService) {
+      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+    }
+
+    this.logger.info({ workspaceId }, 'Removing worktree');
+    await this.workspaceService.removeWorktree(workspaceId);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -551,7 +660,7 @@ export class AgentManager extends EventEmitter {
     const agents = await this.list();
 
     // Run preflight checks on all adapter CLIs
-    const preflightResults = await checkAdapters(['claude', 'gemini', 'codex', 'aider']);
+    const preflightResults = await checkAdapters(['claude', 'gemini', 'codex', 'aider', 'hermes']);
     const adapters: AdapterHealth[] = preflightResults.map((r: PreflightResult) => ({
       type: r.adapter,
       installed: r.installed,

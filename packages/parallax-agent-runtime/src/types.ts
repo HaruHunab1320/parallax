@@ -9,7 +9,7 @@ import type { ApprovalPreset } from 'coding-agent-adapters';
 /**
  * Supported AI agent types
  */
-export type AgentType = 'claude' | 'codex' | 'gemini' | 'aider' | 'custom';
+export type AgentType = 'claude' | 'codex' | 'gemini' | 'aider' | 'hermes' | 'custom';
 
 /**
  * Agent lifecycle states
@@ -67,6 +67,20 @@ export interface AgentConfig {
    *  When true, skips non-interactive CLI flags (--print, --quiet, --non-interactive)
    *  that are incompatible with PTY sessions. Set to false only for piped/headless usage. */
   interactive?: boolean;
+
+  /** When false, only adapter and config env vars are passed to the agent process.
+   *  Prevents credential leakage from the host environment. Default: true. */
+  inheritProcessEnv?: boolean;
+
+  /** Emit blocking prompts without auto-responding. Useful when the orchestrator
+   *  wants to handle all prompts manually. */
+  skipAdapterAutoResponse?: boolean;
+
+  /** Override the ready-settle delay (ms) for this agent. */
+  readySettleMs?: number;
+
+  /** Enable verbose trace logging for task-completion detection. */
+  traceTaskCompletion?: boolean;
 }
 
 /**
@@ -146,7 +160,7 @@ export interface BlockingPromptInfo {
  * Structured auth-required payload forwarded from pty-manager.
  */
 export interface AuthRequiredInfo {
-  method: 'api_key' | 'oauth_browser' | 'device_code' | 'unknown';
+  method: 'api_key' | 'oauth_browser' | 'device_code' | 'cli_auth' | 'unknown';
   url?: string;
   deviceCode?: string;
   instructions?: string;
@@ -166,7 +180,22 @@ export type RuntimeEvent =
   | { type: 'blocking_prompt'; agent: AgentHandle; prompt: BlockingPromptInfo; autoResponded: boolean }
   | { type: 'message'; message: AgentMessage }
   | { type: 'question'; agent: AgentHandle; question: string }
-  | { type: 'stall_detected'; agent: AgentHandle; recentOutput: string; stallDurationMs: number };
+  | { type: 'stall_detected'; agent: AgentHandle; recentOutput: string; stallDurationMs: number }
+  | { type: 'task_complete'; agent: AgentHandle }
+  | { type: 'tool_running'; agent: AgentHandle; tool: ToolRunningInfo };
+
+/**
+ * Info about a tool currently running inside an agent session.
+ */
+export interface ToolRunningInfo {
+  toolName: string;
+  description?: string;
+}
+
+/**
+ * Hook event types that can be forwarded into a PTY session.
+ */
+export type HookEventType = 'tool_running' | 'task_complete' | 'permission_approved';
 
 /**
  * Stall classification result (passed through from pty-manager)

@@ -42,6 +42,12 @@ import {
   executeWriteWorkspaceFile,
   executeListPresets,
   executeGetPresetConfig,
+  executeNotifyHookEvent,
+  executeWriteRaw,
+  executeGetHookConfig,
+  executeAddWorktree,
+  executeListWorktrees,
+  executeRemoveWorktree,
   type SpawnInput,
   type StopInput,
   type ListInput,
@@ -55,6 +61,12 @@ import {
   type GetWorkspaceFilesInput,
   type WriteWorkspaceFileInput,
   type GetPresetConfigInput,
+  type NotifyHookEventInput,
+  type WriteRawInput,
+  type GetHookConfigInput,
+  type AddWorktreeInput,
+  type ListWorktreesInput,
+  type RemoveWorktreeInput,
 } from './tools/index.js';
 import {
   listAgentResources,
@@ -225,6 +237,24 @@ export class ParallaxMcpServer {
             break;
           case 'get_preset_config':
             result = executeGetPresetConfig(args as GetPresetConfigInput);
+            break;
+          case 'notify_hook_event':
+            result = executeNotifyHookEvent(this.manager, args as NotifyHookEventInput);
+            break;
+          case 'write_raw':
+            result = executeWriteRaw(this.manager, args as WriteRawInput);
+            break;
+          case 'get_hook_config':
+            result = executeGetHookConfig(this.manager, args as GetHookConfigInput);
+            break;
+          case 'add_worktree':
+            result = await executeAddWorktree(this.manager, args as AddWorktreeInput);
+            break;
+          case 'list_worktrees':
+            result = executeListWorktrees(this.manager, args as ListWorktreesInput);
+            break;
+          case 'remove_worktree':
+            result = await executeRemoveWorktree(this.manager, args as RemoveWorktreeInput);
             break;
           default:
             throw new Error(`Unknown tool: ${name}`);

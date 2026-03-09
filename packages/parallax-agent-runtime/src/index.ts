@@ -7,7 +7,7 @@
  *
  * Built on:
  * - pty-manager: PTY session management
- * - coding-agent-adapters: Claude, Gemini, Codex, Aider adapters
+ * - coding-agent-adapters: Claude, Gemini, Codex, Aider, Hermes adapters
  *
  * @example
  * ```typescript
@@ -80,6 +80,12 @@ export {
   executeWriteWorkspaceFile,
   executeListPresets,
   executeGetPresetConfig,
+  executeNotifyHookEvent,
+  executeWriteRaw,
+  executeGetHookConfig,
+  executeAddWorktree,
+  executeListWorktrees,
+  executeRemoveWorktree,
   SpawnInputSchema,
   StopInputSchema,
   ListInputSchema,
@@ -95,6 +101,12 @@ export {
   WriteWorkspaceFileInputSchema,
   ListPresetsInputSchema,
   GetPresetConfigInputSchema,
+  NotifyHookEventInputSchema,
+  WriteRawInputSchema,
+  GetHookConfigInputSchema,
+  AddWorktreeInputSchema,
+  ListWorktreesInputSchema,
+  RemoveWorktreeInputSchema,
   ApprovalPresetSchema,
   type SpawnInput,
   type StopInput,
@@ -111,6 +123,12 @@ export {
   type WriteWorkspaceFileInput,
   type ListPresetsInput,
   type GetPresetConfigInput,
+  type NotifyHookEventInput,
+  type WriteRawInput,
+  type GetHookConfigInput,
+  type AddWorktreeInput,
+  type ListWorktreesInput,
+  type RemoveWorktreeInput,
 } from './tools/index.js';
 
 // Resources
@@ -149,6 +167,8 @@ export type {
   RuntimeEvent,
   MessageType,
   StallClassification,
+  ToolRunningInfo,
+  HookEventType,
   WorkspaceProvisionConfig,
 } from './types.js';
 

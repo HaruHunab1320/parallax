@@ -79,6 +79,7 @@ vi.mock('coding-agent-adapters', () => ({
   GeminiAdapter: vi.fn(),
   CodexAdapter: vi.fn(),
   AiderAdapter: vi.fn(),
+  HermesAdapter: vi.fn(),
   checkAdapters: (...args: unknown[]) => mockCheckAdapters(...args),
   createAdapter: (...args: unknown[]) => mockCreateAdapter(...args),
   generateApprovalConfig: (...args: unknown[]) => mockGenerateApprovalConfig(...args),
@@ -89,11 +90,18 @@ const mockProvision = vi.fn();
 const mockFinalize = vi.fn();
 const mockCleanup = vi.fn();
 
+const mockAddWorktree = vi.fn();
+const mockListWorktrees = vi.fn().mockReturnValue([]);
+const mockRemoveWorktree = vi.fn();
+
 vi.mock('git-workspace-service', () => ({
   WorkspaceService: vi.fn().mockImplementation(() => ({
     provision: mockProvision,
     finalize: mockFinalize,
     cleanup: mockCleanup,
+    addWorktree: mockAddWorktree,
+    listWorktrees: mockListWorktrees,
+    removeWorktree: mockRemoveWorktree,
   })),
 }));
 
@@ -118,9 +126,9 @@ describe('AgentManager', () => {
   });
 
   describe('constructor', () => {
-    it('registers all 4 adapters', () => {
+    it('registers all 5 adapters', () => {
       new AgentManager(logger);
-      expect(mockRegisterAdapter).toHaveBeenCalledTimes(4);
+      expect(mockRegisterAdapter).toHaveBeenCalledTimes(5);
     });
 
     it('sets up event forwarding for all events including stall_detected', () => {
@@ -136,6 +144,8 @@ describe('AgentManager', () => {
       expect(events).toContain('message');
       expect(events).toContain('question');
       expect(events).toContain('stall_detected');
+      expect(events).toContain('task_complete');
+      expect(events).toContain('tool_running');
     });
 
     it('does not create workspace service when no workspace options provided', () => {
@@ -499,8 +509,8 @@ describe('AgentManager', () => {
 
       const health = await manager.getHealth();
 
-      expect(mockCheckAdapters).toHaveBeenCalledWith(['claude', 'gemini', 'codex', 'aider']);
-      expect(health.adapters).toHaveLength(4);
+      expect(mockCheckAdapters).toHaveBeenCalledWith(['claude', 'gemini', 'codex', 'aider', 'hermes']);
+      expect(health.adapters).toHaveLength(4); // mock returns 4 results
       expect(health.adapters[0]).toEqual({
         type: 'Claude Code',
         installed: true,
