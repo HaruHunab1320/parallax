@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/pattern-sdk",
+  "name": "@parallaxai/pattern-sdk",
   "version": "0.1.0",
   "description": "Pattern generation SDK for Parallax AI orchestration platform",
   "main": "dist/index.js",

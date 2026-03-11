@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/runtime-interface",
+  "name": "@parallaxai/runtime-interface",
   "version": "0.1.0",
   "description": "Shared interfaces for Parallax agent runtimes",
   "main": "dist/index.js",
