@@ -9,7 +9,7 @@ import type {
   ParsedOutput,
   LoginDetection,
   BlockingPromptDetection,
-} from 'pty-manager';
+} from 'adapter-types';
 import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
 
 export class HermesAdapter extends BaseCodingAdapter {

@@ -11,7 +11,7 @@ import type {
   BlockingPromptDetection,
   AutoResponseRule,
   ToolRunningInfo,
-} from 'pty-manager';
+} from 'adapter-types';
 import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
 
 const CLAUDE_HOOK_MARKER_PREFIX = 'PARALLAX_CLAUDE_HOOK';

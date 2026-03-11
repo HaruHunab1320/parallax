@@ -2,6 +2,8 @@
 
 PTY session manager with lifecycle management, pluggable adapters, and blocking prompt detection.
 
+> Need crash-resilient sessions without native compilation? See [tmux-manager](../tmux-manager) — same adapter interface, backed by tmux instead of node-pty.
+
 ## Features
 
 - **Multi-session management** - Spawn and manage multiple PTY sessions concurrently

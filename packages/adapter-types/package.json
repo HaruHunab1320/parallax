@@ -1,0 +1,49 @@
+{
+  "name": "adapter-types",
+  "version": "0.1.0",
+  "description": "Shared adapter interface, base class, and types for PTY/tmux session managers",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
+  },
+  "keywords": [
+    "adapter",
+    "cli",
+    "interface",
+    "pty",
+    "tmux",
+    "typescript"
+  ],
+  "author": "Jakob Grant",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HaruHunab1320/parallax.git",
+    "directory": "packages/adapter-types"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

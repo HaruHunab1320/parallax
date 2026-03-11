@@ -11,7 +11,7 @@ import type {
   LoginDetection,
   BlockingPromptDetection,
   AutoResponseRule,
-} from 'pty-manager';
+} from 'adapter-types';
 import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
 
 export class AiderAdapter extends BaseCodingAdapter {

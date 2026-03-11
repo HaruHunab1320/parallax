@@ -1,6 +1,6 @@
 {
   "name": "coding-agent-adapters",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "CLI adapters for AI coding agents - Claude Code, Gemini CLI, OpenAI Codex, Aider, and Hermes Agent",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -47,8 +47,10 @@
   ],
   "author": "Parallax",
   "license": "MIT",
+  "dependencies": {
+    "adapter-types": "workspace:^"
+  },
   "peerDependencies": {
-    "pty-manager": "workspace:^",
     "agent-adapter-monitor": "workspace:^"
   },
   "peerDependenciesMeta": {

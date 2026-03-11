@@ -1,5 +1,5 @@
 /**
- * PTY Agent Manager Types
+ * Tmux Manager Types
  *
  * Re-exports adapter types from adapter-types package,
  * plus manager-specific type definitions.
@@ -51,6 +51,8 @@ export interface SessionHandle {
   lastActivityAt?: Date;
   error?: string;
   exitCode?: number;
+  /** Tmux session name (for reconnection) */
+  tmuxSessionName?: string;
 }
 
 /**
@@ -89,7 +91,7 @@ export type AuthRequiredMethod =
   | 'unknown';
 
 /**
- * Structured authentication-required payload emitted by PTY session/manager.
+ * Structured authentication-required payload emitted by tmux session/manager.
  */
 export interface AuthRequiredInfo {
   method: AuthRequiredMethod;
@@ -185,9 +187,9 @@ export interface TerminalAttachment {
 }
 
 /**
- * PTYManager configuration
+ * TmuxManager configuration
  */
-export interface PTYManagerConfig {
+export interface TmuxManagerConfig {
   /** Logger instance (optional - uses console if not provided) */
   logger?: Logger;
 
@@ -202,14 +204,16 @@ export interface PTYManagerConfig {
 
   /**
    * External classification callback invoked when a stall is detected.
-   * Return null or { state: 'still_working' } to reset the timer.
-   * Return { state: 'waiting_for_input', suggestedResponse } to auto-respond.
-   * Return { state: 'task_complete' } to transition session to ready.
-   * Return { state: 'error' } to emit session_error.
    */
   onStallClassify?: (
     sessionId: string,
     recentOutput: string,
     stallDurationMs: number
   ) => Promise<StallClassification | null>;
+
+  /** Tmux scrollback history limit per session (default: 50000) */
+  historyLimit?: number;
+
+  /** Tmux session name prefix (default: 'parallax') */
+  sessionPrefix?: string;
 }

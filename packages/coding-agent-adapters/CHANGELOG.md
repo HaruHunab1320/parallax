@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.13.0] - 2026-03-10
+
+### Changed
+- **Adapter types sourced from `adapter-types` package** — `BaseCLIAdapter`, `SpawnConfig`, `ParsedOutput`, `LoginDetection`, `BlockingPromptDetection`, `AutoResponseRule`, `ToolRunningInfo` are now imported from the shared `adapter-types` package instead of `pty-manager`. This decouples coding agent adapters from the PTY backend, allowing them to work with both `pty-manager` and `tmux-manager`.
+- `pty-manager` is no longer a peer dependency (moved to dev-only for tests).
+
 ## [0.12.0] - 2026-03-05
 
 ### Added

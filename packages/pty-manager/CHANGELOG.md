@@ -2,6 +2,11 @@
 
 All notable changes to `pty-manager` will be documented in this file.
 
+## [1.10.0] - 2026-03-10
+
+### Changed
+- **Adapter types extracted to `adapter-types` package** — `CLIAdapter`, `BaseCLIAdapter`, `AdapterRegistry`, `createAdapter`, and all adapter-related types (`SpawnConfig`, `ParsedOutput`, `LoginDetection`, `BlockingPromptDetection`, `AutoResponseRule`, `ToolRunningInfo`, `AdapterFactoryConfig`) are now sourced from the shared `adapter-types` package. All exports are re-exported from `pty-manager` for full backwards compatibility — no consumer changes required.
+
 ## [1.9.8] - 2026-03-09
 
 ### Added

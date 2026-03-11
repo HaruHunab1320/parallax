@@ -1,21 +1,15 @@
 {
-  "name": "pty-manager",
-  "version": "1.10.0",
-  "description": "PTY session manager with lifecycle management, pluggable adapters, and blocking prompt detection",
+  "name": "tmux-manager",
+  "version": "0.1.0",
+  "description": "Tmux-based session manager with lifecycle management, pluggable adapters, and blocking prompt detection",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
-  "bin": {
-    "pty-worker": "./dist/pty-worker.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
-    },
-    "./worker": {
-      "require": "./dist/pty-worker.js"
     }
   },
   "files": [
@@ -35,17 +29,12 @@
     "prepublishOnly": "pnpm run build"
   },
   "keywords": [
-    "pty",
+    "tmux",
     "terminal",
-    "pseudo-terminal",
-    "node-pty",
     "session-manager",
     "shell",
     "tty",
     "process-management",
-    "docker",
-    "ssh",
-    "bun",
     "typescript"
   ],
   "author": "Jakob Grant",
@@ -53,15 +42,14 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/HaruHunab1320/parallax.git",
-    "directory": "packages/pty-manager"
+    "directory": "packages/tmux-manager"
   },
   "bugs": {
     "url": "https://github.com/HaruHunab1320/parallax/issues"
   },
-  "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/pty-manager#readme",
+  "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/tmux-manager#readme",
   "dependencies": {
-    "adapter-types": "workspace:^",
-    "node-pty": "^1.0.0"
+    "adapter-types": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

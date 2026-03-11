@@ -7,8 +7,8 @@
 
 import { writeFile, appendFile, mkdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
-import { BaseCLIAdapter } from 'pty-manager';
-import type { SpawnConfig } from 'pty-manager';
+import { BaseCLIAdapter } from 'adapter-types';
+import type { SpawnConfig } from 'adapter-types';
 import { generateApprovalConfig, type ApprovalPreset, type ApprovalConfig } from './approval-presets';
 
 /**
