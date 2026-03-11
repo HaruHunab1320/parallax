@@ -1,5 +1,5 @@
 /**
- * @parallax/git-workspace-service
+ * @parallaxai/git-workspace-service
  *
  * Git workspace provisioning and credential management service.
  */

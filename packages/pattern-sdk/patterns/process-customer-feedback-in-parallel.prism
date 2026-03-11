@@ -2,7 +2,7 @@
 // Version: 1.0.0
 // Description: Process customer feedback in parallel
 // Generated: 2025-07-26T23:05:46.140Z
-// Generator: @parallax/pattern-sdk
+// Generator: @parallaxai/pattern-sdk
 // Primitives: parallel, threshold
 
 // Pattern: Process customer feedback in parallel

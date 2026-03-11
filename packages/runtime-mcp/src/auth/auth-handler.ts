@@ -7,7 +7,7 @@
 import * as jwt from 'jsonwebtoken';
 import { createHash, timingSafeEqual } from 'crypto';
 import type { Logger } from 'pino';
-import type { JWTPayload } from '@parallax/auth';
+import type { JWTPayload } from '@parallaxai/auth';
 import {
   type McpAuthConfig,
   type AuthContext,

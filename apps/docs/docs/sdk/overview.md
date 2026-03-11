@@ -11,8 +11,8 @@ Parallax provides official SDKs for building agents and orchestrating patterns. 
 
 | SDK | Package | Purpose |
 |-----|---------|---------|
-| **TypeScript** | `@parallax/sdk-typescript` | Build agents, execute patterns, client applications |
-| **Pattern SDK** | `@parallax/pattern-sdk` | Build, validate, and compile patterns programmatically |
+| **TypeScript** | `@parallaxai/sdk-typescript` | Build agents, execute patterns, client applications |
+| **Pattern SDK** | `@parallaxai/pattern-sdk` | Build, validate, and compile patterns programmatically |
 
 ## Quick Comparison
 
@@ -21,7 +21,7 @@ Parallax provides official SDKs for building agents and orchestrating patterns. 
 For building agents and client applications:
 
 ```typescript
-import { ParallaxAgent, ParallaxClient } from '@parallax/sdk-typescript';
+import { ParallaxAgent, ParallaxClient } from '@parallaxai/sdk-typescript';
 
 // Build an agent
 const agent = new ParallaxAgent({
@@ -47,7 +47,7 @@ const result = await client.executePattern('sentiment-analysis', {
 For programmatically building patterns:
 
 ```typescript
-import { PatternBuilder, validatePattern } from '@parallax/pattern-sdk';
+import { PatternBuilder, validatePattern } from '@parallaxai/pattern-sdk';
 
 const pattern = new PatternBuilder('content-moderation')
   .input({ content: 'string' })
@@ -69,21 +69,21 @@ if (!validation.valid) {
 ### TypeScript SDK
 
 ```bash
-npm install @parallax/sdk-typescript
+npm install @parallaxai/sdk-typescript
 # or
-pnpm add @parallax/sdk-typescript
+pnpm add @parallaxai/sdk-typescript
 # or
-yarn add @parallax/sdk-typescript
+yarn add @parallaxai/sdk-typescript
 ```
 
 ### Pattern SDK
 
 ```bash
-npm install @parallax/pattern-sdk
+npm install @parallaxai/pattern-sdk
 # or
-pnpm add @parallax/pattern-sdk
+pnpm add @parallaxai/pattern-sdk
 # or
-yarn add @parallax/pattern-sdk
+yarn add @parallaxai/pattern-sdk
 ```
 
 ## Architecture Overview
@@ -157,7 +157,7 @@ PARALLAX_LOG_LEVEL=info
 ### Programmatic Configuration
 
 ```typescript
-import { ParallaxClient } from '@parallax/sdk-typescript';
+import { ParallaxClient } from '@parallaxai/sdk-typescript';
 
 const client = new ParallaxClient({
   url: process.env.PARALLAX_URL || 'http://localhost:8080',
@@ -182,7 +182,7 @@ import {
   TimeoutError,
   ValidationError,
   PatternNotFoundError,
-} from '@parallax/sdk-typescript';
+} from '@parallaxai/sdk-typescript';
 
 try {
   const result = await client.executePattern('my-pattern', input);
@@ -209,7 +209,7 @@ import {
   TaskHandler,
   TaskResult,
   AgentConfig,
-} from '@parallax/sdk-typescript';
+} from '@parallaxai/sdk-typescript';
 
 // Typed task handler
 const handler: TaskHandler<MyInput, MyOutput> = async (task) => {

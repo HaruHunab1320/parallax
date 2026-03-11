@@ -1,11 +1,11 @@
-# @parallax/runtime-mcp
+# @parallaxai/runtime-mcp
 
 MCP (Model Context Protocol) server for Parallax Runtime. Enables AI agents to spawn, manage, and communicate with other agents through standardized MCP tools.
 
 ## Installation
 
 ```bash
-pnpm add @parallax/runtime-mcp
+pnpm add @parallaxai/runtime-mcp
 ```
 
 ## Quick Start
@@ -19,7 +19,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   "mcpServers": {
     "parallax": {
       "command": "npx",
-      "args": ["@parallax/runtime-mcp"]
+      "args": ["@parallaxai/runtime-mcp"]
     }
   }
 }
@@ -28,7 +28,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 ### Programmatic Usage
 
 ```typescript
-import { ParallaxMcpServer, createStdioTransport } from '@parallax/runtime-mcp';
+import { ParallaxMcpServer, createStdioTransport } from '@parallaxai/runtime-mcp';
 import pino from 'pino';
 
 const logger = pino();
@@ -111,7 +111,7 @@ The MCP server supports optional token-based authentication for securing remote 
 ### Configuration
 
 ```typescript
-import { ParallaxMcpServer } from '@parallax/runtime-mcp';
+import { ParallaxMcpServer } from '@parallaxai/runtime-mcp';
 
 const server = new ParallaxMcpServer({
   logger,
@@ -175,10 +175,10 @@ Roles map to permissions:
 
 ```bash
 # Start with debug logging
-npx @parallax/runtime-mcp --debug
+npx @parallaxai/runtime-mcp --debug
 
 # Limit maximum concurrent agents
-npx @parallax/runtime-mcp --max-agents=5
+npx @parallaxai/runtime-mcp --max-agents=5
 ```
 
 ## Architecture
@@ -190,7 +190,7 @@ npx @parallax/runtime-mcp --max-agents=5
 └─────────────────────┬───────────────────────────────┘
                       │ stdio
 ┌─────────────────────▼───────────────────────────────┐
-│              @parallax/runtime-mcp                   │
+│              @parallaxai/runtime-mcp                   │
 │  ┌─────────────────────────────────────────────┐    │
 │  │           ParallaxMcpServer                  │    │
 │  │  ┌────────┐ ┌───────────┐ ┌──────────┐      │    │
@@ -236,7 +236,7 @@ class ParallaxMcpServer {
 All tool inputs are validated with Zod schemas:
 
 ```typescript
-import { SpawnInputSchema, StopInputSchema } from '@parallax/runtime-mcp';
+import { SpawnInputSchema, StopInputSchema } from '@parallaxai/runtime-mcp';
 
 // Spawn input
 const spawn = SpawnInputSchema.parse({

@@ -9,7 +9,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer, Server } from 'http';
 import { Logger } from 'pino';
 import { K8sRuntime } from './k8s-runtime';
-import { AgentConfig, AgentHandle, AgentMessage } from '@parallax/runtime-interface';
+import { AgentConfig, AgentHandle, AgentMessage } from '@parallaxai/runtime-interface';
 
 export interface RuntimeServerOptions {
   port: number;

@@ -1,5 +1,5 @@
 /**
- * @parallax/primitives
+ * @parallaxai/primitives
  * 
  * Core primitive library and composition utilities
  */

@@ -238,7 +238,7 @@ parallax pattern deploy my-pattern.yaml --env production
 Deploy programmatically:
 
 ```typescript
-import { ParallaxClient } from '@parallax/sdk-typescript';
+import { ParallaxClient } from '@parallaxai/sdk-typescript';
 import fs from 'fs';
 
 const client = new ParallaxClient({ url: 'http://localhost:8080' });

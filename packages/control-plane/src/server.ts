@@ -14,7 +14,7 @@ import { RuntimeConfig } from './runtime-manager/types';
 import { EtcdRegistry } from './registry';
 import { HealthCheckService, createHealthRouter } from './health/health-check';
 import { MetricsCollector } from './metrics/metrics-collector';
-import { initializeTracing, getTracingConfig } from '@parallax/telemetry';
+import { initializeTracing, getTracingConfig } from '@parallaxai/telemetry';
 import {
   createPatternsRouter,
   createAgentsRouter,
@@ -63,7 +63,7 @@ import {
   AgentProxy as DataPlaneAgentProxy,
   ProxyConfig,
   ConfidenceTracker,
-} from '@parallax/data-plane';
+} from '@parallaxai/data-plane';
 
 // Scheduler imports
 import {

@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/multi-model-voting-demo",
+  "name": "@parallaxai/multi-model-voting-demo",
   "version": "0.1.0",
   "description": "Multi-model voting demo using different Gemini models",
   "private": true,

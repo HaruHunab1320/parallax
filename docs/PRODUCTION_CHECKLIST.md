@@ -211,7 +211,7 @@ PARALLAX_API_KEY=<agent-specific-key>
 ## CLI
 
 ### Installation
-- [ ] CLI installable (`npm install -g @parallax/cli`)
+- [ ] CLI installable (`npm install -g @parallaxai/cli`)
 - [ ] CLI connects to control plane
 - [ ] Authentication working
 

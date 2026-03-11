@@ -464,7 +464,7 @@ output:
 Create custom primitives for domain-specific logic:
 
 ```typescript
-import { definePrimitive } from '@parallax/pattern-sdk';
+import { definePrimitive } from '@parallaxai/pattern-sdk';
 
 const customScorer = definePrimitive({
   name: 'custom-scorer',

@@ -2,7 +2,7 @@
  * Health Tool - Runtime health check
  */
 
-import type { LocalRuntime } from '@parallax/runtime-local';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
 import { HealthInputSchema } from './schemas.js';
 
 export const HEALTH_TOOL = {

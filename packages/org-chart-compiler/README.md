@@ -1,4 +1,4 @@
-# @parallax/org-chart-compiler
+# @parallaxai/org-chart-compiler
 
 DSL compiler for multi-agent organizational structures and workflows. Parse YAML/JSON org-chart patterns and compile them to various output formats.
 
@@ -13,15 +13,15 @@ DSL compiler for multi-agent organizational structures and workflows. Parse YAML
 ## Installation
 
 ```bash
-npm install @parallax/org-chart-compiler
+npm install @parallaxai/org-chart-compiler
 # or
-pnpm add @parallax/org-chart-compiler
+pnpm add @parallaxai/org-chart-compiler
 ```
 
 ## Quick Start
 
 ```typescript
-import { OrgChartCompiler } from '@parallax/org-chart-compiler';
+import { OrgChartCompiler } from '@parallaxai/org-chart-compiler';
 
 // Parse YAML pattern
 const pattern = OrgChartCompiler.parse(`
@@ -210,7 +210,7 @@ interface ValidationError {
 ## Custom Targets
 
 ```typescript
-import { createTarget, OrgChartCompiler } from '@parallax/org-chart-compiler';
+import { createTarget, OrgChartCompiler } from '@parallaxai/org-chart-compiler';
 
 const pythonTarget = createTarget({
   name: 'python',

@@ -4,8 +4,8 @@
  * Provides current agent state as a JSON resource.
  */
 
-import type { LocalRuntime } from '@parallax/runtime-local';
-import type { AgentHandle } from '@parallax/runtime-interface';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import type { AgentHandle } from '@parallaxai/runtime-interface';
 
 export const AGENT_RESOURCE_TEMPLATE = {
   uriTemplate: 'agents://{agentId}',

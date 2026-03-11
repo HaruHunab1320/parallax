@@ -1,5 +1,5 @@
 /**
- * @parallax/pattern-builder
+ * @parallaxai/pattern-builder
  *
  * Visual pattern builder for Parallax orchestration patterns
  */

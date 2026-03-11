@@ -1,5 +1,5 @@
 /**
- * @parallax/org-chart-compiler
+ * @parallaxai/org-chart-compiler
  *
  * DSL compiler for multi-agent organizational structures and workflows.
  */

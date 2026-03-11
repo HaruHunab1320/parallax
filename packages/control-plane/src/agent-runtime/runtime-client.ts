@@ -14,7 +14,7 @@ import {
   AgentStatus,
   AgentFilter,
   AgentMetrics,
-} from '@parallax/runtime-interface';
+} from '@parallaxai/runtime-interface';
 
 export interface RuntimeClientOptions {
   baseUrl: string;

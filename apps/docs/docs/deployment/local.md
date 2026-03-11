@@ -18,7 +18,7 @@ Run Parallax locally for development and testing.
 ### 1. Install the CLI
 
 ```bash
-npm install -g @parallax/cli
+npm install -g @parallaxai/cli
 ```
 
 ### 2. Start the Control Plane
@@ -114,7 +114,7 @@ parallax start
 
 ```typescript
 // agent.ts
-import { ParallaxAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 
 const agent = new ParallaxAgent({
   controlPlaneUrl: 'http://localhost:8080',
@@ -189,7 +189,7 @@ parallax pattern show my-pattern
 ### Via SDK
 
 ```typescript
-import { ParallaxClient } from '@parallax/sdk-typescript';
+import { ParallaxClient } from '@parallaxai/sdk-typescript';
 import fs from 'fs';
 
 const client = new ParallaxClient({

@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/data-plane",
+  "name": "@parallaxai/data-plane",
   "version": "0.1.0",
   "description": "Data plane components for Parallax platform",
   "main": "dist/index.js",
@@ -13,7 +13,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@parallax/runtime": "workspace:*",
+    "@parallaxai/runtime": "workspace:*",
     "@grpc/grpc-js": "^1.12.4",
     "@grpc/proto-loader": "^0.7.13",
     "circuit-breaker-js": "^0.0.1",

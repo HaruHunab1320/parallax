@@ -1,5 +1,5 @@
 /**
- * @parallax/adapter-monitor
+ * @parallaxai/adapter-monitor
  *
  * Automated CLI adapter monitoring - captures startup snapshots
  * and detects pattern changes across versions.

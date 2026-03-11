@@ -21,4 +21,4 @@ export {
   AgentStatus,
   AgentType,
   RuntimeProvider,
-} from '@parallax/runtime-interface';
+} from '@parallaxai/runtime-interface';

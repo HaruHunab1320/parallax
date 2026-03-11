@@ -23,7 +23,7 @@ Let's create a simple weather analysis agent:
 
 ```typescript
 // weather-agent.ts
-import { ParallaxAgent, serveAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 class WeatherAgent extends ParallaxAgent {
   constructor() {
@@ -73,7 +73,7 @@ tsx weather-agent.ts
 
 # Terminal 2: Start Parallax with your agent
 PARALLAX_LOCAL_AGENTS="weather-1:Weather Analyzer:localhost:50051:analysis,weather,forecast" \
-pnpm --filter @parallax/control-plane dev
+pnpm --filter @parallaxai/control-plane dev
 ```
 
 ## Using a Pattern

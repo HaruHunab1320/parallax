@@ -16,7 +16,7 @@ import {
   StopOptions,
   SendOptions,
   LogOptions,
-} from '@parallax/runtime-interface';
+} from '@parallaxai/runtime-interface';
 import {
   PTYManager,
   type SessionHandle,

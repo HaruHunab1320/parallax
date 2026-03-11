@@ -29,7 +29,7 @@ export interface LoadedPrimitive {
 export interface PrimitiveLoaderOptions {
   /**
    * Base path to the primitives directory
-   * Defaults to @parallax/primitives package
+   * Defaults to @parallaxai/primitives package
    */
   basePath?: string;
   
@@ -267,8 +267,8 @@ export class PrimitiveLoader {
    */
   private getDefaultPrimitivesPath(): string {
     try {
-      // Try to resolve the @parallax/primitives package
-      const primitivesPackage = require.resolve('@parallax/primitives/package.json');
+      // Try to resolve the @parallaxai/primitives package
+      const primitivesPackage = require.resolve('@parallaxai/primitives/package.json');
       return path.dirname(primitivesPackage);
     } catch {
       // Fallback to relative path

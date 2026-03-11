@@ -2,7 +2,7 @@
 // Version: 1.0.0
 // Description: Analyze distributed system logs for anomalies and errors
 // Generated: 2025-07-26T23:06:24.730Z
-// Generator: @parallax/pattern-sdk
+// Generator: @parallaxai/pattern-sdk
 // Primitives: sequential, parallel, merge, retry, timeout, threshold
 
 // Pattern: Analyze distributed system logs for anomalies and errors

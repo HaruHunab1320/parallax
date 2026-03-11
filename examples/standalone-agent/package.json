@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/example-standalone-agent",
+  "name": "@parallaxai/example-standalone-agent",
   "version": "0.1.0",
   "private": true,
   "description": "Example of a standalone Parallax agent using gRPC",

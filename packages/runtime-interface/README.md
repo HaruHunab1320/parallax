@@ -1,11 +1,11 @@
-# @parallax/runtime-interface
+# @parallaxai/runtime-interface
 
 Shared interfaces and types for Parallax agent runtimes. This package defines the contracts that runtime providers and CLI adapters must implement.
 
 ## Installation
 
 ```bash
-npm install @parallax/runtime-interface
+npm install @parallaxai/runtime-interface
 ```
 
 ## Usage
@@ -17,7 +17,7 @@ import {
   AgentHandle,
   CLIAdapter,
   AdapterRegistry,
-} from '@parallax/runtime-interface';
+} from '@parallaxai/runtime-interface';
 ```
 
 ## Core Interfaces

@@ -16,13 +16,13 @@ import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
 import { WorkspaceService, Workspace, WorkspaceConfig, UserProvidedCredentials } from '../workspace';
 import { AgentRuntimeService } from '../agent-runtime';
-import { AgentHandle, AgentConfig } from '@parallax/runtime-interface';
+import { AgentHandle, AgentConfig } from '@parallaxai/runtime-interface';
 import {
   ExecutionEngine,
   ExecutionTask,
   ExecutionResult,
   ParallelExecutionPlan
-} from '@parallax/data-plane';
+} from '@parallaxai/data-plane';
 
 export class PatternEngine implements IPatternEngine {
   private loader: PatternLoader;

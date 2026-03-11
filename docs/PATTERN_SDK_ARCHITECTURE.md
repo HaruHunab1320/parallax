@@ -89,7 +89,7 @@ defaults:
 generation:
   provider: openai        # or anthropic, custom, etc.
   model: gpt-4
-  primitivesPath: ./node_modules/@parallax/primitives
+  primitivesPath: ./node_modules/@parallaxai/primitives
 
 templates:
   consensus:
@@ -134,7 +134,7 @@ parallax primitives show parallel
 ### Programmatic API
 
 ```typescript
-import { PatternGenerator } from '@parallax/pattern-sdk';
+import { PatternGenerator } from '@parallaxai/pattern-sdk';
 
 // Initialize with your LLM
 const generator = new PatternGenerator({
@@ -192,7 +192,7 @@ requirements:
 
 ```typescript
 // patterns/__tests__/pr-review.test.ts
-import { PatternTester } from '@parallax/pattern-sdk/testing';
+import { PatternTester } from '@parallaxai/pattern-sdk/testing';
 
 describe('PR Review Pattern', () => {
   const tester = new PatternTester('./patterns/pr-review.prism');
@@ -231,7 +231,7 @@ npm publish @myorg/parallax-patterns
 
 ```bash
 # Install from registry
-parallax add @parallax/patterns-security
+parallax add @parallaxai/patterns-security
 
 # Install from npm
 npm install @company/parallax-patterns

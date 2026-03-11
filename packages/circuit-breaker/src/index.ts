@@ -1,11 +1,11 @@
 /**
- * @parallax/circuit-breaker
+ * @parallaxai/circuit-breaker
  *
  * A lightweight, zero-dependency circuit breaker for Node.js with TypeScript support.
  *
  * @example
  * ```typescript
- * import { CircuitBreaker, CircuitState, CircuitOpenError } from '@parallax/circuit-breaker';
+ * import { CircuitBreaker, CircuitState, CircuitOpenError } from '@parallaxai/circuit-breaker';
  *
  * const breaker = new CircuitBreaker({
  *   failureThreshold: 5,

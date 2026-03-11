@@ -10,7 +10,7 @@ The Pattern SDK allows you to build, validate, and compile patterns programmatic
 ## Installation
 
 ```bash
-npm install @parallax/pattern-sdk
+npm install @parallaxai/pattern-sdk
 ```
 
 ## PatternBuilder
@@ -20,7 +20,7 @@ The `PatternBuilder` class provides a fluent API for constructing patterns.
 ### Basic Usage
 
 ```typescript
-import { PatternBuilder } from '@parallax/pattern-sdk';
+import { PatternBuilder } from '@parallaxai/pattern-sdk';
 
 const pattern = new PatternBuilder('sentiment-analysis')
   .version('1.0.0')
@@ -333,7 +333,7 @@ const pattern = new PatternBuilder('smart-processor')
 ### Validate Patterns
 
 ```typescript
-import { validatePattern } from '@parallax/pattern-sdk';
+import { validatePattern } from '@parallaxai/pattern-sdk';
 
 const pattern = builder.build();
 const validation = validatePattern(pattern);
@@ -376,7 +376,7 @@ interface ValidationError {
 ### Compile to YAML
 
 ```typescript
-import { compileToYaml } from '@parallax/pattern-sdk';
+import { compileToYaml } from '@parallaxai/pattern-sdk';
 
 const pattern = builder.build();
 const yaml = compileToYaml(pattern);
@@ -390,7 +390,7 @@ console.log(yaml);
 ### Compile to JSON
 
 ```typescript
-import { compileToJson } from '@parallax/pattern-sdk';
+import { compileToJson } from '@parallaxai/pattern-sdk';
 
 const json = compileToJson(pattern);
 ```
@@ -410,7 +410,7 @@ const yaml = compileToYaml(pattern, {
 ### Parse YAML
 
 ```typescript
-import { parsePattern } from '@parallax/pattern-sdk';
+import { parsePattern } from '@parallaxai/pattern-sdk';
 
 const yaml = `
 name: my-pattern
@@ -440,7 +440,7 @@ if (!validation.valid) {
 Create reusable templates:
 
 ```typescript
-import { PatternTemplate } from '@parallax/pattern-sdk';
+import { PatternTemplate } from '@parallaxai/pattern-sdk';
 
 // Define a template
 const votingTemplate = new PatternTemplate({
@@ -506,7 +506,7 @@ import type {
   VotingConfig,
   ConsensusConfig,
   MergeConfig,
-} from '@parallax/pattern-sdk';
+} from '@parallaxai/pattern-sdk';
 ```
 
 ## Examples

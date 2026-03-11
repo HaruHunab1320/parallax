@@ -1,4 +1,4 @@
-# @parallax/confidence-tracker
+# @parallaxai/confidence-tracker
 
 Statistical confidence tracking with anomaly detection for AI agents and ML systems.
 
@@ -14,17 +14,17 @@ Statistical confidence tracking with anomaly detection for AI agents and ML syst
 ## Installation
 
 ```bash
-npm install @parallax/confidence-tracker
+npm install @parallaxai/confidence-tracker
 # or
-pnpm add @parallax/confidence-tracker
+pnpm add @parallaxai/confidence-tracker
 # or
-yarn add @parallax/confidence-tracker
+yarn add @parallaxai/confidence-tracker
 ```
 
 ## Quick Start
 
 ```typescript
-import { ConfidenceTracker, InMemoryStore } from '@parallax/confidence-tracker';
+import { ConfidenceTracker, InMemoryStore } from '@parallaxai/confidence-tracker';
 
 const tracker = new ConfidenceTracker({
   store: new InMemoryStore({ maxDataPoints: 10000 }),
@@ -219,7 +219,7 @@ tracker.on('anomaly:resolved', ({ alertId, entityId }) => {
 Fast, suitable for development and testing.
 
 ```typescript
-import { InMemoryStore } from '@parallax/confidence-tracker';
+import { InMemoryStore } from '@parallaxai/confidence-tracker';
 
 const store = new InMemoryStore({
   maxDataPoints: 10000,       // Per entity
@@ -233,7 +233,7 @@ const store = new InMemoryStore({
 Implement the `ConfidenceStore` interface:
 
 ```typescript
-import { ConfidenceStore } from '@parallax/confidence-tracker';
+import { ConfidenceStore } from '@parallaxai/confidence-tracker';
 
 class MyStore implements ConfidenceStore {
   async addDataPoint(point) { /* ... */ }

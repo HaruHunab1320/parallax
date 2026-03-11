@@ -2,8 +2,8 @@
  * List Tool - Query running agents
  */
 
-import type { LocalRuntime } from '@parallax/runtime-local';
-import type { AgentHandle, AgentFilter } from '@parallax/runtime-interface';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import type { AgentHandle, AgentFilter } from '@parallaxai/runtime-interface';
 import { ListInputSchema, type ListInput } from './schemas.js';
 
 export const LIST_TOOL = {

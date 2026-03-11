@@ -2,8 +2,8 @@
  * Metrics Tool - Get agent metrics
  */
 
-import type { LocalRuntime } from '@parallax/runtime-local';
-import type { AgentMetrics } from '@parallax/runtime-interface';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import type { AgentMetrics } from '@parallaxai/runtime-interface';
 import { MetricsInputSchema, type MetricsInput } from './schemas.js';
 
 export const METRICS_TOOL = {

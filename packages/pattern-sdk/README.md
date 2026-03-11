@@ -51,9 +51,9 @@ See [docs/YAML_FORMAT.md](./docs/YAML_FORMAT.md) for the full YAML schema refere
 ## Installation
 
 ```bash
-npm install -D @parallax/pattern-sdk
+npm install -D @parallaxai/pattern-sdk
 # or
-pnpm add -D @parallax/pattern-sdk
+pnpm add -D @parallaxai/pattern-sdk
 ```
 
 ## Quick Start
@@ -74,7 +74,7 @@ npx parallax-generate pattern -f requirements.yaml
 ### Programmatic Usage
 
 ```typescript
-import { PatternGenerator } from '@parallax/pattern-sdk';
+import { PatternGenerator } from '@parallaxai/pattern-sdk';
 import { openai } from '@ai-sdk/openai';
 
 const generator = new PatternGenerator({
@@ -164,7 +164,7 @@ npx parallax-generate pattern --template consensus \
 ## Testing Generated Patterns
 
 ```typescript
-import { PatternTester } from '@parallax/pattern-sdk/testing';
+import { PatternTester } from '@parallaxai/pattern-sdk/testing';
 
 const tester = new PatternTester('./patterns/security-review.prism');
 

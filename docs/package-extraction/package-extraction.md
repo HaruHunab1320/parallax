@@ -45,12 +45,12 @@ We've identified **5 components** with high reusability potential:
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Standalone Packages (npm)                     │
 │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐     │
-│  │@parallax/      │  │@parallax/      │  │@parallax/      │     │
+│  │@parallaxai/      │  │@parallaxai/      │  │@parallaxai/      │     │
 │  │circuit-breaker │  │confidence-     │  │pty-agent-      │     │
 │  │                │  │tracker         │  │manager         │     │
 │  └────────────────┘  └────────────────┘  └────────────────┘     │
 │  ┌────────────────┐  ┌────────────────┐                         │
-│  │@parallax/      │  │@parallax/      │                         │
+│  │@parallaxai/      │  │@parallaxai/      │                         │
 │  │org-chart-      │  │git-workspace-  │                         │
 │  │compiler        │  │service         │                         │
 │  └────────────────┘  └────────────────┘                         │
@@ -67,9 +67,9 @@ We've identified **5 components** with high reusability potential:
 │         ▼                 ▼                 ▼                    │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │         Dependencies on Published Packages                │   │
-│  │  "@parallax/circuit-breaker": "^1.0.0"                    │   │
-│  │  "@parallax/confidence-tracker": "^1.0.0"                 │   │
-│  │  "@parallax/pty-agent-manager": "^1.0.0"                  │   │
+│  │  "@parallaxai/circuit-breaker": "^1.0.0"                    │   │
+│  │  "@parallaxai/confidence-tracker": "^1.0.0"                 │   │
+│  │  "@parallaxai/pty-agent-manager": "^1.0.0"                  │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -88,7 +88,7 @@ We've identified **5 components** with high reusability potential:
 **Deliverables:**
 - [ ] Standalone package repos or monorepo structure
 - [ ] Full test coverage
-- [ ] npm publication under `@parallax/` scope
+- [ ] npm publication under `@parallaxai/` scope
 - [ ] Migration guide for Parallax internals
 
 ### Phase 2: Core Components (Week 3-4)
@@ -124,7 +124,7 @@ We've identified **5 components** with high reusability potential:
 Each extracted package follows this structure:
 
 ```
-@parallax/package-name/
+@parallaxai/package-name/
 ├── src/
 │   ├── index.ts           # Public API exports
 │   ├── types.ts           # TypeScript interfaces
@@ -145,7 +145,7 @@ Each extracted package follows this structure:
 
 Each package must meet these criteria before publication:
 
-1. **Zero Parallax Dependencies** - No imports from `@parallax/*` internal packages
+1. **Zero Parallax Dependencies** - No imports from `@parallaxai/*` internal packages
 2. **100% Test Coverage** - Unit tests for all public APIs
 3. **TypeScript Support** - Full type definitions
 4. **Documentation** - README with examples, API reference
@@ -156,7 +156,7 @@ Each package must meet these criteria before publication:
 
 When swapping internal code for published packages:
 
-1. **Add Dependency** - `pnpm add @parallax/package-name`
+1. **Add Dependency** - `pnpm add @parallaxai/package-name`
 2. **Update Imports** - Change internal imports to package imports
 3. **Run Tests** - Ensure all existing tests pass
 4. **Remove Internal Code** - Delete the extracted source files

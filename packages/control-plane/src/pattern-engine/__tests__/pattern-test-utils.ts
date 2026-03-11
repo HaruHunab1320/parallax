@@ -2,7 +2,7 @@
  * Test utilities for pattern testing
  */
 
-import { Agent, AgentResult } from '@parallax/runtime';
+import { Agent, AgentResult } from '@parallaxai/runtime';
 
 /**
  * Mock agent for testing patterns

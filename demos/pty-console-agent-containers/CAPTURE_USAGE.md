@@ -13,25 +13,25 @@ cd /Users/jakobgrant/Workspaces/parallax
 Claude:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:claude:interactive
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:claude:interactive
 ```
 
 Gemini:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:gemini:interactive
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:gemini:interactive
 ```
 
 Codex:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:codex:interactive
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:codex:interactive
 ```
 
 Aider:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:aider:interactive
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:aider:interactive
 ```
 
 ## Common Options
@@ -61,7 +61,7 @@ Claude wrapper additionally supports:
 Example:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:claude:interactive -- \
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:claude:interactive -- \
   --workdir /Users/jakobgrant/Workspaces/parallax \
   --output-dir .parallax/pty-captures \
   --cols 220 \

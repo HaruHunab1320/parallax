@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useCallback, useState } from 'react';
-import { PatternBuilder } from '@parallax/pattern-builder';
+import { PatternBuilder } from '@parallaxai/pattern-builder';
 
 export default function BuilderPage() {
   const [latestYaml, setLatestYaml] = useState<string | null>(null);

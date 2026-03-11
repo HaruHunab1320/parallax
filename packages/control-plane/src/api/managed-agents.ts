@@ -7,7 +7,7 @@
 import { Router, Request, Response } from 'express';
 import { Logger } from 'pino';
 import { AgentRuntimeService } from '../agent-runtime';
-import { AgentConfig, AgentFilter } from '@parallax/runtime-interface';
+import { AgentConfig, AgentFilter } from '@parallaxai/runtime-interface';
 
 export function createManagedAgentsRouter(
   agentRuntimeService: AgentRuntimeService,

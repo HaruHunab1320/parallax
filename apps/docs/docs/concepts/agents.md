@@ -32,7 +32,7 @@ flowchart LR
 ### Basic Agent
 
 ```typescript
-import { ParallaxAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 
 const agent = new ParallaxAgent({
   name: 'my-agent',

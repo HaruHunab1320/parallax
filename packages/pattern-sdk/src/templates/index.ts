@@ -16,7 +16,7 @@ export const templates: Record<string, PatternTemplate> = {
     minAgents: 3,
     defaultConfidence: 0.8,
     defaultPrimitives: ['parallel', 'consensus', 'threshold'],
-    example: `import { parallel, consensus, threshold } from "@parallax/primitives"
+    example: `import { parallel, consensus, threshold } from "@parallaxai/primitives"
 
 // Execute agents in parallel
 results = parallel(3)(agents)
@@ -36,7 +36,7 @@ finalResult ~> 0.85`
     minAgents: 2,
     defaultConfidence: 0.7,
     defaultPrimitives: ['sequential', 'transform', 'fallback'],
-    example: `import { sequential, transform, fallback } from "@parallax/primitives"
+    example: `import { sequential, transform, fallback } from "@parallaxai/primitives"
 
 // Process through stages
 stage1 = sequential(analysisAgents)
@@ -55,7 +55,7 @@ finalResult ~> 0.7`
     minAgents: 5,
     defaultConfidence: 0.6,
     defaultPrimitives: ['parallel', 'voting', 'threshold'],
-    example: `import { parallel, voting, threshold } from "@parallax/primitives"
+    example: `import { parallel, voting, threshold } from "@parallaxai/primitives"
 
 // Collect votes in parallel
 votes = parallel(5)(agents)
@@ -75,7 +75,7 @@ finalResult ~> confidence`
     minAgents: 4,
     defaultConfidence: 0.75,
     defaultPrimitives: ['parallel', 'threshold', 'escalate', 'retry'],
-    example: `import { parallel, threshold, escalate, retry } from "@parallax/primitives"
+    example: `import { parallel, threshold, escalate, retry } from "@parallaxai/primitives"
 
 // First tier assessment
 tier1 = parallel(3)(juniorAgents)
@@ -98,7 +98,7 @@ result ~> result.confidence`
     minAgents: 3,
     defaultConfidence: 0.8,
     defaultPrimitives: ['parallel', 'retry', 'circuit', 'fallback', 'cache'],
-    example: `import { parallel, retry, circuit, fallback, cache } from "@parallax/primitives"
+    example: `import { parallel, retry, circuit, fallback, cache } from "@parallaxai/primitives"
 
 // Setup circuit breaker
 breaker = circuit(5, 60) // 5 failures, 60s timeout
@@ -124,7 +124,7 @@ result ~> 0.8`
     minAgents: 10,
     defaultConfidence: 0.7,
     defaultPrimitives: ['batch', 'parallel', 'map', 'reduce'],
-    example: `import { batch, parallel, map, reduce } from "@parallax/primitives"
+    example: `import { batch, parallel, map, reduce } from "@parallaxai/primitives"
 
 // Batch data for processing
 batches = batch(data, 100)

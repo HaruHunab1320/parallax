@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . .
 
 # Use turbo prune to create a pruned workspace
-RUN turbo prune @parallax/runtime-k8s --docker
+RUN turbo prune @parallaxai/runtime-k8s --docker
 
 # Stage 2: Install dependencies and build
 FROM node:20-alpine AS builder
@@ -33,7 +33,7 @@ COPY --from=pruner /app/out/full/ .
 COPY tsconfig.json ./
 
 # Build with turbo
-RUN turbo build --filter=@parallax/runtime-k8s
+RUN turbo build --filter=@parallaxai/runtime-k8s
 
 # Stage 3: Production
 FROM node:20-alpine AS production

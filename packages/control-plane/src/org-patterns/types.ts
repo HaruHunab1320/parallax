@@ -4,7 +4,7 @@
  * Types for organizational structure orchestration of multi-agent systems.
  */
 
-import { AgentType, AgentConfig } from '@parallax/runtime-interface';
+import { AgentType, AgentConfig } from '@parallaxai/runtime-interface';
 
 /**
  * Organizational role definition

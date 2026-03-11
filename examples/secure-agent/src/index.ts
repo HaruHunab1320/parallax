@@ -3,7 +3,7 @@
  */
 
 import { SecureParallaxAgent, serveSecureAgent } from '@parallaxai/sdk-typescript';
-import { getMTLSConfig } from '@parallax/security';
+import { getMTLSConfig } from '@parallaxai/security';
 import pino from 'pino';
 
 // Create logger

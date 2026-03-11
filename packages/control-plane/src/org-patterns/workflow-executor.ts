@@ -16,7 +16,7 @@ import {
 } from './types';
 import { MessageRouter } from './message-router';
 import { AgentRuntimeService } from '../agent-runtime';
-import { AgentConfig, AgentHandle } from '@parallax/runtime-interface';
+import { AgentConfig, AgentHandle } from '@parallaxai/runtime-interface';
 
 export interface WorkflowExecutorOptions {
   /** Timeout for individual steps (ms) */

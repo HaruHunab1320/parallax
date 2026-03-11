@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/prompt-testing-demo",
+  "name": "@parallaxai/prompt-testing-demo",
   "version": "0.1.0",
   "private": true,
   "description": "A/B testing for prompts - compare different prompt styles and pick the best",

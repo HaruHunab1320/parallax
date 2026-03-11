@@ -2,7 +2,7 @@
 // Version: 1.0.0
 // Description: Multi-stage data analysis with quality control
 // Generated: 2025-07-26T22:57:07.348Z
-// Generator: @parallax/pattern-sdk
+// Generator: @parallaxai/pattern-sdk
 // Primitives: parallel, consensus, threshold, retry
 
 // Pattern: Multi-stage data analysis with quality control

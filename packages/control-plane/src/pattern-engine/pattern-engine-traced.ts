@@ -4,12 +4,12 @@ import { RuntimeManager } from '../runtime-manager';
 import { EtcdRegistry } from '../registry';
 import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
-import { GrpcAgentProxy } from '@parallax/runtime';
+import { GrpcAgentProxy } from '@parallaxai/runtime';
 import { AgentProxy } from '../grpc/agent-proxy';
 import { LocalAgentManager } from './local-agents';
 import {
   PatternTracer
-} from '@parallax/telemetry';
+} from '@parallaxai/telemetry';
 import { DatabaseService } from '../db/database.service';
 import { IPatternEngine, PatternExecutionOptions, PatternWithSource, PatternVersion } from './interfaces';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
@@ -25,7 +25,7 @@ import {
   ExecutionTask,
   ExecutionResult,
   ParallelExecutionPlan
-} from '@parallax/data-plane';
+} from '@parallaxai/data-plane';
 
 export class TracedPatternEngine implements IPatternEngine {
   private loader: PatternLoader;

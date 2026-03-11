@@ -2,8 +2,8 @@
  * Get Tool - Get agent details
  */
 
-import type { LocalRuntime } from '@parallax/runtime-local';
-import type { AgentHandle } from '@parallax/runtime-interface';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import type { AgentHandle } from '@parallaxai/runtime-interface';
 import { GetInputSchema, type GetInput } from './schemas.js';
 
 export const GET_TOOL = {

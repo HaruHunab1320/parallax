@@ -4,11 +4,11 @@
 // Complexity: 5.5
 // Estimated Confidence: 0.88
 
-import { parallel } from "@parallax/primitives/execution/parallel.prism"
-import { voting } from "@parallax/primitives/aggregation/voting.prism"
-import { threshold } from "@parallax/primitives/confidence/threshold.prism"
-import { fallback } from "@parallax/primitives/control/fallback.prism"
-import { cache } from "@parallax/primitives/control/cache.prism"
+import { parallel } from "@parallaxai/primitives/execution/parallel.prism"
+import { voting } from "@parallaxai/primitives/aggregation/voting.prism"
+import { threshold } from "@parallaxai/primitives/confidence/threshold.prism"
+import { fallback } from "@parallaxai/primitives/control/fallback.prism"
+import { cache } from "@parallaxai/primitives/control/cache.prism"
 
 export const minecraftCastleAnalysisPattern = (config) => {
   return (input) => {

@@ -1,5 +1,5 @@
 /**
- * Integration test for @parallax/org-chart-compiler
+ * Integration test for @parallaxai/org-chart-compiler
  *
  * Tests that the package can be imported and used correctly.
  * Run with: npx tsx test-integration.ts
@@ -23,7 +23,7 @@ import type {
 } from './src/index';
 
 async function runTests() {
-  console.log('Running integration tests for @parallax/org-chart-compiler\n');
+  console.log('Running integration tests for @parallaxai/org-chart-compiler\n');
 
   let passed = 0;
   let failed = 0;

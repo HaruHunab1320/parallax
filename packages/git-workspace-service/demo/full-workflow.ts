@@ -193,7 +193,7 @@ This PR adds an example feature module with tests.
 - Created by: git-workspace-service demo
 
 ---
-*Automated PR created by @parallax/git-workspace-service*`,
+*Automated PR created by @parallaxai/git-workspace-service*`,
       head: workspace.branch.name,
       base: 'main',
       labels: ['enhancement', 'automated'],
@@ -226,7 +226,7 @@ This issue tracks the progress of the feature implementation.
 - Execution: \`${executionId}\`
 
 ---
-*Automated issue created by @parallax/git-workspace-service*`,
+*Automated issue created by @parallaxai/git-workspace-service*`,
       labels: ['tracking', 'automated'],
     });
 

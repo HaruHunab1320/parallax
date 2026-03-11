@@ -5,7 +5,7 @@
  * Supports subscription for real-time updates.
  */
 
-import type { LocalRuntime } from '@parallax/runtime-local';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
 
 export const LOGS_RESOURCE_TEMPLATE = {
   uriTemplate: 'logs://{agentId}',

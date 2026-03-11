@@ -481,7 +481,7 @@ parallax pattern compile my-pattern.yaml -o my-pattern.prism
 ### Programmatic Access
 
 ```typescript
-import { PatternCompiler } from '@parallax/sdk';
+import { PatternCompiler } from '@parallaxai/sdk';
 
 const compiler = new PatternCompiler();
 

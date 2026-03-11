@@ -1,6 +1,6 @@
 # Org Chart Compiler Development Plan
 
-**Package Name:** `@parallax/org-chart-compiler`
+**Package Name:** `@parallaxai/org-chart-compiler`
 **Current Location:** `packages/control-plane/src/org-patterns/`
 **Extraction Difficulty:** Medium-Hard
 **Estimated Effort:** 2-3 weeks
@@ -80,14 +80,14 @@ export interface CompiledPattern {
 ## Target API
 
 ```typescript
-// @parallax/org-chart-compiler
+// @parallaxai/org-chart-compiler
 
 import {
   OrgChartCompiler,
   OrgPattern,
   WorkflowStep,
   CodeTarget
-} from '@parallax/org-chart-compiler';
+} from '@parallaxai/org-chart-compiler';
 
 // Parse YAML to pattern object
 const pattern = OrgChartCompiler.parse(`
@@ -123,7 +123,7 @@ const jsonPlan = OrgChartCompiler.compile(pattern, {
 });
 
 // Use built-in targets or create custom ones
-import { createTarget } from '@parallax/org-chart-compiler';
+import { createTarget } from '@parallaxai/org-chart-compiler';
 
 const pythonTarget = createTarget({
   name: 'python',
@@ -238,7 +238,7 @@ interface CompileTarget {
 ## Package Structure
 
 ```
-@parallax/org-chart-compiler/
+@parallaxai/org-chart-compiler/
 ├── src/
 │   ├── index.ts                    # Public exports
 │   ├── compiler.ts                 # Main OrgChartCompiler class
@@ -512,10 +512,10 @@ const compiled = OrgChartCompiler.compile(pattern);
 // compiled.script is Prism code
 ```
 
-### After (@parallax/org-chart-compiler)
+### After (@parallaxai/org-chart-compiler)
 
 ```typescript
-import { OrgChartCompiler } from '@parallax/org-chart-compiler';
+import { OrgChartCompiler } from '@parallaxai/org-chart-compiler';
 
 const pattern = await OrgChartCompiler.loadFromFile('./pattern.yaml');
 const compiled = OrgChartCompiler.compile(pattern, {

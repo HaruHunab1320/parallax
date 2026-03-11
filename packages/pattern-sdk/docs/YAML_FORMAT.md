@@ -345,7 +345,7 @@ parallax-generate compile analysis.yaml --no-comments
 ## Programmatic Usage
 
 ```typescript
-import { compileYamlToPrism, compileYamlFile } from '@parallax/pattern-sdk';
+import { compileYamlToPrism, compileYamlFile } from '@parallaxai/pattern-sdk';
 
 // From string
 const yaml = `

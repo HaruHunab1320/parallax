@@ -1,6 +1,6 @@
 # Git Workspace Service Development Plan
 
-**Package Name:** `@parallax/git-workspace-service`
+**Package Name:** `@parallaxai/git-workspace-service`
 **Current Location:** `packages/control-plane/src/workspace/`
 **Extraction Difficulty:** Hard
 **Estimated Effort:** 3-4 weeks
@@ -54,14 +54,14 @@ await workspaceService.finalize(workspace.id, {
 ## Target API
 
 ```typescript
-// @parallax/git-workspace-service
+// @parallaxai/git-workspace-service
 
 import {
   WorkspaceService,
   CredentialService,
   GitHubProvider,
   createProvider
-} from '@parallax/git-workspace-service';
+} from '@parallaxai/git-workspace-service';
 
 // Setup credential provider
 const credentialService = new CredentialService({
@@ -275,7 +275,7 @@ interface GitCredential {
 ## Package Structure
 
 ```
-@parallax/git-workspace-service/
+@parallaxai/git-workspace-service/
 ├── src/
 │   ├── index.ts                      # Public exports
 │   ├── workspace-service.ts          # Main service
@@ -524,14 +524,14 @@ const workspace = await workspaces.provision({
 });
 ```
 
-### After (@parallax/git-workspace-service)
+### After (@parallaxai/git-workspace-service)
 
 ```typescript
 import {
   WorkspaceService,
   CredentialService,
   GitHubProvider
-} from '@parallax/git-workspace-service';
+} from '@parallaxai/git-workspace-service';
 
 const credService = new CredentialService({
   providers: {

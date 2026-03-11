@@ -18,25 +18,25 @@ This demo validates that `pty-console` can stream and control multiple live PTY 
 ## Run
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo test:smoke
+pnpm --filter @parallaxai/pty-console-agent-containers-demo test:smoke
 ```
 
 Run local-CLI variant (no Docker):
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo test:smoke:local
+pnpm --filter @parallaxai/pty-console-agent-containers-demo test:smoke:local
 ```
 
 Run automated hook-marker PTY smoke (no external CLIs required):
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo test:hooks
+pnpm --filter @parallaxai/pty-console-agent-containers-demo test:hooks
 ```
 
 Run both:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo test:smoke:all
+pnpm --filter @parallaxai/pty-console-agent-containers-demo test:smoke:all
 ```
 
 ## Claude State Capture (Internal Tracing)
@@ -44,13 +44,13 @@ pnpm --filter @parallax/pty-console-agent-containers-demo test:smoke:all
 Run Claude with `pty-manager-internal-tracing` capture enabled and print live interaction-state transitions:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:claude
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:claude
 ```
 
 With a prompt:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:claude -- --prompt "Create a short TODO list"
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:claude -- --prompt "Create a short TODO list"
 ```
 
 Useful options:
@@ -64,7 +64,7 @@ The script prints artifact file paths (`raw-events`, `states`, `transitions`, `l
 Interactive passthrough capture (use Claude normally while recording all terminal I/O and state transitions):
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:claude:interactive
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:claude:interactive
 ```
 
 Exit/detach options:
@@ -82,13 +82,13 @@ Interactive wrapper options:
 Gemini interactive passthrough capture:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:gemini:interactive
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:gemini:interactive
 ```
 
 Codex interactive passthrough capture:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:codex:interactive
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:codex:interactive
 ```
 
 Both support:
@@ -102,7 +102,7 @@ Both support:
 Aider interactive passthrough capture:
 
 ```bash
-pnpm --filter @parallax/pty-console-agent-containers-demo capture:aider:interactive
+pnpm --filter @parallaxai/pty-console-agent-containers-demo capture:aider:interactive
 ```
 
 Full guide (all agent wrappers, artifact structure, and workflow):
@@ -114,13 +114,13 @@ Full guide (all agent wrappers, artifact structure, and workflow):
 Require all sessions to reach `ready`:
 
 ```bash
-PTY_CONSOLE_STRICT_READY=1 pnpm --filter @parallax/pty-console-agent-containers-demo test:smoke
+PTY_CONSOLE_STRICT_READY=1 pnpm --filter @parallaxai/pty-console-agent-containers-demo test:smoke
 ```
 
 Optional timeout override:
 
 ```bash
-PTY_CONSOLE_STARTUP_TIMEOUT_MS=60000 pnpm --filter @parallax/pty-console-agent-containers-demo test:smoke
+PTY_CONSOLE_STARTUP_TIMEOUT_MS=60000 pnpm --filter @parallaxai/pty-console-agent-containers-demo test:smoke
 ```
 
 ## Prerequisites

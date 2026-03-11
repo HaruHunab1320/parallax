@@ -25,7 +25,7 @@ const nullLogger: Logger = {
  *
  * @example
  * ```typescript
- * import { ConfidenceTracker, InMemoryStore } from '@parallax/confidence-tracker';
+ * import { ConfidenceTracker, InMemoryStore } from '@parallaxai/confidence-tracker';
  *
  * const tracker = new ConfidenceTracker({
  *   store: new InMemoryStore(),

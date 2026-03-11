@@ -304,7 +304,7 @@ CMD ["node", "dist/agent.js"]
 Example `agent.ts`:
 
 ```typescript
-import { ParallaxAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 
 const agent = new ParallaxAgent({
   controlPlaneUrl: process.env.PARALLAX_CONTROL_PLANE_URL!,

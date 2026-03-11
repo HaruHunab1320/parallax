@@ -1,4 +1,4 @@
-# @parallax/monitoring
+# @parallaxai/monitoring
 
 Monitoring and observability configurations for the Parallax AI orchestration platform.
 

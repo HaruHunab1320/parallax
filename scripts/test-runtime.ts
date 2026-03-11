@@ -196,7 +196,7 @@ async function testHealthEndpoint(): Promise<boolean> {
     return true;
   } catch (error: any) {
     logError(`Failed to connect to runtime: ${error.message}`);
-    logInfo(`Make sure the runtime is running: pnpm --filter @parallax/runtime-local dev`);
+    logInfo(`Make sure the runtime is running: pnpm --filter @parallaxai/runtime-local dev`);
     return false;
   }
 }
@@ -453,7 +453,7 @@ async function main() {
     log('\nTo start the runtime, run:');
     log(colors.cyan + '  cd packages/runtime-local && pnpm dev' + colors.reset);
     log('\nOr from the repo root:');
-    log(colors.cyan + '  pnpm --filter @parallax/runtime-local dev' + colors.reset);
+    log(colors.cyan + '  pnpm --filter @parallaxai/runtime-local dev' + colors.reset);
     process.exit(1);
   }
 

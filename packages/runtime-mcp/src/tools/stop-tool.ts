@@ -2,7 +2,7 @@
  * Stop Tool - Stops a running agent
  */
 
-import type { LocalRuntime } from '@parallax/runtime-local';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
 import { StopInputSchema, type StopInput } from './schemas.js';
 
 export const STOP_TOOL = {

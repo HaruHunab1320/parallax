@@ -122,7 +122,7 @@ export class PatternAssembler {
     // Generate import statements
     for (const [category, primitives] of primitivesByCategory) {
       const primitiveList = primitives.join(', ');
-      imports.push(`import { ${primitiveList} } from "@parallax/primitives/${category}"`);
+      imports.push(`import { ${primitiveList} } from "@parallaxai/primitives/${category}"`);
     }
     
     return imports.join('\n') + '\n\n';

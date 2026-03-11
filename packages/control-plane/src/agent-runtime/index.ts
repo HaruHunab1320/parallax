@@ -20,4 +20,4 @@ export {
   AgentType,
   AgentFilter,
   AgentMetrics,
-} from '@parallax/runtime-interface';
+} from '@parallaxai/runtime-interface';

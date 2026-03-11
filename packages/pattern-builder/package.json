@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/pattern-builder",
+  "name": "@parallaxai/pattern-builder",
   "version": "0.1.0",
   "description": "Visual pattern builder for Parallax orchestration patterns",
   "main": "dist/index.js",
@@ -20,7 +20,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@parallax/pattern-sdk": "workspace:*",
+    "@parallaxai/pattern-sdk": "workspace:*",
     "@xyflow/react": "^12.0.0",
     "zustand": "^4.5.0",
     "zod": "^3.23.0",

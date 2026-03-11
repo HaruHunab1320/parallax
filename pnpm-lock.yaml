@@ -51,7 +51,7 @@ importers:
 
   apps/builder:
     dependencies:
-      '@parallax/pattern-builder':
+      '@parallaxai/pattern-builder':
         specifier: workspace:*
         version: link:../../packages/pattern-builder
       next:
@@ -332,7 +332,7 @@ importers:
 
   demos/pattern-builder-demo:
     dependencies:
-      '@parallax/pattern-builder':
+      '@parallaxai/pattern-builder':
         specifier: workspace:*
         version: link:../../packages/pattern-builder
       react:
@@ -512,6 +512,10 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.8.3
+    optionalDependencies:
+      spi-device:
+        specifier: ^3.1.2
+        version: 3.1.2
 
   demos/specialized-extractors:
     dependencies:
@@ -563,12 +567,12 @@ importers:
 
   examples/secure-agent:
     dependencies:
-      '@parallax/security':
-        specifier: workspace:*
-        version: link:../../packages/security
       '@parallaxai/sdk-typescript':
         specifier: workspace:*
         version: link:../../packages/sdk-typescript
+      '@parallaxai/security':
+        specifier: workspace:*
+        version: link:../../packages/security
       pino:
         specifier: ^9.5.0
         version: 9.7.0
@@ -604,12 +608,12 @@ importers:
 
   examples/traced-agent:
     dependencies:
-      '@parallax/telemetry':
-        specifier: workspace:*
-        version: link:../../packages/telemetry
       '@parallaxai/sdk-typescript':
         specifier: workspace:*
         version: link:../../packages/sdk-typescript
+      '@parallaxai/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
       pino:
         specifier: ^9.5.0
         version: 9.7.0
@@ -745,13 +749,13 @@ importers:
 
   packages/cli:
     dependencies:
-      '@parallax/control-plane':
+      '@parallaxai/control-plane':
         specifier: workspace:*
         version: link:../control-plane
-      '@parallax/data-plane':
+      '@parallaxai/data-plane':
         specifier: workspace:*
         version: link:../data-plane
-      '@parallax/runtime':
+      '@parallaxai/runtime':
         specifier: workspace:*
         version: link:../runtime
       axios:
@@ -865,19 +869,19 @@ importers:
       '@octokit/rest':
         specifier: ^22.0.1
         version: 22.0.1
-      '@parallax/auth':
+      '@parallaxai/auth':
         specifier: workspace:*
         version: link:../auth
-      '@parallax/data-plane':
+      '@parallaxai/data-plane':
         specifier: workspace:*
         version: link:../data-plane
-      '@parallax/runtime':
+      '@parallaxai/runtime':
         specifier: workspace:*
         version: link:../runtime
-      '@parallax/runtime-interface':
+      '@parallaxai/runtime-interface':
         specifier: workspace:*
         version: link:../runtime-interface
-      '@parallax/telemetry':
+      '@parallaxai/telemetry':
         specifier: workspace:*
         version: link:../telemetry
       '@prism-lang/confidence':
@@ -995,7 +999,7 @@ importers:
       '@influxdata/influxdb-client':
         specifier: ^1.35.0
         version: 1.35.0
-      '@parallax/runtime':
+      '@parallaxai/runtime':
         specifier: workspace:*
         version: link:../runtime
       circuit-breaker-js:
@@ -1131,7 +1135,7 @@ importers:
 
   packages/pattern-builder:
     dependencies:
-      '@parallax/pattern-sdk':
+      '@parallaxai/pattern-sdk':
         specifier: workspace:*
         version: link:../pattern-sdk
       '@xyflow/react':
@@ -1174,7 +1178,7 @@ importers:
       '@ai-sdk/google':
         specifier: ^1.2.22
         version: 1.2.22(zod@3.25.76)
-      '@parallax/primitives':
+      '@parallaxai/primitives':
         specifier: workspace:*
         version: link:../primitives
       '@prism-lang/validator':
@@ -1359,12 +1363,12 @@ importers:
       '@grpc/grpc-js':
         specifier: ^1.12.4
         version: 1.13.4
-      '@parallax/security':
-        specifier: workspace:*
-        version: link:../security
       '@parallaxai/sdk-typescript':
         specifier: workspace:*
         version: link:../sdk-typescript
+      '@parallaxai/security':
+        specifier: workspace:*
+        version: link:../security
       '@prism-lang/core':
         specifier: ^2.0.0
         version: 2.0.0(@prism-lang/llm@1.3.0)
@@ -1384,7 +1388,7 @@ importers:
 
   packages/runtime-docker:
     dependencies:
-      '@parallax/runtime-interface':
+      '@parallaxai/runtime-interface':
         specifier: workspace:*
         version: link:../runtime-interface
       dockerode:
@@ -1442,7 +1446,7 @@ importers:
       '@kubernetes/client-node':
         specifier: ^1.0.0
         version: 1.4.0
-      '@parallax/runtime-interface':
+      '@parallaxai/runtime-interface':
         specifier: workspace:*
         version: link:../runtime-interface
       express:
@@ -1482,7 +1486,7 @@ importers:
 
   packages/runtime-local:
     dependencies:
-      '@parallax/runtime-interface':
+      '@parallaxai/runtime-interface':
         specifier: workspace:*
         version: link:../runtime-interface
       coding-agent-adapters:
@@ -1525,13 +1529,13 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.26.0(zod@3.25.76)
-      '@parallax/auth':
+      '@parallaxai/auth':
         specifier: workspace:*
         version: link:../auth
-      '@parallax/runtime-interface':
+      '@parallaxai/runtime-interface':
         specifier: workspace:*
         version: link:../runtime-interface
-      '@parallax/runtime-local':
+      '@parallaxai/runtime-local':
         specifier: workspace:*
         version: link:../runtime-local
       jsonwebtoken:
@@ -11853,6 +11857,10 @@ packages:
   spdy@4.0.2:
     resolution: {integrity: sha512-r46gZQZQV+Kl9oItvl1JZZqJKGr+oEkB08A6BzkiR7593/7IbtuncXHd2YoYeTsG4157ZssMu9KYvUHLcjcDoA==}
     engines: {node: '>=6.0.0'}
+
+  spi-device@3.1.2:
+    resolution: {integrity: sha512-5ubnDcpFjMAiO32j7Jrg/EMSmnInoh9LFzh/abVSJxTjCbmUQdRDVgNG5mRlOpMZc+SCHNSzqKVHGe8n0mVKwA==}
+    engines: {node: '>=10.0.0'}
 
   split-ca@1.0.1:
     resolution: {integrity: sha512-Q5thBSxp5t8WPTTJQS59LrGqOZqOsrhDGDVm8azCqIBjSBd7nd9o2PM+mDulQQkh8h//4U6hFZnc/mul8t5pWQ==}
@@ -25298,6 +25306,12 @@ snapshots:
       spdy-transport: 3.0.0
     transitivePeerDependencies:
       - supports-color
+
+  spi-device@3.1.2:
+    dependencies:
+      bindings: 1.5.0
+      nan: 2.23.0
+    optional: true
 
   split-ca@1.0.1: {}
 

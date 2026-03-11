@@ -56,7 +56,7 @@ output:
 ## Step 2: Create an Analysis Agent
 
 ```typescript title="analysis-agent.ts"
-import { ParallaxAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic();
@@ -96,7 +96,7 @@ console.log('Analysis agent started');
 ## Step 3: Execute the Pattern
 
 ```typescript title="run-analysis.ts"
-import { ParallaxClient } from '@parallax/sdk-typescript';
+import { ParallaxClient } from '@parallaxai/sdk-typescript';
 import fs from 'fs';
 
 const client = new ParallaxClient({

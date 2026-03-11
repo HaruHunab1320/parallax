@@ -13,7 +13,7 @@ Get your first multi-agent pattern running in 5 minutes.
 mkdir my-parallax-app
 cd my-parallax-app
 npm init -y
-npm install @parallax/sdk-typescript
+npm install @parallaxai/sdk-typescript
 ```
 
 ## 2. Create an Agent
@@ -21,7 +21,7 @@ npm install @parallax/sdk-typescript
 Create a simple agent that analyzes sentiment:
 
 ```typescript title="agent.ts"
-import { ParallaxAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 
 const agent = new ParallaxAgent({
   name: 'sentiment-analyzer',
@@ -76,7 +76,7 @@ output:
 ## 4. Execute the Pattern
 
 ```typescript title="run.ts"
-import { ParallaxClient } from '@parallax/sdk-typescript';
+import { ParallaxClient } from '@parallaxai/sdk-typescript';
 
 const client = new ParallaxClient({
   controlPlaneUrl: 'http://localhost:8080',

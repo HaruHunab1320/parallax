@@ -1,11 +1,11 @@
 /**
- * @parallax/confidence-tracker
+ * @parallaxai/confidence-tracker
  *
  * Statistical confidence tracking with anomaly detection for AI agents and ML systems.
  *
  * @example
  * ```typescript
- * import { ConfidenceTracker, InMemoryStore } from '@parallax/confidence-tracker';
+ * import { ConfidenceTracker, InMemoryStore } from '@parallaxai/confidence-tracker';
  *
  * const tracker = new ConfidenceTracker({
  *   store: new InMemoryStore({ maxDataPoints: 10000 }),

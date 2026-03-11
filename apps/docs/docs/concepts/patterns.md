@@ -293,7 +293,7 @@ Use the [Pattern Builder](/docs/pattern-builder/overview) to create patterns vis
 ### Programmatic
 
 ```typescript
-import { PatternBuilder } from '@parallax/pattern-sdk';
+import { PatternBuilder } from '@parallaxai/pattern-sdk';
 
 const pattern = new PatternBuilder('my-pattern')
   .input({ query: 'string' })

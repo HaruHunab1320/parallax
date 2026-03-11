@@ -2,8 +2,8 @@
  * Spawn Tool - Creates a new agent
  */
 
-import type { LocalRuntime } from '@parallax/runtime-local';
-import type { AgentConfig, AgentHandle } from '@parallax/runtime-interface';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import type { AgentConfig, AgentHandle } from '@parallaxai/runtime-interface';
 import { SpawnInputSchema, type SpawnInput } from './schemas.js';
 
 export const SPAWN_TOOL = {

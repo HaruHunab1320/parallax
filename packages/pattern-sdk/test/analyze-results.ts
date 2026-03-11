@@ -143,7 +143,7 @@ class ResultAnalyzer {
       quality.averageLineCount += lines.length;
       
       // Check imports
-      if (content.includes('import {') && content.includes('from "@parallax/primitives')) {
+      if (content.includes('import {') && content.includes('from "@parallaxai/primitives')) {
         quality.usesProperImports++;
       }
       

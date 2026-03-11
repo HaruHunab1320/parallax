@@ -268,7 +268,7 @@ export class PatternValidator {
         // Add missing import
         const category = this.getPrimitiveCategory(primitive);
         if (category) {
-          const importRegex = new RegExp(`import\\s*{([^}]+)}\\s*from\\s*["']@parallax/primitives/${category}["']`);
+          const importRegex = new RegExp(`import\\s*{([^}]+)}\\s*from\\s*["']@parallaxai/primitives/${category}["']`);
           const match = fixedCode.match(importRegex);
           
           if (match) {
@@ -283,7 +283,7 @@ export class PatternValidator {
             if (firstImport !== -1) {
               const endOfLine = fixedCode.indexOf('\n', firstImport);
               fixedCode = fixedCode.slice(0, endOfLine + 1) +
-                `import { ${primitive} } from "@parallax/primitives/${category}"\n` +
+                `import { ${primitive} } from "@parallaxai/primitives/${category}"\n` +
                 fixedCode.slice(endOfLine + 1);
             }
           }

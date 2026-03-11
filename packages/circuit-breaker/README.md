@@ -1,4 +1,4 @@
-# @parallax/circuit-breaker
+# @parallaxai/circuit-breaker
 
 A lightweight, zero-dependency circuit breaker for Node.js with TypeScript support.
 
@@ -13,17 +13,17 @@ A lightweight, zero-dependency circuit breaker for Node.js with TypeScript suppo
 ## Installation
 
 ```bash
-npm install @parallax/circuit-breaker
+npm install @parallaxai/circuit-breaker
 # or
-pnpm add @parallax/circuit-breaker
+pnpm add @parallaxai/circuit-breaker
 # or
-yarn add @parallax/circuit-breaker
+yarn add @parallaxai/circuit-breaker
 ```
 
 ## Quick Start
 
 ```typescript
-import { CircuitBreaker, CircuitOpenError } from '@parallax/circuit-breaker';
+import { CircuitBreaker, CircuitOpenError } from '@parallaxai/circuit-breaker';
 
 const breaker = new CircuitBreaker({
   failureThreshold: 5,     // Open after 5 failures
@@ -113,7 +113,7 @@ const result = await breaker.execute(async () => {
 Get the current circuit state.
 
 ```typescript
-import { CircuitState } from '@parallax/circuit-breaker';
+import { CircuitState } from '@parallaxai/circuit-breaker';
 
 if (breaker.getState() === CircuitState.OPEN) {
   console.log('Circuit is open');

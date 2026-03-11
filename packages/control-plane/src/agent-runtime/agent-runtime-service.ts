@@ -14,7 +14,7 @@ import {
   AgentFilter,
   AgentMetrics,
   AgentType,
-} from '@parallax/runtime-interface';
+} from '@parallaxai/runtime-interface';
 import { RuntimeClient, RuntimeClientOptions, RuntimeHealthStatus } from './runtime-client';
 
 export interface RuntimeRegistration {

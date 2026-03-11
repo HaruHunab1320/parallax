@@ -67,8 +67,8 @@ flowchart TB
 /**
  * Consensus pattern with confidence-aware escalation
  */
-import { parallel } from "@parallax/primitives/execution"
-import { consensus } from "@parallax/primitives/aggregation"
+import { parallel } from "@parallaxai/primitives/execution"
+import { consensus } from "@parallaxai/primitives/aggregation"
 
 results = parallel(agents, task)
 decision = consensus(results, { threshold: 0.85 })

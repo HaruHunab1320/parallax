@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/translation-verification-demo",
+  "name": "@parallaxai/translation-verification-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Translation verification with round-trip quality check",

@@ -40,13 +40,13 @@ export class PatternGeneratorWithPrimitives {
     
     // Start with the execution pattern
     patterns.push(`// Generated pattern using ${requirements.strategy} execution`);
-    patterns.push(`import { ${requirements.strategy} } from '@parallax/primitives/execution/${requirements.strategy}';`);
+    patterns.push(`import { ${requirements.strategy} } from '@parallaxai/primitives/execution/${requirements.strategy}';`);
     
     // Add retry if needed
     if (requirements.needsRetry) {
       const retryPrimitive = this.loader.getPrimitive('retry');
       if (retryPrimitive) {
-        patterns.push(`import { retry } from '@parallax/primitives/control/retry';`);
+        patterns.push(`import { retry } from '@parallaxai/primitives/control/retry';`);
       }
     }
     
@@ -54,7 +54,7 @@ export class PatternGeneratorWithPrimitives {
     if (requirements.needsConsensus) {
       const consensusPrimitive = this.loader.getPrimitive('consensus');
       if (consensusPrimitive) {
-        patterns.push(`import { consensus } from '@parallax/primitives/aggregation/consensus';`);
+        patterns.push(`import { consensus } from '@parallaxai/primitives/aggregation/consensus';`);
       }
     }
     
@@ -62,7 +62,7 @@ export class PatternGeneratorWithPrimitives {
     if (requirements.confidenceThreshold) {
       const thresholdPrimitive = this.loader.getPrimitive('threshold');
       if (thresholdPrimitive) {
-        patterns.push(`import { threshold } from '@parallax/primitives/confidence/threshold';`);
+        patterns.push(`import { threshold } from '@parallaxai/primitives/confidence/threshold';`);
       }
     }
     

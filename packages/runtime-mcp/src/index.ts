@@ -1,12 +1,12 @@
 /**
- * @parallax/runtime-mcp
+ * @parallaxai/runtime-mcp
  *
  * MCP (Model Context Protocol) server for Parallax Runtime.
  * Enables AI agents to spawn, manage, and communicate with other agents.
  *
  * @example
  * ```typescript
- * import { ParallaxMcpServer, StdioServerTransport } from '@parallax/runtime-mcp';
+ * import { ParallaxMcpServer, StdioServerTransport } from '@parallaxai/runtime-mcp';
  * import pino from 'pino';
  *
  * const logger = pino();
@@ -115,7 +115,7 @@ export {
 } from './prompts/index.js';
 
 // Re-export useful types from dependencies
-export type { LocalRuntime } from '@parallax/runtime-local';
+export type { LocalRuntime } from '@parallaxai/runtime-local';
 export type {
   AgentConfig,
   AgentHandle,
@@ -123,4 +123,4 @@ export type {
   AgentMetrics,
   AgentStatus,
   AgentType,
-} from '@parallax/runtime-interface';
+} from '@parallaxai/runtime-interface';

@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/auth",
+  "name": "@parallaxai/auth",
   "version": "0.1.0",
   "description": "Authentication and authorization for Parallax platform",
   "main": "dist/index.js",

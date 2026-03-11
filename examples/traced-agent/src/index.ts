@@ -6,7 +6,7 @@ import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { 
   initializeTracing, 
   getTracingConfig
-} from '@parallax/telemetry';
+} from '@parallaxai/telemetry';
 import pino from 'pino';
 
 // Create logger

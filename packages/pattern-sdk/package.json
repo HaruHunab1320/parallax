@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.22",
-    "@parallax/primitives": "workspace:*",
+    "@parallaxai/primitives": "workspace:*",
     "@prism-lang/validator": "^1.4.0",
     "chalk": "^5.3.0",
     "commander": "^12.0.0",

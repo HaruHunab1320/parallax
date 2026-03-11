@@ -38,7 +38,7 @@ trap cleanup SIGINT SIGTERM
 echo -e "${BLUE}Checking control plane...${NC}"
 if ! curl -s http://localhost:3000/health > /dev/null 2>&1; then
     echo -e "${YELLOW}Control plane not running. Starting it...${NC}"
-    echo -e "${YELLOW}Run this in another terminal: pnpm --filter @parallax/control-plane start${NC}"
+    echo -e "${YELLOW}Run this in another terminal: pnpm --filter @parallaxai/control-plane start${NC}"
     echo ""
     echo "Or start the full system with: ./start-local.sh"
     exit 1

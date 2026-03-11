@@ -1,6 +1,6 @@
 # Confidence Tracker Development Plan
 
-**Package Name:** `@parallax/confidence-tracker`
+**Package Name:** `@parallaxai/confidence-tracker`
 **Current Location:** `packages/data-plane/src/confidence-tracker/`
 **Extraction Difficulty:** Easy
 **Estimated Effort:** 3-5 days
@@ -46,13 +46,13 @@ export class ConfidenceTracker extends EventEmitter {
 ## Target API
 
 ```typescript
-// @parallax/confidence-tracker
+// @parallaxai/confidence-tracker
 
 import {
   ConfidenceTracker,
   InMemoryStore,
   InfluxDBStore
-} from '@parallax/confidence-tracker';
+} from '@parallaxai/confidence-tracker';
 
 // Basic usage with in-memory store
 const tracker = new ConfidenceTracker({
@@ -156,7 +156,7 @@ interface ConfidenceStore {
 ## Package Structure
 
 ```
-@parallax/confidence-tracker/
+@parallaxai/confidence-tracker/
 ├── src/
 │   ├── index.ts                  # Public exports
 │   ├── confidence-tracker.ts     # Main class
@@ -318,7 +318,7 @@ const store = new FileStore({
 Implement the `ConfidenceStore` interface:
 
 ```typescript
-import { ConfidenceStore } from '@parallax/confidence-tracker';
+import { ConfidenceStore } from '@parallaxai/confidence-tracker';
 
 class RedisStore implements ConfidenceStore {
   async record(dataPoint) { /* ... */ }
@@ -349,10 +349,10 @@ await tracker.recordConfidence({
 });
 ```
 
-### After (@parallax/confidence-tracker)
+### After (@parallaxai/confidence-tracker)
 
 ```typescript
-import { ConfidenceTracker, InMemoryStore } from '@parallax/confidence-tracker';
+import { ConfidenceTracker, InMemoryStore } from '@parallaxai/confidence-tracker';
 
 const tracker = new ConfidenceTracker({
   store: new InMemoryStore(),

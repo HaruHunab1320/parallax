@@ -2,7 +2,7 @@
 // Version: 1.0.0
 // Description: Multi-stage document review with expert consensus
 // Generated: 2025-07-26T23:05:50.454Z
-// Generator: @parallax/pattern-sdk
+// Generator: @parallaxai/pattern-sdk
 // Primitives: sequential, parallel, consensus, threshold, retry, fallback
 
 // Pattern: Multi-stage document review with expert consensus

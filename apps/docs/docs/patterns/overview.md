@@ -283,7 +283,7 @@ input:
 ### Execute via SDK
 
 ```typescript
-import { ParallaxClient } from '@parallax/sdk-typescript';
+import { ParallaxClient } from '@parallaxai/sdk-typescript';
 
 const client = new ParallaxClient({ url: 'http://localhost:8080' });
 
@@ -302,7 +302,7 @@ console.log(result);
 await client.registerPattern(fs.readFileSync('my-pattern.yaml', 'utf-8'));
 
 // Register programmatically
-import { PatternBuilder } from '@parallax/pattern-sdk';
+import { PatternBuilder } from '@parallaxai/pattern-sdk';
 
 const pattern = new PatternBuilder('my-pattern')
   .input({ text: 'string' })

@@ -16,7 +16,7 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { LocalRuntime } from '@parallax/runtime-local';
+import { LocalRuntime } from '@parallaxai/runtime-local';
 import type { Logger } from 'pino';
 
 // Auth

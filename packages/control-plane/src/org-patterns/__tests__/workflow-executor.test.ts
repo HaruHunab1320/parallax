@@ -14,7 +14,7 @@ import pino from 'pino';
 import { WorkflowExecutor } from '../workflow-executor';
 import { OrgPattern } from '../types';
 import { AgentRuntimeService } from '../../agent-runtime';
-import { AgentHandle, AgentMessage } from '@parallax/runtime-interface';
+import { AgentHandle, AgentMessage } from '@parallaxai/runtime-interface';
 
 // Create a silent logger for tests
 const logger = pino({ level: 'silent' });

@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/telemetry",
+  "name": "@parallaxai/telemetry",
   "version": "0.1.0",
   "description": "OpenTelemetry instrumentation for Parallax platform",
   "main": "dist/index.js",

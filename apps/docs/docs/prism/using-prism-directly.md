@@ -425,7 +425,7 @@ aggregation:
 
 ```typescript
 import { PrismRuntime, Pattern } from '@prism-lang/core';
-import { ParallaxClient } from '@parallax/sdk';
+import { ParallaxClient } from '@parallaxai/sdk';
 
 // Parse and compile Prism code
 const runtime = new PrismRuntime();

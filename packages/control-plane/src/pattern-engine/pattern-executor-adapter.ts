@@ -2,7 +2,7 @@ import {
   PatternExecutor,
   PatternExecutorOptions,
   PatternExecutionResult,
-} from '@parallax/data-plane';
+} from '@parallaxai/data-plane';
 import { PatternEngine } from './pattern-engine';
 
 /**

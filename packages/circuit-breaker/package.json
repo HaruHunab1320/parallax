@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/circuit-breaker",
+  "name": "@parallaxai/circuit-breaker",
   "version": "1.0.0",
   "description": "A lightweight, zero-dependency circuit breaker for Node.js with TypeScript support",
   "main": "dist/index.js",

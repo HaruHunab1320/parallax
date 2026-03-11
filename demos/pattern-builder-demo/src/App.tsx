@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PatternBuilder } from '@parallax/pattern-builder';
+import { PatternBuilder } from '@parallaxai/pattern-builder';
 
 function App() {
   const [savedYaml, setSavedYaml] = useState<string | null>(null);

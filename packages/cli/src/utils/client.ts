@@ -2,7 +2,7 @@
  * Client utilities for connecting to Parallax services
  */
 
-import { AgentRegistry, GrpcAgentProxy } from '@parallax/runtime';
+import { AgentRegistry, GrpcAgentProxy } from '@parallaxai/runtime';
 import { ParallaxHttpClient } from './http-client';
 
 export interface ParallaxConfig {

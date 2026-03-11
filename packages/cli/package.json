@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/cli",
+  "name": "@parallaxai/cli",
   "version": "0.1.0",
   "description": "Command-line interface for Parallax platform",
   "bin": {
@@ -15,9 +15,9 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@parallax/runtime": "workspace:*",
-    "@parallax/control-plane": "workspace:*",
-    "@parallax/data-plane": "workspace:*",
+    "@parallaxai/runtime": "workspace:*",
+    "@parallaxai/control-plane": "workspace:*",
+    "@parallaxai/data-plane": "workspace:*",
     "commander": "^13.0.0",
     "chalk": "^5.4.1",
     "ora": "^8.1.1",

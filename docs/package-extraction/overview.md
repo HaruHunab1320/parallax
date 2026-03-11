@@ -61,11 +61,11 @@ We're extracting battle-tested components into standalone npm packages:
 
 | Package | Status | Docs |
 |---------|--------|------|
-| `@parallax/circuit-breaker` | Planning | [Dev Plan](./packages/circuit-breaker) |
-| `@parallax/confidence-tracker` | Planning | [Dev Plan](./packages/confidence-tracker) |
-| `@parallax/pty-agent-manager` | Planning | [Dev Plan](./packages/pty-agent-manager) |
-| `@parallax/org-chart-compiler` | Planning | [Dev Plan](./packages/org-chart-compiler) |
-| `@parallax/git-workspace-service` | Planning | [Dev Plan](./packages/git-workspace-service) |
+| `@parallaxai/circuit-breaker` | Planning | [Dev Plan](./packages/circuit-breaker) |
+| `@parallaxai/confidence-tracker` | Planning | [Dev Plan](./packages/confidence-tracker) |
+| `@parallaxai/pty-agent-manager` | Planning | [Dev Plan](./packages/pty-agent-manager) |
+| `@parallaxai/org-chart-compiler` | Planning | [Dev Plan](./packages/org-chart-compiler) |
+| `@parallaxai/git-workspace-service` | Planning | [Dev Plan](./packages/git-workspace-service) |
 
 See [Package Extraction Roadmap](./package-extraction) for the full plan.
 

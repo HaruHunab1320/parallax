@@ -1,6 +1,6 @@
 # Circuit Breaker Development Plan
 
-**Package Name:** `@parallax/circuit-breaker`
+**Package Name:** `@parallaxai/circuit-breaker`
 **Current Location:** `packages/data-plane/src/agent-proxy/circuit-breaker.ts`
 **Extraction Difficulty:** Trivial
 **Estimated Effort:** 1-2 days
@@ -38,9 +38,9 @@ export class CircuitBreaker extends EventEmitter {
 ## Target API
 
 ```typescript
-// @parallax/circuit-breaker
+// @parallaxai/circuit-breaker
 
-import { CircuitBreaker, CircuitState } from '@parallax/circuit-breaker';
+import { CircuitBreaker, CircuitState } from '@parallaxai/circuit-breaker';
 
 const breaker = new CircuitBreaker({
   failureThreshold: 5,      // Open after 5 failures
@@ -119,7 +119,7 @@ breaker.on('rejected', () => {}); // When circuit is open
 ## Package Structure
 
 ```
-@parallax/circuit-breaker/
+@parallaxai/circuit-breaker/
 ├── src/
 │   ├── index.ts           # Public exports
 │   ├── circuit-breaker.ts # Main implementation
@@ -223,10 +223,10 @@ const breaker = new CircuitBreaker({
 });
 ```
 
-### After (@parallax/circuit-breaker)
+### After (@parallaxai/circuit-breaker)
 
 ```typescript
-import { CircuitBreaker } from '@parallax/circuit-breaker';
+import { CircuitBreaker } from '@parallaxai/circuit-breaker';
 
 const breaker = new CircuitBreaker({
   failureThreshold: 5,

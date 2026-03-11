@@ -1,4 +1,4 @@
-# @parallax/sdk-typescript
+# @parallaxai/sdk-typescript
 
 TypeScript SDK for building agents that integrate with the Parallax AI orchestration platform.
 
@@ -14,11 +14,11 @@ The TypeScript SDK provides:
 ## Installation
 
 ```bash
-npm install @parallax/sdk-typescript
+npm install @parallaxai/sdk-typescript
 # or
-yarn add @parallax/sdk-typescript
+yarn add @parallaxai/sdk-typescript
 # or
-pnpm add @parallax/sdk-typescript
+pnpm add @parallaxai/sdk-typescript
 ```
 
 ## Quick Start
@@ -26,7 +26,7 @@ pnpm add @parallax/sdk-typescript
 ### Basic Agent
 
 ```typescript
-import { ParallaxAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 
 class WeatherAgent extends ParallaxAgent {
   name = 'weather-agent';
@@ -57,7 +57,7 @@ agent.start(8001);
 ### Advanced Agent with Metadata
 
 ```typescript
-import { ParallaxAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 
 class AnalyticsAgent extends ParallaxAgent {
   name = 'analytics-agent';
@@ -87,7 +87,7 @@ class AnalyticsAgent extends ParallaxAgent {
 ### Secure Agent (Enterprise)
 
 ```typescript
-import { SecureParallaxAgent } from '@parallax/sdk-typescript';
+import { SecureParallaxAgent } from '@parallaxai/sdk-typescript';
 
 class SecureDataAgent extends SecureParallaxAgent {
   name = 'secure-data-agent';
@@ -180,7 +180,7 @@ interface HealthStatus {
 ## Testing
 
 ```typescript
-import { TestHarness } from '@parallax/sdk-typescript/testing';
+import { TestHarness } from '@parallaxai/sdk-typescript/testing';
 
 describe('WeatherAgent', () => {
   const harness = new TestHarness();

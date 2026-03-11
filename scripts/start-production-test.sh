@@ -93,7 +93,7 @@ fi
 echo
 echo -e "${YELLOW}Running database migrations...${NC}"
 cd ../..
-if pnpm --filter @parallax/control-plane run prisma:migrate; then
+if pnpm --filter @parallaxai/control-plane run prisma:migrate; then
     echo -e "${GREEN}✓ Migrations completed${NC}"
 else
     echo -e "${YELLOW}⚠ Migration issues (may be normal if already applied)${NC}"

@@ -4,7 +4,7 @@ import { ParallaxMcpServer } from '../src/mcp-server.js';
 import { McpAuthError } from '../src/auth/index.js';
 
 // Mock LocalRuntime
-vi.mock('@parallax/runtime-local', () => ({
+vi.mock('@parallaxai/runtime-local', () => ({
   LocalRuntime: vi.fn().mockImplementation(() => ({
     initialize: vi.fn().mockResolvedValue(undefined),
     shutdown: vi.fn().mockResolvedValue(undefined),
@@ -204,7 +204,7 @@ describe('Tool Executors', () => {
   describe('executeSpawn', () => {
     it('should spawn agent and return handle', async () => {
       const { executeSpawn } = await import('../src/tools/spawn-tool.js');
-      const { LocalRuntime } = await import('@parallax/runtime-local');
+      const { LocalRuntime } = await import('@parallaxai/runtime-local');
 
       const runtime = new LocalRuntime(logger, {});
 
@@ -226,7 +226,7 @@ describe('Tool Executors', () => {
   describe('executeList', () => {
     it('should list agents', async () => {
       const { executeList } = await import('../src/tools/list-tool.js');
-      const { LocalRuntime } = await import('@parallax/runtime-local');
+      const { LocalRuntime } = await import('@parallaxai/runtime-local');
 
       const runtime = new LocalRuntime(logger, {});
 
@@ -242,7 +242,7 @@ describe('Tool Executors', () => {
   describe('executeGet', () => {
     it('should get existing agent', async () => {
       const { executeGet } = await import('../src/tools/get-tool.js');
-      const { LocalRuntime } = await import('@parallax/runtime-local');
+      const { LocalRuntime } = await import('@parallaxai/runtime-local');
 
       const runtime = new LocalRuntime(logger, {});
 
@@ -256,7 +256,7 @@ describe('Tool Executors', () => {
 
     it('should return error for non-existent agent', async () => {
       const { executeGet } = await import('../src/tools/get-tool.js');
-      const { LocalRuntime } = await import('@parallax/runtime-local');
+      const { LocalRuntime } = await import('@parallaxai/runtime-local');
 
       const runtime = new LocalRuntime(logger, {});
 
@@ -269,7 +269,7 @@ describe('Tool Executors', () => {
   describe('executeHealth', () => {
     it('should return health status', async () => {
       const { executeHealth } = await import('../src/tools/health-tool.js');
-      const { LocalRuntime } = await import('@parallax/runtime-local');
+      const { LocalRuntime } = await import('@parallaxai/runtime-local');
 
       const runtime = new LocalRuntime(logger, {});
 

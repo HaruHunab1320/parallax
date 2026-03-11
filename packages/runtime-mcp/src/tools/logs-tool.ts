@@ -2,7 +2,7 @@
  * Logs Tool - Get agent logs
  */
 
-import type { LocalRuntime } from '@parallax/runtime-local';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
 import { LogsInputSchema, type LogsInput } from './schemas.js';
 
 export const LOGS_TOOL = {

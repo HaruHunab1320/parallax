@@ -6,7 +6,7 @@
  * Primarily used with Claude Desktop configuration.
  *
  * Usage:
- *   npx @parallax/runtime-mcp
+ *   npx @parallaxai/runtime-mcp
  *   parallax-mcp
  */
 

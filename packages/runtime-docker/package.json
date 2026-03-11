@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/runtime-docker",
+  "name": "@parallaxai/runtime-docker",
   "version": "0.1.0",
   "description": "Docker-based runtime for Parallax CLI agents",
   "main": "dist/index.js",
@@ -18,7 +18,7 @@
     "docker:push": "./scripts/build-images.sh --push"
   },
   "dependencies": {
-    "@parallax/runtime-interface": "workspace:*",
+    "@parallaxai/runtime-interface": "workspace:*",
     "dockerode": "^4.0.7",
     "express": "^4.21.2",
     "pino": "^9.5.0",

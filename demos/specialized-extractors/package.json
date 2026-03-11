@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/specialized-extractors-demo",
+  "name": "@parallaxai/specialized-extractors-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Document extraction with specialized agents for dates, amounts, names, and addresses",

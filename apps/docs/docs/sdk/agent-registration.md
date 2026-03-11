@@ -24,7 +24,7 @@ sequenceDiagram
 ## Basic Registration
 
 ```typescript
-import { ParallaxAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 
 const agent = new ParallaxAgent({
   name: 'my-agent',
@@ -396,7 +396,7 @@ await Promise.all(agents.map(a => a.stop()));
 ### Agent Pool
 
 ```typescript
-import { AgentPool } from '@parallax/sdk-typescript';
+import { AgentPool } from '@parallaxai/sdk-typescript';
 
 const pool = new AgentPool({
   agents: [

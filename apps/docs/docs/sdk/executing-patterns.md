@@ -10,7 +10,7 @@ This guide covers how to execute patterns using the Parallax client SDK.
 ## Basic Execution
 
 ```typescript
-import { ParallaxClient } from '@parallax/sdk-typescript';
+import { ParallaxClient } from '@parallaxai/sdk-typescript';
 
 const client = new ParallaxClient({
   url: 'http://localhost:8080',
@@ -286,7 +286,7 @@ import {
   PatternNotFoundError,
   ExecutionError,
   InsufficientAgentsError,
-} from '@parallax/sdk-typescript';
+} from '@parallaxai/sdk-typescript';
 
 try {
   const result = await client.executePattern('analysis', input);
@@ -325,7 +325,7 @@ const result = await client.executePattern('analysis', input, {
 ### Custom Retry Logic
 
 ```typescript
-import { retry } from '@parallax/sdk-typescript';
+import { retry } from '@parallaxai/sdk-typescript';
 
 const result = await retry(
   () => client.executePattern('analysis', input),
@@ -371,7 +371,7 @@ console.log(result.sentiment);
 ### Generate Types from Pattern
 
 ```typescript
-import { generateTypes } from '@parallax/pattern-sdk';
+import { generateTypes } from '@parallaxai/pattern-sdk';
 
 // Generate TypeScript types from pattern YAML
 const types = generateTypes(patternYaml);
@@ -438,7 +438,7 @@ const result = await client.executePattern('analysis', input, {
 For patterns that can run locally:
 
 ```typescript
-import { LocalExecutor } from '@parallax/sdk-typescript';
+import { LocalExecutor } from '@parallaxai/sdk-typescript';
 
 const executor = new LocalExecutor({
   patterns: ['./patterns'],

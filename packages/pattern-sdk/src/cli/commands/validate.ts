@@ -40,7 +40,7 @@ export const validateCommand = new Command('validate')
         code: content.replace(/\/\*\*[\s\S]*?\*\/\n*/, ''), // Remove header comment
         metadata: {
           generated: new Date().toISOString(),
-          generator: '@parallax/pattern-sdk',
+          generator: '@parallaxai/pattern-sdk',
           primitives: primitivesMatch ? primitivesMatch[1].split(',').map(p => p.trim()) : [],
           complexity: 0,
           estimatedAgents: 0

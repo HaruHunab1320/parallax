@@ -20,7 +20,7 @@ import {
   StopOptions,
   SendOptions,
   LogOptions,
-} from '@parallax/runtime-interface';
+} from '@parallaxai/runtime-interface';
 
 export interface K8sRuntimeOptions {
   namespace?: string;

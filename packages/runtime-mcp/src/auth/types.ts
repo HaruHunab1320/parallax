@@ -2,7 +2,7 @@
  * MCP Auth Types
  */
 
-import type { JWTPayload } from '@parallax/auth';
+import type { JWTPayload } from '@parallaxai/auth';
 
 /**
  * Auth configuration for MCP server

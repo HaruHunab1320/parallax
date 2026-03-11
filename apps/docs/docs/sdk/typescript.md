@@ -10,7 +10,7 @@ The TypeScript SDK provides everything you need to build agents and interact wit
 ## Installation
 
 ```bash
-npm install @parallax/sdk-typescript
+npm install @parallaxai/sdk-typescript
 ```
 
 ## ParallaxAgent
@@ -20,7 +20,7 @@ The `ParallaxAgent` class is used to build agents that connect to the control pl
 ### Basic Usage
 
 ```typescript
-import { ParallaxAgent } from '@parallax/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 
 const agent = new ParallaxAgent({
   name: 'my-agent',
@@ -176,7 +176,7 @@ The `ParallaxClient` class is used to execute patterns and manage the control pl
 ### Basic Usage
 
 ```typescript
-import { ParallaxClient } from '@parallax/sdk-typescript';
+import { ParallaxClient } from '@parallaxai/sdk-typescript';
 
 const client = new ParallaxClient({
   url: 'http://localhost:8080',
@@ -392,7 +392,7 @@ import {
   PatternNotFoundError,
   AgentNotFoundError,
   ExecutionError,
-} from '@parallax/sdk-typescript';
+} from '@parallaxai/sdk-typescript';
 
 try {
   const result = await client.executePattern('my-pattern', input);
@@ -464,7 +464,7 @@ agent.use(async (task, next) => {
 ### Mock Agent
 
 ```typescript
-import { MockAgent } from '@parallax/sdk-typescript/testing';
+import { MockAgent } from '@parallaxai/sdk-typescript/testing';
 
 const mockAgent = new MockAgent({
   name: 'test-agent',
@@ -487,7 +487,7 @@ mockAgent.mockResponse('analysis', (task) => ({
 ### Mock Client
 
 ```typescript
-import { MockClient } from '@parallax/sdk-typescript/testing';
+import { MockClient } from '@parallaxai/sdk-typescript/testing';
 
 const mockClient = new MockClient();
 

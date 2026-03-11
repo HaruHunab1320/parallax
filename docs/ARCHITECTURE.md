@@ -195,8 +195,8 @@ Patterns are written in Prism, a domain-specific language for agent orchestratio
  * @description Multi-agent consensus with confidence tracking
  */
 
-import { parallel } from "@parallax/primitives/execution"
-import { consensus } from "@parallax/primitives/aggregation"
+import { parallel } from "@parallaxai/primitives/execution"
+import { consensus } from "@parallaxai/primitives/aggregation"
 
 // Execute agents in parallel
 results = parallel(agents, task)
@@ -318,8 +318,8 @@ Licensed features for production deployments:
 ./scripts/start-local.sh
 
 # Or individual components
-pnpm --filter @parallax/control-plane start
-pnpm --filter @parallax/runtime-local start
+pnpm --filter @parallaxai/control-plane start
+pnpm --filter @parallaxai/runtime-local start
 ```
 
 ### Production (Docker Compose)

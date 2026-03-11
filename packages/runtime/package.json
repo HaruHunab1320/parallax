@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/runtime",
+  "name": "@parallaxai/runtime",
   "version": "0.1.0",
   "description": "Core runtime for Parallax AI orchestration platform",
   "main": "dist/index.js",
@@ -16,7 +16,7 @@
     "@prism-lang/core": "^2.0.0",
     "@grpc/grpc-js": "^1.12.4",
     "@parallaxai/sdk-typescript": "workspace:*",
-    "@parallax/security": "workspace:*",
+    "@parallaxai/security": "workspace:*",
     "pino": "^9.5.0"
   },
   "devDependencies": {

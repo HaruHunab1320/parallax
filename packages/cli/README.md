@@ -6,13 +6,13 @@ Command-line interface for the Parallax AI orchestration platform.
 
 ```bash
 # From the monorepo root
-pnpm --filter @parallax/cli build
+pnpm --filter @parallaxai/cli build
 
 # Link globally
-pnpm --filter @parallax/cli link --global
+pnpm --filter @parallaxai/cli link --global
 
 # Or run directly
-pnpm --filter @parallax/cli dev
+pnpm --filter @parallaxai/cli dev
 ```
 
 ## Commands

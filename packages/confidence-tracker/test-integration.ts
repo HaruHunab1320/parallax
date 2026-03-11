@@ -7,7 +7,7 @@ import { ConfidenceTracker, InMemoryStore } from './src/index';
 import type { ConfidenceAnomalyAlert } from './src/index';
 
 async function main() {
-  console.log('Testing @parallax/confidence-tracker integration...\n');
+  console.log('Testing @parallaxai/confidence-tracker integration...\n');
 
   // Create tracker with in-memory store
   const store = new InMemoryStore({ maxDataPoints: 1000 });

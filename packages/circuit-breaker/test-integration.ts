@@ -6,7 +6,7 @@
 import { CircuitBreaker, CircuitState, CircuitOpenError } from './src/index';
 
 async function main() {
-  console.log('Testing @parallax/circuit-breaker integration...\n');
+  console.log('Testing @parallaxai/circuit-breaker integration...\n');
 
   // Create a circuit breaker
   const breaker = new CircuitBreaker({

@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/pty-console-agent-containers-demo",
+  "name": "@parallaxai/pty-console-agent-containers-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Smoke test for containerized coding-agent PTY sessions with pty-console bridge",

@@ -1,5 +1,5 @@
 import { DisplayRenderer, PersonaId } from './types';
-import { writeFileSync, readFileSync, existsSync } from 'fs';
+import { execSync } from 'child_process';
 
 /**
  * Waveshare 2" ST7789V LCD renderer (240×320, SPI, RGB565).
@@ -7,11 +7,11 @@ import { writeFileSync, readFileSync, existsSync } from 'fs';
  * Takes the 128×64 monochrome frame buffer and renders it at 2× scale (256×128)
  * centered on a 320×240 landscape display, using the persona's signature color.
  *
- * Pin connections (Waveshare 2inch LCD HAT):
- *   SPI0 CE0 (GPIO 8)  — CS
- *   GPIO 25             — DC (data/command)
- *   GPIO 27             — RST (reset)
- *   GPIO 18             — BL (backlight)
+ * Pin connections (Waveshare 2inch LCD):
+ *   SPI0 CE0 (GPIO 8)  — CS   (Pin 24)
+ *   GPIO 25             — DC   (Pin 22)
+ *   GPIO 27             — RST  (Pin 13)
+ *   GPIO 18             — BL   (Pin 12)
  */
 
 // Display dimensions (landscape orientation)
@@ -67,41 +67,21 @@ const CMD = {
 const MADCTL_LANDSCAPE = 0x60;
 
 /**
- * GPIO helper — uses /sys/class/gpio sysfs interface.
- * Works on all Pi models without extra native deps.
+ * GPIO helper — uses Raspberry Pi's `pinctrl` tool.
+ * Writes directly to GPIO registers and returns immediately (no blocking).
+ * Works on all Pi models running modern Raspberry Pi OS (Bookworm/Trixie).
  */
 class GpioPin {
-  private path: string;
+  private pin: number;
 
-  constructor(pin: number, direction: 'out' | 'in') {
-    this.path = `/sys/class/gpio/gpio${pin}`;
-    if (!existsSync(this.path)) {
-      writeFileSync('/sys/class/gpio/export', String(pin));
-      // Give the kernel a moment to create the sysfs entries
-      this.spinWait(50);
-    }
-    writeFileSync(`${this.path}/direction`, direction);
+  constructor(pin: number) {
+    this.pin = pin;
+    // Configure as output
+    execSync(`pinctrl set ${pin} op`, { stdio: 'ignore' });
   }
 
   write(value: 0 | 1): void {
-    writeFileSync(`${this.path}/value`, String(value));
-  }
-
-  read(): number {
-    return parseInt(readFileSync(`${this.path}/value`, 'utf8').trim(), 10);
-  }
-
-  unexport(pin: number): void {
-    try {
-      writeFileSync('/sys/class/gpio/unexport', String(pin));
-    } catch {
-      // ignore
-    }
-  }
-
-  private spinWait(ms: number): void {
-    const end = Date.now() + ms;
-    while (Date.now() < end) { /* busy wait */ }
+    execSync(`pinctrl set ${this.pin} ${value ? 'dh' : 'dl'}`, { stdio: 'ignore' });
   }
 }
 
@@ -123,9 +103,6 @@ export function createLcdRenderer(personaId: PersonaId): LcdRenderer | null {
   }
 
   let spi: any;
-  let dcPin: GpioPin;
-  let rstPin: GpioPin;
-  let blPin: GpioPin;
 
   try {
     // Open SPI0, CE0 at 40MHz
@@ -134,13 +111,16 @@ export function createLcdRenderer(personaId: PersonaId): LcdRenderer | null {
       maxSpeedHz: 40_000_000,
     });
 
-    dcPin = new GpioPin(GPIO_DC, 'out');
-    rstPin = new GpioPin(GPIO_RST, 'out');
-    blPin = new GpioPin(GPIO_BL, 'out');
+    // Verify pinctrl is available (Raspberry Pi GPIO tool)
+    execSync('which pinctrl', { stdio: 'ignore' });
   } catch (err) {
     console.error('LCD init failed (SPI/GPIO):', err);
     return null;
   }
+
+  const dcPin = new GpioPin(GPIO_DC);
+  const rstPin = new GpioPin(GPIO_RST);
+  const blPin = new GpioPin(GPIO_BL);
 
   const fgColor = PERSONA_RGB565[personaId] || PERSONA_RGB565.echo;
   const bgColor = rgb565(0, 0, 0); // black background

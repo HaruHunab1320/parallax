@@ -20,7 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@parallax/pattern-builder": [
+      "@parallaxai/pattern-builder": [
         "../../packages/pattern-builder/src/index.tsx"
       ]
     }

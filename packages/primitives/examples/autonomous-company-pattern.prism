@@ -4,13 +4,13 @@
 // Complexity: 6.5
 // Estimated Confidence: 0.92
 
-import { parallel } from "@parallax/primitives/execution/parallel.prism"
-import { consensus } from "@parallax/primitives/aggregation/consensus.prism"
-import { quorum } from "@parallax/primitives/coordination/quorum.prism"
-import { escalate } from "@parallax/primitives/control/escalate.prism"
-import { retry } from "@parallax/primitives/control/retry.prism"
-import { transform } from "@parallax/primitives/confidence/transform.prism"
-import { circuit } from "@parallax/primitives/control/circuit.prism"
+import { parallel } from "@parallaxai/primitives/execution/parallel.prism"
+import { consensus } from "@parallaxai/primitives/aggregation/consensus.prism"
+import { quorum } from "@parallaxai/primitives/coordination/quorum.prism"
+import { escalate } from "@parallaxai/primitives/control/escalate.prism"
+import { retry } from "@parallaxai/primitives/control/retry.prism"
+import { transform } from "@parallaxai/primitives/confidence/transform.prism"
+import { circuit } from "@parallaxai/primitives/control/circuit.prism"
 
 export const autonomousFeatureDecisionPattern = (config) => {
   return (input) => {

@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/rag-quality-gate-demo",
+  "name": "@parallaxai/rag-quality-gate-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Quality gate for RAG responses - checks groundedness, relevance, and completeness",

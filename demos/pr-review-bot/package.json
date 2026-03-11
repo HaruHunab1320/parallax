@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/pr-review-bot-demo",
+  "name": "@parallaxai/pr-review-bot-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Multi-agent PR review bot demonstrating Parallax orchestration",

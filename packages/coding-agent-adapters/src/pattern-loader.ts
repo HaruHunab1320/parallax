@@ -1,7 +1,7 @@
 /**
  * Dynamic Pattern Loader
  *
- * Loads adapter patterns from @parallax/adapter-monitor snapshots when available,
+ * Loads adapter patterns from @parallaxai/adapter-monitor snapshots when available,
  * with fallback to hardcoded baseline patterns.
  */
 
@@ -203,7 +203,7 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
 const patternCache: Map<string, AdapterPatterns> = new Map();
 
 /**
- * Monitor patterns result shape (matches @parallax/adapter-monitor VersionPatternMapping)
+ * Monitor patterns result shape (matches @parallaxai/adapter-monitor VersionPatternMapping)
  */
 interface MonitorPatterns {
   version: string;
@@ -217,7 +217,7 @@ interface MonitorPatterns {
 }
 
 /**
- * Try to load patterns from @parallax/adapter-monitor
+ * Try to load patterns from @parallaxai/adapter-monitor
  */
 async function tryLoadFromMonitor(
   adapter: AdapterType,
@@ -262,7 +262,7 @@ async function tryLoadFromMonitor(
 /**
  * Load patterns for an adapter
  *
- * Tries to load from @parallax/adapter-monitor snapshots first,
+ * Tries to load from @parallaxai/adapter-monitor snapshots first,
  * falls back to hardcoded baseline patterns.
  *
  * @param adapter - Adapter type

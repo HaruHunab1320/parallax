@@ -1,6 +1,6 @@
 # PTY Agent Manager Development Plan
 
-**Package Name:** `@parallax/pty-agent-manager`
+**Package Name:** `@parallaxai/pty-agent-manager`
 **Current Location:** `packages/runtime-local/src/pty/`
 **Extraction Difficulty:** Medium
 **Estimated Effort:** 2-3 weeks
@@ -61,7 +61,7 @@ export abstract class BaseCLIAdapter {
 ## Target API
 
 ```typescript
-// @parallax/pty-agent-manager
+// @parallaxai/pty-agent-manager
 
 import {
   PTYManager,
@@ -69,7 +69,7 @@ import {
   BaseCLIAdapter,
   ShellAdapter,
   createAdapter
-} from '@parallax/pty-agent-manager';
+} from '@parallaxai/pty-agent-manager';
 
 // Create manager with adapters
 const manager = new PTYManager({
@@ -199,7 +199,7 @@ await manager.stop(handle.id, { force: false, timeout: 5000 });
 ## Package Structure
 
 ```
-@parallax/pty-agent-manager/
+@parallaxai/pty-agent-manager/
 ├── src/
 │   ├── index.ts                    # Public exports
 │   ├── pty-manager.ts              # Multi-session manager
@@ -418,7 +418,7 @@ interface AdapterConfig {
 
 ```typescript
 // examples/adapters/claude-adapter.ts
-import { createAdapter } from '@parallax/pty-agent-manager';
+import { createAdapter } from '@parallaxai/pty-agent-manager';
 
 export const claudeAdapter = createAdapter({
   command: 'claude',
@@ -495,10 +495,10 @@ const handle = await manager.spawn({
 });
 ```
 
-### After (@parallax/pty-agent-manager)
+### After (@parallaxai/pty-agent-manager)
 
 ```typescript
-import { PTYManager, createAdapter } from '@parallax/pty-agent-manager';
+import { PTYManager, createAdapter } from '@parallaxai/pty-agent-manager';
 
 const manager = new PTYManager({
   adapters: {

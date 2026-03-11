@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . .
 
 # Use turbo prune to create a pruned workspace
-RUN turbo prune @parallax/control-plane --docker
+RUN turbo prune @parallaxai/control-plane --docker
 
 # Stage 2: Install dependencies and build
 FROM node:20-alpine AS builder
@@ -33,7 +33,7 @@ COPY --from=pruner /app/out/full/ .
 COPY tsconfig.json ./
 
 # Build with turbo
-RUN turbo build --filter=@parallax/control-plane
+RUN turbo build --filter=@parallaxai/control-plane
 
 # Generate Prisma client
 WORKDIR /app/packages/control-plane

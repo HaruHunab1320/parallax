@@ -93,7 +93,7 @@ export class PatternGenerator {
       code,
       metadata: {
         generated: new Date().toISOString(),
-        generator: '@parallax/pattern-sdk',
+        generator: '@parallaxai/pattern-sdk',
         primitives: (selection.selected || []).map(s => s.name),
         complexity: this.calculateComplexity(selection.selected || []),
         estimatedAgents: this.estimateAgentCount(requirements)

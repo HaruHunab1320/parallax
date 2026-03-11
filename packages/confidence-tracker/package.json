@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/confidence-tracker",
+  "name": "@parallaxai/confidence-tracker",
   "version": "1.0.0",
   "description": "Statistical confidence tracking with anomaly detection for AI agents and ML systems",
   "main": "dist/index.js",

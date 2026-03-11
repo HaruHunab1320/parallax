@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . .
 
 # Use turbo prune to create a pruned workspace
-RUN turbo prune @parallax/web-dashboard --docker
+RUN turbo prune @parallaxai/web-dashboard --docker
 
 # Stage 2: Install dependencies and build
 FROM node:20-alpine AS builder

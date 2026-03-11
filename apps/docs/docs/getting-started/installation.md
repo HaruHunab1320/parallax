@@ -15,17 +15,17 @@ Get Parallax up and running in your project.
 ## Install the SDK
 
 ```bash
-npm install @parallax/sdk-typescript
+npm install @parallaxai/sdk-typescript
 ```
 
 Or with other package managers:
 
 ```bash
 # yarn
-yarn add @parallax/sdk-typescript
+yarn add @parallaxai/sdk-typescript
 
 # pnpm
-pnpm add @parallax/sdk-typescript
+pnpm add @parallaxai/sdk-typescript
 ```
 
 ## Start the Control Plane
@@ -44,7 +44,7 @@ docker run -p 8080:8080 parallax/control-plane:latest
 git clone https://github.com/HaruHunab1320/parallax.git
 cd parallax
 pnpm install
-pnpm --filter @parallax/control-plane dev
+pnpm --filter @parallaxai/control-plane dev
 ```
 
 ## Verify Installation

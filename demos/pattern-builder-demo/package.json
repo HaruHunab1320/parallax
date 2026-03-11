@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/pattern-builder-demo",
+  "name": "@parallaxai/pattern-builder-demo",
   "version": "0.1.0",
   "description": "Demo app for the Parallax visual pattern builder",
   "private": true,
@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@parallax/pattern-builder": "workspace:*",
+    "@parallaxai/pattern-builder": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

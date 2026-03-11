@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/runtime-local",
+  "name": "@parallaxai/runtime-local",
   "version": "0.1.0",
   "description": "Local PTY-based runtime for Parallax CLI agents",
   "main": "dist/index.js",
@@ -15,7 +15,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@parallax/runtime-interface": "workspace:*",
+    "@parallaxai/runtime-interface": "workspace:*",
     "coding-agent-adapters": "workspace:*",
     "express": "^4.21.2",
     "pino": "^9.5.0",

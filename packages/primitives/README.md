@@ -47,7 +47,7 @@ Advanced execution control:
 ## Usage
 
 ```prism
-import { parallel, consensus, threshold } from "@parallax/primitives"
+import { parallel, consensus, threshold } from "@parallaxai/primitives"
 
 // Compose primitives into patterns
 const pattern = (input) => {

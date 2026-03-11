@@ -1,5 +1,5 @@
 {
-  "name": "@parallax/code-review-agent",
+  "name": "@parallaxai/code-review-agent",
   "version": "0.1.0",
   "private": true,
   "description": "Code review agent for security and quality analysis",

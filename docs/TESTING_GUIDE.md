@@ -87,7 +87,7 @@ pnpm test:coverage
 #### 1.2 Runtime: Local Provider
 ```bash
 # Test local runtime
-pnpm test --filter @parallax/runtime-local
+pnpm test --filter @parallaxai/runtime-local
 ```
 - [ ] Agent process spawning works
 - [ ] Agent process receives environment variables
@@ -102,7 +102,7 @@ pnpm test --filter @parallax/runtime-local
 #### 1.3 Runtime: Docker Provider
 ```bash
 # Test docker runtime
-pnpm test --filter @parallax/runtime-docker
+pnpm test --filter @parallaxai/runtime-docker
 
 # Manual verification
 docker ps | grep parallax-agent
@@ -124,7 +124,7 @@ docker ps | grep parallax-agent
 #### 1.4 Runtime: Kubernetes Provider
 ```bash
 # Test k8s runtime (requires cluster)
-pnpm test --filter @parallax/runtime-k8s
+pnpm test --filter @parallaxai/runtime-k8s
 
 # Manual verification
 kubectl get parallaxagents -n parallax-agents
@@ -314,7 +314,7 @@ kubectl get pods -n parallax-agents
 #### 10.1 Git Operations
 ```bash
 # Test workspace service
-pnpm test --filter @parallax/control-plane -- --testPathPattern=workspace
+pnpm test --filter @parallaxai/control-plane -- --testPathPattern=workspace
 ```
 - [ ] Repository cloning (HTTPS)
 - [ ] Repository cloning (SSH)
@@ -360,12 +360,12 @@ curl -X POST http://localhost:8080/api/webhooks/github \
 #### 11.1 TypeScript SDK
 ```bash
 # Run TypeScript SDK tests
-pnpm test --filter @parallax/sdk-typescript
+pnpm test --filter @parallaxai/sdk-typescript
 
 # Integration test with control plane
 cd apps/demo-typescript && pnpm test
 ```
-- [ ] SDK installation works (`npm install @parallax/sdk-typescript`)
+- [ ] SDK installation works (`npm install @parallaxai/sdk-typescript`)
 - [ ] gRPC channel creation
 - [ ] Agent registration
 - [ ] Agent heartbeat
@@ -439,7 +439,7 @@ cd apps/demo-rust && cargo test
 
 ```bash
 # Run CLI tests
-pnpm test --filter @parallax/cli
+pnpm test --filter @parallaxai/cli
 ```
 
 #### 12.1 Authentication
@@ -480,7 +480,7 @@ pnpm test --filter @parallax/cli
 
 ```bash
 # Run pattern builder tests
-pnpm test --filter @parallax/pattern-builder
+pnpm test --filter @parallaxai/pattern-builder
 ```
 
 #### 13.1 Visual Editor
@@ -664,7 +664,7 @@ docker-compose -f docker-compose.prod.yml down -v
 ### API Won't Connect to Database
 1. Check .env file exists in packages/control-plane/
 2. Verify DATABASE_URL matches the docker service
-3. Check migrations: `pnpm --filter @parallax/control-plane run prisma:migrate`
+3. Check migrations: `pnpm --filter @parallaxai/control-plane run prisma:migrate`
 
 ### Monitoring Shows No Data
 1. Make sure API is running with metrics enabled

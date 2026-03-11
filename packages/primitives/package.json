@@ -1,12 +1,39 @@
 {
-  "name": "@parallax/primitives",
+  "name": "@parallaxai/primitives",
   "version": "0.1.0",
   "description": "Core primitive library for Parallax pattern composition",
-  "main": "index.ts",
-  "types": "index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "aggregation",
+    "confidence",
+    "control",
+    "coordination",
+    "event",
+    "execution",
+    "goal",
+    "resource",
+    "temporal",
+    "transaction",
+    "transformation",
+    "workflow",
+    "README.md"
+  ],
   "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
     "validate": "node test/validate-primitives.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@prism-lang/core": "^2.0.0",
@@ -16,5 +43,23 @@
     "chalk": "^4.1.2",
     "vitest": "^2.1.7",
     "typescript": "^5.7.2"
+  },
+  "keywords": [
+    "parallax",
+    "primitives",
+    "pattern",
+    "composition",
+    "orchestration",
+    "prism"
+  ],
+  "author": "Parallax AI",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HaruHunab1320/parallax.git",
+    "directory": "packages/primitives"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

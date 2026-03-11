@@ -1,4 +1,4 @@
-declare module '@parallax/pattern-builder' {
+declare module '@parallaxai/pattern-builder' {
   import { FC } from 'react';
 
   export interface PatternBuilderProps {
