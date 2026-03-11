@@ -4,16 +4,27 @@
   "description": "Pattern generation SDK for Parallax AI orchestration platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    }
+  },
   "bin": {
     "parallax-generate": "./dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest",
     "clean": "rm -rf dist",
     "lint": "eslint src/**/*.ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.22",
@@ -56,5 +67,13 @@
     "sdk"
   ],
   "author": "Parallax AI",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HaruHunab1320/parallax.git",
+    "directory": "packages/pattern-sdk"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

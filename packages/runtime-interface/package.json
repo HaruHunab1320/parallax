@@ -4,18 +4,43 @@
   "description": "Shared interfaces for Parallax agent runtimes",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {},
   "devDependencies": {
     "@types/node": "^22.14.1",
     "typescript": "^5.7.2"
   },
-  "files": [
-    "dist"
-  ]
+  "keywords": [
+    "parallax",
+    "runtime",
+    "interface",
+    "agent",
+    "typescript"
+  ],
+  "author": "Jakob Grant",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HaruHunab1320/parallax.git",
+    "directory": "packages/runtime-interface"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

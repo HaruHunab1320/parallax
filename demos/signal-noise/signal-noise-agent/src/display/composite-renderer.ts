@@ -1,6 +1,7 @@
 import { DisplayRenderer, PersonaId } from './types';
 import { TerminalRenderer } from './terminal-renderer';
 import { WebRenderer } from './web-renderer';
+import { createLcdRenderer } from './lcd-renderer';
 
 /**
  * Fans out render calls to multiple backends.
@@ -28,7 +29,8 @@ class CompositeRenderer implements DisplayRenderer {
 /**
  * Auto-detect available backends and create a composite renderer.
  * - Always starts a web preview server with persona-specific color
- * - Falls back to terminal renderer (no OLED for signal-noise agents)
+ * - On Raspberry Pi: uses ST7789V LCD if spi-device is available
+ * - Falls back to terminal renderer on non-Pi hardware
  * - FORCE_TERMINAL=1 env forces terminal mode
  */
 export function createRenderer(personaId?: string): DisplayRenderer {
@@ -40,10 +42,16 @@ export function createRenderer(personaId?: string): DisplayRenderer {
 
   if (process.env.FORCE_TERMINAL === '1') {
     renderers.push(new TerminalRenderer());
+    return new CompositeRenderer(renderers);
   }
 
-  if (renderers.length === 1) {
-    return renderers[0];
+  // Try ST7789V LCD (Raspberry Pi with Waveshare 2" display)
+  const lcd = createLcdRenderer(pid);
+  if (lcd) {
+    console.log('Waveshare LCD detected on SPI bus');
+    renderers.push(lcd);
+  } else {
+    renderers.push(new TerminalRenderer());
   }
 
   return new CompositeRenderer(renderers);
