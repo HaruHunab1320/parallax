@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package parallax.gateway;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// Agent Gateway service for bidirectional streaming between
+// NAT-traversing agents and the control plane.
+// Agents connect outbound; tasks flow back through the established stream.
+service AgentGateway {
+  // Bidirectional stream: agent connects outbound, control plane sends tasks back.
+  rpc Connect(stream AgentToControlPlane) returns (stream ControlPlaneToAgent);
+}
+
+// ─── Agent → Control Plane ───
+
+message AgentToControlPlane {
+  string request_id = 1; // Correlation ID for request/response matching
+  oneof payload {
+    AgentHello hello = 2;
+    AgentHeartbeat heartbeat = 3;
+    TaskResult task_result = 4;
+    TaskError task_error = 5;
+  }
+}
+
+// First message sent by the agent after connecting.
+message AgentHello {
+  string agent_id = 1;
+  string agent_name = 2;
+  repeated string capabilities = 3;
+  map<string, string> metadata = 4;
+  int32 heartbeat_interval_ms = 5; // How often the agent will heartbeat (default: 10000)
+}
+
+// Periodic keepalive from the agent.
+message AgentHeartbeat {
+  string agent_id = 1;
+  double load = 2;           // 0.0-1.0 current load factor
+  string status = 3;         // healthy, degraded, draining
+  map<string, string> extra = 4;
+}
+
+// Agent completed a task successfully.
+message TaskResult {
+  string task_id = 1;
+  string value_json = 2;     // JSON-encoded result value
+  double confidence = 3;     // 0.0-1.0
+  string reasoning = 4;
+  map<string, string> metadata = 5;
+}
+
+// Agent failed to complete a task.
+message TaskError {
+  string task_id = 1;
+  string error_message = 2;
+  string error_code = 3;     // Optional error classification
+}
+
+// ─── Control Plane → Agent ───
+
+message ControlPlaneToAgent {
+  string request_id = 1; // Correlation ID matching the original request
+  oneof payload {
+    ServerAck ack = 2;
+    TaskRequest task_request = 3;
+    CancelTask cancel_task = 4;
+    Ping ping = 5;
+  }
+}
+
+// Acknowledgement sent after AgentHello.
+message ServerAck {
+  bool accepted = 1;
+  string message = 2;
+  string assigned_node_id = 3; // Which control plane node owns this connection
+}
+
+// Control plane dispatches a task to the agent.
+message TaskRequest {
+  string task_id = 1;
+  string task_description = 2;
+  google.protobuf.Struct data = 3;
+  map<string, string> context = 4;
+  int32 timeout_ms = 5;
+  string pattern_name = 6;
+}
+
+// Control plane requests cancellation of an in-flight task.
+message CancelTask {
+  string task_id = 1;
+  string reason = 2;
+}
+
+// Server-initiated keepalive (expects heartbeat response).
+message Ping {
+  google.protobuf.Timestamp server_time = 1;
+}

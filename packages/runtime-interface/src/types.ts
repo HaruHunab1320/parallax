@@ -64,6 +64,9 @@ export interface AgentConfig {
   // Behavior
   autoRestart?: boolean;          // Restart on crash
   idleTimeout?: number;           // Stop after N seconds idle
+
+  // Execution grouping (for shared auth across agents in same execution)
+  executionId?: string;           // Groups agents that share credentials
 }
 
 /**

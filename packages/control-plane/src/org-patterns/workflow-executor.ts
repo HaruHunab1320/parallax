@@ -231,6 +231,7 @@ export class WorkflowExecutor extends EventEmitter {
       type: agentType,
       capabilities: role.capabilities,
       role: roleId,
+      executionId: context.id,
       ...role.agentConfig,
     };
 

@@ -1,6 +1,6 @@
 {
   "name": "@parallaxai/sdk-typescript",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "TypeScript SDK for Parallax AI orchestration platform",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",

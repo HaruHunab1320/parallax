@@ -67,21 +67,45 @@ const CMD = {
 const MADCTL_LANDSCAPE = 0x60;
 
 /**
- * GPIO helper — uses Raspberry Pi's `pinctrl` tool.
- * Writes directly to GPIO registers and returns immediately (no blocking).
- * Works on all Pi models running modern Raspberry Pi OS (Bookworm/Trixie).
+ * GPIO helper — uses `rpio` (mmap'd /dev/gpiomem) for fast GPIO toggling
+ * when available (~0.005ms per write), falls back to `pinctrl` CLI (~12ms).
+ * The rpio path is critical for Pi Zero where pinctrl is too slow for 10fps rendering.
  */
+let rpioLib: any = null;
+let rpioAvailable = false;
+
+function initRpio(): boolean {
+  if (rpioAvailable) return true;
+  try {
+    rpioLib = require('rpio');
+    rpioLib.init({ gpiomem: true, mapping: 'gpio' });
+    rpioAvailable = true;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 class GpioPin {
   private pin: number;
+  private fast: boolean;
 
   constructor(pin: number) {
     this.pin = pin;
-    // Configure as output
-    execSync(`pinctrl set ${pin} op`, { stdio: 'ignore' });
+    this.fast = initRpio();
+    if (this.fast) {
+      rpioLib.open(pin, rpioLib.OUTPUT);
+    } else {
+      execSync(`pinctrl set ${pin} op`, { stdio: 'ignore' });
+    }
   }
 
   write(value: 0 | 1): void {
-    execSync(`pinctrl set ${this.pin} ${value ? 'dh' : 'dl'}`, { stdio: 'ignore' });
+    if (this.fast) {
+      rpioLib.write(this.pin, value ? rpioLib.HIGH : rpioLib.LOW);
+    } else {
+      execSync(`pinctrl set ${this.pin} ${value ? 'dh' : 'dl'}`, { stdio: 'ignore' });
+    }
   }
 }
 
@@ -105,7 +129,6 @@ export function createLcdRenderer(personaId: PersonaId): LcdRenderer | null {
   let spi: any;
 
   try {
-    // Open SPI0, CE0 at 40MHz
     spi = SPI.openSync(0, 0, {
       mode: SPI.MODE0,
       maxSpeedHz: 40_000_000,
@@ -166,20 +189,20 @@ export function createLcdRenderer(personaId: PersonaId): LcdRenderer | null {
     while (Date.now() < end) { /* busy wait */ }
   }
 
-  // --- Hardware reset ---
+  // --- Hardware reset (generous delays for Pi Zero compatibility) ---
   rstPin.write(1);
-  sleep(10);
+  sleep(100);
   rstPin.write(0);
-  sleep(10);
+  sleep(100);
   rstPin.write(1);
-  sleep(120);
+  sleep(200);
 
   // --- ST7789V init sequence ---
   sendCommand(CMD.SWRESET);
-  sleep(150);
+  sleep(200);
 
   sendCommand(CMD.SLPOUT);
-  sleep(120);
+  sleep(200);
 
   // Pixel format: 16-bit RGB565
   sendCommand(CMD.COLMOD, [0x55]);

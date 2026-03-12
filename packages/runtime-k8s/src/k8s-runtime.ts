@@ -164,6 +164,11 @@ export class K8sRuntime extends BaseRuntimeProvider {
 
     this.logger.info({ agentId, type: config.type, resourceName }, 'Spawning agent via CRD');
 
+    // Ensure shared auth PVC exists for this execution (idempotent)
+    if (config.executionId) {
+      await this.ensureSharedAuthPvc(config.executionId);
+    }
+
     // Create ParallaxAgent resource
     const agentResource = this.buildAgentResource(agentId, resourceName, config);
 
@@ -618,6 +623,7 @@ export class K8sRuntime extends BaseRuntimeProvider {
           'parallax.ai/managed': 'true',
           'parallax.ai/agent-id': agentId,
           'parallax.ai/agent-type': config.type,
+          ...(config.executionId ? { 'parallax.ai/execution-id': config.executionId } : {}),
         },
       },
       spec: {
@@ -627,6 +633,7 @@ export class K8sRuntime extends BaseRuntimeProvider {
         capabilities: config.capabilities || [],
         reportsTo: config.reportsTo,
         image,
+        executionId: config.executionId,
         resources: {
           cpu: config.resources?.cpu || this.options.defaultResources?.cpu || '1',
           memory: config.resources?.memory || this.options.defaultResources?.memory || '2Gi',
@@ -650,6 +657,7 @@ export class K8sRuntime extends BaseRuntimeProvider {
       { name: 'AGENT_TYPE', value: config.type },
       { name: 'AGENT_ROLE', value: config.role || '' },
       { name: 'AGENT_CAPABILITIES', value: JSON.stringify(config.capabilities || []) },
+      ...(config.executionId ? [{ name: 'PARALLAX_EXECUTION_ID', value: config.executionId }] : []),
     ];
 
     const registryEndpoint = this.options.registryEndpoint || DEFAULT_REGISTRY_ENDPOINT;
@@ -664,6 +672,52 @@ export class K8sRuntime extends BaseRuntimeProvider {
     }
 
     return env;
+  }
+
+  /**
+   * Ensure a shared PersistentVolumeClaim exists for agents in the same execution.
+   * All agents mount this PVC at their CLI auth directories (~/.claude, ~/.codex)
+   * so that one OAuth login authenticates the entire swarm.
+   */
+  private async ensureSharedAuthPvc(executionId: string): Promise<void> {
+    const pvcName = `parallax-auth-${executionId.substring(0, 8)}`;
+
+    try {
+      await this.coreApi.readNamespacedPersistentVolumeClaim({
+        name: pvcName,
+        namespace: this.namespace,
+      });
+      // PVC already exists
+    } catch (err: any) {
+      if (err?.response?.statusCode === 404 || err?.statusCode === 404) {
+        // Create the PVC
+        this.logger.info({ pvcName, executionId }, 'Creating shared auth PVC for execution');
+        await this.coreApi.createNamespacedPersistentVolumeClaim({
+          namespace: this.namespace,
+          body: {
+            metadata: {
+              name: pvcName,
+              namespace: this.namespace,
+              labels: {
+                'parallax.ai/managed': 'true',
+                'parallax.ai/execution-id': executionId,
+                'parallax.ai/purpose': 'shared-auth',
+              },
+            },
+            spec: {
+              accessModes: ['ReadWriteMany'],
+              resources: {
+                requests: {
+                  storage: '100Mi',
+                },
+              },
+            },
+          },
+        });
+      } else {
+        this.logger.warn({ pvcName, err: err?.message }, 'Failed to check shared auth PVC');
+      }
+    }
   }
 
   private k8sPhaseToStatus(phase: string): AgentStatus {

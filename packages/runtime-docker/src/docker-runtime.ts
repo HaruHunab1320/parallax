@@ -65,6 +65,7 @@ export class DockerRuntime extends BaseRuntimeProvider {
 
   private docker: Docker;
   private containers: Map<string, ContainerInfo> = new Map();
+  private sharedAuthVolumes: Set<string> = new Set();
   private network: string;
   private imagePrefix: string;
   private initialized = false;

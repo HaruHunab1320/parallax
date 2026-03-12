@@ -170,6 +170,18 @@ export class AgentController {
             },
           },
           spec: {
+            // Shared auth volume: all agents in the same execution share CLI credentials
+            // so that one OAuth login authenticates the entire swarm
+            ...(spec.executionId ? {
+              volumes: [
+                {
+                  name: 'shared-auth',
+                  persistentVolumeClaim: {
+                    claimName: `parallax-auth-${spec.executionId.substring(0, 8)}`,
+                  },
+                },
+              ],
+            } : {}),
             containers: [
               {
                 name: 'agent',
@@ -180,6 +192,21 @@ export class AgentController {
                   requests: { cpu, memory },
                   limits: { cpu, memory },
                 },
+                // Mount shared auth volume at CLI credential directories
+                ...(spec.executionId ? {
+                  volumeMounts: [
+                    {
+                      name: 'shared-auth',
+                      mountPath: '/home/agent/.claude',
+                      subPath: 'claude',
+                    },
+                    {
+                      name: 'shared-auth',
+                      mountPath: '/home/agent/.codex',
+                      subPath: 'codex',
+                    },
+                  ],
+                } : {}),
                 readinessProbe: {
                   httpGet: {
                     path: '/health',
@@ -345,6 +372,7 @@ export class AgentController {
       { name: 'AGENT_TYPE', value: spec.type },
       { name: 'AGENT_ROLE', value: spec.role || '' },
       { name: 'AGENT_CAPABILITIES', value: JSON.stringify(spec.capabilities || []) },
+      ...(spec.executionId ? [{ name: 'PARALLAX_EXECUTION_ID', value: spec.executionId }] : []),
     ];
 
     // Add credentials from secret if specified

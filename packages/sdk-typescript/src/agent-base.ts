@@ -5,8 +5,8 @@ import fs from 'fs';
 import { AgentResponse, ensureConfidence } from './types/agent-response';
 
 const PROTO_DIR = process.env.PARALLAX_PROTO_DIR
-  || (fs.existsSync(path.join(__dirname, '../proto'))
-      ? path.join(__dirname, '../proto')
+  || (fs.existsSync(path.join(__dirname, '../../proto'))
+      ? path.join(__dirname, '../../proto')
       : path.join(__dirname, '../../../proto'));
 
 /**
