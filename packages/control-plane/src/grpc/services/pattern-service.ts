@@ -8,6 +8,32 @@ import { DatabaseService } from '../../db/database.service';
 import { Logger } from 'pino';
 import { Pattern } from '../../pattern-engine/types';
 
+/**
+ * Convert a google.protobuf.Struct (as decoded by @grpc/proto-loader) to a plain JS object.
+ */
+function structToObject(struct: any): any {
+  if (!struct || !struct.fields) return struct || {};
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(struct.fields)) {
+    result[key] = valueToJs(value as any);
+  }
+  return result;
+}
+
+function valueToJs(value: any): any {
+  if (!value) return null;
+  if ('nullValue' in value || 'null_value' in value) return null;
+  if ('numberValue' in value || 'number_value' in value) return value.numberValue ?? value.number_value;
+  if ('stringValue' in value || 'string_value' in value) return value.stringValue ?? value.string_value;
+  if ('boolValue' in value || 'bool_value' in value) return value.boolValue ?? value.bool_value;
+  if ('structValue' in value || 'struct_value' in value) return structToObject(value.structValue ?? value.struct_value);
+  if ('listValue' in value || 'list_value' in value) {
+    const list = value.listValue ?? value.list_value;
+    return (list?.values || []).map(valueToJs);
+  }
+  return null;
+}
+
 export class PatternServiceImpl {
   constructor(
     private patternEngine: IPatternEngine,
@@ -34,7 +60,7 @@ export class PatternServiceImpl {
       
       this.logger.info({ pattern: pattern_name }, 'Executing pattern via gRPC');
       
-      const parsedInput = input_json ? JSON.parse(input_json) : (input || {});
+      const parsedInput = input_json ? JSON.parse(input_json) : structToObject(input);
       
       // Execute pattern
       const result = await this.patternEngine.executePattern(
@@ -62,7 +88,7 @@ export class PatternServiceImpl {
       
       this.logger.info({ pattern: pattern_name }, 'Stream executing pattern via gRPC');
       
-      const parsedInput = input_json ? JSON.parse(input_json) : (input || {});
+      const parsedInput = input_json ? JSON.parse(input_json) : structToObject(input);
       
       // Execute pattern (best-effort streaming until engine supports progress events)
       const result = await this.patternEngine.executePattern(

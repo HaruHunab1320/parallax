@@ -2,7 +2,7 @@
  * @name SignalNoiseStation
  * @version 1.0.0
  * @description Signal//Noise station pattern — orchestrates persona agents with frequency tuning and priority weights
- * @input {"type": "object", "properties": {"task": {"type": "string"}, "data": {"type": "object"}}}
+ * @input {"type": "object", "properties": {"task": {"type": "string"}, "primaryChannel": {"type": "string"}, "priorityWeights": {"type": "object"}}}
  * @agents {"capabilities": ["conversation", "portfolio"]}
  * @minAgents 2
  */
@@ -11,9 +11,9 @@
 results = agentResults
 count = agentCount
 
-// Extract tuning parameters from the input data
-primaryChannel = input.data ? (input.data.primaryChannel ? input.data.primaryChannel : "prism") : "prism"
-weights = input.data ? (input.data.priorityWeights ? input.data.priorityWeights : {}) : {}
+// Extract tuning parameters from input (flat structure for Struct compatibility)
+primaryChannel = input.primaryChannel ? input.primaryChannel : "prism"
+weights = input.priorityWeights ? input.priorityWeights : {}
 
 // Separate primary and background results
 primaryResult = null
