@@ -77,9 +77,11 @@ Cargo.lock
 .env.*.local
 .env.production
 
-# Terraform secrets (tfvars contain passwords, IPs, project IDs)
+# Terraform secrets
 *.tfvars
 !*.tfvars.example
+# Environment tfvars are safe to commit (no secrets — network CIDRs are in GitHub Secrets)
+!terraform/gcp/environments/*.tfvars
 .terraform/
 *.tfstate
 *.tfstate.backup

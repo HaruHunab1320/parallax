@@ -3,6 +3,8 @@
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+# Environment tfvars are safe (secrets are in GitHub Secrets, not here)
+!gcp/environments/*.tfvars
 
 # Terraform directories
 .terraform/

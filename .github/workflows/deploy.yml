@@ -126,12 +126,11 @@ jobs:
             -var="project_id=${{ env.GCP_PROJECT_ID }}" \
             -var="region=${{ env.GCP_REGION }}" \
             -var="zone=${{ env.GCP_ZONE }}" \
-            -var="environment=${{ steps.env.outputs.name }}" \
             -var="parallax_image=${{ env.REGISTRY }}/parallax-control-plane:${{ steps.image.outputs.tag }}" \
             -var="grafana_admin_password=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" \
             -var='authorized_networks=${{ secrets.TF_AUTHORIZED_NETWORKS }}' \
             -var='master_authorized_networks=${{ secrets.TF_MASTER_AUTHORIZED_NETWORKS }}' \
-            ${{ steps.env.outputs.name == 'staging' && '-var="gke_node_count=3" -var="gke_machine_type=e2-medium" -var="gke_disk_size_gb=30" -var="db_tier=db-f1-micro" -var="db_disk_size=10" -var="db_backup_enabled=false" -var="db_deletion_protection=false"' || '-var="gke_node_count=3" -var="gke_machine_type=e2-medium" -var="gke_disk_size_gb=50" -var="db_tier=db-custom-2-4096" -var="db_disk_size=50" -var="db_backup_enabled=true" -var="db_deletion_protection=true"' }} \
+            -var-file="environments/${{ steps.env.outputs.name }}.tfvars" \
             -out=tfplan
 
       - name: Terraform Apply
