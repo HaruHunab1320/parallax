@@ -47,6 +47,23 @@ spec:
             - name: tmp
               mountPath: /tmp
       containers:
+        {{- if .Values.controlPlane.cloudSqlProxy.enabled }}
+        - name: cloud-sql-proxy
+          image: "{{ .Values.controlPlane.cloudSqlProxy.image | default "gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0" }}"
+          args:
+            - "--structured-logs"
+            - "--port=5432"
+            - "{{ .Values.controlPlane.cloudSqlProxy.connectionName }}"
+          securityContext:
+            runAsNonRoot: true
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 20m
+            limits:
+              memory: 512Mi
+              cpu: 200m
+        {{- end }}
         - name: control-plane
           securityContext:
             {{- toYaml .Values.security.containerSecurityContext | nindent 12 }}

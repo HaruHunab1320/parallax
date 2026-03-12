@@ -106,6 +106,12 @@ controlPlane:
     rbac:
       enabled: false
 
+  # Cloud SQL Proxy sidecar (for GKE deployments using Cloud SQL)
+  cloudSqlProxy:
+    enabled: false
+    connectionName: ""
+    image: "gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0"
+
   serviceAccount:
     annotations: {}
 
