@@ -228,6 +228,21 @@ export class RuntimeClient extends EventEmitter {
   }
 
   /**
+   * Clean up shared resources for an execution (auth volumes, etc.)
+   * Called when an execution is fully torn down.
+   */
+  async cleanupExecution(executionId: string): Promise<void> {
+    try {
+      await this.request('DELETE', `/api/executions/${executionId}/resources`);
+    } catch (error: any) {
+      if (error.status !== 404) {
+        throw error;
+      }
+      // 404 is fine — resources may already be cleaned up or endpoint not supported
+    }
+  }
+
+  /**
    * Subscribe to agent messages via WebSocket
    */
   subscribe(agentId: string, callback: (message: AgentMessage) => void): () => void {

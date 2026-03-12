@@ -135,6 +135,13 @@ export interface RuntimeProvider {
    * Get agent metrics
    */
   metrics(agentId: string): Promise<AgentMetrics | null>;
+
+  /**
+   * Clean up shared resources for an execution (e.g., shared auth volumes).
+   * Called when an execution is fully torn down and its agents are being killed.
+   * Should NOT be called when agents merely go idle — only on true teardown.
+   */
+  cleanupExecution?(executionId: string): Promise<void>;
 }
 
 /**

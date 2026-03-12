@@ -25,6 +25,9 @@ import {
   type BlockingPromptInfo,
 } from 'pty-manager';
 import { Logger } from 'pino';
+import { mkdirSync, existsSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { registerAllAdapters } from './adapters';
 
 export interface LocalRuntimeOptions {
@@ -39,6 +42,7 @@ export class LocalRuntime extends BaseRuntimeProvider {
   private initialized = false;
   private maxAgents: number;
   private agentConfigs: Map<string, AgentConfig> = new Map();
+  private sharedAuthDirs: Set<string> = new Set();
 
   constructor(
     private logger: Logger,
@@ -248,13 +252,23 @@ export class LocalRuntime extends BaseRuntimeProvider {
     const id = config.id ?? `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.agentConfigs.set(id, { ...config, id });
 
+    // Set up shared auth directory for agents in the same execution
+    const env = { ...config.env };
+    if (config.executionId) {
+      const sharedAuthDir = this.ensureSharedAuthDir(config.executionId);
+      // Point CLI credential directories to shared location
+      env.CLAUDE_CONFIG_DIR = join(sharedAuthDir, 'claude');
+      env.CODEX_CONFIG_DIR = join(sharedAuthDir, 'codex');
+      env.PARALLAX_EXECUTION_ID = config.executionId;
+    }
+
     // Convert AgentConfig → SpawnConfig for pty-manager
     const spawnConfig = {
       id,
       name: config.name,
       type: config.type,
       workdir: config.workdir,
-      env: config.env,
+      env,
     };
 
     const handle = await this.manager.spawn(spawnConfig);
@@ -434,5 +448,51 @@ export class LocalRuntime extends BaseRuntimeProvider {
    */
   hasAgent(agentId: string): boolean {
     return this.manager.has(agentId);
+  }
+
+  /**
+   * Clean up shared auth directory when an execution is fully torn down.
+   */
+  async cleanupExecution(executionId: string): Promise<void> {
+    const dirName = `parallax-auth-${executionId.substring(0, 8)}`;
+    const sharedDir = join(tmpdir(), dirName);
+
+    try {
+      if (existsSync(sharedDir)) {
+        rmSync(sharedDir, { recursive: true, force: true });
+        this.logger.info({ sharedDir, executionId }, 'Deleted shared auth directory');
+      }
+    } catch (error: any) {
+      this.logger.warn({ sharedDir, error: error.message }, 'Failed to delete shared auth directory');
+    }
+
+    this.sharedAuthDirs.delete(dirName);
+  }
+
+  /**
+   * Create a shared auth directory for agents in the same execution.
+   * All agents with the same executionId share credential directories
+   * so only one OAuth login is needed per swarm.
+   */
+  private ensureSharedAuthDir(executionId: string): string {
+    const dirName = `parallax-auth-${executionId.substring(0, 8)}`;
+    const sharedDir = join(tmpdir(), dirName);
+
+    if (!this.sharedAuthDirs.has(dirName)) {
+      const claudeDir = join(sharedDir, 'claude');
+      const codexDir = join(sharedDir, 'codex');
+
+      if (!existsSync(claudeDir)) {
+        mkdirSync(claudeDir, { recursive: true });
+      }
+      if (!existsSync(codexDir)) {
+        mkdirSync(codexDir, { recursive: true });
+      }
+
+      this.sharedAuthDirs.add(dirName);
+      this.logger.info({ sharedDir, executionId }, 'Created shared auth directory');
+    }
+
+    return sharedDir;
   }
 }

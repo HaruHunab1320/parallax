@@ -720,6 +720,26 @@ export class K8sRuntime extends BaseRuntimeProvider {
     }
   }
 
+  /**
+   * Clean up shared auth PVC when an execution is fully torn down.
+   */
+  async cleanupExecution(executionId: string): Promise<void> {
+    const pvcName = `parallax-auth-${executionId.substring(0, 8)}`;
+
+    try {
+      await this.coreApi.deleteNamespacedPersistentVolumeClaim({
+        name: pvcName,
+        namespace: this.namespace,
+      });
+      this.logger.info({ pvcName, executionId }, 'Deleted shared auth PVC');
+    } catch (err: any) {
+      const status = err?.response?.statusCode ?? err?.statusCode;
+      if (status !== 404) {
+        this.logger.warn({ pvcName, error: err?.message }, 'Failed to delete shared auth PVC');
+      }
+    }
+  }
+
   private k8sPhaseToStatus(phase: string): AgentStatus {
     switch (phase) {
       case 'Ready':

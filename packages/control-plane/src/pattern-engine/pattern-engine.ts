@@ -234,6 +234,14 @@ export class PatternEngine implements IPatternEngine {
       }
     }
 
+    // Clean up shared execution resources (auth volumes, PVCs, temp dirs)
+    try {
+      await this.agentRuntimeService?.cleanupExecution(executionId);
+      this.logger.debug({ executionId }, 'Execution resources cleaned up');
+    } catch (error) {
+      this.logger.warn({ executionId, error }, 'Failed to clean up execution resources');
+    }
+
     this.spawnedAgents.delete(executionId);
   }
 

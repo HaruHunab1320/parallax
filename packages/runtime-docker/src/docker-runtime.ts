@@ -143,6 +143,19 @@ export class DockerRuntime extends BaseRuntimeProvider {
 
     this.logger.info({ agentId, type: config.type, image }, 'Spawning agent container');
 
+    // Ensure shared auth volume exists for this execution
+    if (config.executionId) {
+      await this.ensureSharedAuthVolume(config.executionId);
+    }
+
+    // Build volume binds for shared auth
+    const binds: string[] = [];
+    if (config.executionId) {
+      const volumeName = `parallax-auth-${config.executionId.substring(0, 8)}`;
+      binds.push(`${volumeName}:/home/agent/.claude`);
+      binds.push(`${volumeName}:/home/agent/.codex`);
+    }
+
     // Create container
     const container = await this.docker.createContainer({
       Image: image,
@@ -155,6 +168,7 @@ export class DockerRuntime extends BaseRuntimeProvider {
         'parallax.agent.type': config.type,
         'parallax.agent.role': config.role || '',
         'parallax.agent.capabilities': JSON.stringify(config.capabilities || []),
+        ...(config.executionId ? { 'parallax.execution.id': config.executionId } : {}),
       },
       HostConfig: {
         Memory: this.parseMemory(config.resources?.memory),
@@ -162,6 +176,7 @@ export class DockerRuntime extends BaseRuntimeProvider {
         CpuQuota: this.parseCpu(config.resources?.cpu),
         NetworkMode: this.network,
         AutoRemove: false,
+        Binds: binds.length > 0 ? binds : undefined,
       },
       Tty: true,
       OpenStdin: true,
@@ -424,6 +439,46 @@ export class DockerRuntime extends BaseRuntimeProvider {
   // Private helpers
   // ─────────────────────────────────────────────────────────────
 
+  /**
+   * Clean up shared auth volume when an execution is fully torn down.
+   */
+  async cleanupExecution(executionId: string): Promise<void> {
+    const volumeName = `parallax-auth-${executionId.substring(0, 8)}`;
+
+    try {
+      await this.docker.getVolume(volumeName).remove();
+      this.sharedAuthVolumes.delete(volumeName);
+      this.logger.info({ volumeName, executionId }, 'Deleted shared auth volume');
+    } catch (error: any) {
+      if (!error.message?.includes('no such volume')) {
+        this.logger.warn({ volumeName, error: error.message }, 'Failed to delete shared auth volume');
+      }
+    }
+  }
+
+  private async ensureSharedAuthVolume(executionId: string): Promise<void> {
+    const volumeName = `parallax-auth-${executionId.substring(0, 8)}`;
+
+    if (this.sharedAuthVolumes.has(volumeName)) return;
+
+    try {
+      await this.docker.getVolume(volumeName).inspect();
+      this.logger.debug({ volumeName }, 'Shared auth volume already exists');
+    } catch {
+      this.logger.info({ volumeName, executionId }, 'Creating shared auth volume');
+      await this.docker.createVolume({
+        Name: volumeName,
+        Labels: {
+          'parallax.managed': 'true',
+          'parallax.execution.id': executionId,
+          'parallax.purpose': 'shared-auth',
+        },
+      });
+    }
+
+    this.sharedAuthVolumes.add(volumeName);
+  }
+
   private async ensureNetwork(): Promise<void> {
     const networks = await this.docker.listNetworks({
       filters: { name: [this.network] },
@@ -453,6 +508,7 @@ export class DockerRuntime extends BaseRuntimeProvider {
       `AGENT_TYPE=${config.type}`,
       `AGENT_ROLE=${config.role || ''}`,
       `AGENT_CAPABILITIES=${JSON.stringify(config.capabilities || [])}`,
+      ...(config.executionId ? [`PARALLAX_EXECUTION_ID=${config.executionId}`] : []),
     ];
 
     // Add credentials

@@ -193,6 +193,21 @@ export class AgentRuntimeService extends EventEmitter {
   }
 
   /**
+   * Clean up shared execution resources across all runtimes.
+   * Called when an execution is fully torn down and all its agents are killed.
+   */
+  async cleanupExecution(executionId: string): Promise<void> {
+    for (const [name, runtime] of this.runtimes) {
+      try {
+        await runtime.client.cleanupExecution(executionId);
+        this.logger.debug({ executionId, runtime: name }, 'Execution resources cleaned up');
+      } catch (error) {
+        this.logger.warn({ executionId, runtime: name, error }, 'Failed to clean up execution resources');
+      }
+    }
+  }
+
+  /**
    * Get agent by ID
    */
   async get(agentId: string): Promise<AgentHandle | null> {
