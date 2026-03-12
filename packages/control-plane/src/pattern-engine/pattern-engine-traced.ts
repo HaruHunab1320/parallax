@@ -40,6 +40,8 @@ export class TracedPatternEngine implements IPatternEngine {
   private workspaceService?: WorkspaceService;
   private executionEngine?: ExecutionEngine;
   private agentRuntimeService?: AgentRuntimeService;
+  private nodeId?: string;
+  private shuttingDown: boolean = false;
 
   constructor(
     private runtimeManager: RuntimeManager,
@@ -86,6 +88,20 @@ export class TracedPatternEngine implements IPatternEngine {
    */
   setAgentRuntimeService(service: AgentRuntimeService): void {
     this.agentRuntimeService = service;
+  }
+
+  setNodeId(id: string): void {
+    this.nodeId = id;
+  }
+
+  setShuttingDown(value: boolean): void {
+    this.shuttingDown = value;
+  }
+
+  getInFlightExecutionIds(): string[] {
+    return Array.from(this.executions.entries())
+      .filter(([_, exec]) => exec.status === 'running')
+      .map(([id]) => id);
   }
 
   async executePattern(
