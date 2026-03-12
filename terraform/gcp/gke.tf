@@ -79,10 +79,14 @@ resource "google_container_node_pool" "primary_nodes" {
   name       = "${var.cluster_name}-node-pool"
   location   = var.zone
   cluster    = google_container_cluster.primary.name
-  node_count = var.gke_node_count
+  # Autoscaling replaces preempted Spot nodes automatically
+  autoscaling {
+    min_node_count = var.gke_node_count
+    max_node_count = var.gke_node_count + 2
+  }
 
   node_config {
-    preemptible  = true  # Use preemptible for cost savings
+    spot = true  # Spot VMs: cheaper than on-demand, no 24h forced termination (unlike preemptible)
     machine_type = var.gke_machine_type
     disk_size_gb = var.gke_disk_size_gb
     disk_type    = "pd-standard"
