@@ -34,10 +34,13 @@ spec:
           args:
             - "--structured-logs"
             - "--port=5432"
+            - "--health-check"
+            - "--http-port=9090"
             - "{{ .Values.controlPlane.cloudSqlProxy.connectionName }}"
           restartPolicy: Always
           securityContext:
             runAsNonRoot: true
+            runAsUser: 65532
           resources:
             requests:
               memory: 64Mi
@@ -46,10 +49,11 @@ spec:
               memory: 512Mi
               cpu: 200m
           startupProbe:
-            tcpSocket:
-              port: 5432
+            httpGet:
+              path: /startup
+              port: 9090
             periodSeconds: 1
-            failureThreshold: 30
+            failureThreshold: 60
         {{- end }}
         - name: migrate
           image: "{{ .Values.controlPlane.image.repository }}:{{ .Values.controlPlane.image.tag | default .Chart.AppVersion }}"
