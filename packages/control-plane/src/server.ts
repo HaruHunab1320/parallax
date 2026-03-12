@@ -288,7 +288,9 @@ export async function createServer(): Promise<express.Application> {
   (patternEngine as PatternEngine).setNodeId(nodeId);
 
   // Initialize metrics
+  logger.info('Initializing metrics collector...');
   const metrics = new MetricsCollector();
+  logger.info('Metrics collector initialized');
 
   // Initialize High Availability services (Enterprise feature)
   let haServices: HAServices | null = null;
@@ -327,6 +329,8 @@ export async function createServer(): Promise<express.Application> {
       await startupRecovery.recoverAllOrphanedExecutions();
     });
   }
+
+  logger.info('Core services initialized, setting up enterprise features...');
 
   // Initialize Scheduler service (Enterprise feature)
   let schedulerService: SchedulerService | null = null;
@@ -784,6 +788,8 @@ export async function createServer(): Promise<express.Application> {
   // Wire gateway service into control-plane AgentProxy (used by PatternEngine)
   (patternEngine as any).setGatewayService?.(gatewayService);
 
+  logger.info('Route setup complete, initializing gRPC server...');
+
   // Initialize gRPC server
   const grpcServer = new GrpcServer(patternEngine, registry, database, logger, executionEvents, gatewayService);
   grpcServerInstance = grpcServer;
@@ -863,7 +869,10 @@ if (require.main === module) {
   createServer()
     .then(server => (server as any).start())
     .catch(error => {
-      logger.error({ error }, 'Failed to start server');
+      // Use console.error for full output — Pino's default serializer misses
+      // non-enumerable Error properties (message, stack) when key is 'error' not 'err'
+      console.error('FATAL: Failed to start server:', error);
+      logger.error({ err: error, errorMessage: String(error?.message), errorStack: String(error?.stack) }, 'Failed to start server');
       process.exit(1);
     });
 }
