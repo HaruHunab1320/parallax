@@ -35,6 +35,7 @@ spec:
             - "--structured-logs"
             - "--port=5432"
             - "--health-check"
+            - "--http-address=0.0.0.0"
             - "--http-port=9090"
             - "{{ .Values.controlPlane.cloudSqlProxy.connectionName }}"
           restartPolicy: Always
