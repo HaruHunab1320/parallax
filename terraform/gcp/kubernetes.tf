@@ -41,7 +41,7 @@ resource "kubernetes_secret" "parallax_secrets" {
   data = {
     DATABASE_PASSWORD = random_password.db_password.result
     JWT_SECRET        = random_password.jwt_secret.result
-    DATABASE_URL      = "postgresql://${google_sql_user.parallax.name}:${urlencode(random_password.db_password.result)}@127.0.0.1:5432/${google_sql_database.parallax.name}?host=/cloudsql/${google_sql_database_instance.postgres.connection_name}"
+    DATABASE_URL      = "postgresql://${google_sql_user.parallax.name}:${urlencode(random_password.db_password.result)}@127.0.0.1:5432/${google_sql_database.parallax.name}?schema=public"
     CLOUD_SQL_CONNECTION_NAME = google_sql_database_instance.postgres.connection_name
   }
 }
