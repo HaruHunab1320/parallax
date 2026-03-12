@@ -99,27 +99,33 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Should run Terraform
+        id: should-tf
+        run: |
+          SKIP="${{ github.event.inputs.skip_terraform }}"
+          if [ "$SKIP" = "true" ]; then
+            echo "run=false" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.tf-changes.outputs.changed }}" = "true" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Terraform
-        if: >-
-          (steps.tf-changes.outputs.changed == 'true' ||
-           (github.event_name == 'workflow_dispatch' && github.event.inputs.skip_terraform != 'true'))
+        if: steps.should-tf.outputs.run == 'true'
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.6.0"
+          terraform_version: "1.9.0"
 
       - name: Terraform Init
-        if: >-
-          (steps.tf-changes.outputs.changed == 'true' ||
-           (github.event_name == 'workflow_dispatch' && github.event.inputs.skip_terraform != 'true'))
+        if: steps.should-tf.outputs.run == 'true'
         working-directory: terraform/gcp
         run: |
           terraform init \
             -backend-config="bucket=${{ env.TF_STATE_BUCKET }}"
 
       - name: Terraform Plan
-        if: >-
-          (steps.tf-changes.outputs.changed == 'true' ||
-           (github.event_name == 'workflow_dispatch' && github.event.inputs.skip_terraform != 'true'))
+        if: steps.should-tf.outputs.run == 'true'
         working-directory: terraform/gcp
         run: |
           terraform plan \
@@ -134,9 +140,7 @@ jobs:
             -out=tfplan
 
       - name: Terraform Apply
-        if: >-
-          (steps.tf-changes.outputs.changed == 'true' ||
-           (github.event_name == 'workflow_dispatch' && github.event.inputs.skip_terraform != 'true'))
+        if: steps.should-tf.outputs.run == 'true'
         working-directory: terraform/gcp
         run: terraform apply -auto-approve tfplan
 

@@ -34,7 +34,7 @@ resource "google_sql_database_instance" "postgres" {
     backup_configuration {
       enabled                        = var.db_backup_enabled
       start_time                     = "03:00"
-      point_in_time_recovery_enabled = true
+      point_in_time_recovery_enabled = var.db_backup_enabled
       transaction_log_retention_days = 7
       
       backup_retention_settings {

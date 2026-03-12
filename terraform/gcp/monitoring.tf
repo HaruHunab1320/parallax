@@ -1,38 +1,6 @@
 # Monitoring Resources
-
-# Deploy etcd using Helm
-resource "helm_release" "etcd" {
-  name       = "etcd"
-  chart      = "oci://registry-1.docker.io/bitnamicharts/etcd"
-  version    = "12.0.18"
-  namespace  = kubernetes_namespace.parallax.metadata[0].name
-
-  values = [
-    yamlencode({
-      resources = {
-        requests = {
-          cpu    = "50m"
-          memory = "128Mi"
-        }
-      }
-      auth = {
-        rbac = {
-          create = false
-        }
-      }
-      persistence = {
-        enabled = true
-        size    = "8Gi"
-      }
-      metrics = {
-        enabled = true
-        serviceMonitor = {
-          enabled = true
-        }
-      }
-    })
-  ]
-}
+# NOTE: etcd is managed by the Helm chart (k8s/helm/parallax/templates/etcd-statefulset.yaml).
+# Grafana dashboards configmap is managed by the prometheus Helm release.
 
 # Deploy Prometheus using Helm
 resource "helm_release" "prometheus" {
@@ -97,54 +65,8 @@ resource "helm_release" "prometheus" {
         }
       }
       alertmanager = {
-        enabled = false  # Disable to save resources
+        enabled = false
       }
     })
   ]
 }
-
-# ConfigMap for Grafana dashboards
-resource "kubernetes_config_map" "grafana_dashboards" {
-  metadata {
-    name      = "parallax-dashboards"
-    namespace = kubernetes_namespace.parallax.metadata[0].name
-  }
-
-  data = {
-    "system-overview.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/parallax-system-overview.json")
-    "pattern-execution.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/parallax-pattern-execution.json")
-    "agent-performance.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/parallax-agent-performance.json")
-    "confidence-analytics.json" = file("${path.module}/../../packages/monitoring/grafana/dashboards/parallax-confidence-analytics.json")
-  }
-}
-
-# Service Monitor for Parallax metrics
-/*
-resource "kubernetes_manifest" "parallax_service_monitor" {
-  manifest = {
-    apiVersion = "monitoring.coreos.com/v1"
-    kind       = "ServiceMonitor"
-    metadata = {
-      name      = "parallax-control-plane"
-      namespace = kubernetes_namespace.parallax.metadata[0].name
-      labels = {
-        app = "parallax-control-plane"
-      }
-    }
-    spec = {
-      selector = {
-        matchLabels = {
-          app = "parallax-control-plane"
-        }
-      }
-      endpoints = [{
-        port = "http"
-        path = "/metrics"
-        interval = "30s"
-      }]
-    }
-  }
-
-  depends_on = [helm_release.prometheus]
-}
-*/
