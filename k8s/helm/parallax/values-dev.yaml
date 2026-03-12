@@ -63,6 +63,17 @@ ingress:
           service: web-dashboard
           port: 80
 
+security:
+  podSecurityContext:
+    runAsNonRoot: false
+    runAsUser: 0
+    fsGroup: 0
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    runAsNonRoot: false
+    runAsUser: 0
+
 monitoring:
   prometheus:
     serviceMonitor:
