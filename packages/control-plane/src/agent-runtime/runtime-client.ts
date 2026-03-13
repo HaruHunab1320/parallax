@@ -251,7 +251,8 @@ export class RuntimeClient extends EventEmitter {
    * Spawn a new thread
    */
   async spawnThread(input: SpawnThreadInput): Promise<ThreadHandle> {
-    return this.request<ThreadHandle>('POST', '/api/threads', input);
+    const thread = await this.request<ThreadHandle>('POST', '/api/threads', input);
+    return this.normalizeThreadHandle(thread);
   }
 
   /**
@@ -271,7 +272,8 @@ export class RuntimeClient extends EventEmitter {
    */
   async getThread(threadId: string): Promise<ThreadHandle | null> {
     try {
-      return await this.request<ThreadHandle>('GET', `/api/threads/${threadId}`);
+      const thread = await this.request<ThreadHandle>('GET', `/api/threads/${threadId}`);
+      return this.normalizeThreadHandle(thread);
     } catch (error: any) {
       if (error.status === 404) {
         return null;
@@ -301,7 +303,7 @@ export class RuntimeClient extends EventEmitter {
       'GET',
       `/api/threads${queryString ? '?' + queryString : ''}`
     );
-    return response.threads;
+    return response.threads.map((thread) => this.normalizeThreadHandle(thread));
   }
 
   /**
@@ -353,22 +355,23 @@ export class RuntimeClient extends EventEmitter {
   }
 
   private handleMessage(msg: { event: string; data: any; timestamp: string }): void {
-    this.emit(msg.event, msg.data);
+    const normalizedData = this.normalizeEventPayload(msg.event, msg.data);
+    this.emit(msg.event, normalizedData);
 
     // Forward messages to agent subscribers
-    if (msg.event === 'message' && msg.data?.message?.agentId) {
-      const agentId = msg.data.message.agentId;
+    if (msg.event === 'message' && normalizedData?.message?.agentId) {
+      const agentId = normalizedData.message.agentId;
       const callbacks = this.subscriptions.get(agentId);
       if (callbacks) {
-        callbacks.forEach(cb => cb(msg.data.message));
+        callbacks.forEach(cb => cb(normalizedData.message));
       }
     }
 
-    if (msg.event === 'thread_event' && msg.data?.event?.threadId) {
-      const threadId = msg.data.event.threadId;
+    if (msg.event === 'thread_event' && normalizedData?.event?.threadId) {
+      const threadId = normalizedData.event.threadId;
       const callbacks = this.threadSubscriptions.get(threadId);
       if (callbacks) {
-        callbacks.forEach((cb) => cb(msg.data.event));
+        callbacks.forEach((cb) => cb(normalizedData.event));
       }
     }
   }
@@ -422,5 +425,51 @@ export class RuntimeClient extends EventEmitter {
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  private normalizeThreadHandle(thread: ThreadHandle): ThreadHandle {
+    return {
+      ...thread,
+      createdAt: new Date(thread.createdAt),
+      updatedAt: new Date(thread.updatedAt),
+      lastActivityAt: thread.lastActivityAt ? new Date(thread.lastActivityAt) : undefined,
+    };
+  }
+
+  private normalizeThreadEvent(event: ThreadEvent): ThreadEvent {
+    return {
+      ...event,
+      timestamp: new Date(event.timestamp),
+    };
+  }
+
+  private normalizeAgentMessage(message: AgentMessage): AgentMessage {
+    return {
+      ...message,
+      timestamp: new Date(message.timestamp),
+    };
+  }
+
+  private normalizeEventPayload(event: string, data: any): any {
+    if (!data) {
+      return data;
+    }
+
+    if (event === 'message' && data.message) {
+      return {
+        ...data,
+        message: this.normalizeAgentMessage(data.message),
+      };
+    }
+
+    if (event === 'thread_event' && data.thread && data.event) {
+      return {
+        ...data,
+        thread: this.normalizeThreadHandle(data.thread),
+        event: this.normalizeThreadEvent(data.event),
+      };
+    }
+
+    return data;
   }
 }

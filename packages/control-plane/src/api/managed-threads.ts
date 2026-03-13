@@ -161,6 +161,50 @@ export function createManagedThreadsRouter(
     }
   });
 
+  router.get('/executions/:executionId/shared-decisions', async (req: Request, res: Response) => {
+    if (!sharedDecisionRepository) {
+      res.status(501).json({ error: 'Shared decisions require persistence' });
+      return;
+    }
+
+    try {
+      const decisions = await sharedDecisionRepository.findAll({
+        executionId: req.params.executionId,
+        category: req.query.category as string | undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+      });
+      res.json({ decisions, count: decisions.length });
+    } catch (error) {
+      logger.error(
+        { error, executionId: req.params.executionId },
+        'Failed to get shared decisions for execution'
+      );
+      res.status(500).json({ error: 'Failed to get shared decisions for execution' });
+    }
+  });
+
+  router.get('/experiences', async (req: Request, res: Response) => {
+    if (!episodicExperienceRepository) {
+      res.status(501).json({ error: 'Episodic experiences require persistence' });
+      return;
+    }
+
+    try {
+      const experiences = await episodicExperienceRepository.findAll({
+        executionId: req.query.executionId as string | undefined,
+        threadId: req.query.threadId as string | undefined,
+        role: req.query.role as string | undefined,
+        repo: req.query.repo as string | undefined,
+        outcome: req.query.outcome as string | undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+      });
+      res.json({ experiences, count: experiences.length });
+    } catch (error) {
+      logger.error({ error }, 'Failed to get episodic experiences');
+      res.status(500).json({ error: 'Failed to get episodic experiences' });
+    }
+  });
+
   router.get('/:id', async (req: Request, res: Response) => {
     try {
       const thread = threadRepository
@@ -246,50 +290,6 @@ export function createManagedThreadsRouter(
     } catch (error) {
       logger.error({ error, threadId: req.params.id }, 'Failed to get shared decisions for thread');
       res.status(500).json({ error: 'Failed to get shared decisions for thread' });
-    }
-  });
-
-  router.get('/executions/:executionId/shared-decisions', async (req: Request, res: Response) => {
-    if (!sharedDecisionRepository) {
-      res.status(501).json({ error: 'Shared decisions require persistence' });
-      return;
-    }
-
-    try {
-      const decisions = await sharedDecisionRepository.findAll({
-        executionId: req.params.executionId,
-        category: req.query.category as string | undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
-      });
-      res.json({ decisions, count: decisions.length });
-    } catch (error) {
-      logger.error(
-        { error, executionId: req.params.executionId },
-        'Failed to get shared decisions for execution'
-      );
-      res.status(500).json({ error: 'Failed to get shared decisions for execution' });
-    }
-  });
-
-  router.get('/experiences', async (req: Request, res: Response) => {
-    if (!episodicExperienceRepository) {
-      res.status(501).json({ error: 'Episodic experiences require persistence' });
-      return;
-    }
-
-    try {
-      const experiences = await episodicExperienceRepository.findAll({
-        executionId: req.query.executionId as string | undefined,
-        threadId: req.query.threadId as string | undefined,
-        role: req.query.role as string | undefined,
-        repo: req.query.repo as string | undefined,
-        outcome: req.query.outcome as string | undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
-      });
-      res.json({ experiences, count: experiences.length });
-    } catch (error) {
-      logger.error({ error }, 'Failed to get episodic experiences');
-      res.status(500).json({ error: 'Failed to get episodic experiences' });
     }
   });
 

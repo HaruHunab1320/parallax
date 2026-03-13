@@ -396,6 +396,9 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
       type: config.type,
       workdir: config.workdir,
       env,
+      adapterConfig: {
+        interactive: true,
+      },
     };
 
     const handle = await this.manager.spawn(spawnConfig);

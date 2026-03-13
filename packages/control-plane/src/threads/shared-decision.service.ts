@@ -127,7 +127,7 @@ export class SharedDecisionService {
     const fromCompletion = thread.completion?.summary;
     const fromThread = thread.summary;
 
-    return fromEvent || fromCompletion || fromThread || null;
+    return fromEvent || fromCompletion || fromThread || this.buildFallbackSummary(thread, event);
   }
 
   private getString(value: unknown): string | null {
@@ -149,6 +149,22 @@ export class SharedDecisionService {
 
   private normalizeSummary(summary: string): string {
     return summary.replace(/\s+/g, ' ').trim();
+  }
+
+  private buildFallbackSummary(thread: ThreadHandle, event: ThreadEvent): string | null {
+    if (event.type === 'thread_turn_complete') {
+      return `Completed a supervised turn for objective: ${thread.objective}`;
+    }
+
+    if (event.type === 'thread_completed') {
+      return `Completed objective: ${thread.objective}`;
+    }
+
+    if (event.type === 'thread_failed') {
+      return `Failed while working on objective: ${thread.objective}`;
+    }
+
+    return null;
   }
 
   private areSemanticallyEquivalent(left: string, right: string): boolean {

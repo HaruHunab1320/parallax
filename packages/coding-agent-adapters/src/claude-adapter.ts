@@ -54,6 +54,16 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    */
   readonly autoResponseRules: AutoResponseRule[] = [
     {
+      pattern: /choose\s+the\s+text\s+style\s+that\s+looks\s+best\s+with\s+your\s+terminal|syntax\s+theme:/i,
+      type: 'config',
+      response: '',
+      responseType: 'keys',
+      keys: ['enter'],
+      description: 'Accept Claude first-run theme/style prompt',
+      safe: true,
+      once: true,
+    },
+    {
       pattern: /trust.*(?:folder|directory)|safety.?check|project.you.created|(?:Yes|Allow).*(?:No|Deny).*(?:Enter|Return)/i,
       type: 'permission',
       response: '',
@@ -734,10 +744,18 @@ jq -nc \
 
     const hasLegacyPrompt = /claude>/i.test(tail);
     const hasShortcutsHint = stripped.includes('for shortcuts');
+    const hasInteractivePromptBar =
+      /❯\s+\S/.test(tail) &&
+      (
+        /\/effort/i.test(stripped) ||
+        /Welcome back/i.test(stripped) ||
+        /Recent activity/i.test(stripped) ||
+        /What's new/i.test(stripped)
+      );
 
     // Deliberately do NOT treat a bare "❯" as ready. Claude's TUI redraws
     // can emit transient prompt glyphs before fully settling.
-    return hasConversationalReadyText || hasLegacyPrompt || hasShortcutsHint;
+    return hasConversationalReadyText || hasLegacyPrompt || hasShortcutsHint || hasInteractivePromptBar;
   }
 
   parseOutput(output: string): ParsedOutput | null {

@@ -66,7 +66,8 @@ export class EpisodicExperienceService {
     const summary =
       this.getString(event.data?.summary) ||
       thread.completion?.summary ||
-      thread.summary;
+      thread.summary ||
+      this.buildFallbackSummary(thread, event);
     if (!summary) return null;
 
     const outcome = this.getOutcome(thread, event);
@@ -130,6 +131,22 @@ export class EpisodicExperienceService {
 
   private normalizeSummary(summary: string): string {
     return summary.replace(/\s+/g, ' ').trim();
+  }
+
+  private buildFallbackSummary(thread: ThreadHandle, event: ThreadEvent): string | null {
+    if (event.type === 'thread_turn_complete') {
+      return `Completed a supervised turn for objective: ${thread.objective}`;
+    }
+
+    if (event.type === 'thread_completed') {
+      return `Completed objective: ${thread.objective}`;
+    }
+
+    if (event.type === 'thread_failed') {
+      return `Failed while working on objective: ${thread.objective}`;
+    }
+
+    return null;
   }
 
   private fingerprint(value: string): string {

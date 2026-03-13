@@ -69,6 +69,8 @@ function normalizeThreadEventRecord(record: any): PersistedThreadEvent {
 export class ThreadRepository extends BaseRepository {
   async upsert(thread: ThreadHandle, runtimeName?: string): Promise<PersistedThread> {
     return this.executeQuery(async () => {
+      const createdAt = thread.createdAt.toISOString();
+      const lastActivityAt = thread.lastActivityAt ? thread.lastActivityAt.toISOString() : null;
       const rows = await this.prisma.$queryRaw<PersistedThread[]>`
         INSERT INTO "threads" (
           "id",
@@ -100,9 +102,9 @@ export class ThreadRepository extends BaseRepository {
           ${thread.summary ?? null},
           ${toJson(thread.completion)},
           ${toJson(thread.metadata)},
-          ${thread.createdAt},
+          ${createdAt}::timestamptz,
           NOW(),
-          ${thread.lastActivityAt ?? null}
+          ${lastActivityAt}::timestamptz
         )
         ON CONFLICT ("id") DO UPDATE SET
           "execution_id" = EXCLUDED."execution_id",

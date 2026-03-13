@@ -419,6 +419,20 @@ export class CodexAdapter extends BaseCodingAdapter {
   }
 
   detectReady(output: string): boolean {
+    const rawTail = output.slice(-2000);
+    const hasRawComposerSignals =
+      /OpenAI\s+Codex/i.test(rawTail) &&
+      (
+        /Explain\s+this\s+codebase/i.test(rawTail) ||
+        /Summarize\s+recent\s+commits/i.test(rawTail) ||
+        /Ask\s+Codex\s+to\s+do\s+anything/i.test(rawTail) ||
+        /\?\s+for\s+shortcuts/i.test(rawTail) ||
+        /context\s+left/i.test(rawTail)
+      );
+    if (hasRawComposerSignals) {
+      return true;
+    }
+
     const stripped = this.stripAnsi(output);
     if (!stripped.trim()) return false;
     // Same rationale as detectTaskComplete: don't let stale loading patterns
@@ -436,8 +450,18 @@ export class CodexAdapter extends BaseCodingAdapter {
       /context\s+left/i.test(tail) ||
       /tab\s+to\s+queue\s+message/i.test(tail) ||
       /shift\s*\+\s*enter\s+for\s+newline/i.test(tail);
+    const hasStartupComposerHints =
+      /Summarize\s+recent\s+commits/i.test(tail) ||
+      /Explain\s+this\s+codebase/i.test(tail) ||
+      /Ask\s+Codex\s+to\s+do\s+anything/i.test(tail);
+    const hasCodexHeader =
+      /OpenAI\s+Codex/i.test(tail) &&
+      /directory:\s+~?\/?.+/i.test(tail);
+    const hasInteractiveStatusBar =
+      /gpt-[\w.-]+\s+(?:high|medium|low)/i.test(tail) &&
+      /left\b/i.test(tail);
 
-    if (hasComposerPrompt || hasComposerFooter) {
+    if (hasComposerPrompt || hasComposerFooter || hasStartupComposerHints || (hasCodexHeader && hasInteractiveStatusBar)) {
       return true;
     }
 

@@ -1,0 +1,93 @@
+# Threaded Code Review Org Pattern
+#
+# Minimal org-chart pattern that opts all roles into thread-backed execution.
+# Useful as a smoke-test fixture for managed thread orchestration.
+
+name: threaded-code-review
+version: "1.0.0"
+description: |
+  Thread-backed code review workflow for validating managed thread orchestration,
+  preparation, persistence, and memory capture.
+
+structure:
+  name: Threaded Code Review
+  description: Reviewer and implementer roles supervised as managed threads
+
+  roles:
+    reviewer:
+      id: reviewer
+      name: Reviewer
+      description: Reviews the task and produces a concise risk summary
+      agentType: codex
+      singleton: true
+      capabilities:
+        - code_review
+        - risk_analysis
+      threadConfig:
+        enabled: true
+        objective: Review the requested change, identify risks, and summarize next actions.
+        approvalPreset: standard
+        metadata:
+          smokeTestRole: reviewer
+
+    implementer:
+      id: implementer
+      name: Implementer
+      description: Produces an implementation or remediation plan from the review
+      agentType: codex
+      singleton: true
+      capabilities:
+        - implementation
+        - remediation
+      threadConfig:
+        enabled: true
+        objective: Produce an implementation or remediation plan from the reviewer guidance.
+        approvalPreset: standard
+        metadata:
+          smokeTestRole: implementer
+
+  routing:
+    - from: implementer
+      to: reviewer
+      messageTypes:
+        - question
+
+  escalation:
+    defaultBehavior: route_to_reports_to
+    timeoutMs: 30000
+    maxDepth: 1
+    onMaxDepth: surface_to_user
+
+workflow:
+  name: Threaded Review Flow
+  input:
+    task:
+      type: string
+      description: Task or code review target
+
+  steps:
+    - type: assign
+      role: reviewer
+      task: |
+        Review the following task and produce:
+        1. Primary risks
+        2. Suggested approach
+        3. A short completion summary
+
+        Task: ${input.task}
+
+    - type: assign
+      role: implementer
+      task: |
+        Use the review output below to produce a remediation or implementation plan.
+        End with a concise completion summary.
+
+        Review: ${step_0_result}
+
+  output: step_1_result
+
+metadata:
+  category: thread-smoke
+  complexity: low
+  minAgents: 0
+  maxAgents: 0

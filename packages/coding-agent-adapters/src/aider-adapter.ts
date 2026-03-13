@@ -71,6 +71,14 @@ export class AiderAdapter extends BaseCodingAdapter {
       description: 'Decline automatic bug report',
       safe: true,
     },
+    {
+      pattern: /open documentation url for more info\?/i,
+      type: 'config',
+      response: 'n',
+      responseType: 'text',
+      description: 'Decline opening Aider documentation for model warnings',
+      safe: true,
+    },
     // ── File / edit operations ──────────────────────────────────────────
     {
       pattern: /add .+ to the chat\?/i,
@@ -249,14 +257,14 @@ export class AiderAdapter extends BaseCodingAdapter {
 
   getArgs(config: SpawnConfig): string[] {
     const args: string[] = [];
+    const interactive = this.isInteractive(config);
 
-    // Use auto-commits to avoid manual git operations
-    args.push('--auto-commits');
+    if (!interactive) {
+      // Use auto-commits to avoid manual git operations in automation mode.
+      args.push('--auto-commits');
 
-    // Disable pretty output for easier parsing (skip if interactive mode)
-    if (!this.isInteractive(config)) {
+      // Disable pretty output for easier parsing (automation mode only).
       args.push('--no-pretty');
-      // Don't show diffs (we'll handle this separately if needed)
       args.push('--no-show-diffs');
     }
 
@@ -269,26 +277,30 @@ export class AiderAdapter extends BaseCodingAdapter {
     const credentials = this.getCredentials(config);
     if (config.env?.AIDER_MODEL) {
       args.push('--model', config.env.AIDER_MODEL);
-    } else if (provider === 'anthropic') {
-      args.push('--model', 'sonnet');
-    } else if (provider === 'openai') {
-      args.push('--model', '4o');
-    } else if (provider === 'google') {
+    } else if (interactive && (credentials.googleKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) {
       args.push('--model', 'gemini');
-    } else if (credentials.anthropicKey) {
+    } else if (!interactive && provider === 'anthropic') {
+      args.push('--model', 'sonnet');
+    } else if (!interactive && provider === 'openai') {
+      args.push('--model', '4o');
+    } else if (!interactive && provider === 'google') {
+      args.push('--model', 'gemini');
+    } else if (!interactive && credentials.anthropicKey) {
       // No explicit provider — infer from available API keys
       args.push('--model', 'sonnet');
-    } else if (credentials.openaiKey) {
+    } else if (!interactive && credentials.openaiKey) {
       args.push('--model', '4o');
-    } else if (credentials.googleKey) {
+    } else if (!interactive && credentials.googleKey) {
       args.push('--model', 'gemini');
     }
     // No keys at all → don't force a model, let aider use its own default
 
-    // API keys via --api-key flag (no env vars needed)
-    if (credentials.anthropicKey) args.push('--api-key', `anthropic=${credentials.anthropicKey}`);
-    if (credentials.openaiKey) args.push('--api-key', `openai=${credentials.openaiKey}`);
-    if (credentials.googleKey) args.push('--api-key', `gemini=${credentials.googleKey}`);
+    // API keys via --api-key flag only in automation mode.
+    if (!interactive) {
+      if (credentials.anthropicKey) args.push('--api-key', `anthropic=${credentials.anthropicKey}`);
+      if (credentials.openaiKey) args.push('--api-key', `openai=${credentials.openaiKey}`);
+      if (credentials.googleKey) args.push('--api-key', `gemini=${credentials.googleKey}`);
+    }
 
     // Append approval preset CLI flags
     const approvalConfig = this.getApprovalConfig(config);

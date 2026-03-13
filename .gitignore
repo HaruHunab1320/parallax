@@ -121,3 +121,5 @@ etcd/
 # Git workspaces (cloned repos for coding tasks)
 .workspaces/
 prod-urls.txt
+.aider*
+.parallax/
