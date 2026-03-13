@@ -107,7 +107,7 @@ export class RuntimeManager {
       }
 
       const prismValue = toPrismValue(value);
-      const line = `${varName} = ${prismValue}`;
+      const line = `let ${varName} = ${prismValue}`;
 
       // Log the generated line for debugging
       if (key === 'parallax') {

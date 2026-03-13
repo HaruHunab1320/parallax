@@ -71,7 +71,7 @@ export class HealthCheckService {
   
   private async checkRuntimeManager(): Promise<void> {
     // Check if runtime can execute a simple script
-    const testScript = 'result = 1 + 1\nresult ~> 1.0';
+    const testScript = 'let result = 1 + 1\nresult ~> 1.0';
     await this.runtimeManager.executePrismScript(testScript, {});
   }
   
