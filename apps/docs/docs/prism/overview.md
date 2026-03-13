@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: Overview
+description: Prism is a domain-specific language for defining multi-agent orchestration patterns with built-in confidence scoring and consensus primitives.
 ---
 
 # Prism DSL

@@ -41,6 +41,21 @@ const config: Config = {
       } satisfies Preset.Options,
     ],
   ],
+  plugins: [
+    [
+      'docusaurus-plugin-llms',
+      {
+        generateLLMsTxt: true,
+        generateLLMsFullTxt: true,
+        docsDir: 'docs',
+        title: 'Parallax',
+        description:
+          'Parallax is an orchestration layer for AI agents. It coordinates multiple agents/models, applies consensus and quality gates, and produces confidence-scored results. Patterns are defined in YAML or via the visual Pattern Builder.',
+        excludeImports: true,
+        removeDuplicateHeadings: true,
+      },
+    ],
+  ],
   themes: ['@docusaurus/theme-mermaid'],
   markdown: {
     mermaid: true,
