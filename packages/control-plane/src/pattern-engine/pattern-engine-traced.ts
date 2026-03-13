@@ -219,7 +219,8 @@ export class TracedPatternEngine implements IPatternEngine {
             patternNameLower.includes('qualitygate') ||
             patternNameLower.includes('translation') ||
             patternNameLower.includes('documentanalysis') ||
-            patternNameLower.includes('prompttest')
+            patternNameLower.includes('prompttest') ||
+            patternNameLower.includes('station')
           ) {
             let agentResults: any[];
 
