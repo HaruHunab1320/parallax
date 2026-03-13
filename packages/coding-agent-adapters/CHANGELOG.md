@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.14.0] - 2026-03-13
+
+### Added
+- Claude first-run theme/style auto-response rule:
+  - detects the initial text style / syntax theme setup prompt
+  - sends `Enter` automatically so supervised startup can continue without manual terminal input
+- Aider auto-response rule for model warning docs prompt:
+  - detects `Open documentation url for more info?`
+  - responds with `n` to avoid blocking startup on docs navigation
+
+### Changed
+- Interactive CLI launches are now supported cleanly by the adapters when runtimes spawn the bare commands:
+  - Claude interactive sessions no longer depend on automation-only startup flags
+  - Codex interactive startup is recognized as ready from its composer UI/state bar
+  - Aider interactive sessions avoid automation-only flags and prefer a sane Gemini model when Gemini credentials are available
+- Codex ready detection now recognizes real TUI startup/composer output instead of waiting on automation-oriented prompts only.
+- Claude ready detection now recognizes the post-login interactive prompt bar and home screen state more reliably.
+
 ## [0.13.0] - 2026-03-10
 
 ### Changed
