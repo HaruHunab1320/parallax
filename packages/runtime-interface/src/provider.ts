@@ -12,6 +12,11 @@ import {
   AgentStatus,
   AgentType,
   AgentMetrics,
+  SpawnThreadInput,
+  ThreadEvent,
+  ThreadFilter,
+  ThreadHandle,
+  ThreadInput,
 } from './types';
 
 /**
@@ -145,6 +150,44 @@ export interface RuntimeProvider {
 }
 
 /**
+ * Optional interface for runtimes that support first-class long-lived threads.
+ *
+ * This is additive and intentionally does not replace the lower-level
+ * agent-oriented RuntimeProvider contract.
+ */
+export interface ThreadRuntimeProvider {
+  /**
+   * Spawn a new thread.
+   */
+  spawnThread(input: SpawnThreadInput): Promise<ThreadHandle>;
+
+  /**
+   * Stop a thread.
+   */
+  stopThread(threadId: string, options?: StopOptions): Promise<void>;
+
+  /**
+   * Send input to a thread.
+   */
+  sendToThread(threadId: string, input: ThreadInput): Promise<void>;
+
+  /**
+   * Get thread by ID.
+   */
+  getThread(threadId: string): Promise<ThreadHandle | null>;
+
+  /**
+   * List threads managed by this runtime.
+   */
+  listThreads(filter?: ThreadFilter): Promise<ThreadHandle[]>;
+
+  /**
+   * Subscribe to thread events.
+   */
+  subscribeThread(threadId: string): AsyncIterable<ThreadEvent>;
+}
+
+/**
  * Extended RuntimeProvider with event emitter capabilities
  */
 export interface RuntimeProviderWithEvents extends RuntimeProvider, EventEmitter {
@@ -156,6 +199,7 @@ export interface RuntimeProviderWithEvents extends RuntimeProvider, EventEmitter
   on(event: 'login_required', listener: (agent: AgentHandle, loginUrl?: string) => void): this;
   on(event: 'message', listener: (message: AgentMessage) => void): this;
   on(event: 'question', listener: (agent: AgentHandle, question: string) => void): this;
+  on(event: 'thread_event', listener: (thread: ThreadHandle, event: ThreadEvent) => void): this;
 
   emit(event: 'agent_started', agent: AgentHandle): boolean;
   emit(event: 'agent_ready', agent: AgentHandle): boolean;
@@ -164,6 +208,7 @@ export interface RuntimeProviderWithEvents extends RuntimeProvider, EventEmitter
   emit(event: 'login_required', agent: AgentHandle, loginUrl?: string): boolean;
   emit(event: 'message', message: AgentMessage): boolean;
   emit(event: 'question', agent: AgentHandle, question: string): boolean;
+  emit(event: 'thread_event', thread: ThreadHandle, threadEvent: ThreadEvent): boolean;
 }
 
 /**

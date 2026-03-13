@@ -13,8 +13,10 @@ npm install @parallaxai/runtime-interface
 ```typescript
 import {
   RuntimeProvider,
+  ThreadRuntimeProvider,
   AgentConfig,
   AgentHandle,
+  ThreadHandle,
   CLIAdapter,
   AdapterRegistry,
 } from '@parallaxai/runtime-interface';
@@ -33,6 +35,19 @@ Defines the contract for agent runtime implementations:
 - `listAgents(filter?)` — List agents matching optional filter criteria
 - `getLogs(agentId, options?)` — Retrieve agent log entries
 
+### ThreadRuntimeProvider
+
+Optional additive contract for runtimes that support first-class long-lived work threads:
+
+- `spawnThread(input)` — Start a thread-backed unit of work
+- `getThread(threadId)` — Get current thread state
+- `listThreads(filter?)` — List known threads
+- `sendToThread(threadId, input)` — Send input/keys/raw data to a thread
+- `stopThread(threadId, options?)` — Stop a thread
+- `subscribeThread(threadId)` — Stream normalized thread events
+
+Thread creation may include a `ThreadPreparationSpec` to bundle workspace, env, context files, and approval policy as one preparation contract instead of loose spawn fields.
+
 ### CLIAdapter
 
 Defines the contract for CLI tool adapters that parse and interact with specific coding agents:
@@ -49,7 +64,7 @@ Registry for managing CLI adapters by agent type.
 
 ## Types
 
-See the [source](./src/types.ts) for the full type definitions including `AgentConfig`, `AgentHandle`, `AgentMessage`, `RuntimeEvent`, and more.
+See the [source](./src/types.ts) for the full type definitions including `AgentConfig`, `AgentHandle`, `ThreadHandle`, `AgentMessage`, `ThreadEvent`, `RuntimeEvent`, and more.
 
 ## License
 

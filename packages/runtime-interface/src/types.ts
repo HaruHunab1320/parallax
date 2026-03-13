@@ -23,6 +23,25 @@ export type AgentStatus =
   | 'error';         // Failed state
 
 /**
+ * Thread lifecycle states.
+ *
+ * A thread is the orchestration-level unit of long-lived work. It may be backed
+ * by one concrete agent/session, but the control plane reasons about the thread.
+ */
+export type ThreadStatus =
+  | 'pending'
+  | 'preparing'
+  | 'starting'
+  | 'ready'
+  | 'running'
+  | 'blocked'
+  | 'idle'
+  | 'waiting'
+  | 'completed'
+  | 'failed'
+  | 'stopped';
+
+/**
  * Message types for agent communication
  */
 export type MessageType =
@@ -107,6 +126,80 @@ export interface AgentHandle {
 }
 
 /**
+ * Optional workspace reference associated with a thread.
+ */
+export interface ThreadWorkspaceRef {
+  workspaceId?: string;
+  path?: string;
+  repo?: string;
+  branch?: string;
+  worktreeId?: string;
+}
+
+/**
+ * Completion details for a thread.
+ */
+export interface ThreadCompletion {
+  state: 'partial' | 'complete' | 'failed';
+  summary: string;
+  artifacts?: Array<{
+    type: 'pr' | 'commit' | 'file' | 'url' | 'report';
+    value: string;
+  }>;
+}
+
+/**
+ * Policy controls for long-lived thread supervision.
+ */
+export interface ThreadPolicy {
+  idleTimeoutMs?: number;
+  maxIdleChecks?: number;
+  autoInterruptOnToolRunning?: boolean;
+  maxAutoResponses?: number;
+  requireWorkspaceBoundary?: boolean;
+  summarizeAfterTurns?: number;
+}
+
+export type ThreadApprovalPreset =
+  | 'readonly'
+  | 'standard'
+  | 'permissive'
+  | 'autonomous';
+
+export interface ThreadContextFile {
+  path: string;
+  content: string;
+}
+
+export interface ThreadPreparationSpec {
+  workspace?: ThreadWorkspaceRef;
+  env?: Record<string, string>;
+  contextFiles?: ThreadContextFile[];
+  approvalPreset?: ThreadApprovalPreset;
+}
+
+/**
+ * Handle to a running thread.
+ */
+export interface ThreadHandle {
+  id: string;
+  executionId: string;
+  runtimeName: string;
+  agentId?: string;
+  agentType: AgentType | string;
+  role?: string;
+  status: ThreadStatus;
+  workspace?: ThreadWorkspaceRef;
+  objective: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastActivityAt?: Date;
+  summary?: string;
+  completion?: ThreadCompletion;
+  metadata?: Record<string, unknown>;
+}
+
+/**
  * Message to/from an agent
  */
 export interface AgentMessage {
@@ -132,6 +225,33 @@ export interface BlockingPromptInfo {
 }
 
 /**
+ * Event types emitted for threads.
+ */
+export type ThreadEventType =
+  | 'thread_started'
+  | 'thread_ready'
+  | 'thread_output'
+  | 'thread_blocked'
+  | 'thread_tool_running'
+  | 'thread_turn_complete'
+  | 'thread_idle'
+  | 'thread_summary_updated'
+  | 'thread_completed'
+  | 'thread_failed'
+  | 'thread_stopped';
+
+/**
+ * Normalized thread event.
+ */
+export interface ThreadEvent {
+  threadId: string;
+  executionId: string;
+  type: ThreadEventType;
+  timestamp: Date;
+  data?: Record<string, unknown>;
+}
+
+/**
  * Runtime events
  */
 export type RuntimeEvent =
@@ -142,7 +262,8 @@ export type RuntimeEvent =
   | { type: 'login_required'; agent: AgentHandle; loginUrl?: string; loginInstructions?: string }
   | { type: 'blocking_prompt'; agent: AgentHandle; prompt: BlockingPromptInfo; autoResponded: boolean }
   | { type: 'message'; message: AgentMessage }
-  | { type: 'question'; agent: AgentHandle; question: string; context?: string };
+  | { type: 'question'; agent: AgentHandle; question: string; context?: string }
+  | { type: 'thread_event'; thread: ThreadHandle; event: ThreadEvent };
 
 /**
  * Agent requirement for pattern execution
@@ -174,4 +295,43 @@ export interface AgentLogEntry {
   level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
   metadata?: Record<string, unknown>;
+}
+
+/**
+ * Input for spawning a thread.
+ */
+export interface SpawnThreadInput {
+  id?: string;
+  executionId: string;
+  name: string;
+  agentType: AgentType | string;
+  objective: string;
+  role?: string;
+  preparation?: ThreadPreparationSpec;
+  workspace?: ThreadWorkspaceRef;
+  env?: Record<string, string>;
+  contextFiles?: ThreadContextFile[];
+  approvalPreset?: ThreadApprovalPreset;
+  metadata?: Record<string, unknown>;
+  policy?: ThreadPolicy;
+}
+
+/**
+ * Input sent to a running thread.
+ */
+export interface ThreadInput {
+  message?: string;
+  raw?: string;
+  keys?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Filter for listing threads.
+ */
+export interface ThreadFilter {
+  executionId?: string;
+  status?: ThreadStatus | ThreadStatus[];
+  role?: string;
+  agentType?: string | string[];
 }

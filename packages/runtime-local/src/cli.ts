@@ -50,9 +50,14 @@ async function main(): Promise<void> {
 ║    GET  /api/health          Health check                        ║
 ║    GET  /api/agents          List agents                         ║
 ║    POST /api/agents          Spawn agent                         ║
+║    GET  /api/threads         List threads                        ║
+║    POST /api/threads         Spawn thread                        ║
 ║    GET  /api/agents/:id      Get agent                           ║
 ║    DELETE /api/agents/:id    Stop agent                          ║
 ║    POST /api/agents/:id/send Send message                        ║
+║    GET  /api/threads/:id     Get thread                          ║
+║    DELETE /api/threads/:id   Stop thread                         ║
+║    POST /api/threads/:id/send Send input to thread               ║
 ║    GET  /api/agents/:id/logs Get logs                            ║
 ║                                                                  ║
 ║  Press Ctrl+C to stop                                            ║

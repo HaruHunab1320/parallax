@@ -32,4 +32,7 @@ export {
   AgentStatus,
   AgentType,
   RuntimeProvider,
+  ThreadEvent,
+  ThreadHandle,
+  ThreadRuntimeProvider,
 } from '@parallaxai/runtime-interface';

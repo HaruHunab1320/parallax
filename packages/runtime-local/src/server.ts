@@ -9,7 +9,11 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer, Server, IncomingMessage } from 'http';
 import { Logger } from 'pino';
 import { LocalRuntime } from './local-runtime';
-import { AgentConfig, AgentHandle, AgentMessage } from '@parallaxai/runtime-interface';
+import {
+  AgentConfig,
+  SpawnThreadInput,
+  ThreadInput,
+} from '@parallaxai/runtime-interface';
 
 export interface RuntimeServerOptions {
   port: number;
@@ -178,6 +182,100 @@ export class RuntimeServer {
       }
     });
 
+    // List threads
+    router.get('/threads', async (req: Request, res: Response) => {
+      try {
+        const filter: any = {};
+        if (req.query.executionId) filter.executionId = req.query.executionId;
+        if (req.query.status) filter.status = req.query.status;
+        if (req.query.role) filter.role = req.query.role;
+        if (req.query.agentType) filter.agentType = req.query.agentType;
+
+        const threads = await this.runtime.listThreads(filter);
+        res.json({ threads, count: threads.length });
+      } catch (error) {
+        this.handleError(res, error);
+      }
+    });
+
+    // Get thread by ID
+    router.get('/threads/:id', async (req: Request, res: Response) => {
+      try {
+        const thread = await this.runtime.getThread(req.params.id);
+        if (!thread) {
+          res.status(404).json({ error: 'Thread not found' });
+          return;
+        }
+        res.json(thread);
+      } catch (error) {
+        this.handleError(res, error);
+      }
+    });
+
+    // Spawn thread
+    router.post('/threads', async (req: Request, res: Response) => {
+      try {
+        const input: SpawnThreadInput = req.body;
+
+        if (!input.executionId) {
+          res.status(400).json({ error: 'executionId is required' });
+          return;
+        }
+
+        if (!input.agentType) {
+          res.status(400).json({ error: 'agentType is required' });
+          return;
+        }
+
+        if (!input.name) {
+          res.status(400).json({ error: 'thread name is required' });
+          return;
+        }
+
+        if (!input.objective) {
+          res.status(400).json({ error: 'objective is required' });
+          return;
+        }
+
+        const thread = await this.runtime.spawnThread(input);
+        res.status(201).json(thread);
+      } catch (error) {
+        this.handleError(res, error);
+      }
+    });
+
+    // Stop thread
+    router.delete('/threads/:id', async (req: Request, res: Response) => {
+      try {
+        const force = req.query.force === 'true';
+        const timeout = req.query.timeout
+          ? parseInt(req.query.timeout as string, 10)
+          : undefined;
+
+        await this.runtime.stopThread(req.params.id, { force, timeout });
+        res.status(204).send();
+      } catch (error) {
+        this.handleError(res, error);
+      }
+    });
+
+    // Send input to thread
+    router.post('/threads/:id/send', async (req: Request, res: Response) => {
+      try {
+        const input: ThreadInput = req.body;
+
+        if (!input.message && !input.raw && !input.keys) {
+          res.status(400).json({ error: 'message, raw, or keys is required' });
+          return;
+        }
+
+        await this.runtime.sendToThread(req.params.id, input);
+        res.json({ sent: true });
+      } catch (error) {
+        this.handleError(res, error);
+      }
+    });
+
     this.app.use('/api', router);
 
     // Root endpoint
@@ -188,6 +286,7 @@ export class RuntimeServer {
         endpoints: {
           health: '/api/health',
           agents: '/api/agents',
+          threads: '/api/threads',
           websocket: {
             general: '/ws',
             events: '/ws/events',
@@ -231,6 +330,10 @@ export class RuntimeServer {
     this.runtime.on('question', (agent, question) => {
       this.broadcast('question', { agent, question });
       this.broadcastToAgent(agent.id, 'question', { agent, question });
+    });
+
+    this.runtime.on('thread_event', (thread, event) => {
+      this.broadcast('thread_event', { thread, event });
     });
   }
 
@@ -449,11 +552,18 @@ export class RuntimeServer {
 
       const url = new URL(req.url || '/', `http://${req.headers.host}`);
       const agentIdFilter = url.searchParams.get('agentId');
+      const threadIdFilter = url.searchParams.get('threadId');
 
       // Send initial message
       ws.send(JSON.stringify({
         type: 'connected',
-        filter: agentIdFilter ? { agentId: agentIdFilter } : null,
+        filter:
+          agentIdFilter || threadIdFilter
+            ? {
+                ...(agentIdFilter ? { agentId: agentIdFilter } : {}),
+                ...(threadIdFilter ? { threadId: threadIdFilter } : {}),
+              }
+            : null,
         timestamp: new Date().toISOString(),
       }));
 
@@ -467,6 +577,13 @@ export class RuntimeServer {
           const message = data.message as { agentId?: string } | undefined;
           const eventAgentId = agent?.id || data.agentId || message?.agentId;
           if (eventAgentId && eventAgentId !== agentIdFilter) return;
+        }
+
+        if (threadIdFilter) {
+          const thread = data.thread as { id?: string } | undefined;
+          const eventInfo = data.event as { threadId?: string } | undefined;
+          const eventThreadId = thread?.id || eventInfo?.threadId;
+          if (eventThreadId && eventThreadId !== threadIdFilter) return;
         }
 
         ws.send(JSON.stringify({
@@ -485,6 +602,7 @@ export class RuntimeServer {
         login_required: (agent: unknown, loginUrl: unknown) => sendEvent('login_required', { agent, loginUrl: loginUrl as string }),
         message: (message: unknown) => sendEvent('message', { message }),
         question: (agent: unknown, question: unknown) => sendEvent('question', { agent, question: question as string }),
+        thread_event: (thread: unknown, event: unknown) => sendEvent('thread_event', { thread, event }),
       };
 
       // Attach all handlers
