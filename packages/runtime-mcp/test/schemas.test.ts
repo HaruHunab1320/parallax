@@ -8,6 +8,11 @@ import {
   LogsInputSchema,
   MetricsInputSchema,
   HealthInputSchema,
+  SpawnThreadInputSchema,
+  StopThreadInputSchema,
+  ListThreadsInputSchema,
+  GetThreadInputSchema,
+  SendThreadInputSchema,
 } from '../src/tools/schemas.js';
 
 describe('Tool Schemas', () => {
@@ -266,6 +271,46 @@ describe('Tool Schemas', () => {
       const result = HealthInputSchema.safeParse({});
 
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Thread Schemas', () => {
+    it('should validate valid spawn thread input', () => {
+      const result = SpawnThreadInputSchema.safeParse({
+        executionId: 'exec-1',
+        name: 'worker-thread',
+        agentType: 'claude',
+        objective: 'Implement auth flow',
+        role: 'engineer',
+        workspaceRepo: 'acme/auth-service',
+        workspaceBranch: 'feature/auth',
+        approvalPreset: 'standard',
+        env: { PARALLAX_EXECUTION_ID: 'exec-1' },
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate stop thread input defaults', () => {
+      const result = StopThreadInputSchema.safeParse({ threadId: 'thread-1' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.force).toBe(false);
+      }
+    });
+
+    it('should validate list thread filters', () => {
+      expect(ListThreadsInputSchema.safeParse({ status: 'ready' }).success).toBe(true);
+      expect(ListThreadsInputSchema.safeParse({ status: ['ready', 'blocked'] }).success).toBe(true);
+    });
+
+    it('should validate get thread input', () => {
+      expect(GetThreadInputSchema.safeParse({ threadId: 'thread-1' }).success).toBe(true);
+    });
+
+    it('should require at least thread id for thread input sending schema', () => {
+      expect(SendThreadInputSchema.safeParse({ threadId: 'thread-1', message: 'Continue' }).success).toBe(true);
+      expect(SendThreadInputSchema.safeParse({}).success).toBe(false);
     });
   });
 });

@@ -31,6 +31,11 @@ import {
   type SendInput,
   type LogsInput,
   type MetricsInput,
+  type SpawnThreadInput,
+  type StopThreadInput,
+  type ListThreadsInput,
+  type GetThreadInput,
+  type SendThreadInput,
 } from './tools/schemas.js';
 import { executeSpawn } from './tools/spawn-tool.js';
 import { executeStop } from './tools/stop-tool.js';
@@ -40,6 +45,11 @@ import { executeSend } from './tools/send-tool.js';
 import { executeLogs } from './tools/logs-tool.js';
 import { executeMetrics } from './tools/metrics-tool.js';
 import { executeHealth } from './tools/health-tool.js';
+import { executeSpawnThread } from './tools/spawn-thread-tool.js';
+import { executeStopThread } from './tools/stop-thread-tool.js';
+import { executeListThreads } from './tools/list-threads-tool.js';
+import { executeGetThread } from './tools/get-thread-tool.js';
+import { executeSendThreadInput } from './tools/send-thread-input-tool.js';
 
 // Resources
 import { listAgentResources, readAgentResource } from './resources/agent-resource.js';
@@ -69,6 +79,11 @@ const TOOL_PERMISSIONS: Record<string, string> = {
   logs: 'agents:logs',
   metrics: 'agents:metrics',
   health: 'health:check',
+  spawn_thread: 'threads:spawn',
+  stop_thread: 'threads:stop',
+  list_threads: 'threads:list',
+  get_thread: 'threads:get',
+  send_thread_input: 'threads:send',
 };
 
 // Tool definitions with JSON schemas
@@ -173,6 +188,77 @@ const TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {},
+    },
+  },
+  {
+    name: 'spawn_thread',
+    description: 'Create and start a new managed thread',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        executionId: { type: 'string', description: 'Execution ID that owns the thread' },
+        name: { type: 'string', description: 'Human-readable thread name' },
+        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider', 'custom'], description: 'CLI agent type' },
+        objective: { type: 'string', description: 'Objective for the thread to pursue' },
+        role: { type: 'string', description: 'Optional orchestration role for the thread' },
+        workspacePath: { type: 'string', description: 'Workspace path for the thread' },
+        workspaceRepo: { type: 'string', description: 'Repository URL or slug for prepared workspace resolution' },
+        workspaceBranch: { type: 'string', description: 'Branch name for the prepared workspace' },
+        approvalPreset: { type: 'string', enum: ['readonly', 'standard', 'permissive', 'autonomous'], description: 'Approval preset controlling tool permissions' },
+        env: { type: 'object', additionalProperties: { type: 'string' }, description: 'Environment variables' },
+        metadata: { type: 'object', additionalProperties: true, description: 'Additional thread metadata' },
+      },
+      required: ['executionId', 'name', 'agentType', 'objective'],
+    },
+  },
+  {
+    name: 'stop_thread',
+    description: 'Stop a running managed thread',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        threadId: { type: 'string', description: 'ID of the thread to stop' },
+        force: { type: 'boolean', description: 'Force kill instead of graceful shutdown', default: false },
+        timeout: { type: 'number', description: 'Graceful shutdown timeout in milliseconds' },
+      },
+      required: ['threadId'],
+    },
+  },
+  {
+    name: 'list_threads',
+    description: 'List managed threads with optional filtering',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        executionId: { type: 'string', description: 'Filter by execution ID' },
+        role: { type: 'string', description: 'Filter by thread role' },
+        status: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'Filter by thread status' },
+      },
+    },
+  },
+  {
+    name: 'get_thread',
+    description: 'Get detailed information about a managed thread',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        threadId: { type: 'string', description: 'ID of the thread to retrieve' },
+      },
+      required: ['threadId'],
+    },
+  },
+  {
+    name: 'send_thread_input',
+    description: 'Send message, raw terminal input, or key presses to a managed thread',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        threadId: { type: 'string', description: 'ID of the thread to send input to' },
+        message: { type: 'string', description: 'Message content to send' },
+        raw: { type: 'string', description: 'Raw bytes or terminal input to send' },
+        keys: { type: 'array', items: { type: 'string' }, description: 'Key presses to send to the thread terminal' },
+      },
+      required: ['threadId'],
     },
   },
 ];
@@ -333,6 +419,21 @@ export class ParallaxMcpServer {
             break;
           case 'health':
             result = await executeHealth(this.runtime);
+            break;
+          case 'spawn_thread':
+            result = await executeSpawnThread(this.runtime, args as SpawnThreadInput);
+            break;
+          case 'stop_thread':
+            result = await executeStopThread(this.runtime, args as StopThreadInput);
+            break;
+          case 'list_threads':
+            result = await executeListThreads(this.runtime, args as ListThreadsInput);
+            break;
+          case 'get_thread':
+            result = await executeGetThread(this.runtime, args as GetThreadInput);
+            break;
+          case 'send_thread_input':
+            result = await executeSendThreadInput(this.runtime, args as SendThreadInput);
             break;
           default:
             throw new Error(`Unknown tool: ${name}`);

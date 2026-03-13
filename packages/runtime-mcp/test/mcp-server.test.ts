@@ -42,6 +42,48 @@ vi.mock('@parallaxai/runtime-local', () => ({
       memory: 512000000,
       uptime: 3600,
     }),
+    spawnThread: vi.fn().mockResolvedValue({
+      id: 'thread-123',
+      executionId: 'exec-1',
+      runtimeName: 'local',
+      agentType: 'claude',
+      role: 'engineer',
+      status: 'ready',
+      objective: 'Implement auth flow',
+      createdAt: new Date('2026-03-12T00:00:00Z'),
+      updatedAt: new Date('2026-03-12T00:00:00Z'),
+    }),
+    stopThread: vi.fn().mockResolvedValue(undefined),
+    listThreads: vi.fn().mockResolvedValue([
+      {
+        id: 'thread-1',
+        executionId: 'exec-1',
+        runtimeName: 'local',
+        agentType: 'claude',
+        role: 'engineer',
+        status: 'ready',
+        objective: 'Implement auth flow',
+        createdAt: new Date('2026-03-12T00:00:00Z'),
+        updatedAt: new Date('2026-03-12T00:00:00Z'),
+      },
+    ]),
+    getThread: vi.fn().mockImplementation((id: string) => {
+      if (id === 'thread-1') {
+        return Promise.resolve({
+          id: 'thread-1',
+          executionId: 'exec-1',
+          runtimeName: 'local',
+          agentType: 'claude',
+          role: 'engineer',
+          status: 'ready',
+          objective: 'Implement auth flow',
+          createdAt: new Date('2026-03-12T00:00:00Z'),
+          updatedAt: new Date('2026-03-12T00:00:00Z'),
+        });
+      }
+      return Promise.resolve(null);
+    }),
+    sendToThread: vi.fn().mockResolvedValue(undefined),
     healthCheck: vi.fn().mockResolvedValue({ healthy: true }),
     name: 'local',
   })),
@@ -279,6 +321,83 @@ describe('Tool Executors', () => {
       if (result.success) {
         expect(result.health.healthy).toBe(true);
         expect(result.health.runtime).toBe('local');
+      }
+    });
+  });
+
+  describe('thread tool executors', () => {
+    it('should spawn a managed thread', async () => {
+      const { executeSpawnThread } = await import('../src/tools/spawn-thread-tool.js');
+      const { LocalRuntime } = await import('@parallaxai/runtime-local');
+
+      const runtime = new LocalRuntime(logger, {});
+      const result = await executeSpawnThread(runtime, {
+        executionId: 'exec-1',
+        name: 'worker-thread',
+        agentType: 'claude',
+        objective: 'Implement auth flow',
+        role: 'engineer',
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.thread.id).toBe('thread-123');
+      }
+    });
+
+    it('should list managed threads', async () => {
+      const { executeListThreads } = await import('../src/tools/list-threads-tool.js');
+      const { LocalRuntime } = await import('@parallaxai/runtime-local');
+
+      const runtime = new LocalRuntime(logger, {});
+      const result = await executeListThreads(runtime, { executionId: 'exec-1' });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.threads).toHaveLength(1);
+        expect(result.threads[0].id).toBe('thread-1');
+      }
+    });
+
+    it('should get a managed thread', async () => {
+      const { executeGetThread } = await import('../src/tools/get-thread-tool.js');
+      const { LocalRuntime } = await import('@parallaxai/runtime-local');
+
+      const runtime = new LocalRuntime(logger, {});
+      const result = await executeGetThread(runtime, { threadId: 'thread-1' });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.thread.role).toBe('engineer');
+      }
+    });
+
+    it('should send input to a managed thread', async () => {
+      const { executeSendThreadInput } = await import('../src/tools/send-thread-input-tool.js');
+      const { LocalRuntime } = await import('@parallaxai/runtime-local');
+
+      const runtime = new LocalRuntime(logger, {});
+      const result = await executeSendThreadInput(runtime, {
+        threadId: 'thread-1',
+        message: 'Continue with the auth refactor',
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.sent).toBe(true);
+      }
+    });
+
+    it('should stop a managed thread', async () => {
+      const { executeStopThread } = await import('../src/tools/stop-thread-tool.js');
+      const { LocalRuntime } = await import('@parallaxai/runtime-local');
+
+      const runtime = new LocalRuntime(logger, {});
+      const result = await executeStopThread(runtime, { threadId: 'thread-1' });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.threadId).toBe('thread-1');
       }
     });
   });

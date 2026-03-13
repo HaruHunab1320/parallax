@@ -44,6 +44,11 @@ export {
   LogsInputShape,
   MetricsInputShape,
   HealthInputShape,
+  SpawnThreadInputShape,
+  StopThreadInputShape,
+  ListThreadsInputShape,
+  GetThreadInputShape,
+  SendThreadInputShape,
 
   // Full Zod schemas (for validation)
   SpawnInputSchema,
@@ -54,8 +59,14 @@ export {
   LogsInputSchema,
   MetricsInputSchema,
   HealthInputSchema,
+  SpawnThreadInputSchema,
+  StopThreadInputSchema,
+  ListThreadsInputSchema,
+  GetThreadInputSchema,
+  SendThreadInputSchema,
   AgentTypeSchema,
   AgentStatusSchema,
+  ThreadStatusSchema,
 
   // Types
   type SpawnInput,
@@ -66,6 +77,11 @@ export {
   type LogsInput,
   type MetricsInput,
   type HealthInput,
+  type SpawnThreadInput,
+  type StopThreadInput,
+  type ListThreadsInput,
+  type GetThreadInput,
+  type SendThreadInput,
 
   // Tool definitions
   SPAWN_TOOL,
@@ -76,6 +92,11 @@ export {
   LOGS_TOOL,
   METRICS_TOOL,
   HEALTH_TOOL,
+  SPAWN_THREAD_TOOL,
+  STOP_THREAD_TOOL,
+  LIST_THREADS_TOOL,
+  GET_THREAD_TOOL,
+  SEND_THREAD_INPUT_TOOL,
   ALL_TOOLS,
 
   // Executors
@@ -87,6 +108,11 @@ export {
   executeLogs,
   executeMetrics,
   executeHealth,
+  executeSpawnThread,
+  executeStopThread,
+  executeListThreads,
+  executeGetThread,
+  executeSendThreadInput,
 } from './tools/index.js';
 
 // Resource handlers
@@ -123,4 +149,6 @@ export type {
   AgentMetrics,
   AgentStatus,
   AgentType,
+  ThreadHandle,
+  ThreadStatus,
 } from '@parallaxai/runtime-interface';

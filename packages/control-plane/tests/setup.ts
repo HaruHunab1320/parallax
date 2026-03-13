@@ -2,7 +2,7 @@ import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import crypto from 'crypto';
+import './setup-env';
 
 const execAsync = promisify(exec);
 
@@ -16,30 +16,6 @@ const DB_NAME = 'parallax_test';
 
 export const TEST_DATABASE_URL = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public`;
 let prisma: PrismaClient | null = null;
-
-// Configure infrastructure endpoints for integration tests
-// (envFile: false in vitest.config.ts prevents .env from loading)
-process.env.PARALLAX_ETCD_ENDPOINTS = process.env.PARALLAX_ETCD_ENDPOINTS || 'localhost:2389';
-process.env.PARALLAX_PATTERNS_DIR = process.env.PARALLAX_PATTERNS_DIR || '../../patterns';
-
-// Generate a signed test license key using a fresh Ed25519 keypair
-const testKeypair = crypto.generateKeyPairSync('ed25519');
-const testPublicKeyB64 = testKeypair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
-const testPayload = {
-  iss: 'parallax',
-  v: 1,
-  tier: 'enterprise',
-  org: 'Test Org',
-  sub: 'test_dev_001',
-  iat: Math.floor(Date.now() / 1000),
-  exp: Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60, // 1 year
-};
-const testPayloadB64 = Buffer.from(JSON.stringify(testPayload)).toString('base64url');
-const testSignature = crypto.sign(null, Buffer.from(testPayloadB64), testKeypair.privateKey);
-const testLicenseKey = `${testPayloadB64}.${testSignature.toString('base64url')}`;
-
-process.env.PARALLAX_LICENSE_KEY = process.env.PARALLAX_LICENSE_KEY || testLicenseKey;
-process.env.PARALLAX_LICENSE_PUBLIC_KEY = process.env.PARALLAX_LICENSE_PUBLIC_KEY || testPublicKeyB64;
 
 // Global setup
 beforeAll(async () => {
@@ -100,6 +76,10 @@ beforeEach(async () => {
     // Clean all tables — order matters for FK constraints
     // Use try/catch since async executions may create records concurrently
     try {
+      await prisma.threadEventRecord.deleteMany();
+      await prisma.threadRecord.deleteMany();
+      await prisma.sharedDecisionRecord.deleteMany();
+      await prisma.episodicExperienceRecord.deleteMany();
       await prisma.executionEvent.deleteMany();
       await prisma.execution.deleteMany();
       await prisma.confidenceMetric.deleteMany();
@@ -109,6 +89,10 @@ beforeEach(async () => {
     } catch {
       // Retry once after a brief delay (async background work may have created records)
       await new Promise(r => setTimeout(r, 100));
+      await prisma.threadEventRecord.deleteMany().catch(() => {});
+      await prisma.threadRecord.deleteMany().catch(() => {});
+      await prisma.sharedDecisionRecord.deleteMany().catch(() => {});
+      await prisma.episodicExperienceRecord.deleteMany().catch(() => {});
       await prisma.executionEvent.deleteMany().catch(() => {});
       await prisma.execution.deleteMany().catch(() => {});
       await prisma.confidenceMetric.deleteMany().catch(() => {});

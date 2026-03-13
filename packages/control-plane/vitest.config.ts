@@ -5,7 +5,20 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    setupFiles: ['./tests/setup.ts'],
+    setupFiles: ['./tests/setup-env.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/__tests__/**/*.test.ts',
+      'tests/unit/**/*.test.ts',
+    ],
+    exclude: [
+      'node_modules/**',
+      'dist/**',
+      'src/api/__tests__/api.test.ts',
+      'tests/unit/db/**/*.test.ts',
+      'tests/integration/**/*.test.ts',
+      'tests/e2e/**/*.test.ts',
+    ],
     // Override .env runtime URLs that cause ECONNREFUSED in tests
     env: {
       PARALLAX_LOCAL_RUNTIME_URL: '',

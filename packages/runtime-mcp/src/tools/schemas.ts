@@ -26,6 +26,20 @@ export const AgentStatusSchema = z.enum([
   'error',
 ]);
 
+export const ThreadStatusSchema = z.enum([
+  'pending',
+  'preparing',
+  'starting',
+  'ready',
+  'running',
+  'blocked',
+  'idle',
+  'waiting',
+  'completed',
+  'failed',
+  'stopped',
+]);
+
 /**
  * Schema shape for spawning a new agent
  */
@@ -127,3 +141,61 @@ export const HealthInputShape = {};
 
 export const HealthInputSchema = z.object(HealthInputShape);
 export type HealthInput = z.infer<typeof HealthInputSchema>;
+
+export const SpawnThreadInputShape = {
+  executionId: z.string().describe('Execution ID that owns the thread'),
+  name: z.string().describe('Human-readable thread name'),
+  agentType: AgentTypeSchema.describe('CLI agent type backing the thread'),
+  objective: z.string().describe('Objective for the thread to pursue'),
+  role: z.string().optional().describe('Optional orchestration role for the thread'),
+  workspacePath: z.string().optional().describe('Workspace path for the thread'),
+  workspaceRepo: z.string().optional().describe('Repository URL or slug for prepared workspace resolution'),
+  workspaceBranch: z.string().optional().describe('Branch name for the prepared workspace'),
+  approvalPreset: z
+    .enum(['readonly', 'standard', 'permissive', 'autonomous'])
+    .optional()
+    .describe('Approval preset controlling tool permissions'),
+  env: z.record(z.string()).optional().describe('Environment variables'),
+  metadata: z.record(z.unknown()).optional().describe('Additional thread metadata'),
+};
+
+export const SpawnThreadInputSchema = z.object(SpawnThreadInputShape);
+export type SpawnThreadInput = z.infer<typeof SpawnThreadInputSchema>;
+
+export const StopThreadInputShape = {
+  threadId: z.string().describe('ID of the thread to stop'),
+  force: z.boolean().optional().default(false).describe('Force kill instead of graceful shutdown'),
+  timeout: z.number().optional().describe('Graceful shutdown timeout in milliseconds'),
+};
+
+export const StopThreadInputSchema = z.object(StopThreadInputShape);
+export type StopThreadInput = z.infer<typeof StopThreadInputSchema>;
+
+export const ListThreadsInputShape = {
+  executionId: z.string().optional().describe('Filter by execution ID'),
+  role: z.string().optional().describe('Filter by thread role'),
+  status: z
+    .union([ThreadStatusSchema, z.array(ThreadStatusSchema)])
+    .optional()
+    .describe('Filter by thread status'),
+};
+
+export const ListThreadsInputSchema = z.object(ListThreadsInputShape);
+export type ListThreadsInput = z.infer<typeof ListThreadsInputSchema>;
+
+export const GetThreadInputShape = {
+  threadId: z.string().describe('ID of the thread to retrieve'),
+};
+
+export const GetThreadInputSchema = z.object(GetThreadInputShape);
+export type GetThreadInput = z.infer<typeof GetThreadInputSchema>;
+
+export const SendThreadInputShape = {
+  threadId: z.string().describe('ID of the thread to send input to'),
+  message: z.string().optional().describe('Message content to send'),
+  raw: z.string().optional().describe('Raw bytes or terminal input to send'),
+  keys: z.array(z.string()).optional().describe('Key presses to send to the thread terminal'),
+};
+
+export const SendThreadInputSchema = z.object(SendThreadInputShape);
+export type SendThreadInput = z.infer<typeof SendThreadInputSchema>;
