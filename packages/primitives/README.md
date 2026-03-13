@@ -44,6 +44,16 @@ Advanced execution control:
 - `escalate(escalationPath)` - Escalate based on confidence
 - `circuitBreaker(operation, options)` - Prevent cascading failures
 
+### Thread Primitives
+Explicit orchestration over long-lived managed threads:
+
+- `spawnThread(config)` - Create a managed thread with runtime policy
+- `awaitThread(eventType)` - Wait for a thread lifecycle milestone
+- `sendThreadInput(input)` - Send orchestrator input to a running thread
+- `shareDecision(decision)` - Share compressed orchestrator decisions across threads
+- `collectThreadSummaries()` - Gather bounded summaries from threads
+- `finalizeThread(policy)` - Finalize a thread after orchestration completes
+
 ## Usage
 
 ```prism

@@ -13,7 +13,11 @@ import {
   AgentMessage,
   AgentFilter,
   AgentMetrics,
-  AgentType,
+  SpawnThreadInput,
+  ThreadEvent,
+  ThreadFilter,
+  ThreadHandle,
+  ThreadInput,
 } from '@parallaxai/runtime-interface';
 import { RuntimeClient, RuntimeClientOptions, RuntimeHealthStatus } from './runtime-client';
 
@@ -36,6 +40,7 @@ export interface AgentRuntimeServiceOptions {
 export class AgentRuntimeService extends EventEmitter {
   private runtimes: Map<string, RuntimeRegistration> = new Map();
   private agentToRuntime: Map<string, string> = new Map(); // agentId -> runtimeName
+  private threadToRuntime: Map<string, string> = new Map(); // threadId -> runtimeName
   private healthCheckTimer: NodeJS.Timeout | null = null;
   private healthCheckInterval: number;
   private defaultTimeout: number;
@@ -77,6 +82,7 @@ export class AgentRuntimeService extends EventEmitter {
     client.on('agent_error', (data) => this.emit('agent_error', { ...data, runtime: name }));
     client.on('message', (data) => this.emit('message', { ...data, runtime: name }));
     client.on('question', (data) => this.emit('question', { ...data, runtime: name }));
+    client.on('thread_event', (data) => this.emit('thread_event', { ...data, runtime: name }));
     client.on('error', (error) => {
       this.logger.warn({ runtime: name, error }, 'Runtime client error');
     });
@@ -205,6 +211,129 @@ export class AgentRuntimeService extends EventEmitter {
         this.logger.warn({ executionId, runtime: name, error }, 'Failed to clean up execution resources');
       }
     }
+  }
+
+  /**
+   * Spawn a thread on the most suitable runtime
+   */
+  async spawnThread(input: SpawnThreadInput, preferredRuntime?: string): Promise<ThreadHandle> {
+    const runtime = this.selectRuntime(undefined, preferredRuntime);
+    if (!runtime) {
+      throw new Error('No healthy runtime available for thread spawn');
+    }
+
+    const thread = await runtime.client.spawnThread(input);
+    this.threadToRuntime.set(thread.id, runtime.name);
+
+    if (thread.agentId) {
+      this.agentToRuntime.set(thread.agentId, runtime.name);
+    }
+
+    this.logger.info(
+      { threadId: thread.id, runtime: runtime.name, agentType: input.agentType },
+      'Thread spawned'
+    );
+
+    return thread;
+  }
+
+  /**
+   * Stop a thread
+   */
+  async stopThread(threadId: string, options?: { force?: boolean; timeout?: number }): Promise<void> {
+    const runtimeName = this.threadToRuntime.get(threadId);
+    if (!runtimeName) {
+      throw new Error(`Thread ${threadId} not found`);
+    }
+
+    const runtime = this.runtimes.get(runtimeName);
+    if (!runtime) {
+      throw new Error(`Runtime ${runtimeName} not found`);
+    }
+
+    await runtime.client.stopThread(threadId, options);
+    this.threadToRuntime.delete(threadId);
+  }
+
+  /**
+   * Get thread by ID
+   */
+  async getThread(threadId: string): Promise<ThreadHandle | null> {
+    const runtimeName = this.threadToRuntime.get(threadId);
+    if (runtimeName) {
+      const runtime = this.runtimes.get(runtimeName);
+      if (runtime) {
+        return runtime.client.getThread(threadId);
+      }
+    }
+
+    for (const runtime of this.runtimes.values()) {
+      const thread = await runtime.client.getThread(threadId);
+      if (thread) {
+        this.threadToRuntime.set(threadId, runtime.name);
+        return thread;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * List threads across all runtimes
+   */
+  async listThreads(filter?: ThreadFilter): Promise<Array<ThreadHandle & { runtime: string }>> {
+    const results: Array<ThreadHandle & { runtime: string }> = [];
+
+    for (const runtime of this.runtimes.values()) {
+      try {
+        const threads = await runtime.client.listThreads(filter);
+        for (const thread of threads) {
+          results.push({ ...thread, runtime: runtime.name });
+          this.threadToRuntime.set(thread.id, runtime.name);
+          if (thread.agentId) {
+            this.agentToRuntime.set(thread.agentId, runtime.name);
+          }
+        }
+      } catch (error) {
+        this.logger.warn({ runtime: runtime.name, error }, 'Failed to list threads from runtime');
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Send input to a thread
+   */
+  async sendToThread(threadId: string, input: ThreadInput): Promise<void> {
+    const runtimeName = this.threadToRuntime.get(threadId);
+    if (!runtimeName) {
+      throw new Error(`Thread ${threadId} not found`);
+    }
+
+    const runtime = this.runtimes.get(runtimeName);
+    if (!runtime) {
+      throw new Error(`Runtime ${runtimeName} not found`);
+    }
+
+    await runtime.client.sendToThread(threadId, input);
+  }
+
+  /**
+   * Subscribe to thread events
+   */
+  subscribeThread(threadId: string, callback: (event: ThreadEvent) => void): () => void {
+    const runtimeName = this.threadToRuntime.get(threadId);
+    if (!runtimeName) {
+      throw new Error(`Thread ${threadId} not found`);
+    }
+
+    const runtime = this.runtimes.get(runtimeName);
+    if (!runtime) {
+      throw new Error(`Runtime ${runtimeName} not found`);
+    }
+
+    return runtime.client.subscribeThread(threadId, callback);
   }
 
   /**
@@ -339,12 +468,13 @@ export class AgentRuntimeService extends EventEmitter {
 
     this.runtimes.clear();
     this.agentToRuntime.clear();
+    this.threadToRuntime.clear();
   }
 
   /**
    * Select the best runtime for spawning an agent
    */
-  private selectRuntime(config: AgentConfig, preferredRuntime?: string): RuntimeRegistration | null {
+  private selectRuntime(config?: AgentConfig, preferredRuntime?: string): RuntimeRegistration | null {
     // Use preferred runtime if specified and healthy
     if (preferredRuntime) {
       const runtime = this.runtimes.get(preferredRuntime);

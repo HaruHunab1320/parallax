@@ -1,0 +1,74 @@
+// Primitive: threads
+// Category: coordination
+// Description: Explicit orchestration primitives for long-lived thread-backed work
+// Confidence: orchestration-control
+
+export const spawnThread = (config) => {
+  return (objective) => {
+    return {
+      type: "spawnThread",
+      objective: objective,
+      config: config || {}
+    } ~> 1.0
+  }
+}
+
+export const awaitThread = (eventType) => {
+  return (threadRef) => {
+    return {
+      type: "awaitThread",
+      thread: threadRef,
+      config: {
+        eventType: eventType || "thread_turn_complete"
+      }
+    } ~> 1.0
+  }
+}
+
+export const sendThreadInput = (input) => {
+  return (threadRef) => {
+    return {
+      type: "sendThreadInput",
+      thread: threadRef,
+      input: input,
+      config: {}
+    } ~> 1.0
+  }
+}
+
+export const shareDecision = (decision) => {
+  return (threadRefs) => {
+    return {
+      type: "shareDecision",
+      threads: threadRefs || [],
+      decision: decision,
+      config: {
+        mode: "orchestrated"
+      }
+    } ~> 1.0
+  }
+}
+
+export const collectThreadSummaries = () => {
+  return (threadRefs) => {
+    return {
+      type: "collectThreadSummaries",
+      threads: threadRefs || [],
+      config: {
+        includeCompletion: true
+      }
+    } ~> 1.0
+  }
+}
+
+export const finalizeThread = (policy) => {
+  return (threadRef) => {
+    return {
+      type: "finalizeThread",
+      thread: threadRef,
+      config: policy || {
+        stop: true
+      }
+    } ~> 1.0
+  }
+}

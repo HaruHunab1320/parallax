@@ -28,6 +28,7 @@ import {
   createAuditRouter,
   createBackupRouter,
   createManagedAgentsRouter,
+  createManagedThreadsRouter,
 } from './api';
 import {
   WorkspaceService,
@@ -48,6 +49,13 @@ import { createServer as createHttpServer } from 'http';
 import { WebSocketServer } from 'ws';
 import { URL } from 'url';
 import { ExecutionEventBus } from './execution-events';
+import {
+  ThreadPersistenceService,
+  SharedDecisionService,
+  EpisodicExperienceService,
+  MemoryContextService,
+  ThreadPreparationService,
+} from './threads';
 
 // High Availability imports
 import {
@@ -372,6 +380,11 @@ export async function createServer(): Promise<express.Application> {
 
   // Initialize Agent Runtime Service (for managed agents)
   let agentRuntimeService: AgentRuntimeService | null = null;
+  let threadPersistenceService: ThreadPersistenceService | null = null;
+  let sharedDecisionService: SharedDecisionService | null = null;
+  let episodicExperienceService: EpisodicExperienceService | null = null;
+  let memoryContextService: MemoryContextService | null = null;
+  let threadPreparationService: ThreadPreparationService | null = null;
   const localRuntimeUrl = process.env.PARALLAX_LOCAL_RUNTIME_URL;
   const dockerRuntimeUrl = process.env.PARALLAX_DOCKER_RUNTIME_URL;
   const k8sRuntimeUrl = process.env.PARALLAX_K8S_RUNTIME_URL;
@@ -452,9 +465,50 @@ export async function createServer(): Promise<express.Application> {
       });
     });
 
+    agentRuntimeService.on('thread_event', (data) => {
+      if (threadPersistenceService) {
+        void threadPersistenceService.projectRuntimeEvent(data).catch((error) => {
+          logger.error({ error, threadId: data.event.threadId }, 'Failed to persist thread event');
+        });
+      }
+      if (sharedDecisionService) {
+        void sharedDecisionService.projectThreadEvent(data.thread, data.event).catch((error) => {
+          logger.error({ error, threadId: data.event.threadId }, 'Failed to capture shared decision');
+        });
+      }
+      if (episodicExperienceService) {
+        void episodicExperienceService.projectThreadEvent(data.thread, data.event).catch((error) => {
+          logger.error({ error, threadId: data.event.threadId }, 'Failed to capture episodic experience');
+        });
+      }
+
+      executionEvents.emitEvent({
+        executionId: 'runtime',
+        type: 'managed_thread_event',
+        data,
+        timestamp: new Date(),
+      });
+    });
+
     // Wire agent runtime service into pattern engine for dynamic agent spawning
     patternEngine.setAgentRuntimeService(agentRuntimeService);
     logger.info('Agent runtime service wired to pattern engine');
+
+    threadPersistenceService = new ThreadPersistenceService(database.threads, logger);
+    sharedDecisionService = new SharedDecisionService(database.sharedDecisions, logger);
+    episodicExperienceService = new EpisodicExperienceService(database.episodicExperiences, logger);
+    memoryContextService = new MemoryContextService(
+      database.sharedDecisions,
+      database.episodicExperiences,
+      logger
+    );
+    threadPreparationService = new ThreadPreparationService(memoryContextService, logger);
+    patternEngine.setThreadPreparationService?.(threadPreparationService);
+    try {
+      await threadPersistenceService.recoverFromRuntimes(agentRuntimeService);
+    } catch (error) {
+      logger.warn({ error }, 'Failed to recover runtime-backed threads into persistence');
+    }
   }
 
   // Initialize Workspace Service (for git workspace provisioning)
@@ -505,6 +559,7 @@ export async function createServer(): Promise<express.Application> {
 
       // Wire workspace service into pattern engine
       patternEngine.setWorkspaceService(workspaceService);
+      threadPreparationService?.setWorkspaceService(workspaceService);
     } catch (error) {
       logger.warn({ error }, 'Failed to initialize GitHub/workspace services - continuing without workspace support');
       githubProvider = null;
@@ -641,6 +696,15 @@ export async function createServer(): Promise<express.Application> {
   if (agentRuntimeService) {
     const managedAgentsRouter = createManagedAgentsRouter(agentRuntimeService, logger);
     app.use('/api/managed-agents', managedAgentsRouter);
+    const managedThreadsRouter = createManagedThreadsRouter(
+      agentRuntimeService,
+      logger,
+      database.threads,
+      database.sharedDecisions,
+      database.episodicExperiences,
+      threadPreparationService || undefined
+    );
+    app.use('/api/managed-threads', managedThreadsRouter);
     logger.info('Managed agents API enabled');
   }
 
@@ -698,6 +762,7 @@ export async function createServer(): Promise<express.Application> {
     }
     if (agentRuntimeService) {
       endpoints.managedAgents = '/api/managed-agents';
+      endpoints.managedThreads = '/api/managed-threads';
     }
     if (workspaceService) {
       endpoints.workspaces = '/api/workspaces';

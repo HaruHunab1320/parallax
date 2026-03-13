@@ -6,6 +6,9 @@ import {
   PatternRepository,
   AgentRepository,
   ExecutionRepository,
+  ThreadRepository,
+  SharedDecisionRepository,
+  EpisodicExperienceRepository,
   CredentialGrantRepository,
   createCredentialGrantRepository,
 } from './repositories';
@@ -17,6 +20,9 @@ export class DatabaseService {
   public patterns: PatternRepository;
   public agents: AgentRepository;
   public executions: ExecutionRepository;
+  public threads: ThreadRepository;
+  public sharedDecisions: SharedDecisionRepository;
+  public episodicExperiences: EpisodicExperienceRepository;
   public credentialGrants: CredentialGrantRepository;
 
   constructor(logger: Logger) {
@@ -27,6 +33,9 @@ export class DatabaseService {
     this.patterns = new PatternRepository(this.prisma, this.logger);
     this.agents = new AgentRepository(this.prisma, this.logger);
     this.executions = new ExecutionRepository(this.prisma, this.logger);
+    this.threads = new ThreadRepository(this.prisma, this.logger);
+    this.sharedDecisions = new SharedDecisionRepository(this.prisma, this.logger);
+    this.episodicExperiences = new EpisodicExperienceRepository(this.prisma, this.logger);
     this.credentialGrants = createCredentialGrantRepository(this.prisma);
   }
 

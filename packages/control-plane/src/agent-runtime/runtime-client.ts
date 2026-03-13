@@ -11,9 +11,13 @@ import {
   AgentConfig,
   AgentHandle,
   AgentMessage,
-  AgentStatus,
   AgentFilter,
   AgentMetrics,
+  SpawnThreadInput,
+  ThreadEvent,
+  ThreadFilter,
+  ThreadHandle,
+  ThreadInput,
 } from '@parallaxai/runtime-interface';
 
 export interface RuntimeClientOptions {
@@ -45,6 +49,7 @@ export class RuntimeClient extends EventEmitter {
   private wsReconnectTimer: NodeJS.Timeout | null = null;
   private connected = false;
   private subscriptions: Map<string, Set<(message: AgentMessage) => void>> = new Map();
+  private threadSubscriptions: Map<string, Set<(event: ThreadEvent) => void>> = new Map();
 
   constructor(
     private logger: Logger,
@@ -243,6 +248,84 @@ export class RuntimeClient extends EventEmitter {
   }
 
   /**
+   * Spawn a new thread
+   */
+  async spawnThread(input: SpawnThreadInput): Promise<ThreadHandle> {
+    return this.request<ThreadHandle>('POST', '/api/threads', input);
+  }
+
+  /**
+   * Stop a thread
+   */
+  async stopThread(threadId: string, options?: { force?: boolean; timeout?: number }): Promise<void> {
+    const query = new URLSearchParams();
+    if (options?.force) query.set('force', 'true');
+    if (options?.timeout) query.set('timeout', options.timeout.toString());
+
+    const queryString = query.toString();
+    await this.request('DELETE', `/api/threads/${threadId}${queryString ? '?' + queryString : ''}`);
+  }
+
+  /**
+   * Get thread by ID
+   */
+  async getThread(threadId: string): Promise<ThreadHandle | null> {
+    try {
+      return await this.request<ThreadHandle>('GET', `/api/threads/${threadId}`);
+    } catch (error: any) {
+      if (error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * List threads
+   */
+  async listThreads(filter?: ThreadFilter): Promise<ThreadHandle[]> {
+    const query = new URLSearchParams();
+    if (filter?.executionId) query.set('executionId', filter.executionId);
+    if (filter?.role) query.set('role', filter.role);
+    if (filter?.status) {
+      const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+      statuses.forEach((s) => query.append('status', s));
+    }
+    if (filter?.agentType) {
+      const agentTypes = Array.isArray(filter.agentType) ? filter.agentType : [filter.agentType];
+      agentTypes.forEach((t) => query.append('agentType', t));
+    }
+
+    const queryString = query.toString();
+    const response = await this.request<{ threads: ThreadHandle[]; count: number }>(
+      'GET',
+      `/api/threads${queryString ? '?' + queryString : ''}`
+    );
+    return response.threads;
+  }
+
+  /**
+   * Send input to a thread
+   */
+  async sendToThread(threadId: string, input: ThreadInput): Promise<void> {
+    await this.request<{ sent: boolean }>('POST', `/api/threads/${threadId}/send`, input);
+  }
+
+  /**
+   * Subscribe to thread events via WebSocket
+   */
+  subscribeThread(threadId: string, callback: (event: ThreadEvent) => void): () => void {
+    if (!this.threadSubscriptions.has(threadId)) {
+      this.threadSubscriptions.set(threadId, new Set());
+    }
+    this.threadSubscriptions.get(threadId)!.add(callback);
+
+    return () => {
+      this.threadSubscriptions.get(threadId)?.delete(callback);
+    };
+  }
+
+  /**
    * Subscribe to agent messages via WebSocket
    */
   subscribe(agentId: string, callback: (message: AgentMessage) => void): () => void {
@@ -278,6 +361,14 @@ export class RuntimeClient extends EventEmitter {
       const callbacks = this.subscriptions.get(agentId);
       if (callbacks) {
         callbacks.forEach(cb => cb(msg.data.message));
+      }
+    }
+
+    if (msg.event === 'thread_event' && msg.data?.event?.threadId) {
+      const threadId = msg.data.event.threadId;
+      const callbacks = this.threadSubscriptions.get(threadId);
+      if (callbacks) {
+        callbacks.forEach((cb) => cb(msg.data.event));
       }
     }
   }

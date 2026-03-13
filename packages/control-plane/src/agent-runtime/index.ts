@@ -20,4 +20,9 @@ export {
   AgentType,
   AgentFilter,
   AgentMetrics,
+  SpawnThreadInput,
+  ThreadEvent,
+  ThreadFilter,
+  ThreadHandle,
+  ThreadInput,
 } from '@parallaxai/runtime-interface';

@@ -74,6 +74,79 @@ model Execution {
   @@index([nodeId, status])
 }
 
+model ThreadRecord {
+  id             String            @id
+  executionId    String            @map("execution_id")
+  runtimeName    String            @map("runtime_name")
+  agentId        String?           @map("agent_id")
+  agentType      String            @map("agent_type")
+  role           String?
+  status         String
+  objective      String            @db.Text
+  workspace      Json?
+  summary        String?           @db.Text
+  completion     Json?
+  metadata       Json?
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  lastActivityAt DateTime?         @map("last_activity_at") @db.Timestamptz
+  events         ThreadEventRecord[]
+
+  @@index([executionId, createdAt])
+  @@index([status])
+  @@index([runtimeName, status])
+  @@index([lastActivityAt])
+  @@map("threads")
+}
+
+model ThreadEventRecord {
+  id          String       @id
+  threadId    String       @map("thread_id")
+  executionId String       @map("execution_id")
+  time        DateTime     @default(now()) @db.Timestamptz
+  type        String
+  data        Json
+  thread      ThreadRecord @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, time])
+  @@index([executionId, time])
+  @@index([time])
+  @@map("thread_events")
+}
+
+model SharedDecisionRecord {
+  id          String   @id
+  executionId String   @map("execution_id")
+  threadId    String?  @map("thread_id")
+  category    String
+  summary     String   @db.Text
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([executionId, createdAt])
+  @@index([threadId, createdAt])
+  @@index([category, createdAt])
+  @@map("shared_decisions")
+}
+
+model EpisodicExperienceRecord {
+  id          String   @id
+  executionId String   @map("execution_id")
+  threadId    String?  @map("thread_id")
+  role        String?
+  repo        String?
+  objective   String   @db.Text
+  summary     String   @db.Text
+  outcome     String
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([repo, createdAt])
+  @@index([role, createdAt])
+  @@index([executionId, createdAt])
+  @@map("episodic_experiences")
+}
+
 model ExecutionEvent {
   id          String    @id @default(uuid())
   executionId String

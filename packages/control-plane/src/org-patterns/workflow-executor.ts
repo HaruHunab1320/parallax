@@ -16,7 +16,8 @@ import {
 } from './types';
 import { MessageRouter } from './message-router';
 import { AgentRuntimeService } from '../agent-runtime';
-import { AgentConfig, AgentHandle } from '@parallaxai/runtime-interface';
+import { AgentConfig } from '@parallaxai/runtime-interface';
+import { ThreadPreparationService } from '../threads';
 
 export interface WorkflowExecutorOptions {
   /** Timeout for individual steps (ms) */
@@ -61,7 +62,7 @@ export class WorkflowExecutor extends EventEmitter {
   constructor(
     private runtimeService: AgentRuntimeService,
     private logger: Logger,
-    private options: WorkflowExecutorOptions = {}
+    private options: WorkflowExecutorOptions & { threadPreparationService?: ThreadPreparationService } = {}
   ) {
     super();
     this.stepTimeout = options.stepTimeout || 60000;
@@ -222,6 +223,69 @@ export class WorkflowExecutor extends EventEmitter {
     context: OrgExecutionContext,
     index: number
   ): Promise<void> {
+    if (role.threadConfig?.enabled) {
+      const spawnInput = this.options.threadPreparationService
+        ? await this.options.threadPreparationService.prepareSpawnInput({
+            executionId: context.id,
+            name: `${role.name} ${index + 1}`,
+            agentType: Array.isArray(role.agentType) ? role.agentType[0] : role.agentType,
+            objective: role.threadConfig.objective || role.description || `Execute role ${role.name}`,
+            role: roleId,
+            preparation: {
+              workspace: role.threadConfig.workspace,
+              env: role.threadConfig.env,
+              approvalPreset: role.threadConfig.approvalPreset,
+            },
+            workspace: role.threadConfig.workspace,
+            env: role.threadConfig.env,
+            approvalPreset: role.threadConfig.approvalPreset,
+            metadata: {
+              roleName: role.name,
+              orgPattern: context.pattern.name,
+              ...(role.threadConfig.metadata || {}),
+            },
+            policy: role.threadConfig.policy,
+          })
+        : {
+        executionId: context.id,
+        name: `${role.name} ${index + 1}`,
+        agentType: Array.isArray(role.agentType) ? role.agentType[0] : role.agentType,
+        objective: role.threadConfig.objective || role.description || `Execute role ${role.name}`,
+        role: roleId,
+        preparation: {
+          workspace: role.threadConfig.workspace,
+          env: role.threadConfig.env,
+          approvalPreset: role.threadConfig.approvalPreset,
+        },
+        workspace: role.threadConfig.workspace,
+        env: role.threadConfig.env,
+        approvalPreset: role.threadConfig.approvalPreset,
+        metadata: {
+          roleName: role.name,
+          orgPattern: context.pattern.name,
+          ...(role.threadConfig.metadata || {}),
+        },
+        policy: role.threadConfig.policy,
+      };
+
+      const thread = await this.runtimeService.spawnThread(spawnInput);
+
+      this.registerRoleExecutionUnit(roleId, context, {
+        id: thread.id,
+        kind: 'thread',
+        threadId: thread.id,
+        role: roleId,
+        endpoint: '',
+        status: 'idle',
+      });
+
+      this.logger.debug(
+        { threadId: thread.id, role: roleId },
+        'Thread spawned for role'
+      );
+      return;
+    }
+
     const agentType = Array.isArray(role.agentType)
       ? role.agentType[0]
       : role.agentType;
@@ -239,22 +303,30 @@ export class WorkflowExecutor extends EventEmitter {
 
     const instance: OrgAgentInstance = {
       id: handle.id,
+      kind: 'agent',
       role: roleId,
       endpoint: handle.endpoint || '',
       status: 'idle',
     };
 
-    context.agents.set(handle.id, instance);
-
-    // Update role assignments
-    const assignments = context.roleAssignments.get(roleId) || [];
-    assignments.push(handle.id);
-    context.roleAssignments.set(roleId, assignments);
+    this.registerRoleExecutionUnit(roleId, context, instance);
 
     this.logger.debug(
       { agentId: handle.id, role: roleId },
       'Agent spawned for role'
     );
+  }
+
+  private registerRoleExecutionUnit(
+    roleId: string,
+    context: OrgExecutionContext,
+    instance: OrgAgentInstance
+  ): void {
+    context.agents.set(instance.id, instance);
+
+    const assignments = context.roleAssignments.get(roleId) || [];
+    assignments.push(instance.id);
+    context.roleAssignments.set(roleId, assignments);
   }
 
   /**
@@ -320,11 +392,7 @@ export class WorkflowExecutor extends EventEmitter {
     // Resolve input variables
     const input = this.resolveVariables(step.input, context);
 
-    // Send task to agent
-    const response = await this.runtimeService.send(agentId, step.task, {
-      expectResponse: true,
-      timeout: this.stepTimeout,
-    });
+    const response = await this.sendToExecutionUnit(agent, step.task, input);
 
     agent.status = 'idle';
     agent.currentTask = undefined;
@@ -407,12 +475,15 @@ export class WorkflowExecutor extends EventEmitter {
     }
 
     const reviewerId = agentIds[0];
+    const reviewer = context.agents.get(reviewerId);
+    if (!reviewer) {
+      throw new Error(`Reviewer ${reviewerId} not found`);
+    }
     const subject = this.resolveVariables(step.subject, context);
 
-    const response = await this.runtimeService.send(
-      reviewerId,
-      `Please review the following:\n\n${JSON.stringify(subject, null, 2)}`,
-      { expectResponse: true, timeout: this.stepTimeout }
+    const response = await this.sendToExecutionUnit(
+      reviewer,
+      `Please review the following:\n\n${JSON.stringify(subject, null, 2)}`
     );
 
     return response;
@@ -431,12 +502,15 @@ export class WorkflowExecutor extends EventEmitter {
     }
 
     const approverId = agentIds[0];
+    const approver = context.agents.get(approverId);
+    if (!approver) {
+      throw new Error(`Approver ${approverId} not found`);
+    }
     const subject = this.resolveVariables(step.subject, context);
 
-    const response = await this.runtimeService.send(
-      approverId,
-      `Please approve or reject the following:\n\n${JSON.stringify(subject, null, 2)}`,
-      { expectResponse: true, timeout: this.stepTimeout }
+    const response = await this.sendToExecutionUnit(
+      approver,
+      `Please approve or reject the following:\n\n${JSON.stringify(subject, null, 2)}`
     );
 
     return response;
@@ -538,11 +612,16 @@ export class WorkflowExecutor extends EventEmitter {
     context: OrgExecutionContext
   ): void {
     router.on('send_question', async ({ toAgentId, question }) => {
+      const target = context.agents.get(toAgentId);
+      if (!target) {
+        this.logger.warn({ toAgentId }, 'Question target not found');
+        return;
+      }
+
       try {
-        await this.runtimeService.send(
-          toAgentId,
+        await this.sendToExecutionUnit(
+          target,
           `Question: ${question.question}\nContext: ${JSON.stringify(question.context)}`,
-          { expectResponse: false }
         );
       } catch (error) {
         this.logger.error({ error, toAgentId }, 'Failed to send question');
@@ -550,11 +629,16 @@ export class WorkflowExecutor extends EventEmitter {
     });
 
     router.on('send_answer', async ({ toAgentId, answer }) => {
+      const target = context.agents.get(toAgentId);
+      if (!target) {
+        this.logger.warn({ toAgentId }, 'Answer target not found');
+        return;
+      }
+
       try {
-        await this.runtimeService.send(
-          toAgentId,
+        await this.sendToExecutionUnit(
+          target,
           `Answer to your question: ${answer.answer}`,
-          { expectResponse: false }
         );
       } catch (error) {
         this.logger.error({ error, toAgentId }, 'Failed to send answer');
@@ -584,7 +668,47 @@ export class WorkflowExecutor extends EventEmitter {
     const unsubscribers: Array<() => void> = [];
 
     for (const [agentId, agentInstance] of context.agents) {
-      const unsubscribe = this.runtimeService.subscribe(agentId, async (message) => {
+      const unsubscribe = agentInstance.kind === 'thread' && agentInstance.threadId
+        ? this.runtimeService.subscribeThread(agentInstance.threadId, async (event) => {
+            if (event.type !== 'thread_output') return;
+
+            const content =
+              typeof event.data?.message === 'object' &&
+              event.data?.message &&
+              'content' in (event.data.message as Record<string, unknown>)
+                ? String((event.data.message as Record<string, unknown>).content)
+                : undefined;
+
+            if (!content) return;
+
+            await this.routeExecutionUnitMessage(agentId, agentInstance, content, context, router);
+          })
+        : this.runtimeService.subscribe(agentId, async (message) => {
+            await this.routeExecutionUnitMessage(
+              agentId,
+              agentInstance,
+              message.content,
+              context,
+              router
+            );
+          });
+
+      unsubscribers.push(unsubscribe);
+    }
+
+    // Return function to unsubscribe all
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }
+
+  private async routeExecutionUnitMessage(
+    agentId: string,
+    agentInstance: OrgAgentInstance,
+    content: string,
+    context: OrgExecutionContext,
+    router: MessageRouter
+  ): Promise<void> {
         // Find who this agent reports to
         const role = context.pattern.structure.roles[agentInstance.role];
         if (!role?.reportsTo) {
@@ -597,7 +721,7 @@ export class WorkflowExecutor extends EventEmitter {
             executionId: context.id,
             agentId,
             role: agentInstance.role,
-            message,
+            message: { content },
           });
           return;
         }
@@ -621,20 +745,22 @@ export class WorkflowExecutor extends EventEmitter {
         );
 
         try {
-          // Send the message to the manager agent
-          // The manager (as an LLM) will naturally understand and respond
-          const response = await this.runtimeService.send(
-            managerId,
-            `Message from ${role.name} (${agentInstance.role}):\n${message.content}`,
-            { expectResponse: true, timeout: 30000 }
+          const manager = context.agents.get(managerId);
+          if (!manager) {
+            this.logger.warn({ managerId, reportsTo: role.reportsTo }, 'Manager execution unit not found');
+            return;
+          }
+
+          const response = await this.sendToExecutionUnit(
+            manager,
+            `Message from ${role.name} (${agentInstance.role}):\n${content}`,
           );
 
           // If manager responded, send that response back to the original agent
           if (response) {
-            await this.runtimeService.send(
-              agentId,
-              `Response from ${role.reportsTo}:\n${response.content}`,
-              { expectResponse: false }
+            await this.sendToExecutionUnit(
+              agentInstance,
+              `Response from ${role.reportsTo}:\n${this.extractResponseText(response)}`
             );
           }
         } catch (error) {
@@ -644,20 +770,35 @@ export class WorkflowExecutor extends EventEmitter {
           );
 
           // Use router's escalation logic as fallback
-          router.handleQuestion(agentId, message.content, undefined, {
-            originalMessage: message,
+          router.handleQuestion(agentId, content, undefined, {
+            originalMessage: { content },
             routingFailed: true,
           });
         }
-      });
+  }
 
-      unsubscribers.push(unsubscribe);
+  private async sendToExecutionUnit(
+    unit: OrgAgentInstance,
+    message: string,
+    input?: any
+  ): Promise<any> {
+    if (unit.kind === 'thread' && unit.threadId) {
+      await this.runtimeService.sendToThread(unit.threadId, {
+        message: input ? `${message}\n\nInput:\n${JSON.stringify(input, null, 2)}` : message,
+      });
+      return { threadId: unit.threadId, accepted: true };
     }
 
-    // Return function to unsubscribe all
-    return () => {
-      unsubscribers.forEach(unsub => unsub());
-    };
+    return this.runtimeService.send(unit.id, message, {
+      expectResponse: true,
+      timeout: this.stepTimeout,
+    });
+  }
+
+  private extractResponseText(response: any): string {
+    if (typeof response === 'string') return response;
+    if (response?.content) return response.content;
+    return JSON.stringify(response);
   }
 
   /**
@@ -691,11 +832,17 @@ export class WorkflowExecutor extends EventEmitter {
    * Cleanup agents after execution
    */
   private async cleanupAgents(context: OrgExecutionContext): Promise<void> {
-    const stopPromises = Array.from(context.agents.keys()).map((agentId) =>
-      this.runtimeService.stop(agentId).catch((error) => {
-        this.logger.warn({ error, agentId }, 'Failed to stop agent during cleanup');
-      })
-    );
+    const stopPromises = Array.from(context.agents.values()).map((unit) => {
+      if (unit.kind === 'thread' && unit.threadId) {
+        return this.runtimeService.stopThread(unit.threadId).catch((error) => {
+          this.logger.warn({ error, threadId: unit.threadId }, 'Failed to stop thread during cleanup');
+        });
+      }
+
+      return this.runtimeService.stop(unit.id).catch((error) => {
+        this.logger.warn({ error, agentId: unit.id }, 'Failed to stop agent during cleanup');
+      });
+    });
 
     await Promise.allSettled(stopPromises);
   }

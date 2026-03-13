@@ -79,6 +79,7 @@ export class PatternLoader {
         description: compiled.metadata.description,
         input: patternInput,
         agents: compiled.metadata.agents,
+        threads: compiled.metadata.threads as any,
         minAgents: compiled.metadata.agents.minAgents,
         maxAgents: compiled.metadata.agents.maxAgents,
         script: compiled.script,
@@ -87,6 +88,7 @@ export class PatternLoader {
           source: 'yaml',
           compiledFrom: filePath,
           orgChart: true,
+          ...(compiled.metadata.metadata || {}),
         },
       };
 

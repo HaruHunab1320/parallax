@@ -9,3 +9,9 @@
 - `PatternAssembler` class for converting composed patterns into executable Prism code.
 - `PatternValidator` class for validating pattern structure, connections, and confidence propagation.
 - Core types: `OrchestrationRequirements`, `Primitive`, `ComposedPattern`, `ExecutablePattern`, `PatternValidation`.
+
+## [0.1.1] - 2026-03-12
+
+### Added
+- Explicit thread orchestration primitives in `coordination/threads.prism`.
+- Support for `spawnThread`, `awaitThread`, `sendThreadInput`, `shareDecision`, `collectThreadSummaries`, and `finalizeThread`.

@@ -30,7 +30,9 @@ export interface CompiledPattern {
     description: string;
     input: Record<string, any>;
     agents: { capabilities: string[]; minAgents?: number; maxAgents?: number };
+    threads?: Record<string, any>;
     workspace?: Record<string, any>;
+    metadata?: Record<string, any>;
   };
 }
 
@@ -55,12 +57,14 @@ export function compileOrgPattern(
   // Extract role capabilities for agent selection
   const allCapabilities = extractCapabilities(pattern.structure);
   const agentCounts = calculateAgentCounts(pattern.structure);
+  const threadMetadata = extractThreadMetadata(pattern.structure);
 
   // Generate role assignments section
   if (includeComments) {
     lines.push('// === Team Structure ===');
   }
   lines.push(`let roles = ${JSON.stringify(Object.keys(pattern.structure.roles), null, 2)};`);
+  lines.push(`let roleExecution = ${JSON.stringify(buildRoleExecutionMetadata(pattern.structure), null, 2)};`);
   lines.push('');
 
   // Map agents to roles based on their index
@@ -123,7 +127,12 @@ export function compileOrgPattern(
         minAgents: agentCounts.min,
         maxAgents: agentCounts.max,
       },
+      threads: threadMetadata.enabled ? threadMetadata : undefined,
       workspace: pattern.metadata?.workspace,
+      metadata: {
+        ...(pattern.metadata || {}),
+        roleExecution: buildRoleExecutionMetadata(pattern.structure),
+      },
     },
   };
 }
@@ -195,6 +204,7 @@ function compileAssignStep(
 ): string[] {
   const role = structure.roles[step.role];
   const roleName = role?.name || step.role;
+  const threadEnabled = !!role?.threadConfig?.enabled;
 
   return [
     `// Assign task to ${roleName}`,
@@ -203,14 +213,36 @@ function compileAssignStep(
     `  if (roleAgents.length === 0) {`,
     `    return { error: "No agents for role: ${step.role}", confidence: 0 };`,
     `  }`,
-    `  // Get result from first available agent in this role`,
+    threadEnabled
+      ? `  // Explicit thread-backed orchestration for this role`
+      : `  // Get result from first available agent in this role`,
     `  let agent = roleAgents[0];`,
+    ...(threadEnabled
+      ? [
+          `  let threadOps = {`,
+          `    spawn: spawnRoleThread("${step.role}", ${JSON.stringify(step.task)}),`,
+          `    input: sendRoleThreadInput("${step.role}", agent, ${JSON.stringify(step.task)}, ${JSON.stringify(step.input || null)}),`,
+          `    await: awaitRoleThread("${step.role}", agent, "thread_turn_complete")`,
+          `  };`,
+        ]
+      : []),
     `  return {`,
     `    role: "${step.role}",`,
     `    task: ${JSON.stringify(step.task)},`,
-    `    result: agent?.result,`,
-    `    confidence: agent?.confidence || 0.7,`,
-    `    agentId: agent?.agentId`,
+    ...(threadEnabled
+      ? [
+          `    mode: "thread",`,
+          `    thread: threadOps,`,
+          `    result: threadOps.await,`,
+          `    confidence: 0.8,`,
+          `    agentId: agent?.agentId,`,
+          `    threadId: agent?.threadId`,
+        ]
+      : [
+          `    result: agent?.result,`,
+          `    confidence: agent?.confidence || 0.7,`,
+          `    agentId: agent?.agentId`,
+        ]),
     `  };`,
     `})();`,
   ];
@@ -272,6 +304,7 @@ function compileReviewStep(
 ): string[] {
   const role = structure.roles[step.reviewer];
   const roleName = role?.name || step.reviewer;
+  const threadEnabled = !!role?.threadConfig?.enabled;
 
   return [
     `// Review by ${roleName}`,
@@ -281,12 +314,15 @@ function compileReviewStep(
     `    return { approved: true, confidence: 0.5, reason: "No reviewer available" };`,
     `  }`,
     `  let reviewer = reviewerAgents[0];`,
-    `  // Simulate review based on agent confidence`,
+    threadEnabled
+      ? `  let reviewThread = sendRoleThreadInput("${step.reviewer}", reviewer, "review", ${JSON.stringify(step.subject)});`
+      : `  // Simulate review based on agent confidence`,
     `  let approved = (reviewer?.confidence || 0) > 0.6;`,
     `  return {`,
     `    reviewer: "${step.reviewer}",`,
     `    approved: approved,`,
     `    confidence: reviewer?.confidence || 0.7,`,
+    ...(threadEnabled ? [`    thread: reviewThread,`] : []),
     `    feedback: approved ? "Looks good" : "Needs revision"`,
     `  };`,
     `})();`,
@@ -298,6 +334,8 @@ function compileApproveStep(
   varName: string,
   structure: OrgStructure
 ): string[] {
+  const role = structure.roles[step.approver];
+  const threadEnabled = !!role?.threadConfig?.enabled;
   return [
     `// Approval by ${step.approver}`,
     `let ${varName} = (function() {`,
@@ -306,11 +344,15 @@ function compileApproveStep(
     `    return { approved: false, reason: "No approver available" };`,
     `  }`,
     `  let approver = approverAgents[0];`,
+    ...(threadEnabled
+      ? [`  let approvalThread = sendRoleThreadInput("${step.approver}", approver, "approve", ${JSON.stringify(step.subject)});`]
+      : []),
     `  let approved = (approver?.confidence || 0) > 0.7;`,
     `  return {`,
     `    approver: "${step.approver}",`,
     `    approved: approved,`,
-    `    confidence: approver?.confidence || 0.7`,
+    `    confidence: approver?.confidence || 0.7,`,
+    ...(threadEnabled ? [`    thread: approvalThread`] : [`    agentId: approver?.agentId`]),
     `  };`,
     `})();`,
   ];
@@ -376,12 +418,14 @@ function compileSelectStep(
   varName: string,
   structure: OrgStructure
 ): string[] {
+  const role = structure.roles[step.role];
+  const threadEnabled = !!role?.threadConfig?.enabled;
   return [
-    `// Select agent from ${step.role} (${step.criteria || 'first'})`,
+    `// Select ${threadEnabled ? 'thread' : 'agent'} from ${step.role} (${step.criteria || 'first'})`,
     `let ${varName} = (function() {`,
     `  let roleAgents = roleAssignments["${step.role}"] || [];`,
     `  if (roleAgents.length === 0) return null;`,
-    `  return roleAgents[0]?.agentId;`,
+    `  return roleAgents[0]?.${threadEnabled ? 'threadId' : 'agentId'};`,
     `})();`,
   ];
 }
@@ -428,6 +472,34 @@ function generateHelperFunctions(): string[] {
     `    return (curr?.confidence || 0) > (best?.confidence || 0) ? curr : best;`,
     `  }, results[0]);`,
     `}`,
+    ``,
+    `function spawnRoleThread(roleId, objective) {`,
+    `  return {`,
+    `    type: "spawnThread",`,
+    `    role: roleId,`,
+    `    objective: objective,`,
+    `    mode: roleExecution?.[roleId]?.mode || "agent"`,
+    `  };`,
+    `}`,
+    ``,
+    `function sendRoleThreadInput(roleId, worker, task, input) {`,
+    `  return {`,
+    `    type: "sendThreadInput",`,
+    `    role: roleId,`,
+    `    threadId: worker?.threadId,`,
+    `    task: task,`,
+    `    input: input`,
+    `  };`,
+    `}`,
+    ``,
+    `function awaitRoleThread(roleId, worker, eventType) {`,
+    `  return {`,
+    `    type: "awaitThread",`,
+    `    role: roleId,`,
+    `    threadId: worker?.threadId,`,
+    `    eventType: eventType || "thread_turn_complete"`,
+    `  };`,
+    `}`,
   ];
 }
 
@@ -458,6 +530,35 @@ function calculateAgentCounts(structure: OrgStructure): { min: number; max: numb
   }
 
   return { min, max };
+}
+
+function extractThreadMetadata(structure: OrgStructure): Record<string, any> {
+  const roles = Object.entries(structure.roles)
+    .filter(([_, role]) => role.threadConfig?.enabled)
+    .map(([roleId, role]) => ({
+      roleId,
+      agentType: Array.isArray(role.agentType) ? role.agentType[0] : role.agentType,
+      objective: role.threadConfig?.objective,
+      approvalPreset: role.threadConfig?.approvalPreset,
+    }));
+
+  return {
+    enabled: roles.length > 0,
+    roles,
+  };
+}
+
+function buildRoleExecutionMetadata(structure: OrgStructure): Record<string, any> {
+  const entries = Object.entries(structure.roles).map(([roleId, role]) => [
+    roleId,
+    {
+      mode: role.threadConfig?.enabled ? 'thread' : 'agent',
+      agentType: Array.isArray(role.agentType) ? role.agentType[0] : role.agentType,
+      approvalPreset: role.threadConfig?.approvalPreset,
+    },
+  ]);
+
+  return Object.fromEntries(entries);
 }
 
 function capitalize(str: string): string {
@@ -514,6 +615,12 @@ function buildPrismFile(compiled: CompiledPattern): string {
   }
   if (compiled.metadata.workspace) {
     lines.push(` * @workspace ${JSON.stringify(compiled.metadata.workspace)}`);
+  }
+  if (compiled.metadata.threads) {
+    lines.push(` * @threads ${JSON.stringify(compiled.metadata.threads)}`);
+  }
+  if (compiled.metadata.metadata) {
+    lines.push(` * @metadata ${JSON.stringify(compiled.metadata.metadata)}`);
   }
 
   lines.push(' */');

@@ -4,6 +4,7 @@ export interface Pattern {
   description: string;
   input: PatternInput;
   agents?: AgentRequirement;
+  threads?: PatternThreadConfig;
   minAgents?: number;
   maxAgents?: number;
   script: string;
@@ -43,6 +44,33 @@ export interface PatternWorkspaceConfig {
     labels?: string[];
     reviewers?: string[];
   };
+}
+
+export interface PatternThreadConfig {
+  /**
+   * Whether this pattern should spawn managed threads instead of using discovered agents.
+   */
+  enabled: boolean;
+
+  /**
+   * Agent type used for spawned threads.
+   */
+  agentType?: string;
+
+  /**
+   * Approval preset passed through to the runtime.
+   */
+  approvalPreset?: 'readonly' | 'standard' | 'permissive' | 'autonomous';
+
+  /**
+   * Objective template for spawned threads.
+   */
+  objective?: string;
+
+  /**
+   * Thread supervision policy metadata.
+   */
+  policy?: Record<string, any>;
 }
 
 export interface PatternInput {

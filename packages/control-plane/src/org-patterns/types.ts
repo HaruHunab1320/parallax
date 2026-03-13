@@ -4,7 +4,30 @@
  * Types for organizational structure orchestration of multi-agent systems.
  */
 
-import { AgentType, AgentConfig } from '@parallaxai/runtime-interface';
+import { AgentType, AgentConfig, ThreadPolicy, ThreadWorkspaceRef } from '@parallaxai/runtime-interface';
+
+export interface OrgThreadConfig {
+  /** Opt this role into thread-backed execution instead of raw agent spawning */
+  enabled?: boolean;
+
+  /** Objective used when creating the thread */
+  objective?: string;
+
+  /** Approval preset for coding-style runtimes */
+  approvalPreset?: 'readonly' | 'standard' | 'permissive' | 'autonomous';
+
+  /** Optional workspace to attach to the thread */
+  workspace?: ThreadWorkspaceRef;
+
+  /** Thread supervision policy */
+  policy?: ThreadPolicy;
+
+  /** Extra environment variables for the spawned thread */
+  env?: Record<string, string>;
+
+  /** Arbitrary metadata to persist on the thread */
+  metadata?: Record<string, unknown>;
+}
 
 /**
  * Organizational role definition
@@ -42,6 +65,9 @@ export interface OrgRole {
 
   /** Default agent configuration overrides */
   agentConfig?: Partial<AgentConfig>;
+
+  /** Optional thread-backed execution config */
+  threadConfig?: OrgThreadConfig;
 }
 
 /**
@@ -166,6 +192,12 @@ export interface OrgPattern {
 export interface OrgAgentInstance {
   /** Agent ID */
   id: string;
+
+  /** Whether this instance is backed by an agent or thread */
+  kind?: 'agent' | 'thread';
+
+  /** Backing thread ID when kind=thread */
+  threadId?: string;
 
   /** Assigned role */
   role: string;

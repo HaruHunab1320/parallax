@@ -9,3 +9,4 @@ export { createAuthRouter } from './auth';
 export { createAuditRouter } from './audit';
 export { createBackupRouter } from './backup';
 export { createManagedAgentsRouter } from './managed-agents';
+export { createManagedThreadsRouter } from './managed-threads';

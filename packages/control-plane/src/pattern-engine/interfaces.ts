@@ -1,6 +1,7 @@
 import { Pattern, PatternExecution, ExecutionMetrics } from './types';
 import { WorkspaceService, UserProvidedCredentials } from '../workspace';
 import { AgentRuntimeService } from '../agent-runtime';
+import { ThreadPreparationService } from '../threads';
 
 /**
  * Common interface for pattern engines
@@ -58,4 +59,8 @@ export interface IPatternEngine {
    * Set the agent runtime service for dynamic agent spawning
    */
   setAgentRuntimeService(service: AgentRuntimeService): void;
+  /**
+   * Set the thread preparation service for normalizing prepared thread spawns
+   */
+  setThreadPreparationService?(service: ThreadPreparationService): void;
 }

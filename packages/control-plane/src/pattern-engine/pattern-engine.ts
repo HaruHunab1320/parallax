@@ -16,7 +16,8 @@ import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
 import { WorkspaceService, Workspace, WorkspaceConfig, UserProvidedCredentials } from '../workspace';
 import { AgentRuntimeService } from '../agent-runtime';
-import { AgentHandle, AgentConfig } from '@parallaxai/runtime-interface';
+import { AgentHandle, AgentConfig, ThreadHandle } from '@parallaxai/runtime-interface';
+import { ThreadPreparationService } from '../threads';
 import {
   ExecutionEngine,
   ExecutionTask,
@@ -37,7 +38,9 @@ export class PatternEngine implements IPatternEngine {
   private workspaceService?: WorkspaceService;
   private executionEngine?: ExecutionEngine;
   private agentRuntimeService?: AgentRuntimeService;
+  private threadPreparationService?: ThreadPreparationService;
   private spawnedAgents: Map<string, AgentHandle[]> = new Map(); // executionId -> spawned agents
+  private spawnedThreads: Map<string, ThreadHandle[]> = new Map(); // executionId -> spawned threads
   private shuttingDown: boolean = false;
   private nodeId?: string;
 
@@ -51,7 +54,8 @@ export class PatternEngine implements IPatternEngine {
     databasePatterns?: DatabasePatternService,
     workspaceService?: WorkspaceService,
     executionEngine?: ExecutionEngine,
-    agentRuntimeService?: AgentRuntimeService
+    agentRuntimeService?: AgentRuntimeService,
+    threadPreparationService?: ThreadPreparationService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -62,6 +66,7 @@ export class PatternEngine implements IPatternEngine {
     this.workspaceService = workspaceService;
     this.executionEngine = executionEngine;
     this.agentRuntimeService = agentRuntimeService;
+    this.threadPreparationService = threadPreparationService;
   }
 
   async initialize(): Promise<void> {
@@ -92,6 +97,10 @@ export class PatternEngine implements IPatternEngine {
    */
   setAgentRuntimeService(service: AgentRuntimeService): void {
     this.agentRuntimeService = service;
+  }
+
+  setThreadPreparationService(service: ThreadPreparationService): void {
+    this.threadPreparationService = service;
   }
 
   /**
@@ -245,6 +254,248 @@ export class PatternEngine implements IPatternEngine {
     this.spawnedAgents.delete(executionId);
   }
 
+  private async spawnThreadsForPattern(
+    pattern: Pattern,
+    executionId: string,
+    workspace?: Workspace | null
+  ): Promise<ThreadHandle[]> {
+    if (!this.agentRuntimeService) {
+      this.logger.debug('AgentRuntimeService not available, skipping thread spawn');
+      return [];
+    }
+
+    const minAgents = pattern.minAgents || 1;
+    const capabilities = pattern.agents?.capabilities || [];
+    const spawnedThreads: ThreadHandle[] = [];
+    const threadConfig = pattern.threads;
+
+    this.logger.info(
+      { patternName: pattern.name, count: minAgents, threadAgentType: threadConfig?.agentType || 'claude' },
+      'Spawning threads for pattern execution'
+    );
+
+    for (let i = 0; i < minAgents; i++) {
+      try {
+        const spawnInput = this.threadPreparationService
+          ? await this.threadPreparationService.prepareSpawnInput({
+              id: `${executionId}-thread-${i}`,
+              executionId,
+              name: `${pattern.name}-thread-${i}`,
+              agentType: threadConfig?.agentType || 'claude',
+              objective:
+                threadConfig?.objective ||
+                pattern.description ||
+                `Execute pattern ${pattern.name}`,
+              role: `pattern-worker-${i}`,
+              preparation: {
+                workspace: workspace
+                  ? {
+                      workspaceId: workspace.id,
+                      path: workspace.path,
+                      repo: workspace.repo,
+                      branch: workspace.branch.name,
+                    }
+                  : undefined,
+                env: {
+                  PARALLAX_EXECUTION_ID: executionId,
+                  PARALLAX_PATTERN_NAME: pattern.name,
+                  PARALLAX_THREAD_INDEX: i.toString(),
+                },
+                approvalPreset: threadConfig?.approvalPreset,
+              },
+              workspace: workspace
+                ? {
+                    workspaceId: workspace.id,
+                    path: workspace.path,
+                    repo: workspace.repo,
+                    branch: workspace.branch.name,
+                  }
+                : undefined,
+              env: {
+                PARALLAX_EXECUTION_ID: executionId,
+                PARALLAX_PATTERN_NAME: pattern.name,
+                PARALLAX_THREAD_INDEX: i.toString(),
+              },
+              approvalPreset: threadConfig?.approvalPreset,
+              metadata: {
+                capabilities,
+                patternName: pattern.name,
+                threadIndex: i,
+              },
+              policy: threadConfig?.policy,
+            })
+          : {
+          id: `${executionId}-thread-${i}`,
+          executionId,
+          name: `${pattern.name}-thread-${i}`,
+          agentType: threadConfig?.agentType || 'claude',
+          objective:
+            threadConfig?.objective ||
+            pattern.description ||
+            `Execute pattern ${pattern.name}`,
+          role: `pattern-worker-${i}`,
+          preparation: {
+            workspace: workspace
+              ? {
+                  workspaceId: workspace.id,
+                  path: workspace.path,
+                  repo: workspace.repo,
+                  branch: workspace.branch.name,
+                }
+              : undefined,
+            env: {
+              PARALLAX_EXECUTION_ID: executionId,
+              PARALLAX_PATTERN_NAME: pattern.name,
+              PARALLAX_THREAD_INDEX: i.toString(),
+            },
+            approvalPreset: threadConfig?.approvalPreset,
+          },
+          workspace: workspace
+            ? {
+                workspaceId: workspace.id,
+                path: workspace.path,
+                repo: workspace.repo,
+                branch: workspace.branch.name,
+              }
+            : undefined,
+          env: {
+            PARALLAX_EXECUTION_ID: executionId,
+            PARALLAX_PATTERN_NAME: pattern.name,
+            PARALLAX_THREAD_INDEX: i.toString(),
+          },
+          approvalPreset: threadConfig?.approvalPreset,
+          metadata: {
+            capabilities,
+            patternName: pattern.name,
+            threadIndex: i,
+          },
+          policy: threadConfig?.policy,
+        };
+
+        const thread = await this.agentRuntimeService.spawnThread(spawnInput);
+
+        spawnedThreads.push(thread);
+
+        this.executionEvents?.emitEvent({
+          executionId,
+          type: 'thread_spawned',
+          data: {
+            threadId: thread.id,
+            agentType: thread.agentType,
+            capabilities,
+          },
+          timestamp: new Date(),
+        });
+      } catch (error) {
+        this.logger.error(
+          { error, threadIndex: i, patternName: pattern.name },
+          'Failed to spawn thread'
+        );
+      }
+    }
+
+    this.spawnedThreads.set(executionId, spawnedThreads);
+    return spawnedThreads;
+  }
+
+  private async cleanupSpawnedThreads(executionId: string): Promise<void> {
+    const threads = this.spawnedThreads.get(executionId);
+    if (!threads || threads.length === 0) return;
+
+    this.logger.info(
+      { executionId, threadCount: threads.length },
+      'Cleaning up spawned threads'
+    );
+
+    for (const thread of threads) {
+      try {
+        await this.agentRuntimeService?.stopThread(thread.id);
+        this.logger.debug({ threadId: thread.id }, 'Thread stopped');
+      } catch (error) {
+        this.logger.warn({ threadId: thread.id, error }, 'Failed to stop thread');
+      }
+    }
+
+    this.spawnedThreads.delete(executionId);
+  }
+
+  private async executeThreadTask(
+    threadId: string,
+    task: { description: string; data?: any },
+    timeoutMs: number
+  ): Promise<{
+    result: any;
+    confidence: number;
+    reasoning?: string;
+    summary?: string;
+  }> {
+    const runtimeService = this.agentRuntimeService;
+    if (!runtimeService) {
+      throw new Error('AgentRuntimeService not available for thread execution');
+    }
+
+    return new Promise(async (resolve, reject) => {
+      let settled = false;
+      let timeoutHandle: NodeJS.Timeout | undefined;
+
+      const cleanup = () => {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+        unsubscribe();
+      };
+
+      const finalize = async () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+
+        try {
+          const thread = await runtimeService.getThread(threadId);
+          const summary = thread?.completion?.summary || thread?.summary || '';
+          resolve({
+            result: summary || thread,
+            confidence: thread?.status === 'failed' ? 0 : 0.75,
+            reasoning: summary,
+            summary,
+          });
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      const unsubscribe = runtimeService.subscribeThread(threadId, async (event) => {
+        if (event.type === 'thread_turn_complete' || event.type === 'thread_completed') {
+          await finalize();
+          return;
+        }
+
+        if (event.type === 'thread_failed' || event.type === 'thread_stopped') {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error(`Thread ${threadId} ended with ${event.type}`));
+        }
+      });
+
+      timeoutHandle = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error(`Thread ${threadId} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      try {
+        await runtimeService.sendToThread(threadId, {
+          message: `${task.description}\n\nInput:\n${JSON.stringify(task.data ?? {}, null, 2)}`,
+        });
+      } catch (error) {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      }
+    });
+  }
+
   async executePattern(
     patternName: string,
     input: any,
@@ -388,7 +639,82 @@ export class PatternEngine implements IPatternEngine {
         this.logger.info({ hasExecutionEngine: !!this.executionEngine, patternName }, 'Entering agent dispatch block');
 
         // Use ExecutionEngine if available, otherwise fall back to direct AgentProxy calls
-        if (this.executionEngine) {
+        if (agents.some(agent => agent.threadId)) {
+          let completedCount = 0;
+          let failedCount = 0;
+
+          agentResults = await Promise.all(
+            agents.map(async (agent) => {
+              emitEvent('agent_started', {
+                agentId: agent.id,
+                agentName: agent.name,
+                capabilities: agent.capabilities,
+                task: input.task || input?.data?.task,
+                threadId: agent.threadId,
+              });
+
+              try {
+                const result = await this.executeThreadTask(
+                  agent.threadId,
+                  {
+                    description: input.task || 'analyze',
+                    data: input.data || input,
+                  },
+                  timeoutMs
+                );
+
+                emitEvent('agent_completed', {
+                  agentId: agent.id,
+                  agentName: agent.name,
+                  confidence: result.confidence,
+                  threadId: agent.threadId,
+                });
+                completedCount += 1;
+
+                return {
+                  agentId: agent.id,
+                  agentName: agent.name,
+                  capabilities: agent.capabilities,
+                  expertise: agent.expertise || 0.8,
+                  result: result.result,
+                  confidence: result.confidence,
+                  reasoning: result.reasoning,
+                  timestamp: Date.now(),
+                  threadId: agent.threadId,
+                };
+              } catch (error) {
+                this.logger.warn({ agentId: agent.id, threadId: agent.threadId, error }, 'Thread task failed');
+                emitEvent('agent_failed', {
+                  agentId: agent.id,
+                  agentName: agent.name,
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                  threadId: agent.threadId,
+                });
+                failedCount += 1;
+
+                return {
+                  agentId: agent.id,
+                  agentName: agent.name,
+                  capabilities: agent.capabilities,
+                  expertise: agent.expertise || 0.8,
+                  result: null,
+                  confidence: 0,
+                  reasoning: 'Thread failed to complete task',
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                  timestamp: Date.now(),
+                  threadId: agent.threadId,
+                };
+              }
+            })
+          );
+
+          emitEvent('agents_completed', {
+            total: agents.length,
+            completed: completedCount,
+            failed: failedCount,
+            mode: 'threads',
+          });
+        } else if (this.executionEngine) {
           // Register agents with the ExecutionEngine's proxy
           await this.registerAgentsWithExecutionEngine(agents);
 
@@ -717,6 +1043,7 @@ export class PatternEngine implements IPatternEngine {
 
       // Clean up spawned agents (if any)
       await this.cleanupSpawnedAgents(executionId);
+      await this.cleanupSpawnedThreads(executionId);
 
       return execution;
     } catch (error) {
@@ -736,6 +1063,7 @@ export class PatternEngine implements IPatternEngine {
 
       // Clean up spawned agents even on failure
       await this.cleanupSpawnedAgents(executionId);
+      await this.cleanupSpawnedThreads(executionId);
 
       throw error;
     }
@@ -746,6 +1074,35 @@ export class PatternEngine implements IPatternEngine {
     executionId?: string,
     workspace?: Workspace | null
   ): Promise<any[]> {
+    if (pattern.threads?.enabled && this.agentRuntimeService && executionId) {
+      const spawnedHandles = await this.spawnThreadsForPattern(pattern, executionId, workspace);
+
+      const spawnedThreads = spawnedHandles.map((handle, index) => ({
+        id: handle.id,
+        name: handle.id || `spawned-thread-${index}`,
+        address: `thread://${handle.id}`,
+        endpoint: `thread://${handle.id}`,
+        capabilities: pattern.agents?.capabilities || [],
+        expertise: 0.8,
+        historicalConfidence: 0.8,
+        spawned: true,
+        threadId: handle.id,
+        handle,
+      }));
+
+      if (pattern.maxAgents && spawnedThreads.length > pattern.maxAgents) {
+        return spawnedThreads.slice(0, pattern.maxAgents);
+      }
+
+      if (pattern.minAgents && spawnedThreads.length < pattern.minAgents) {
+        throw new Error(
+          `Not enough threads available. Required: ${pattern.minAgents}, Available: ${spawnedThreads.length}`
+        );
+      }
+
+      return spawnedThreads;
+    }
+
     let agents: any[] = [];
 
     // First, check for directly registered local agents (for demos)
@@ -1051,6 +1408,7 @@ export class PatternEngine implements IPatternEngine {
     if (pattern.description) metadataLines.push(`@description ${pattern.description}`);
     if (pattern.input) metadataLines.push(`@input ${JSON.stringify(pattern.input)}`);
     if (pattern.agents) metadataLines.push(`@agents ${JSON.stringify(pattern.agents)}`);
+    if (pattern.threads) metadataLines.push(`@threads ${JSON.stringify(pattern.threads)}`);
     if (typeof pattern.minAgents === 'number') metadataLines.push(`@minAgents ${pattern.minAgents}`);
     if (typeof pattern.maxAgents === 'number') metadataLines.push(`@maxAgents ${pattern.maxAgents}`);
     if (pattern.metadata && Object.keys(pattern.metadata).length > 0) {

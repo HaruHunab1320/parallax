@@ -20,7 +20,7 @@ import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
 import { WorkspaceService, Workspace, WorkspaceConfig } from '../workspace';
 import { AgentRuntimeService } from '../agent-runtime';
-import { MemoryContextService } from '../threads';
+import { ThreadPreparationService } from '../threads';
 import {
   ExecutionEngine,
   ExecutionTask,
@@ -41,7 +41,7 @@ export class TracedPatternEngine implements IPatternEngine {
   private workspaceService?: WorkspaceService;
   private executionEngine?: ExecutionEngine;
   private agentRuntimeService?: AgentRuntimeService;
-  private memoryContextService?: MemoryContextService;
+  private threadPreparationService?: ThreadPreparationService;
   private nodeId?: string;
   private shuttingDown: boolean = false;
 
@@ -56,7 +56,7 @@ export class TracedPatternEngine implements IPatternEngine {
     workspaceService?: WorkspaceService,
     executionEngine?: ExecutionEngine,
     agentRuntimeService?: AgentRuntimeService,
-    memoryContextService?: MemoryContextService
+    threadPreparationService?: ThreadPreparationService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -68,7 +68,7 @@ export class TracedPatternEngine implements IPatternEngine {
     this.workspaceService = workspaceService;
     this.executionEngine = executionEngine;
     this.agentRuntimeService = agentRuntimeService;
-    this.memoryContextService = memoryContextService;
+    this.threadPreparationService = threadPreparationService;
   }
 
   async initialize(): Promise<void> {
@@ -94,8 +94,8 @@ export class TracedPatternEngine implements IPatternEngine {
     this.agentRuntimeService = service;
   }
 
-  setMemoryContextService(service: MemoryContextService): void {
-    this.memoryContextService = service;
+  setThreadPreparationService(service: ThreadPreparationService): void {
+    this.threadPreparationService = service;
   }
 
   setNodeId(id: string): void {
