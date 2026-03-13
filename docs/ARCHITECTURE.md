@@ -13,6 +13,7 @@ Parallax is an open-source AI orchestration platform that coordinates agent swar
 - **Uncertainty-Aware**: All decisions include confidence scores (0.0-1.0)
 - **Language Agnostic**: Agents in TypeScript, Python, Go, Rust, or any language
 - **Multi-Runtime**: Local PTY, Docker containers, or Kubernetes pods
+- **Managed Threads**: Long-lived supervised work streams for coding and orchestration
 - **Git Integration**: Automatic workspace provisioning, branching, and PR creation
 - **Enterprise Ready**: Licensing, RBAC, audit logging, scheduled execution
 
@@ -36,10 +37,15 @@ Parallax is an open-source AI orchestration platform that coordinates agent swar
 │  │  └────────────┘  └────────────┘  └────────────────────────┘  │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐   │
-│  │  Service   │  │ Credential │  │ Workspace  │  │  Scheduler │   │
-│  │  Registry  │  │  Service   │  │  Service   │  │  Service   │   │
-│  │   (etcd)   │  │ (GitHub)   │  │   (git)    │  │  (cron)    │   │
+│  │  Service   │  │ Credential │  │ Workspace  │  │  Thread    │   │
+│  │  Registry  │  │  Service   │  │  Service   │  │ Persistence│   │
+│  │   (etcd)   │  │ (GitHub)   │  │   (git)    │  │ & Memory   │   │
 │  └────────────┘  └────────────┘  └────────────┘  └────────────┘   │
+│  ┌────────────┐  ┌────────────┐                                     │
+│  │  Thread    │  │  Scheduler │                                     │
+│  │Preparation │  │  Service   │                                     │
+│  │  Service   │  │  (cron)    │                                     │
+│  └────────────┘  └────────────┘                                     │
 └────────────────────────────┬────────────────────────────────────────┘
                              │ gRPC / HTTP
 ┌────────────────────────────┴────────────────────────────────────────┐
@@ -74,6 +80,9 @@ The central orchestration service that manages pattern execution:
 | **Prism Runtime** | Interprets Prism language constructs |
 | **Service Registry** | Agent discovery via etcd |
 | **Execution Events** | WebSocket streaming of execution progress |
+| **Thread Persistence** | Stores long-lived thread state and events |
+| **Thread Preparation** | Builds workspace, memory, and approval context before spawn |
+| **Memory Services** | Shared decisions and episodic experiences for future work |
 | **Scheduler Service** | Cron-based pattern scheduling (Enterprise) |
 | **Trigger Service** | Webhook and event-based triggers (Enterprise) |
 | **Database** | PostgreSQL/TimescaleDB for executions, patterns |
@@ -93,6 +102,26 @@ Each runtime provides:
 - Health monitoring and status reporting
 - WebSocket terminal streaming for CLI agents
 - Resource limits and isolation
+- Thread-backed worker execution through the shared runtime contract
+
+### Managed Threads
+
+Managed threads are the control-plane abstraction Parallax now uses for long-lived supervised work.
+
+They sit above concrete agent sessions and give the orchestrator a stable unit for:
+
+- coding swarms in mutable repositories
+- explicit supervision over blocked, idle, and turn-complete states
+- thread summaries and completion artifacts
+- shared-decision capture across workers
+- episodic memory retrieval and injection into future work
+
+At the contract level:
+
+- `agent` is the execution substrate
+- `thread` is the orchestration substrate
+
+This keeps Parallax's explicit coordination model intact while making distributed CLI-agent swarms a first-class feature.
 
 ### Workspace Service
 
@@ -222,6 +251,7 @@ decision ~> 0.9 ? decision : escalate("human-review")
 | **Confidence** | `threshold`, `transform`, `calibrate` |
 | **Control** | `retry`, `fallback`, `circuit`, `timeout`, `escalate` |
 | **Coordination** | `delegate`, `quorum`, `synchronize`, `prioritize` |
+| **Threads** | `spawnThread`, `awaitThread`, `sendThreadInput`, `shareDecision` |
 | **Event** | `pubsub`, `stream` |
 | **Resource** | `pool`, `cache` |
 | **Workflow** | `pipeline`, `dependency`, `saga` |
@@ -247,6 +277,33 @@ results = parallel(reviewAgents, {
 })
 
 // PR created automatically on completion
+```
+
+### Pattern with Managed Threads
+
+Patterns and org charts can now opt into thread-backed execution for long-lived workers:
+
+```prism
+/**
+ * @name ThreadedCodeReview
+ * @threads {"enabled": true, "agentType": "codex", "approvalPreset": "standard"}
+ */
+
+import {
+  spawnThread,
+  awaitThread,
+  collectThreadSummaries,
+  finalizeThread
+} from "@parallaxai/primitives/coordination/threads"
+
+reviewer = spawnThread({
+  role: "engineer",
+  objective: "Review auth changes and summarize risks"
+})
+
+awaitThread(reviewer, { event: "thread_turn_complete" })
+summary = collectThreadSummaries([reviewer])
+finalizeThread(reviewer)
 ```
 
 ## Communication Flow

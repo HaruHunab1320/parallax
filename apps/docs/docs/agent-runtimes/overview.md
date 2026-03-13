@@ -7,12 +7,15 @@ title: Overview
 
 Parallax can spawn and manage CLI-based AI agents dynamically, enabling on-demand agent orchestration across multiple runtime environments.
 
+Managed threads build on top of these runtimes, giving the control plane a durable orchestration unit for long-lived coding work.
+
 ## What are Agent Runtimes?
 
 Agent Runtimes allow Parallax to:
 - **Spawn** CLI agents (Claude Code, Codex, Gemini CLI) on demand
 - **Manage** agent lifecycle (start, communicate, monitor, stop)
 - **Scale** across local, Docker, and Kubernetes environments
+- **Project** runtime signals into thread events for orchestration and memory
 
 ## Supported Agent Types
 
@@ -98,12 +101,18 @@ curl -X POST http://localhost:3000/api/managed-agents/agent-123/send \
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/managed-agents` | Spawn new agent |
+| `POST` | `/api/managed-threads` | Spawn new managed thread |
+| `POST` | `/api/managed-threads/prepare` | Build thread preparation without spawning |
 | `GET` | `/api/managed-agents` | List all agents |
+| `GET` | `/api/managed-threads` | List all threads |
 | `GET` | `/api/managed-agents/:id` | Get agent details |
+| `GET` | `/api/managed-threads/:id` | Get thread details |
 | `POST` | `/api/managed-agents/:id/send` | Send message to agent |
+| `POST` | `/api/managed-threads/:id/send` | Send input to thread |
 | `GET` | `/api/managed-agents/:id/logs` | Get agent logs |
 | `GET` | `/api/managed-agents/:id/metrics` | Get agent metrics |
 | `DELETE` | `/api/managed-agents/:id` | Stop agent |
+| `DELETE` | `/api/managed-threads/:id` | Stop thread |
 
 ### Spawn Request
 
@@ -174,6 +183,7 @@ ws://localhost:3100/ws/events?agentId=abc-123  # Filter by agent
 | `login_required` | `{ agent, loginUrl }` | Authentication needed |
 | `message` | `{ message }` | Agent output |
 | `question` | `{ agent, question }` | Agent needs input |
+| `thread_event` | `{ thread, event }` | Normalized managed-thread event |
 
 ```javascript
 const ws = new WebSocket('ws://runtime:3100/ws/events');
@@ -210,9 +220,12 @@ structure:
         - architecture
 ```
 
+Patterns and org charts can now also supervise thread-backed roles and thread-backed worker pools. See [Threads](/docs/concepts/threads) and [Managed Threads API](/docs/api/managed-threads).
+
 ## Next Steps
 
 - [Local Runtime](/docs/agent-runtimes/local) - Development setup
 - [Docker Runtime](/docs/agent-runtimes/docker) - Container-based agents
 - [Kubernetes Runtime](/docs/agent-runtimes/kubernetes) - Production deployment
 - [Org-Chart Patterns](/docs/patterns/org-chart-patterns) - Hierarchical orchestration
+- [Threads](/docs/concepts/threads) - Long-lived orchestration units

@@ -36,6 +36,18 @@ curl -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIs..." \
   https://parallax.example.com/api/patterns
 ```
 
+## Managed Threads
+
+Parallax now exposes managed threads as first-class control-plane resources for long-lived supervised work.
+
+See [Managed Threads API](/docs/api/managed-threads) for:
+
+- thread spawn and preparation
+- thread input and shutdown
+- persisted thread events
+- shared decisions
+- episodic experiences
+
 ## Patterns
 
 ### List Patterns

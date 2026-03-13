@@ -12,6 +12,7 @@ Primitives are the building blocks used to construct patterns in Parallax. They 
 A **primitive** is a single operation or node in a pattern that performs a specific function:
 
 - **Execution primitives** - Control how tasks run (parallel, sequential, race)
+- **Thread primitives** - Supervise long-lived workers (spawn, await, summarize)
 - **Aggregation primitives** - Combine results (vote, merge, consensus)
 - **Flow control primitives** - Branch and route (switch, filter, gate)
 - **Transform primitives** - Modify data (map, reduce, extract)
@@ -93,6 +94,34 @@ output: $batchResults
 ```
 
 ## Aggregation Primitives
+
+## Thread Primitives
+
+Parallax now includes thread-oriented primitives for coding swarms and other long-running supervised work.
+
+### `spawnThread`
+
+Creates a managed thread from a role, objective, and preparation bundle.
+
+### `awaitThread`
+
+Waits on a thread event or terminal state such as `thread_turn_complete`, `thread_blocked`, or `thread_completed`.
+
+### `sendThreadInput`
+
+Sends follow-up input to a thread without dropping down to raw runtime details.
+
+### `shareDecision`
+
+Publishes a compressed decision from one thread back into orchestrator memory so other workers can reuse it.
+
+### `collectThreadSummaries`
+
+Pulls thread summaries into the orchestrator for merge, review, or escalation.
+
+### `finalizeThread`
+
+Stops and cleans up a thread after orchestration is complete.
 
 ### Vote
 

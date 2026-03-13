@@ -19,6 +19,7 @@ const sidebars: SidebarsConfig = {
       label: 'Core Concepts',
       items: [
         'concepts/agents',
+        'concepts/threads',
         'concepts/patterns',
         'concepts/primitives',
         'concepts/confidence-scoring',
@@ -116,6 +117,7 @@ const sidebars: SidebarsConfig = {
       label: 'API Reference',
       items: [
         'api/control-plane',
+        'api/managed-threads',
         'api/agent-protocol',
         'api/webhooks',
       ],

@@ -52,24 +52,30 @@ This executes all patterns and populates monitoring dashboards.
 ## Test Commands
 
 ```bash
-# Run unit tests
-pnpm test
+# Control-plane unit lane (no DB setup)
+pnpm --filter @parallaxai/control-plane test
 
-# Run integration tests
-pnpm test:integration
+# Control-plane DB/integration lane
+pnpm --filter @parallaxai/control-plane test:db
 
-# Run e2e tests
-pnpm test:e2e
+# Control-plane full test sweep
+pnpm --filter @parallaxai/control-plane test:all
 
-# Run performance tests
-pnpm test:perf
+# Runtime MCP tests
+pnpm --filter @parallaxai/runtime-mcp test:run
 
-# Run security tests
-pnpm test:security
-
-# Generate test coverage
-pnpm test:coverage
+# Type-check the touched orchestration packages
+pnpm --filter @parallaxai/control-plane type-check
+pnpm --filter @parallaxai/runtime-local type-check
+pnpm --filter @parallaxai/runtime-mcp type-check
 ```
+
+### Notes
+
+- `@parallaxai/control-plane` now has separate unit and DB-backed test lanes.
+- `pnpm --filter @parallaxai/control-plane test` should not require Postgres.
+- `pnpm --filter @parallaxai/control-plane test:db` requires the Docker Postgres test target on `localhost:5435`.
+- Managed thread coverage now lives in control-plane thread unit tests and runtime-mcp thread tool tests.
 
 ---
 
@@ -86,8 +92,8 @@ pnpm test:coverage
 
 #### 1.2 Runtime: Local Provider
 ```bash
-# Test local runtime
-pnpm test --filter @parallaxai/runtime-local
+# Type-check local runtime
+pnpm --filter @parallaxai/runtime-local type-check
 ```
 - [ ] Agent process spawning works
 - [ ] Agent process receives environment variables
@@ -98,6 +104,9 @@ pnpm test --filter @parallaxai/runtime-local
 - [ ] Max concurrent agent limit enforced
 - [ ] Agent working directory created
 - [ ] Agent working directory cleaned up
+- [ ] Thread spawning works through `spawnThread`
+- [ ] Thread event projection works (`thread_blocked`, `thread_turn_complete`, `thread_completed`)
+- [ ] Prepared context files are written into the workspace before spawn
 
 #### 1.3 Runtime: Docker Provider
 ```bash
@@ -153,7 +162,17 @@ kubectl get pods -n parallax-agents
 - [ ] Agent reconnection after network issues
 - [ ] Agent timeout and cleanup
 
-#### 1.6 Pattern Execution
+#### 1.6 Managed Thread Orchestration
+- [ ] Control plane can create managed threads through runtime adapters
+- [ ] Thread persistence stores thread state and normalized events
+- [ ] Managed thread REST APIs return thread state, events, and memory surfaces
+- [ ] Thread preparation injects workspace, approval presets, and memory files
+- [ ] Shared decisions are captured from thread completions and failures
+- [ ] Episodic experiences are captured and deduplicated
+- [ ] Memory retrieval ranks by repo, role, objective overlap, outcome, and recency
+- [ ] MCP thread tools work for spawn, list, get, send input, and stop
+
+#### 1.7 Pattern Execution
 - [ ] Pattern loading and validation
 - [ ] Epistemic orchestrator pattern execution
 - [ ] Consensus builder pattern execution
