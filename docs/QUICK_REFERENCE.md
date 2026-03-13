@@ -1,189 +1,257 @@
 # Parallax Quick Reference
 
-## 🚀 Common Commands
+This is the fast operator cheat sheet for the current Parallax stack.
 
-### Starting Services
+For architecture and design context, use:
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [THREAD_RUNTIME_PROPOSAL.md](./THREAD_RUNTIME_PROPOSAL.md)
+- [THREAD_RUNTIME_IMPLEMENTATION_PLAN.md](./THREAD_RUNTIME_IMPLEMENTATION_PLAN.md)
+
+## Common Commands
+
+### Install and Build
 
 ```bash
-# Quick start (minimal)
-pnpm start                    # Start etcd + control plane
-
-# Development environments
-pnpm run dev                  # Same as pnpm start
-pnpm run dev:monitor         # + Prometheus, Grafana, Jaeger
-pnpm run dev:full           # + PostgreSQL, all services
-pnpm run dev:prod          # Production setup locally
-
-# Individual services
-pnpm run control-plane      # Just control plane
-pnpm run web               # Just web dashboard
-pnpm run monitor:start     # Just monitoring stack
+pnpm install
+pnpm build
+pnpm type-check
 ```
 
-### Running Demos
+### Start the Platform
 
 ```bash
-pnpm run demo:simple       # Basic agent demo
-pnpm run demo:patterns     # Pattern execution demo
-pnpm run demo             # Full demo app
+# Simplest local startup
+pnpm start
+
+# Same as start-local dev flow
+pnpm run dev
+
+# Bring up local infra from control-plane docker-compose
+pnpm run infra:all
+
+# Run only the control plane
+pnpm run dev:control-plane
+
+# Run only the web dashboard
+pnpm run dev:web
+```
+
+### Runtime and MCP
+
+```bash
+# Local PTY runtime
+pnpm --filter @parallaxai/runtime-local dev
+
+# Runtime MCP server
+pnpm --filter @parallaxai/runtime-mcp dev
+```
+
+### Demos
+
+```bash
+pnpm run demo:patterns
+pnpm run demo:typescript
+pnpm run demo:python
+pnpm run demo:go
+pnpm run demo:rust
 ```
 
 ### Testing
 
+Workspace-level:
+
 ```bash
-npm test                  # Run all tests
-pnpm run test:unit        # Unit tests only
-pnpm run test:integration # Integration tests
-pnpm run test:e2e        # End-to-end tests
-pnpm run test:watch      # Watch mode
+pnpm test
+pnpm run test:watch
+pnpm run test:coverage
 ```
 
-### Infrastructure Management
+Control-plane specific:
 
 ```bash
-# Start specific infrastructure
-pnpm run infra:etcd       # Just etcd
-pnpm run infra:postgres   # Just PostgreSQL
-pnpm run infra:all       # All infrastructure
-
-# Stop everything
-pnpm run stop:all        # Stop all services
-pnpm run reset          # Stop all + clean Docker
+pnpm --filter @parallaxai/control-plane test
+pnpm --filter @parallaxai/control-plane test:db
+pnpm --filter @parallaxai/control-plane test:all
+pnpm --filter @parallaxai/control-plane type-check
 ```
 
-### Pattern & Agent Commands
+Runtime MCP:
 
 ```bash
-pnpm run pattern:list                    # List available patterns
-pnpm run pattern:execute -- --pattern consensus --input '{}'
-pnpm run agent:list                      # List registered agents
+pnpm --filter @parallaxai/runtime-mcp test:run
+pnpm --filter @parallaxai/runtime-mcp type-check
 ```
 
-### Kubernetes
+Local runtime:
 
 ```bash
-pnpm run k8s:install      # Install with dev values
-pnpm run k8s:upgrade      # Upgrade deployment
-pnpm run k8s:uninstall    # Remove from cluster
+pnpm --filter @parallaxai/runtime-local type-check
 ```
 
-## 📍 Service URLs
+### Managed Thread Smoke Test
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Control Plane API | http://localhost:8080 | - |
-| Control Plane gRPC | localhost:8081 | - |
-| Web Dashboard | http://localhost:3000 | - |
-| Grafana | http://localhost:3000 | admin/admin |
-| Prometheus | http://localhost:9090 | - |
-| Jaeger UI | http://localhost:16686 | - |
-| etcd | http://localhost:2379 | - |
-| PostgreSQL | localhost:5432 | parallax/parallax123 |
-
-## 🛠️ Environment Variables
-
-### Essential
 ```bash
-PORT=8080                           # API port
-DATABASE_URL=postgresql://...       # If using external DB
+WORKSPACE_PATH=/absolute/path/to/repo \
+./scripts/smoke-managed-threads.sh
+```
+
+Examples:
+
+```bash
+THREAD_AGENT_TYPE=gemini \
+WORKSPACE_PATH=/Users/jakobgrant/Workspaces/parallax \
+./scripts/smoke-managed-threads.sh
+```
+
+```bash
+THREAD_AGENT_TYPE=claude \
+BLOCKED_KEYS=enter \
+BLOCKED_MAX_SENDS=5 \
+WORKSPACE_PATH=/Users/jakobgrant/Workspaces/parallax \
+./scripts/smoke-managed-threads.sh
+```
+
+## Service URLs
+
+Typical local endpoints:
+
+| Service | URL |
+|---------|-----|
+| Control Plane API | http://localhost:8080 |
+| Local Runtime API | http://localhost:9876 |
+| Local Runtime MCP | depends on CLI invocation |
+| Web Dashboard | http://localhost:3000 |
+| etcd | http://localhost:2379 |
+
+Optional local infra from `packages/control-plane/docker-compose.dev.yml` may also expose:
+
+| Service | URL |
+|---------|-----|
+| PostgreSQL | localhost:5435 |
+| Redis | localhost:6380 |
+| Grafana | http://localhost:3001 |
+| Prometheus | http://localhost:9090 |
+
+## Important Paths
+
+| Path | Purpose |
+|------|---------|
+| `packages/control-plane` | Main orchestration service |
+| `packages/primitives` | Prism primitives |
+| `packages/runtime-interface` | Shared agent/thread contracts |
+| `packages/runtime-local` | PTY-backed local runtime |
+| `packages/runtime-docker` | Docker runtime |
+| `packages/runtime-k8s` | Kubernetes runtime |
+| `packages/runtime-mcp` | MCP server for agent/thread operations |
+| `packages/coding-agent-adapters` | Claude/Codex/Gemini/Aider adapters |
+| `packages/pty-manager` | PTY session engine |
+| `patterns/` | Example and generated patterns |
+| `docs/` | Internal architecture and implementation docs |
+
+## Architecture Cheatsheet
+
+### Core Layers
+
+1. **Control plane**
+   Loads patterns, manages executions, persists threads, builds preparation and memory context.
+2. **Runtime layer**
+   Hosts agents and threads across local, Docker, and Kubernetes backends.
+3. **Agent layer**
+   SDK agents and interactive coding CLIs.
+
+### Important Distinction
+
+- `agent` = execution substrate
+- `thread` = orchestration substrate
+
+Managed threads are the control-plane unit for long-lived supervised work.
+
+### Key Thread Surfaces
+
+- REST: `/api/managed-threads`
+- local runtime: `/api/threads`
+- event stream: `/ws/events`
+- memory surfaces:
+  - shared decisions
+  - episodic experiences
+  - prepared `.parallax/thread-memory.md`
+
+## Useful Environment Variables
+
+Common local settings:
+
+```bash
+PORT=8080
+PARALLAX_LOCAL_RUNTIME_URL=http://localhost:9876
+DATABASE_URL=postgresql://postgres:postgres@localhost:5435/parallax
 ETCD_ENDPOINTS=http://localhost:2379
-```
-
-### Optional
-```bash
-# Authentication
-AUTH_ENABLED=true
-JWT_SECRET=your-secret
-
-# Monitoring
-ENABLE_TRACING=true
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-
-# Logging
 LOG_LEVEL=debug
 NODE_ENV=development
 ```
 
-## 🐳 Docker Commands
+For smoke tests and thread execution:
 
-### Control Plane
+```bash
+CONTROL_PLANE_URL=http://localhost:8080
+LOCAL_RUNTIME_URL=http://localhost:9876
+RUNTIME_NAME=local
+THREAD_AGENT_TYPE=codex
+WORKSPACE_PATH=/absolute/path/to/repo
+```
+
+## Docker and Infra
+
+Bring up local infra:
+
+```bash
+pnpm run infra:all
+```
+
+Directly from the control-plane package:
+
 ```bash
 cd packages/control-plane
-
-# Development stack
 docker-compose -f docker-compose.dev.yml up -d
-
-# Production stack
-docker-compose up -d
-
-# View logs
-docker-compose logs -f control-plane
-
-# Stop
-docker-compose down -v
+docker-compose -f docker-compose.dev.yml down
 ```
 
-### Monitoring
+## Troubleshooting
+
+### Ports
+
 ```bash
-cd packages/monitoring
-
-# Start monitoring
-./start-monitoring.sh
-
-# Stop monitoring
-./stop-monitoring.sh
-```
-
-## 🏗️ Project Structure
-
-```
-parallax/
-├── packages/
-│   ├── control-plane/    # Main API server
-│   ├── runtime/         # Core runtime
-│   ├── data-plane/      # Execution engine
-│   ├── sdk-typescript/  # TS SDK
-│   ├── sdk-python/      # Python SDK
-│   ├── cli/            # CLI tool
-│   ├── web-dashboard/   # React UI
-│   └── monitoring/      # Grafana/Prometheus
-├── patterns/           # Prism patterns
-├── examples/          # Example agents
-├── k8s/              # Kubernetes configs
-└── docs/             # Documentation
-```
-
-## 🔧 Troubleshooting
-
-### Port already in use
-```bash
-# Find what's using port
 lsof -i :8080
+lsof -i :9876
+lsof -i :5435
+```
 
-# Stop all Parallax services
+### Stop local infra
+
+```bash
 pnpm run stop:all
 ```
 
-### Docker issues
-```bash
-# Clean restart
-pnpm run reset
+### Control-plane DB
 
-# Nuclear option
-docker system prune -a --volumes
+```bash
+pnpm --filter @parallaxai/control-plane db:migrate
+pnpm --filter @parallaxai/control-plane db:migrate:prod
+pnpm --filter @parallaxai/control-plane db:generate
+pnpm --filter @parallaxai/control-plane db:studio
 ```
 
-### Database issues
+### Rebuild runtime-facing packages
+
 ```bash
-cd packages/control-plane
-pnpm run db:reset
-pnpm run db:migrate
+pnpm --filter coding-agent-adapters build
+pnpm --filter @parallaxai/runtime-local build
+pnpm --filter @parallaxai/runtime-mcp build
 ```
 
-## 📚 More Resources
+## More Resources
 
-- [Full Startup Guide](./STARTUP_GUIDE.md)
-- [API Documentation](./api/README.md)
-- [Pattern Guide](../patterns/README.md)
-- [Testing Guide](./testing/testing-guide.md)
-- [Kubernetes Deployment](../k8s/helm/parallax/README.md)
+- [STARTUP_GUIDE.md](./STARTUP_GUIDE.md)
+- [TESTING_GUIDE.md](./TESTING_GUIDE.md)
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [README.md](./README.md)
