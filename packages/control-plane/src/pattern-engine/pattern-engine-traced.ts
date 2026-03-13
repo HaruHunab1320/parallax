@@ -20,6 +20,7 @@ import * as path from 'path';
 import { ExecutionEventBus } from '../execution-events';
 import { WorkspaceService, Workspace, WorkspaceConfig } from '../workspace';
 import { AgentRuntimeService } from '../agent-runtime';
+import { MemoryContextService } from '../threads';
 import {
   ExecutionEngine,
   ExecutionTask,
@@ -40,6 +41,7 @@ export class TracedPatternEngine implements IPatternEngine {
   private workspaceService?: WorkspaceService;
   private executionEngine?: ExecutionEngine;
   private agentRuntimeService?: AgentRuntimeService;
+  private memoryContextService?: MemoryContextService;
   private nodeId?: string;
   private shuttingDown: boolean = false;
 
@@ -53,7 +55,8 @@ export class TracedPatternEngine implements IPatternEngine {
     databasePatterns?: DatabasePatternService,
     workspaceService?: WorkspaceService,
     executionEngine?: ExecutionEngine,
-    agentRuntimeService?: AgentRuntimeService
+    agentRuntimeService?: AgentRuntimeService,
+    memoryContextService?: MemoryContextService
   ) {
     this.loader = new PatternLoader(patternsDir, logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
@@ -65,6 +68,7 @@ export class TracedPatternEngine implements IPatternEngine {
     this.workspaceService = workspaceService;
     this.executionEngine = executionEngine;
     this.agentRuntimeService = agentRuntimeService;
+    this.memoryContextService = memoryContextService;
   }
 
   async initialize(): Promise<void> {
@@ -88,6 +92,10 @@ export class TracedPatternEngine implements IPatternEngine {
    */
   setAgentRuntimeService(service: AgentRuntimeService): void {
     this.agentRuntimeService = service;
+  }
+
+  setMemoryContextService(service: MemoryContextService): void {
+    this.memoryContextService = service;
   }
 
   setNodeId(id: string): void {
@@ -115,7 +123,7 @@ export class TracedPatternEngine implements IPatternEngine {
       patternName,
       input,
       async () => {
-        const pattern = this.loader.getPattern(patternName);
+        const pattern = this.getPattern(patternName);
         if (!pattern) {
           throw new Error(`Pattern ${patternName} not found`);
         }
