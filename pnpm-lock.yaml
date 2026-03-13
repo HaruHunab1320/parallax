@@ -513,6 +513,9 @@ importers:
         specifier: ^5.7.2
         version: 5.8.3
     optionalDependencies:
+      rpio:
+        specifier: ^2.4.2
+        version: 2.4.2
       spi-device:
         specifier: ^3.1.2
         version: 3.1.2
@@ -885,14 +888,14 @@ importers:
         specifier: workspace:*
         version: link:../telemetry
       '@prism-lang/confidence':
-        specifier: ^1.2.4
-        version: 1.2.4(@prism-lang/llm@1.3.0)
+        specifier: ^1.2.6
+        version: 1.2.6(@prism-lang/llm@1.3.2)
       '@prism-lang/core':
-        specifier: ^2.0.0
-        version: 2.0.0(@prism-lang/llm@1.3.0)
+        specifier: ^3.0.1
+        version: 3.0.1(@prism-lang/llm@1.3.2)
       '@prism-lang/llm':
-        specifier: ^1.3.0
-        version: 1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)
+        specifier: ^1.3.2
+        version: 1.3.2(@prism-lang/confidence@1.2.6)(react@19.2.4)
       '@prisma/client':
         specifier: ^6.12.0
         version: 6.12.0(prisma@6.12.0(typescript@5.8.3))(typescript@5.8.3)
@@ -4740,6 +4743,9 @@ packages:
   '@prism-lang/confidence@1.2.4':
     resolution: {integrity: sha512-fTAJW4l1r29kXmZTqko6ps3dDf08dIVfElyVLlJbeczpe2cCakdhvMyn7D5YXyTQiZTGQC/VXVYnkgNxw0Ynjw==}
 
+  '@prism-lang/confidence@1.2.6':
+    resolution: {integrity: sha512-ogciMDOiH8chpJpPvdhBTzwh+QlM3a8IvWJ+FVYADmZoSxw63ZIvJ8jTDw7e2HflhJYRpNk+TP3vNZQlInzzOA==}
+
   '@prism-lang/core@2.0.0':
     resolution: {integrity: sha512-c4yfxB8RFHTzgbm9kJa7tfMdpBn4T72uJoTBvE28abPDsqlvd1FrnH8FSj94wNx2AlDIYVg9/joMAwlXujcGbw==}
     peerDependencies:
@@ -4748,10 +4754,26 @@ packages:
       '@prism-lang/llm':
         optional: true
 
+  '@prism-lang/core@3.0.1':
+    resolution: {integrity: sha512-pydoUaoacWrChMPDub5M43bCUplL7onhmiK7EBw8lBenRoC8A784qkrNTsaYilGXeLL5nTK1UrCfqcoDf05wow==}
+    peerDependencies:
+      '@prism-lang/llm': 1.3.2
+    peerDependenciesMeta:
+      '@prism-lang/llm':
+        optional: true
+
   '@prism-lang/llm@1.3.0':
     resolution: {integrity: sha512-EhiBalCuzm/LOiMGuT9widvr2aSsk6bUIUxkSk0y4EI2lDr4Go36Z2vifyyQZC24BBpro19Ckmhd8Ej6YYBOlg==}
     peerDependencies:
       '@prism-lang/confidence': 1.2.4
+    peerDependenciesMeta:
+      '@prism-lang/confidence':
+        optional: true
+
+  '@prism-lang/llm@1.3.2':
+    resolution: {integrity: sha512-gWYqCyS3MIzlnjzw+/cwI8fPrDYDApnqnZFGzqqYWcIqBzaRhdtiPZxZRTn9+drHv/Ojq1kqrOHqd+fnlk83GA==}
+    peerDependencies:
+      '@prism-lang/confidence': 1.2.6
     peerDependenciesMeta:
       '@prism-lang/confidence':
         optional: true
@@ -5794,9 +5816,6 @@ packages:
 
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
-
-  '@types/node-fetch@2.6.12':
-    resolution: {integrity: sha512-8nneRWKCg3rMtF69nLQJnOYUcbafYeFSjqkw3jCRLsqkWFlHaoQrr5mXmofFGOx3DKn7UfmBMyov8ySvLRVldA==}
 
   '@types/node-fetch@2.6.13':
     resolution: {integrity: sha512-QGpRVpzSaUs30JBSGPjOg4Uveu384erbHBoT1zeONvyCfwQxIkUshLAOqN/k9EjGviPRmWTTe6aH2qySWKTVSw==}
@@ -11529,6 +11548,10 @@ packages:
     resolution: {integrity: sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ==}
     engines: {node: '>= 18'}
 
+  rpio@2.4.2:
+    resolution: {integrity: sha512-SiWw2VorgUh+0hbu6eJkRGG+luvS9BboXz6PQl8Z49kJ+8Nn7R/b4ohybLIYSMbQqcW1WYqSooadDuv1VOAiFw==}
+    engines: {node: '>=0.8'}
+
   rtlcss@4.3.0:
     resolution: {integrity: sha512-FI+pHEn7Wc4NqKXMXFM+VAYKEj/mRIcW4h24YVwVtyjI+EqGrLc2Hx/Ny0lrZ21cBWU2goLy36eqMcNj3AQJig==}
     engines: {node: '>=12.0.0'}
@@ -13181,7 +13204,7 @@ snapshots:
       '@ai-sdk/provider': 1.1.3
       '@ai-sdk/provider-utils': 2.2.8(zod@3.25.76)
       zod: 3.25.76
-      zod-to-json-schema: 3.24.6(zod@3.25.76)
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
 
   '@ai-sdk/vue@0.0.59(vue@3.5.18(typescript@5.8.3))(zod@3.25.76)':
     dependencies:
@@ -16864,22 +16887,47 @@ snapshots:
     transitivePeerDependencies:
       - '@prism-lang/llm'
 
+  '@prism-lang/confidence@1.2.6(@prism-lang/llm@1.3.2)':
+    dependencies:
+      '@prism-lang/core': 3.0.1(@prism-lang/llm@1.3.2)
+    transitivePeerDependencies:
+      - '@prism-lang/llm'
+
   '@prism-lang/core@2.0.0(@prism-lang/llm@1.3.0)':
     optionalDependencies:
       '@prism-lang/llm': 1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)
+
+  '@prism-lang/core@3.0.1(@prism-lang/llm@1.3.2)':
+    optionalDependencies:
+      '@prism-lang/llm': 1.3.2(@prism-lang/confidence@1.2.6)(react@19.2.4)
 
   '@prism-lang/llm@1.3.0(@prism-lang/confidence@1.2.4)(react@19.2.4)':
     dependencies:
       '@ai-sdk/anthropic': 1.2.12(zod@3.25.76)
       '@ai-sdk/google': 1.2.22(zod@3.25.76)
       '@prism-lang/core': 2.0.0(@prism-lang/llm@1.3.0)
-      '@types/node-fetch': 2.6.12
+      '@types/node-fetch': 2.6.13
       ai: 4.3.19(react@19.2.4)(zod@3.25.76)
       dotenv: 16.6.1
       node-fetch: 3.3.2
       zod: 3.25.76
     optionalDependencies:
       '@prism-lang/confidence': 1.2.4(@prism-lang/llm@1.3.0)
+    transitivePeerDependencies:
+      - react
+
+  '@prism-lang/llm@1.3.2(@prism-lang/confidence@1.2.6)(react@19.2.4)':
+    dependencies:
+      '@ai-sdk/anthropic': 1.2.12(zod@3.25.76)
+      '@ai-sdk/google': 1.2.22(zod@3.25.76)
+      '@prism-lang/core': 3.0.1(@prism-lang/llm@1.3.2)
+      '@types/node-fetch': 2.6.13
+      ai: 4.3.19(react@19.2.4)(zod@3.25.76)
+      dotenv: 16.6.1
+      node-fetch: 3.3.2
+      zod: 3.25.76
+    optionalDependencies:
+      '@prism-lang/confidence': 1.2.6(@prism-lang/llm@1.3.2)
     transitivePeerDependencies:
       - react
 
@@ -17960,11 +18008,6 @@ snapshots:
   '@types/minimatch@5.1.2': {}
 
   '@types/ms@2.1.0': {}
-
-  '@types/node-fetch@2.6.12':
-    dependencies:
-      '@types/node': 20.19.9
-      form-data: 4.0.5
 
   '@types/node-fetch@2.6.13':
     dependencies:
@@ -20453,7 +20496,7 @@ snapshots:
       eslint: 9.31.0(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.31.0(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.31.0(jiti@2.6.1))
       eslint-plugin-react-hooks: 5.2.0(eslint@9.31.0(jiti@2.6.1))
@@ -20470,7 +20513,7 @@ snapshots:
       eslint: 9.31.0(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.31.0(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.31.0(jiti@2.6.1))
       eslint-plugin-react-hooks: 7.0.1(eslint@9.31.0(jiti@2.6.1))
@@ -20503,7 +20546,7 @@ snapshots:
       tinyglobby: 0.2.14
       unrs-resolver: 1.9.2
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -20518,7 +20561,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1)):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -24871,6 +24914,12 @@ snapshots:
       path-to-regexp: 8.3.0
     transitivePeerDependencies:
       - supports-color
+
+  rpio@2.4.2:
+    dependencies:
+      bindings: 1.5.0
+      nan: 2.23.0
+    optional: true
 
   rtlcss@4.3.0:
     dependencies:
