@@ -67,5 +67,26 @@ class HealthStatus:
         return self.status == 'healthy'
 
 
+@dataclass
+class GatewayOptions:
+    """Options for connecting via the Agent Gateway.
+
+    Attributes:
+        credentials: gRPC channel credentials (None for insecure).
+        heartbeat_interval_ms: How often to send heartbeats (default 10000).
+        auto_reconnect: Whether to auto-reconnect on disconnect (default True).
+        max_reconnect_attempts: Max reconnect attempts (None = infinite).
+        initial_reconnect_delay_ms: Initial delay before first reconnect (default 1000).
+        max_reconnect_delay_ms: Maximum backoff delay (default 30000).
+    """
+
+    credentials: Optional[Any] = None
+    heartbeat_interval_ms: int = 10000
+    auto_reconnect: bool = True
+    max_reconnect_attempts: Optional[int] = None
+    initial_reconnect_delay_ms: int = 1000
+    max_reconnect_delay_ms: int = 30000
+
+
 # Type alias for agent analyze return value
 AnalyzeResult = Tuple[Any, float]

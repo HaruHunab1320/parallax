@@ -21,7 +21,7 @@ pub use error::{Error, Result};
 pub use patterns::PatternService;
 pub use agent_service::AgentService;
 pub use executions::ExecutionService;
-pub use parallax_agent::{ParallaxAgent, AgentResult};
+pub use parallax_agent::{ParallaxAgent, AgentResult, GatewayOptions};
 
 // Re-export confidence utilities
 pub use confidence::{

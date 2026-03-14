@@ -21,6 +21,9 @@ import (
 	"parallax/sdk-go/generated"
 )
 
+// gatewayStreamType is a type alias for the bidirectional gateway stream.
+type gatewayStreamType = grpc.BidiStreamingClient[generated.AgentToControlPlane, generated.ControlPlaneToAgent]
+
 // AgentResult represents the result of an agent's analysis
 type AgentResult struct {
 	Value         interface{}
@@ -43,7 +46,15 @@ type ParallaxAgent struct {
 	leaseID      string
 	renewStop    chan bool
 	mu           sync.Mutex
-	
+
+	// Gateway connection fields
+	gatewayStream   gatewayStreamType
+	gatewayConn     *grpc.ClientConn
+	gatewayCancel   context.CancelFunc
+	gatewayCtx      context.Context
+	gatewayEndpoint string
+	gatewayOpts     *GatewayOptions
+
 	// Abstract method that must be implemented by subclasses
 	AnalyzeFunc func(ctx context.Context, task string, data interface{}) (*AgentResult, error)
 }
@@ -243,26 +254,29 @@ func (a *ParallaxAgent) renewLease() {
 func (a *ParallaxAgent) Shutdown() error {
 	// Stop lease renewal
 	close(a.renewStop)
-	
+
+	// Clean up gateway connection
+	a.shutdownGateway()
+
 	// Unregister from control plane
 	if a.leaseID != "" {
 		conn, err := grpc.NewClient(a.registryAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err == nil {
 			client := generated.NewRegistryClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			
+
 			_, _ = client.Unregister(ctx, &generated.AgentRegistration{Id: a.ID})
-			
+
 			cancel()
 			conn.Close()
 		}
 	}
-	
+
 	// Stop gRPC server
 	if a.server != nil {
 		a.server.GracefulStop()
 	}
-	
+
 	log.Printf("Agent %s shut down", a.ID)
 	return nil
 }

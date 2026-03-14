@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import grpc
 
-from .types import AnalyzeResult, Capabilities, HealthStatus
+from .types import AnalyzeResult, Capabilities, GatewayOptions, HealthStatus
 
 # Proto imports will be generated
 try:
@@ -27,6 +27,8 @@ try:
     import confidence_pb2_grpc
     import registry_pb2
     import registry_pb2_grpc
+    import gateway_pb2
+    import gateway_pb2_grpc
     from google.protobuf import empty_pb2, struct_pb2, timestamp_pb2
 except ImportError:
     # Proto files not generated yet
@@ -34,6 +36,8 @@ except ImportError:
     confidence_pb2_grpc = None
     registry_pb2 = None
     registry_pb2_grpc = None
+    gateway_pb2 = None
+    gateway_pb2_grpc = None
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +71,15 @@ class ParallaxAgent(ABC):
         self.metadata = metadata or {}
         self._server: Optional[grpc.Server] = None
         self._port: Optional[int] = None
+        # Gateway connection state
+        self._gateway_stream: Optional[Any] = None
+        self._gateway_channel: Optional[grpc.aio.Channel] = None
+        self._gateway_heartbeat_task: Optional[asyncio.Task] = None
+        self._gateway_listener_task: Optional[asyncio.Task] = None
+        self._gateway_endpoint: Optional[str] = None
+        self._gateway_options: Optional[GatewayOptions] = None
+        self._gateway_reconnecting: bool = False
+        self._gateway_connected: bool = False
         
     @abstractmethod
     async def analyze(self, task: str, data: Optional[Any] = None) -> AnalyzeResult:
@@ -148,12 +161,309 @@ class ParallaxAgent(ABC):
         
         return self._port
     
+    async def connect_via_gateway(
+        self,
+        endpoint: str,
+        options: Optional[GatewayOptions] = None,
+    ) -> None:
+        """Connect to the control plane via the Agent Gateway.
+
+        Use this instead of ``serve()`` for agents behind NAT or without a
+        public endpoint.  The agent opens an outbound connection and tasks
+        are received through the bidirectional stream.
+
+        Args:
+            endpoint: Gateway gRPC endpoint (e.g. ``"localhost:8081"``).
+            options: Optional :class:`GatewayOptions` for tuning the
+                connection behaviour.
+
+        Raises:
+            ImportError: If the gateway proto stubs have not been generated.
+            ConnectionError: If the gateway rejects the agent or the
+                initial acknowledgement times out.
+        """
+        if not gateway_pb2_grpc:
+            raise ImportError(
+                "Gateway proto files not generated. "
+                "Run generate-proto.sh first."
+            )
+
+        self._gateway_endpoint = endpoint
+        self._gateway_options = options or GatewayOptions()
+        opts = self._gateway_options
+
+        # Create channel
+        if opts.credentials:
+            self._gateway_channel = grpc.aio.secure_channel(
+                endpoint, opts.credentials
+            )
+        else:
+            self._gateway_channel = grpc.aio.insecure_channel(endpoint)
+
+        stub = gateway_pb2_grpc.AgentGatewayStub(self._gateway_channel)
+
+        # We need an async generator to feed the stream
+        self._gateway_outgoing: asyncio.Queue = asyncio.Queue()
+
+        async def _request_iterator():
+            while True:
+                msg = await self._gateway_outgoing.get()
+                if msg is None:
+                    return
+                yield msg
+
+        # Open bidirectional stream
+        self._gateway_stream = stub.Connect(_request_iterator())
+
+        # Send AgentHello
+        hello_msg = gateway_pb2.AgentToControlPlane(
+            request_id=f"hello-{self.id}",
+            hello=gateway_pb2.AgentHello(
+                agent_id=self.id,
+                agent_name=self.name,
+                capabilities=self.capabilities,
+                metadata={k: str(v) for k, v in self.metadata.items()},
+                heartbeat_interval_ms=opts.heartbeat_interval_ms,
+            ),
+        )
+        await self._gateway_outgoing.put(hello_msg)
+
+        logger.info(
+            f"Agent {self.name} ({self.id}) connecting via gateway to {endpoint}"
+        )
+
+        # Wait for ServerAck
+        try:
+            ack_msg = await asyncio.wait_for(
+                self._gateway_stream.__anext__(), timeout=10.0
+            )
+        except asyncio.TimeoutError:
+            await self._cleanup_gateway()
+            raise ConnectionError(
+                "Gateway connection timed out waiting for ack"
+            )
+
+        if ack_msg.HasField("ack"):
+            if not ack_msg.ack.accepted:
+                await self._cleanup_gateway()
+                raise ConnectionError(
+                    f"Gateway rejected agent: {ack_msg.ack.message}"
+                )
+            logger.info(
+                f"Agent {self.name} connected via gateway "
+                f"(node: {ack_msg.ack.assigned_node_id})"
+            )
+        else:
+            await self._cleanup_gateway()
+            raise ConnectionError(
+                "Expected ServerAck as first response from gateway"
+            )
+
+        self._gateway_connected = True
+
+        # Start heartbeat loop
+        self._gateway_heartbeat_task = asyncio.create_task(
+            self._gateway_heartbeat_loop()
+        )
+
+        # Start listener loop
+        self._gateway_listener_task = asyncio.create_task(
+            self._gateway_listen_loop()
+        )
+
+    async def _gateway_heartbeat_loop(self) -> None:
+        """Periodically send heartbeat messages over the gateway stream."""
+        opts = self._gateway_options or GatewayOptions()
+        interval = opts.heartbeat_interval_ms / 1000.0
+        while self._gateway_connected:
+            try:
+                await asyncio.sleep(interval)
+                if not self._gateway_connected:
+                    break
+                heartbeat = gateway_pb2.AgentToControlPlane(
+                    request_id="",
+                    heartbeat=gateway_pb2.AgentHeartbeat(
+                        agent_id=self.id,
+                        load=0.0,
+                        status="healthy",
+                    ),
+                )
+                await self._gateway_outgoing.put(heartbeat)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Heartbeat error: {e}")
+                break
+
+    async def _gateway_listen_loop(self) -> None:
+        """Listen for messages from the control plane on the gateway stream."""
+        disconnected = False
+        try:
+            async for message in self._gateway_stream:
+                if not self._gateway_connected:
+                    return
+                await self._handle_gateway_message(message)
+            # Stream ended normally
+            disconnected = True
+        except asyncio.CancelledError:
+            return
+        except grpc.aio.AioRpcError as e:
+            logger.error(f"Gateway stream error: {e}")
+            disconnected = True
+        except Exception as e:
+            logger.error(f"Gateway listener error: {e}")
+            disconnected = True
+        finally:
+            if disconnected and self._gateway_connected:
+                self._gateway_connected = False
+                await self._handle_gateway_disconnect()
+
+    async def _handle_gateway_message(self, message) -> None:
+        """Dispatch a single control-plane message."""
+        if message.HasField("task_request"):
+            await self._handle_gateway_task(
+                message.request_id, message.task_request
+            )
+        elif message.HasField("cancel_task"):
+            logger.info(
+                f"Task cancelled: {message.cancel_task.task_id} "
+                f"({message.cancel_task.reason})"
+            )
+        elif message.HasField("ping"):
+            # Respond to ping with a heartbeat
+            heartbeat = gateway_pb2.AgentToControlPlane(
+                request_id="",
+                heartbeat=gateway_pb2.AgentHeartbeat(
+                    agent_id=self.id,
+                    load=0.0,
+                    status="healthy",
+                ),
+            )
+            await self._gateway_outgoing.put(heartbeat)
+        elif message.HasField("ack"):
+            # Additional acks after the initial one (e.g. on reconnect)
+            logger.debug(f"Received additional ack: {message.ack.message}")
+
+    async def _handle_gateway_task(self, request_id: str, task_request) -> None:
+        """Execute a task received via the gateway and send the result back."""
+        try:
+            task_description = task_request.task_description or ""
+            data = None
+            if task_request.HasField("data"):
+                from google.protobuf.json_format import MessageToDict
+                data = MessageToDict(task_request.data)
+
+            result, confidence = await self.analyze(task_description, data)
+
+            result_msg = gateway_pb2.AgentToControlPlane(
+                request_id=request_id,
+                task_result=gateway_pb2.TaskResult(
+                    task_id=task_request.task_id,
+                    value_json=json.dumps(result),
+                    confidence=confidence,
+                    reasoning=result.get("reasoning", "")
+                    if isinstance(result, dict)
+                    else "",
+                ),
+            )
+            await self._gateway_outgoing.put(result_msg)
+        except Exception as e:
+            error_msg = gateway_pb2.AgentToControlPlane(
+                request_id=request_id,
+                task_error=gateway_pb2.TaskError(
+                    task_id=task_request.task_id,
+                    error_message=str(e),
+                    error_code="INTERNAL",
+                ),
+            )
+            await self._gateway_outgoing.put(error_msg)
+
+    async def _handle_gateway_disconnect(self) -> None:
+        """Handle gateway disconnection with optional auto-reconnect."""
+        await self._cleanup_gateway()
+
+        opts = self._gateway_options or GatewayOptions()
+        if not opts.auto_reconnect or self._gateway_reconnecting:
+            return
+        if not self._gateway_endpoint:
+            return
+
+        self._gateway_reconnecting = True
+        initial_delay = opts.initial_reconnect_delay_ms / 1000.0
+        max_delay = opts.max_reconnect_delay_ms / 1000.0
+        max_attempts = opts.max_reconnect_attempts  # None = infinite
+
+        attempt = 0
+        while max_attempts is None or attempt < max_attempts:
+            delay = min(initial_delay * (2 ** attempt), max_delay)
+            attempt += 1
+            logger.info(
+                f"Gateway reconnecting in {delay:.1f}s (attempt {attempt})..."
+            )
+            await asyncio.sleep(delay)
+
+            try:
+                await self.connect_via_gateway(
+                    self._gateway_endpoint, self._gateway_options
+                )
+                logger.info("Gateway reconnected successfully")
+                self._gateway_reconnecting = False
+                return
+            except Exception as e:
+                logger.error(
+                    f"Gateway reconnect attempt {attempt} failed: {e}"
+                )
+
+        logger.error(
+            f"Gateway reconnect failed after {attempt} attempts"
+        )
+        self._gateway_reconnecting = False
+
+    async def _cleanup_gateway(self) -> None:
+        """Clean up gateway connection resources."""
+        self._gateway_connected = False
+
+        if self._gateway_heartbeat_task:
+            self._gateway_heartbeat_task.cancel()
+            try:
+                await self._gateway_heartbeat_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._gateway_heartbeat_task = None
+
+        if self._gateway_listener_task:
+            self._gateway_listener_task.cancel()
+            try:
+                await self._gateway_listener_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._gateway_listener_task = None
+
+        # Signal the outgoing iterator to stop
+        if hasattr(self, '_gateway_outgoing'):
+            try:
+                self._gateway_outgoing.put_nowait(None)
+            except asyncio.QueueFull:
+                pass
+
+        if self._gateway_channel:
+            try:
+                await self._gateway_channel.close()
+            except Exception:
+                pass
+            self._gateway_channel = None
+
+        self._gateway_stream = None
+
     async def shutdown(self, grace_period: float = 5.0):
         """Gracefully shutdown the agent.
-        
+
         Args:
             grace_period: Seconds to wait for pending RPCs
         """
+        # Clean up gateway connection
+        await self._cleanup_gateway()
+
         # Cancel lease renewal
         if self._renewal_task:
             self._renewal_task.cancel()
@@ -161,7 +471,7 @@ class ParallaxAgent(ABC):
                 await self._renewal_task
             except asyncio.CancelledError:
                 pass
-        
+
         # Unregister from control plane
         if self._registry_stub and self.id:
             try:
@@ -170,7 +480,7 @@ class ParallaxAgent(ABC):
                 logger.info(f"Agent {self.id} unregistered from control plane")
             except Exception as e:
                 logger.error(f"Failed to unregister: {e}")
-        
+
         # Stop gRPC server
         if self._server:
             await self._server.stop(grace_period)

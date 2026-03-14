@@ -15,6 +15,9 @@ pub mod parallax {
     pub mod executions {
         include!("../generated/parallax.executions.rs");
     }
+    pub mod gateway {
+        include!("../generated/parallax.gateway.rs");
+    }
 }
 
 // Re-export for convenience
