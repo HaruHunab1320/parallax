@@ -6,3 +6,8 @@ export * from './schedules.js';
 export * from './license.js';
 export * from './managed-agents.js';
 export * from './managed-threads.js';
+export * from './triggers.js';
+export * from './auth.js';
+export * from './users.js';
+export * from './audit.js';
+export * from './backup.js';

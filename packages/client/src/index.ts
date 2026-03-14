@@ -10,4 +10,9 @@ export {
   LicenseResource,
   ManagedAgentsResource,
   ManagedThreadsResource,
+  TriggersResource,
+  AuthResource,
+  UsersResource,
+  AuditResource,
+  BackupResource,
 } from './resources/index.js';
