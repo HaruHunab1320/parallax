@@ -48,9 +48,9 @@ export class PatternEngine implements IPatternEngine {
     private runtimeManager: RuntimeManager,
     private agentRegistry: EtcdRegistry,
     private patternsDir: string,
-    private logger: Logger,
-    private database?: DatabaseService,
-    private executionEvents?: ExecutionEventBus,
+    protected logger: Logger,
+    protected database?: DatabaseService,
+    protected executionEvents?: ExecutionEventBus,
     databasePatterns?: DatabasePatternService,
     workspaceService?: WorkspaceService,
     executionEngine?: ExecutionEngine,
@@ -1069,7 +1069,7 @@ export class PatternEngine implements IPatternEngine {
     }
   }
 
-  private async selectAgents(
+  protected async selectAgents(
     pattern: Pattern,
     executionId?: string,
     workspace?: Workspace | null
