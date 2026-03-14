@@ -225,7 +225,10 @@ export class TracedPatternEngine implements IPatternEngine {
             let agentResults: any[];
 
             // Use ExecutionEngine if available, otherwise fall back to direct AgentProxy calls
-            if (this.executionEngine) {
+            // Skip ExecutionEngine for gateway agents — it creates direct gRPC connections
+            // which don't work for gateway:// endpoints
+            const hasGatewayAgents = agents.some(a => a.endpoint?.startsWith('gateway://'));
+            if (this.executionEngine && !hasGatewayAgents) {
               // Register agents with the ExecutionEngine's proxy
               await this.registerAgentsWithExecutionEngine(agents);
 
