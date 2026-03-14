@@ -6,6 +6,7 @@ import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import { GrpcAgentProxy } from '@parallaxai/runtime';
 import { AgentProxy } from '../grpc/agent-proxy';
+import { GatewayService } from '../grpc/services/gateway-service';
 import { LocalAgentManager } from './local-agents';
 import {
   PatternTracer
@@ -96,6 +97,10 @@ export class TracedPatternEngine implements IPatternEngine {
 
   setThreadPreparationService(service: ThreadPreparationService): void {
     this.threadPreparationService = service;
+  }
+
+  setGatewayService(service: GatewayService): void {
+    this.agentProxy.setGatewayService(service);
   }
 
   setNodeId(id: string): void {
