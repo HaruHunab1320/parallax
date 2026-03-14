@@ -4,6 +4,9 @@
 controlPlane:
   replicaCount: 1
   existingSecret: parallax-secrets
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: parallax-cluster-sql-proxy@parallax-466513.iam.gserviceaccount.com
   cloudSqlProxy:
     enabled: true
     connectionName: parallax-466513:us-central1:parallax-cluster-postgres
