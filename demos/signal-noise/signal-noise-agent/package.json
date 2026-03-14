@@ -8,10 +8,17 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "upload-pattern": "tsx src/upload-pattern.ts"
+    "upload-pattern": "tsx src/upload-pattern.ts",
+    "demo": "tsx src/demo.ts",
+    "demo:upload": "tsx src/demo.ts upload",
+    "demo:status": "tsx src/demo.ts status",
+    "demo:run": "tsx src/demo.ts run",
+    "demo:schedule": "tsx src/demo.ts schedule",
+    "demo:full": "tsx src/demo.ts full"
   },
   "dependencies": {
     "@parallaxai/sdk-typescript": "workspace:*",
+    "@parallaxai/client": "workspace:*",
     "@google/generative-ai": "^0.21.0",
     "express": "^4.21.2"
   },
