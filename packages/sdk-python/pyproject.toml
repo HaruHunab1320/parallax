@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "parallax"
+name = "parallaxai"
 version = "0.2.0"
 description = "Python SDK for Parallax AI orchestration platform"
 authors = ["Your Name <you@example.com>"]

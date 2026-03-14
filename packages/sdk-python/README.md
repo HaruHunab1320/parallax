@@ -5,12 +5,12 @@ Build AI agents in Python that integrate with the Parallax orchestration platfor
 ## Installation
 
 ```bash
-pip install parallax
+pip install parallaxai
 ```
 
 Or with Poetry:
 ```bash
-poetry add parallax
+poetry add parallaxai
 ```
 
 ## Quick Start
