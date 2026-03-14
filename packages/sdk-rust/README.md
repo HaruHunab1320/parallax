@@ -8,7 +8,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-parallax-sdk = "0.1.0"
+parallax-sdk = "0.2.0"
 ```
 
 ## Quick Start
@@ -51,6 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Full control plane API support
 - Pattern execution and monitoring
 - Agent registration and management
+- **Gateway connection for NAT traversal**
 - Real-time streaming updates
 - Automatic retries and error handling
 - TLS support
@@ -225,6 +226,54 @@ while let Some(result) = stream.next().await {
 }
 ```
 
+## Gateway Connection (NAT Traversal)
+
+For agents behind NAT or firewalls, use `connect_via_gateway` instead of `serve`. The agent opens an outbound connection to the control plane, which sends tasks back through the stream.
+
+```rust
+use parallax_sdk::{ParallaxAgent, GatewayOptions, AgentResult};
+use serde_json::json;
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let agent = Arc::new(
+        ParallaxAgent::new(
+            "edge-1", "Edge Agent",
+            vec!["analysis".to_string()],
+            Default::default(),
+        )
+        .set_analyze_fn(|task, data| {
+            Box::pin(async move {
+                Ok(AgentResult {
+                    value: json!({"result": "processed"}),
+                    confidence: 0.85,
+                    reasoning: None,
+                    uncertainties: vec![],
+                    metadata: Default::default(),
+                })
+            })
+        })
+    );
+
+    // Connect via gateway (no public endpoint needed)
+    agent.connect_via_gateway("http://control-plane:8081", None).await?;
+
+    // Or with custom options
+    agent.connect_via_gateway(
+        "http://control-plane:8081",
+        Some(GatewayOptions {
+            heartbeat_interval_ms: 5000,
+            auto_reconnect: true,
+            max_reconnect_attempts: Some(10),
+            ..Default::default()
+        }),
+    ).await?;
+
+    Ok(())
+}
+```
+
 ## Error Handling
 
 ```rust
@@ -370,7 +419,7 @@ Enable TLS with either rustls (default) or OpenSSL:
 
 ```toml
 # Rustls (default)
-parallax-sdk = "0.1.0"
+parallax-sdk = "0.2.0"
 
 # OpenSSL
 parallax-sdk = { version = "0.1.0", default-features = false, features = ["openssl"] }

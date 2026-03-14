@@ -108,6 +108,38 @@ class SecureDataAgent extends SecureParallaxAgent {
 }
 ```
 
+## Gateway Connection (NAT Traversal)
+
+For agents behind NAT or firewalls, use `connectViaGateway()` instead of `serve()`. The agent opens an outbound connection to the control plane, which sends tasks back through the stream.
+
+```typescript
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
+
+class EdgeAgent extends ParallaxAgent {
+  constructor() {
+    super('edge-1', 'Edge Agent', ['analysis']);
+  }
+
+  async analyze(task: string, data?: any) {
+    return this.createResult({ result: 'processed' }, 0.85);
+  }
+}
+
+const agent = new EdgeAgent();
+
+// Connect via gateway (no public endpoint needed)
+await agent.connectViaGateway('control-plane:8081');
+
+// Or with custom options
+await agent.connectViaGateway('control-plane:8081', {
+  heartbeatIntervalMs: 5000,
+  autoReconnect: true,
+  maxReconnectAttempts: 10,
+  initialReconnectDelayMs: 1000,
+  maxReconnectDelayMs: 30000,
+});
+```
+
 ## API Reference
 
 ### ParallaxAgent

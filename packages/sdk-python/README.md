@@ -172,6 +172,62 @@ async def analyze(self, task: str, data: dict = None) -> tuple[dict, float]:
     return result, 0.7
 ```
 
+## Gateway Connection (NAT Traversal)
+
+For agents behind NAT or firewalls, use gateway mode instead of `serve()`. The agent opens an outbound connection to the control plane, which sends tasks back through the stream.
+
+```python
+import asyncio
+from parallax import ParallaxAgent, GatewayOptions
+
+class MyAgent(ParallaxAgent):
+    def __init__(self):
+        super().__init__("edge-1", "Edge Agent", ["analysis"])
+
+    async def analyze(self, task, data=None):
+        return {"result": "processed"}, 0.85
+
+async def main():
+    agent = MyAgent()
+
+    # Connect via gateway (no public endpoint needed)
+    await agent.connect_via_gateway("control-plane:8081")
+
+    # Or with custom options
+    await agent.connect_via_gateway(
+        "control-plane:8081",
+        GatewayOptions(
+            heartbeat_interval_ms=5000,
+            auto_reconnect=True,
+            max_reconnect_attempts=10,
+        )
+    )
+
+asyncio.run(main())
+```
+
+## Pattern & Execution Clients
+
+Use the gRPC clients to interact with the control plane directly:
+
+```python
+from parallax import PatternClient, ExecutionClient
+
+# Execute patterns
+patterns = PatternClient("localhost:8080")
+result = await patterns.execute("consensus-builder", {"task": "analyze"})
+await patterns.close()
+
+# Track executions
+executions = ExecutionClient("localhost:8080")
+status = await executions.get("exec-123")
+
+# Stream execution events
+async for event in executions.stream_events("exec-123"):
+    print(f"Event: {event}")
+await executions.close()
+```
+
 ## Running with Parallax
 
 ### Local Development
@@ -274,7 +330,27 @@ Base class for all agents.
 - `check_health() -> HealthStatus` - Health check
 - `get_capabilities() -> Capabilities` - Get capabilities
 - `serve(port: int) -> int` - Start gRPC server
+- `connect_via_gateway(endpoint, options)` - Connect via gateway (NAT traversal)
 - `shutdown(grace_period: float)` - Graceful shutdown
+
+### PatternClient
+
+gRPC client for pattern operations.
+
+- `list(tags, include_scripts)` - List available patterns
+- `get(name, version)` - Get pattern by name
+- `execute(pattern_name, input_data, options)` - Execute a pattern
+- `upload(pattern, overwrite)` - Upload a pattern
+- `close()` - Close the gRPC channel
+
+### ExecutionClient
+
+gRPC client for execution tracking.
+
+- `get(execution_id)` - Get execution status
+- `list(limit, offset, status)` - List executions
+- `stream_events(execution_id)` - Async iterator of execution events
+- `close()` - Close the gRPC channel
 
 ### Response Format
 
@@ -295,6 +371,7 @@ async def analyze(self, task: str, data: dict = None) -> tuple[dict, float]:
 - `Capabilities` - Agent capabilities
 - `HealthStatus` - Health check result
 - `AnalyzeResult` - Type alias for (result, confidence)
+- `GatewayOptions` - Gateway connection configuration
 
 ## Examples
 

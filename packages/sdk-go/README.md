@@ -57,6 +57,7 @@ func main() {
 - Full control plane API support
 - Pattern execution and monitoring
 - Agent registration and management
+- **Gateway connection for NAT traversal**
 - Real-time streaming updates
 - Automatic retries and error handling
 - Context-aware operations
@@ -177,6 +178,33 @@ stream, err := client.Agents().StreamAgents(ctx)
 for agent := range stream {
     fmt.Printf("Agent update: %s - %s\n", agent.ID, agent.Status)
 }
+```
+
+## Gateway Connection (NAT Traversal)
+
+For agents behind NAT or firewalls, use `ConnectViaGateway` instead of `Serve`. The agent opens an outbound connection to the control plane, which sends tasks back through the stream.
+
+```go
+agent := parallax.NewParallaxAgent("edge-1", "Edge Agent", []string{"analysis"}, nil)
+
+agent.AnalyzeFunc = func(ctx context.Context, task string, data interface{}) (*parallax.AgentResult, error) {
+    return &parallax.AgentResult{
+        Value:      map[string]string{"result": "processed"},
+        Confidence: 0.85,
+    }, nil
+}
+
+// Connect via gateway (no public endpoint needed)
+err := agent.ConnectViaGateway("control-plane:8081", nil)
+
+// Or with custom options
+err := agent.ConnectViaGateway("control-plane:8081", &parallax.GatewayOptions{
+    HeartbeatIntervalMs:     5000,
+    AutoReconnect:           true,
+    MaxReconnectAttempts:    10,
+    InitialReconnectDelayMs: 1000,
+    MaxReconnectDelayMs:     30000,
+})
 ```
 
 ## Error Handling

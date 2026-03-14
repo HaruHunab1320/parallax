@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- `CoordinatorServiceClient` for direct coordination requests
+- `PatternClient` with `upload()` and `streamExecute()` methods
+- `ExecutionClient` with `streamEvents()` for real-time execution tracking
+- `EpistemicOrchestrator` and `ConsensusBuilder` orchestration patterns
+- `SecureParallaxAgent` with mTLS certificate rotation
+
+### Notes
+
+- All four agent SDKs (TypeScript, Python, Go, Rust) now support gateway connection for NAT traversal
+- See `@parallaxai/client` for management SDK (REST API wrapper)
+
 ## 0.2.1
 
 ### Bug Fixes
