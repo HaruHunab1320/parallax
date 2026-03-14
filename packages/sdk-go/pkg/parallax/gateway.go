@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"parallax/sdk-go/generated"
+	"github.com/parallaxai/sdk-go/generated"
 )
 
 // GatewayOptions configures the gateway connection behavior.

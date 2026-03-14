@@ -1,4 +1,4 @@
-# Changelog
+# Changelog — parallaxai
 
 ## 0.2.0
 

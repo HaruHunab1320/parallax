@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"parallax/sdk-go/generated"
+	"github.com/parallaxai/sdk-go/generated"
 )
 
 // gatewayStreamType is a type alias for the bidirectional gateway stream.

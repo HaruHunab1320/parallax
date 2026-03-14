@@ -1,4 +1,4 @@
-module parallax/sdk-go
+module github.com/parallaxai/sdk-go
 
 go 1.23.0
 

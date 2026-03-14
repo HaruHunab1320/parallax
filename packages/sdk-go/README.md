@@ -5,7 +5,7 @@ Official Go SDK for the Parallax AI Orchestration Platform.
 ## Installation
 
 ```bash
-go get github.com/parallax/sdk-go
+go get github.com/parallaxai/sdk-go
 ```
 
 ## Quick Start
@@ -16,7 +16,7 @@ package main
 import (
     "context"
     "log"
-    "github.com/parallax/sdk-go/pkg/parallax"
+    "github.com/parallaxai/sdk-go/pkg/parallax"
 )
 
 func main() {
@@ -255,7 +255,7 @@ package main
 
 import (
     "context"
-    "github.com/parallax/sdk-go/pkg/parallax"
+    "github.com/parallaxai/sdk-go/pkg/parallax"
 )
 
 // Create an agent with automatic confidence extraction

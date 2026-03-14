@@ -8,7 +8,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-parallax-sdk = "0.2.0"
+parallaxai = "0.2.0"
 ```
 
 ## Quick Start
@@ -419,10 +419,10 @@ Enable TLS with either rustls (default) or OpenSSL:
 
 ```toml
 # Rustls (default)
-parallax-sdk = "0.2.0"
+parallaxai = "0.2.0"
 
 # OpenSSL
-parallax-sdk = { version = "0.1.0", default-features = false, features = ["openssl"] }
+parallaxai = { version = "0.1.0", default-features = false, features = ["openssl"] }
 ```
 
 ## Development

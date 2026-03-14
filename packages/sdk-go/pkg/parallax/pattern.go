@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"parallax/sdk-go/generated"
+	"github.com/parallaxai/sdk-go/generated"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/structpb"
 )

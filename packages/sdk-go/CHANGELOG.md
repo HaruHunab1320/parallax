@@ -1,4 +1,4 @@
-# Changelog
+# Changelog — github.com/parallaxai/sdk-go
 
 ## 0.2.0
 
