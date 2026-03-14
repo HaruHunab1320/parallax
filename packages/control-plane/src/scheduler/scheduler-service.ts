@@ -5,7 +5,7 @@
  * Only the leader node executes schedules in an HA cluster.
  */
 
-import { PrismaClient, Schedule, ScheduleRun } from '@prisma/client';
+import { PrismaClient, Prisma, Schedule, ScheduleRun } from '@prisma/client';
 import { Logger } from 'pino';
 import { EventEmitter } from 'events';
 import { parseExpression } from 'cron-parser';
@@ -400,10 +400,21 @@ export class SchedulerService extends EventEmitter {
         'Executing scheduled pattern'
       );
 
+      // Build input — merge previous result if chaining is enabled
+      const scheduleMetadata = (schedule.metadata as Record<string, unknown>) || {};
+      let patternInput = (schedule.input as Record<string, unknown>) || {};
+
+      if (scheduleMetadata.chainOutput) {
+        const lastResult = scheduleMetadata.lastResult as Record<string, unknown> | undefined;
+        if (lastResult) {
+          patternInput = { ...patternInput, previousResult: lastResult };
+        }
+      }
+
       // Execute the pattern
       const result = await this.patternEngine.executePattern(
         schedule.patternName,
-        (schedule.input as Record<string, any>) || {}
+        patternInput
       );
 
       const completedAt = new Date();
@@ -427,14 +438,24 @@ export class SchedulerService extends EventEmitter {
         schedule.timezone
       );
 
+      // If chaining is enabled, store the result for the next run
+      const updateData: { lastRunAt: Date; lastRunStatus: string; runCount: { increment: number }; nextRunAt: Date | null; metadata?: Prisma.InputJsonValue } = {
+        lastRunAt: startedAt,
+        lastRunStatus: 'success',
+        runCount: { increment: 1 },
+        nextRunAt,
+      };
+
+      if (scheduleMetadata.chainOutput) {
+        updateData.metadata = JSON.parse(JSON.stringify({
+          ...scheduleMetadata,
+          lastResult: result.result?.value ?? result.result,
+        }));
+      }
+
       await this.prisma.schedule.update({
         where: { id: schedule.id },
-        data: {
-          lastRunAt: startedAt,
-          lastRunStatus: 'success',
-          runCount: { increment: 1 },
-          nextRunAt,
-        },
+        data: updateData,
       });
 
       this.logger.info(
