@@ -1,6 +1,6 @@
 /**
  * @name SignalNoiseStation
- * @version 1.0.8
+ * @version 1.1.1
  * @description Signal//Noise station pattern — orchestrates persona agents with frequency tuning and priority weights
  * @input {"type": "object", "properties": {"task": {"type": "string"}, "primaryChannel": {"type": "string"}, "priorityWeights": {"type": "object"}}}
  * @agents {"capabilities": ["conversation", "portfolio"]}
@@ -11,17 +11,17 @@
 let results = agentResults
 let count = agentCount
 
-// Extract tuning parameters from input (flat structure for Struct compatibility)
-let primaryChannel = input.primaryChannel ? input.primaryChannel : "prism"
-let weights = input.priorityWeights ? input.priorityWeights : {}
+// Extract tuning parameters from input
+let primaryChannel = input?.primaryChannel ?? "prism"
+let weights = input?.priorityWeights ?? {}
 
 // Separate primary and background results
 let primaryResult = null
 let backgroundResults = []
 let i = 0
 while (i < results.length) {
-  let agentChannel = results[i].result ? (results[i].result.channel ? results[i].result.channel : "") : ""
-  if (agentChannel == primaryChannel) {
+  let ch = results[i]?.result?.channel ?? ""
+  if (ch == primaryChannel) {
     primaryResult = results[i]
   } else {
     backgroundResults = [...backgroundResults, results[i]]
@@ -33,14 +33,14 @@ while (i < results.length) {
 let rankedBackground = []
 let j = 0
 while (j < backgroundResults.length) {
-  let bgChannel = backgroundResults[j].result ? (backgroundResults[j].result.channel ? backgroundResults[j].result.channel : "") : ""
-  let rawConf = backgroundResults[j].confidence ? backgroundResults[j].confidence : 0.5
-  let weight = weights[bgChannel] ? weights[bgChannel] : 0.25
+  let bgChannel = backgroundResults[j]?.result?.channel ?? ""
+  let rawConf = backgroundResults[j]?.confidence ?? 0.5
+  let weight = weights[bgChannel] ?? 0.25
   let dominance = rawConf * weight
   let entry = {
     channel: bgChannel,
-    agent: backgroundResults[j].agentName,
-    message: backgroundResults[j].result ? (backgroundResults[j].result.message ? backgroundResults[j].result.message : "") : "",
+    agent: backgroundResults[j]?.agentName,
+    message: backgroundResults[j]?.result?.message ?? "",
     confidence: rawConf,
     weight: weight,
     dominance: dominance
@@ -50,17 +50,17 @@ while (j < backgroundResults.length) {
 }
 
 // Compute primary info
-let primaryChannel_out = primaryResult ? (primaryResult.result ? (primaryResult.result.channel ? primaryResult.result.channel : primaryChannel) : primaryChannel) : primaryChannel
-let primaryMessage = primaryResult ? (primaryResult.result ? (primaryResult.result.message ? primaryResult.result.message : "") : "") : ""
-let primaryConf = primaryResult ? (primaryResult.confidence ? primaryResult.confidence : 0.5) : 0.5
-let primaryWeight = weights[primaryChannel_out] ? weights[primaryChannel_out] : 0.5
+let primaryChannel_out = primaryResult?.result?.channel ?? primaryChannel
+let primaryMessage = primaryResult?.result?.message ?? ""
+let primaryConf = primaryResult?.confidence ?? 0.5
+let primaryWeight = weights[primaryChannel_out] ?? 0.5
 let primaryDominance = primaryConf * primaryWeight
 
 // Compute station-wide confidence
 let totalConf = primaryConf
 let k = 0
 while (k < rankedBackground.length) {
-  totalConf = totalConf + rankedBackground[k].confidence
+  totalConf = totalConf + rankedBackground[k]?.confidence
   k = k + 1
 }
 let stationConfidence = count > 0 ? totalConf / count : 0
@@ -69,7 +69,7 @@ let stationConfidence = count > 0 ? totalConf / count : 0
 let result = {
   primary: {
     channel: primaryChannel_out,
-    agent: primaryResult ? primaryResult.agentName : null,
+    agent: primaryResult?.agentName ?? null,
     message: primaryMessage,
     confidence: primaryConf,
     dominance: primaryDominance

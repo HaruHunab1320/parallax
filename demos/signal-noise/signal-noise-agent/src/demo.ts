@@ -86,7 +86,8 @@ async function executeRound(topic: string) {
   console.log(`  Status: ${result.status}`);
 
   if (result.result) {
-    const output = result.result as any;
+    const raw = result.result as any;
+    const output = raw.value || raw;
     console.log('\n  --- Station Output ---');
     console.log(`  Primary: ${output.primary?.agent} (${output.primary?.channel})`);
     console.log(`  Message: ${output.primary?.message?.substring(0, 100)}...`);
