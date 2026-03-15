@@ -13,10 +13,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@prism-lang/core": "^2.0.0",
     "@grpc/grpc-js": "^1.12.4",
     "@parallaxai/sdk-typescript": "workspace:*",
     "@parallaxai/security": "workspace:*",
+    "@prism-lang/core": "^3.0.2",
     "pino": "^9.5.0"
   },
   "devDependencies": {
