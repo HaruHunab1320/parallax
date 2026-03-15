@@ -18,4 +18,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: parallax-control-plane
+    app.kubernetes.io/component: control-plane
+    app.kubernetes.io/instance: parallax

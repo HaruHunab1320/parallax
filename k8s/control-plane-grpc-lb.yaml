@@ -20,4 +20,5 @@ spec:
       protocol: TCP
       name: grpc
   selector:
-    app: parallax-control-plane
+    app.kubernetes.io/component: control-plane
+    app.kubernetes.io/instance: parallax
