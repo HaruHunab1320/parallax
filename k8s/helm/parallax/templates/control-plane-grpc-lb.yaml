@@ -1,0 +1,21 @@
+{{- if and .Values.controlPlane.enabled .Values.controlPlane.grpcLoadBalancer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "parallax.fullname" . }}-control-plane-grpc
+  labels:
+    {{- include "parallax.controlPlane.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane-grpc
+  annotations:
+    cloud.google.com/backend-config: '{"default": "parallax-grpc-backendconfig"}'
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.controlPlane.grpcLoadBalancer.port | default 8081 }}
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "parallax.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+{{- end }}

@@ -1,0 +1,19 @@
+{{- if and .Values.controlPlane.enabled .Values.controlPlane.restLoadBalancer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "parallax.fullname" . }}-control-plane-rest
+  labels:
+    {{- include "parallax.controlPlane.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane-rest
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.controlPlane.restLoadBalancer.port | default 3000 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "parallax.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+{{- end }}

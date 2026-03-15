@@ -22,6 +22,16 @@ controlPlane:
     metricsPort: 3001
     grpcPort: 8081
 
+  # External LoadBalancer for the REST API (used by @parallaxai/client)
+  restLoadBalancer:
+    enabled: true
+    port: 3000
+
+  # External LoadBalancer for gRPC (used by agent SDKs)
+  grpcLoadBalancer:
+    enabled: true
+    port: 8081
+
   resources:
     limits:
       cpu: 1000m

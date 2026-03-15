@@ -1,0 +1,21 @@
+---
+# LoadBalancer service exposing the control plane REST API for external clients.
+# Management clients using @parallaxai/client connect to this endpoint.
+apiVersion: v1
+kind: Service
+metadata:
+  name: parallax-control-plane-rest
+  namespace: parallax
+  labels:
+    app.kubernetes.io/name: parallax-control-plane-rest
+    app.kubernetes.io/component: control-plane
+    app.kubernetes.io/part-of: parallax
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http
+  selector:
+    app: parallax-control-plane
