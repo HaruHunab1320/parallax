@@ -329,6 +329,73 @@ export class AgentProxy {
     }
   }
 
+  // ─── Thread routing methods ───
+
+  /**
+   * Spawn a thread on a gateway-connected agent.
+   */
+  async spawnThread(
+    agentAddress: string,
+    request: {
+      threadId: string;
+      adapterType: string;
+      task: string;
+      preparationJson?: string;
+      policyJson?: string;
+      timeoutMs?: number;
+    },
+    timeout: number = 60000
+  ): Promise<any> {
+    if (!agentAddress.startsWith('gateway://')) {
+      throw new Error(`Thread spawning only supported for gateway agents, got: ${agentAddress}`);
+    }
+    if (!this.gatewayService) {
+      throw new Error('Gateway service not available');
+    }
+
+    const agentId = agentAddress.replace('gateway://', '');
+    return this.gatewayService.dispatchThreadSpawn(agentId, request, timeout);
+  }
+
+  /**
+   * Send input to a running thread on a gateway-connected agent.
+   */
+  async sendThreadInput(
+    agentAddress: string,
+    threadId: string,
+    input: string,
+    inputType: string = 'text'
+  ): Promise<void> {
+    if (!agentAddress.startsWith('gateway://')) {
+      throw new Error(`Thread input only supported for gateway agents, got: ${agentAddress}`);
+    }
+    if (!this.gatewayService) {
+      throw new Error('Gateway service not available');
+    }
+
+    const agentId = agentAddress.replace('gateway://', '');
+    this.gatewayService.dispatchThreadInput(agentId, threadId, input, inputType);
+  }
+
+  /**
+   * Stop a running thread on a gateway-connected agent.
+   */
+  async stopThread(
+    agentAddress: string,
+    threadId: string,
+    options?: { reason?: string; force?: boolean }
+  ): Promise<void> {
+    if (!agentAddress.startsWith('gateway://')) {
+      throw new Error(`Thread stop only supported for gateway agents, got: ${agentAddress}`);
+    }
+    if (!this.gatewayService) {
+      throw new Error('Gateway service not available');
+    }
+
+    const agentId = agentAddress.replace('gateway://', '');
+    await this.gatewayService.dispatchThreadStop(agentId, threadId, options);
+  }
+
   /**
    * Close all client connections
    */

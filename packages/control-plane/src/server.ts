@@ -253,7 +253,7 @@ export async function createServer(): Promise<express.Application> {
   }
 
   // Initialize Gateway Service for NAT-traversing agents
-  const gatewayService = new GatewayService(registry, logger);
+  const gatewayService = new GatewayService(registry, logger, undefined, executionEvents);
 
   // Use traced pattern engine if tracing is enabled
   // Note: workspaceService and agentRuntimeService will be set later after they're initialized

@@ -22,6 +22,9 @@ message AgentToControlPlane {
     AgentHeartbeat heartbeat = 3;
     TaskResult task_result = 4;
     TaskError task_error = 5;
+    ThreadSpawnResult thread_spawn_result = 6;
+    ThreadEventReport thread_event = 7;
+    ThreadStatusUpdate thread_status_update = 8;
   }
 }
 
@@ -58,6 +61,33 @@ message TaskError {
   string error_code = 3;     // Optional error classification
 }
 
+// Agent confirms a thread was spawned (or failed to spawn).
+message ThreadSpawnResult {
+  string thread_id = 1;
+  bool success = 2;
+  string error_message = 3;  // Set when success=false
+  string adapter_type = 4;   // e.g. "claude-code", "gemini-cli"
+  string workspace_dir = 5;  // Workspace directory on the agent
+}
+
+// Streaming thread lifecycle events (output, blocked, completed, etc.).
+message ThreadEventReport {
+  string thread_id = 1;
+  string event_type = 2;     // output, blocked, prompt_ready, completed, failed, tool_use, etc.
+  string data_json = 3;      // JSON-encoded event payload
+  int64 timestamp_ms = 4;    // Unix milliseconds
+  int32 sequence = 5;        // Monotonic sequence number within the thread
+}
+
+// Periodic status/summary updates for a running thread.
+message ThreadStatusUpdate {
+  string thread_id = 1;
+  string status = 2;         // running, blocked, prompt_ready, completed, failed
+  string summary = 3;        // Human-readable summary of current state
+  double progress = 4;       // 0.0-1.0 optional progress indicator
+  int64 timestamp_ms = 5;
+}
+
 // ─── Control Plane → Agent ───
 
 message ControlPlaneToAgent {
@@ -67,6 +97,9 @@ message ControlPlaneToAgent {
     TaskRequest task_request = 3;
     CancelTask cancel_task = 4;
     Ping ping = 5;
+    ThreadSpawnRequest thread_spawn = 6;
+    ThreadInputRequest thread_input = 7;
+    ThreadStopRequest thread_stop = 8;
   }
 }
 
@@ -96,4 +129,30 @@ message CancelTask {
 // Server-initiated keepalive (expects heartbeat response).
 message Ping {
   google.protobuf.Timestamp server_time = 1;
+}
+
+// ─── Thread Lifecycle (Control Plane → Agent) ───
+
+// Request the agent to spawn a coding thread (CLI agent session).
+message ThreadSpawnRequest {
+  string thread_id = 1;          // Pre-assigned thread ID
+  string adapter_type = 2;       // e.g. "claude-code", "gemini-cli", "codex"
+  string task = 3;               // Initial prompt/task for the thread
+  string preparation_json = 4;   // JSON-encoded preparation context (workspace, env, etc.)
+  string policy_json = 5;        // JSON-encoded execution policy (timeouts, permissions, etc.)
+  int32 timeout_ms = 6;          // Max time for the thread to run (0 = no timeout)
+}
+
+// Send text input to a running thread (e.g. follow-up prompt, approval).
+message ThreadInputRequest {
+  string thread_id = 1;
+  string input = 2;              // Text to send to the thread's stdin
+  string input_type = 3;         // "text", "approval", "key" (default: "text")
+}
+
+// Request the agent to stop a running thread.
+message ThreadStopRequest {
+  string thread_id = 1;
+  string reason = 2;             // Why the thread is being stopped
+  bool force = 3;                // If true, kill immediately; otherwise graceful shutdown
 }

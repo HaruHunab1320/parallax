@@ -3,6 +3,13 @@ import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
 import fs from 'fs';
 import { AgentResponse, ensureConfidence } from './types/agent-response';
+import type {
+  GatewayThreadSpawnRequest,
+  GatewayThreadEvent,
+  GatewayThreadInput,
+  GatewayThreadStopRequest,
+  GatewayThreadStatusUpdate,
+} from './types/thread-types';
 
 const PROTO_DIR = process.env.PARALLAX_PROTO_DIR
   || (fs.existsSync(path.join(__dirname, '../../proto'))
@@ -94,6 +101,7 @@ export abstract class ParallaxAgent {
   private gatewayReconnecting: boolean = false;
   private gatewayEndpoint?: string;
   private gatewayOptions?: GatewayOptions;
+  private activeThreads: Map<string, { cleanup: () => void }> = new Map();
 
   constructor(
     public readonly id: string,
@@ -545,6 +553,12 @@ export abstract class ParallaxAgent {
         }
       } else if (message.task_request) {
         await this.handleGatewayTask(stream, message.request_id, message.task_request);
+      } else if (message.thread_spawn) {
+        await this.handleGatewayThreadSpawn(stream, message.request_id, message.thread_spawn);
+      } else if (message.thread_input) {
+        await this.handleGatewayThreadInput(message.thread_input);
+      } else if (message.thread_stop) {
+        await this.handleGatewayThreadStop(stream, message.request_id, message.thread_stop);
       } else if (message.cancel_task) {
         console.log(`Task cancelled: ${message.cancel_task.task_id} (${message.cancel_task.reason})`);
         // Cancellation support can be extended in subclasses
@@ -598,7 +612,7 @@ export abstract class ParallaxAgent {
   /**
    * Handle a task received via the gateway stream.
    */
-  private async handleGatewayTask(
+  protected async handleGatewayTask(
     stream: grpc.ClientDuplexStream<any, any>,
     requestId: string,
     taskRequest: any
@@ -631,6 +645,123 @@ export abstract class ParallaxAgent {
     }
   }
 
+  // ─── Thread lifecycle handlers (override in subclasses) ───
+
+  /**
+   * Handle a thread spawn request from the control plane.
+   * Override in subclasses to spawn a CLI agent thread via pty-manager.
+   */
+  protected async handleGatewayThreadSpawn(
+    stream: grpc.ClientDuplexStream<any, any>,
+    requestId: string,
+    request: GatewayThreadSpawnRequest
+  ): Promise<void> {
+    // Default: not supported — send failure result
+    stream.write({
+      request_id: requestId,
+      thread_spawn_result: {
+        thread_id: request.thread_id,
+        success: false,
+        error_message: 'Thread spawning not supported by this agent',
+      },
+    });
+  }
+
+  /**
+   * Handle thread input from the control plane.
+   * Override in subclasses to route input to the running thread.
+   */
+  protected async handleGatewayThreadInput(
+    _request: GatewayThreadInput
+  ): Promise<void> {
+    // Default: no-op
+  }
+
+  /**
+   * Handle a thread stop request from the control plane.
+   * Override in subclasses to stop the running thread.
+   */
+  protected async handleGatewayThreadStop(
+    stream: grpc.ClientDuplexStream<any, any>,
+    requestId: string,
+    request: GatewayThreadStopRequest
+  ): Promise<void> {
+    // Default: clean up tracking and send status update
+    const entry = this.activeThreads.get(request.thread_id);
+    if (entry) {
+      entry.cleanup();
+      this.activeThreads.delete(request.thread_id);
+    }
+    stream.write({
+      request_id: requestId,
+      thread_status_update: {
+        thread_id: request.thread_id,
+        status: 'completed',
+        summary: 'Thread stopped (default handler)',
+        progress: 1.0,
+        timestamp_ms: Date.now(),
+      },
+    });
+  }
+
+  // ─── Thread event helpers (for subclasses to stream events back) ───
+
+  /**
+   * Register an active thread for cleanup tracking.
+   */
+  protected registerThread(threadId: string, cleanup: () => void): void {
+    this.activeThreads.set(threadId, { cleanup });
+  }
+
+  /**
+   * Unregister a thread (e.g. when it completes naturally).
+   */
+  protected unregisterThread(threadId: string): void {
+    this.activeThreads.delete(threadId);
+  }
+
+  /**
+   * Emit a thread event back to the control plane via the gateway stream.
+   */
+  protected emitThreadEvent(event: GatewayThreadEvent): void {
+    if (!this.gatewayStream) return;
+    try {
+      this.gatewayStream.write({
+        request_id: '',
+        thread_event: {
+          thread_id: event.thread_id,
+          event_type: event.event_type,
+          data_json: event.data_json,
+          timestamp_ms: event.timestamp_ms,
+          sequence: event.sequence,
+        },
+      });
+    } catch {
+      // Stream may be closed
+    }
+  }
+
+  /**
+   * Emit a thread status update back to the control plane via the gateway stream.
+   */
+  protected emitThreadStatusUpdate(update: GatewayThreadStatusUpdate): void {
+    if (!this.gatewayStream) return;
+    try {
+      this.gatewayStream.write({
+        request_id: '',
+        thread_status_update: {
+          thread_id: update.thread_id,
+          status: update.status,
+          summary: update.summary,
+          progress: update.progress,
+          timestamp_ms: update.timestamp_ms,
+        },
+      });
+    } catch {
+      // Stream may be closed
+    }
+  }
+
   /**
    * Handle gateway disconnection with auto-reconnect.
    */
@@ -639,6 +770,16 @@ export abstract class ParallaxAgent {
     if (this.gatewayHeartbeatTimer) {
       clearInterval(this.gatewayHeartbeatTimer);
       this.gatewayHeartbeatTimer = undefined;
+    }
+
+    // Clean up active threads
+    for (const [threadId, entry] of this.activeThreads) {
+      try {
+        entry.cleanup();
+      } catch {
+        // Best-effort cleanup
+      }
+      this.activeThreads.delete(threadId);
     }
 
     this.gatewayStream = undefined;
@@ -686,6 +827,16 @@ export abstract class ParallaxAgent {
    * Shutdown the agent
    */
   async shutdown(): Promise<void> {
+    // Clean up active threads
+    for (const [threadId, entry] of this.activeThreads) {
+      try {
+        entry.cleanup();
+      } catch {
+        // Best-effort cleanup
+      }
+      this.activeThreads.delete(threadId);
+    }
+
     // Stop gateway connection
     if (this.gatewayHeartbeatTimer) {
       clearInterval(this.gatewayHeartbeatTimer);

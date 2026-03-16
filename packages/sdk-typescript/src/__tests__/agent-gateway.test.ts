@@ -76,6 +76,9 @@ vi.mock('@grpc/grpc-js', () => ({
 class TestAgent extends ParallaxAgent {
   analyzeResult: AgentResponse = { value: { result: 'ok' }, confidence: 0.9 };
   analyzeError?: Error;
+  lastThreadSpawn?: any;
+  lastThreadInput?: any;
+  lastThreadStop?: any;
 
   constructor() {
     super('test-gw', 'Test Gateway Agent', ['analysis', 'gateway']);
@@ -84,6 +87,61 @@ class TestAgent extends ParallaxAgent {
   async analyze(_task: string, _data?: any): Promise<AgentResponse> {
     if (this.analyzeError) throw this.analyzeError;
     return this.analyzeResult;
+  }
+}
+
+class ThreadCapableAgent extends ParallaxAgent {
+  lastThreadSpawn?: any;
+  lastThreadInput?: any;
+  lastThreadStop?: any;
+
+  constructor() {
+    super('test-thread', 'Thread Agent', ['coding', 'threads']);
+  }
+
+  async analyze(_task: string, _data?: any): Promise<AgentResponse> {
+    return { value: 'ok', confidence: 1.0 };
+  }
+
+  protected async handleGatewayThreadSpawn(
+    stream: any,
+    requestId: string,
+    request: any
+  ): Promise<void> {
+    this.lastThreadSpawn = request;
+    this.registerThread(request.thread_id, () => {});
+    stream.write({
+      request_id: requestId,
+      thread_spawn_result: {
+        thread_id: request.thread_id,
+        success: true,
+        adapter_type: request.adapter_type,
+        workspace_dir: '/tmp/workspace',
+      },
+    });
+  }
+
+  protected async handleGatewayThreadInput(request: any): Promise<void> {
+    this.lastThreadInput = request;
+  }
+
+  protected async handleGatewayThreadStop(
+    stream: any,
+    requestId: string,
+    request: any
+  ): Promise<void> {
+    this.lastThreadStop = request;
+    this.unregisterThread(request.thread_id);
+    stream.write({
+      request_id: requestId,
+      thread_status_update: {
+        thread_id: request.thread_id,
+        status: 'completed',
+        summary: 'Stopped',
+        progress: 1.0,
+        timestamp_ms: Date.now(),
+      },
+    });
   }
 }
 
@@ -264,6 +322,244 @@ describe('ParallaxAgent Gateway', () => {
         (c: any[]) => c[0]?.heartbeat
       );
       expect(heartbeatCalls).toHaveLength(0);
+    });
+  });
+});
+
+describe('ParallaxAgent Thread Protocol', () => {
+  let agent: ThreadCapableAgent;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    agent = new ThreadCapableAgent();
+    const pkgDef = grpc.loadPackageDefinition({} as any) as any;
+    (agent as any).gatewayProto = pkgDef.parallax.gateway;
+  });
+
+  afterEach(async () => {
+    (agent as any).gatewayReconnecting = true;
+    vi.useRealTimers();
+  });
+
+  async function connectAgent() {
+    const p = agent.connectViaGateway('localhost:50051', { autoReconnect: false });
+    await vi.advanceTimersByTimeAsync(0);
+    mockStream.emit('data', {
+      ack: { accepted: true, message: 'OK', assigned_node_id: 'node-1' },
+    });
+    await p;
+  }
+
+  describe('ThreadSpawnRequest', () => {
+    it('calls handleGatewayThreadSpawn and sends ThreadSpawnResult', async () => {
+      await connectAgent();
+      mockStream.write.mockClear();
+
+      mockStream.emit('data', {
+        request_id: 'req-spawn-1',
+        thread_spawn: {
+          thread_id: 'thread-abc',
+          adapter_type: 'claude-code',
+          task: 'Build a REST API',
+          preparation_json: '{"workspace":"/tmp/ws"}',
+          policy_json: '{}',
+          timeout_ms: 300000,
+        },
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(agent.lastThreadSpawn).toEqual(
+        expect.objectContaining({
+          thread_id: 'thread-abc',
+          adapter_type: 'claude-code',
+          task: 'Build a REST API',
+        })
+      );
+
+      expect(mockStream.write).toHaveBeenCalledWith(
+        expect.objectContaining({
+          request_id: 'req-spawn-1',
+          thread_spawn_result: expect.objectContaining({
+            thread_id: 'thread-abc',
+            success: true,
+            adapter_type: 'claude-code',
+            workspace_dir: '/tmp/workspace',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('ThreadInputRequest', () => {
+    it('calls handleGatewayThreadInput', async () => {
+      await connectAgent();
+
+      mockStream.emit('data', {
+        request_id: '',
+        thread_input: {
+          thread_id: 'thread-abc',
+          input: 'yes',
+          input_type: 'approval',
+        },
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(agent.lastThreadInput).toEqual(
+        expect.objectContaining({
+          thread_id: 'thread-abc',
+          input: 'yes',
+          input_type: 'approval',
+        })
+      );
+    });
+  });
+
+  describe('ThreadStopRequest', () => {
+    it('calls handleGatewayThreadStop and sends status update', async () => {
+      await connectAgent();
+
+      // Spawn a thread first
+      mockStream.emit('data', {
+        request_id: 'req-spawn-2',
+        thread_spawn: {
+          thread_id: 'thread-xyz',
+          adapter_type: 'claude-code',
+          task: 'Test task',
+          preparation_json: '{}',
+          policy_json: '{}',
+          timeout_ms: 0,
+        },
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      mockStream.write.mockClear();
+
+      // Now stop it
+      mockStream.emit('data', {
+        request_id: 'req-stop-1',
+        thread_stop: {
+          thread_id: 'thread-xyz',
+          reason: 'User requested',
+          force: false,
+        },
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(agent.lastThreadStop).toEqual(
+        expect.objectContaining({
+          thread_id: 'thread-xyz',
+          reason: 'User requested',
+        })
+      );
+
+      expect(mockStream.write).toHaveBeenCalledWith(
+        expect.objectContaining({
+          request_id: 'req-stop-1',
+          thread_status_update: expect.objectContaining({
+            thread_id: 'thread-xyz',
+            status: 'completed',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('emitThreadEvent', () => {
+    it('writes correct proto message to stream', async () => {
+      await connectAgent();
+      mockStream.write.mockClear();
+
+      (agent as any).emitThreadEvent({
+        thread_id: 'thread-abc',
+        event_type: 'output',
+        data_json: JSON.stringify({ text: 'Building API...' }),
+        timestamp_ms: 1710000000000,
+        sequence: 1,
+      });
+
+      expect(mockStream.write).toHaveBeenCalledWith({
+        request_id: '',
+        thread_event: {
+          thread_id: 'thread-abc',
+          event_type: 'output',
+          data_json: JSON.stringify({ text: 'Building API...' }),
+          timestamp_ms: 1710000000000,
+          sequence: 1,
+        },
+      });
+    });
+  });
+
+  describe('emitThreadStatusUpdate', () => {
+    it('writes correct proto message to stream', async () => {
+      await connectAgent();
+      mockStream.write.mockClear();
+
+      (agent as any).emitThreadStatusUpdate({
+        thread_id: 'thread-abc',
+        status: 'running',
+        summary: 'Installing dependencies',
+        progress: 0.3,
+        timestamp_ms: 1710000000000,
+      });
+
+      expect(mockStream.write).toHaveBeenCalledWith({
+        request_id: '',
+        thread_status_update: {
+          thread_id: 'thread-abc',
+          status: 'running',
+          summary: 'Installing dependencies',
+          progress: 0.3,
+          timestamp_ms: 1710000000000,
+        },
+      });
+    });
+  });
+
+  describe('Default handler (no override)', () => {
+    it('sends failure result when thread spawning not supported', async () => {
+      // Use the base TestAgent which does NOT override thread handlers
+      const baseAgent = new TestAgent();
+      const pkgDef = grpc.loadPackageDefinition({} as any) as any;
+      (baseAgent as any).gatewayProto = pkgDef.parallax.gateway;
+
+      const p = baseAgent.connectViaGateway('localhost:50051', { autoReconnect: false });
+      await vi.advanceTimersByTimeAsync(0);
+      mockStream.emit('data', {
+        ack: { accepted: true, message: 'OK', assigned_node_id: 'node-1' },
+      });
+      await p;
+      mockStream.write.mockClear();
+
+      mockStream.emit('data', {
+        request_id: 'req-spawn-fail',
+        thread_spawn: {
+          thread_id: 'thread-fail',
+          adapter_type: 'claude-code',
+          task: 'Will fail',
+          preparation_json: '{}',
+          policy_json: '{}',
+          timeout_ms: 0,
+        },
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(mockStream.write).toHaveBeenCalledWith(
+        expect.objectContaining({
+          request_id: 'req-spawn-fail',
+          thread_spawn_result: expect.objectContaining({
+            thread_id: 'thread-fail',
+            success: false,
+            error_message: 'Thread spawning not supported by this agent',
+          }),
+        })
+      );
+
+      // Cleanup
+      (baseAgent as any).gatewayReconnecting = true;
     });
   });
 });

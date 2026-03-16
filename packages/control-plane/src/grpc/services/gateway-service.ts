@@ -5,9 +5,11 @@
  */
 
 import * as grpc from '@grpc/grpc-js';
+import { EventEmitter } from 'events';
 import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import type { IAgentRegistry } from '../../registry';
+import type { ExecutionEventBus } from '../../execution-events';
 
 export interface GatewayAgentSession {
   agentId: string;
@@ -21,6 +23,7 @@ export interface GatewayAgentSession {
   heartbeatTimer?: NodeJS.Timeout;
   status: 'healthy' | 'unhealthy' | 'dead';
   load: number;
+  activeThreads: Map<string, { executionId: string; status: string }>;
 }
 
 interface PendingRequest {
@@ -38,15 +41,18 @@ export interface GatewayDispatchResult {
   error?: string;
 }
 
-export class GatewayService {
+export class GatewayService extends EventEmitter {
   private connectedAgents: Map<string, GatewayAgentSession> = new Map();
   private pendingRequests: Map<string, PendingRequest> = new Map();
+  private threadEventListeners: Map<string, Set<(event: any) => void>> = new Map();
 
   constructor(
     private registry: IAgentRegistry,
     private logger: Logger,
-    private nodeId?: string
+    private nodeId?: string,
+    private executionEvents?: ExecutionEventBus
   ) {
+    super();
     this.logger = logger.child({ component: 'GatewayService' });
   }
 
@@ -80,6 +86,12 @@ export class GatewayService {
         this.handleTaskResult(requestId, message.task_result);
       } else if (message.task_error || payload === 'task_error') {
         this.handleTaskError(requestId, message.task_error);
+      } else if (message.thread_spawn_result || payload === 'thread_spawn_result') {
+        this.handleThreadSpawnResult(requestId, message.thread_spawn_result);
+      } else if (message.thread_event || payload === 'thread_event') {
+        this.handleThreadEvent(message.thread_event);
+      } else if (message.thread_status_update || payload === 'thread_status_update') {
+        this.handleThreadStatusUpdate(message.thread_status_update);
       }
     });
 
@@ -144,6 +156,7 @@ export class GatewayService {
       heartbeatIntervalMs,
       status: 'healthy',
       load: 0,
+      activeThreads: new Map(),
     };
 
     // Start heartbeat monitoring: 2x interval = unhealthy, 3x = dead
@@ -365,6 +378,254 @@ export class GatewayService {
     return Array.from(this.connectedAgents.keys());
   }
 
+  // ─── Thread protocol handlers ───
+
+  /**
+   * Handle ThreadSpawnResult from an agent — resolve the pending spawn promise.
+   */
+  private handleThreadSpawnResult(requestId: string, result: any): void {
+    const pending = this.pendingRequests.get(requestId);
+    if (!pending) {
+      this.logger.warn({ requestId, threadId: result?.thread_id }, 'Received thread spawn result for unknown request');
+      return;
+    }
+
+    clearTimeout(pending.timeout);
+    this.pendingRequests.delete(requestId);
+
+    if (result.success) {
+      // Track in the agent's session
+      for (const session of this.connectedAgents.values()) {
+        // Match by checking if this request was sent to this agent (via pending.taskId which stores threadId)
+        if (pending.taskId === result.thread_id) {
+          session.activeThreads.set(result.thread_id, {
+            executionId: result.thread_id,
+            status: 'running',
+          });
+          break;
+        }
+      }
+    }
+
+    pending.resolve({
+      thread_id: result.thread_id,
+      success: result.success,
+      error_message: result.error_message,
+      adapter_type: result.adapter_type,
+      workspace_dir: result.workspace_dir,
+    });
+  }
+
+  /**
+   * Handle ThreadEventReport from an agent — emit to event bus and local subscribers.
+   */
+  private handleThreadEvent(report: any): void {
+    if (!report?.thread_id) return;
+
+    const event = {
+      thread_id: report.thread_id,
+      event_type: report.event_type,
+      data_json: report.data_json,
+      timestamp_ms: parseInt(report.timestamp_ms) || Date.now(),
+      sequence: report.sequence || 0,
+    };
+
+    // Emit to ExecutionEventBus
+    if (this.executionEvents) {
+      this.executionEvents.emitEvent({
+        executionId: report.thread_id,
+        type: `gateway_thread_${report.event_type}`,
+        data: event,
+        timestamp: new Date(),
+      });
+    }
+
+    // Emit to local thread event subscribers
+    const listeners = this.threadEventListeners.get(report.thread_id);
+    if (listeners) {
+      for (const listener of listeners) {
+        try {
+          listener(event);
+        } catch {
+          // Don't let listener errors break the handler
+        }
+      }
+    }
+
+    // Also emit on the service itself for general listeners
+    this.emit('thread_event', event);
+  }
+
+  /**
+   * Handle ThreadStatusUpdate from an agent — update session tracking and emit.
+   */
+  private handleThreadStatusUpdate(update: any): void {
+    if (!update?.thread_id) return;
+
+    // Update session tracking
+    for (const session of this.connectedAgents.values()) {
+      const tracked = session.activeThreads.get(update.thread_id);
+      if (tracked) {
+        tracked.status = update.status;
+        if (update.status === 'completed' || update.status === 'failed') {
+          session.activeThreads.delete(update.thread_id);
+        }
+        break;
+      }
+    }
+
+    // Emit to ExecutionEventBus
+    if (this.executionEvents) {
+      this.executionEvents.emitEvent({
+        executionId: update.thread_id,
+        type: 'gateway_thread_status',
+        data: {
+          thread_id: update.thread_id,
+          status: update.status,
+          summary: update.summary,
+          progress: update.progress,
+          timestamp_ms: parseInt(update.timestamp_ms) || Date.now(),
+        },
+        timestamp: new Date(),
+      });
+    }
+
+    this.emit('thread_status', update);
+  }
+
+  // ─── Thread dispatch methods ───
+
+  /**
+   * Dispatch a thread spawn request to a gateway-connected agent.
+   * Returns a promise that resolves with the spawn result.
+   */
+  async dispatchThreadSpawn(
+    agentId: string,
+    request: {
+      threadId: string;
+      adapterType: string;
+      task: string;
+      preparationJson?: string;
+      policyJson?: string;
+      timeoutMs?: number;
+    },
+    timeout: number = 60000
+  ): Promise<any> {
+    const session = this.connectedAgents.get(agentId);
+    if (!session) {
+      throw new Error(`Gateway agent ${agentId} not connected`);
+    }
+    if (session.status === 'dead') {
+      throw new Error(`Gateway agent ${agentId} is dead (heartbeat timeout)`);
+    }
+
+    const requestId = uuidv4();
+
+    return new Promise<any>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pendingRequests.delete(requestId);
+        resolve({
+          thread_id: request.threadId,
+          success: false,
+          error_message: `Thread spawn timed out after ${timeout}ms`,
+        });
+      }, timeout);
+
+      this.pendingRequests.set(requestId, {
+        resolve,
+        reject,
+        timeout: timer,
+        taskId: request.threadId,
+      });
+
+      try {
+        session.stream.write({
+          request_id: requestId,
+          thread_spawn: {
+            thread_id: request.threadId,
+            adapter_type: request.adapterType,
+            task: request.task,
+            preparation_json: request.preparationJson || '{}',
+            policy_json: request.policyJson || '{}',
+            timeout_ms: request.timeoutMs || 0,
+          },
+        });
+      } catch (error) {
+        clearTimeout(timer);
+        this.pendingRequests.delete(requestId);
+        throw new Error(`Failed to write thread spawn to gateway stream for agent ${agentId}: ${error}`);
+      }
+    });
+  }
+
+  /**
+   * Send input to a running thread on a gateway-connected agent (fire-and-forget).
+   */
+  dispatchThreadInput(
+    agentId: string,
+    threadId: string,
+    input: string,
+    inputType: string = 'text'
+  ): void {
+    const session = this.connectedAgents.get(agentId);
+    if (!session) {
+      throw new Error(`Gateway agent ${agentId} not connected`);
+    }
+
+    session.stream.write({
+      request_id: '',
+      thread_input: {
+        thread_id: threadId,
+        input,
+        input_type: inputType,
+      },
+    });
+  }
+
+  /**
+   * Request a thread to stop on a gateway-connected agent.
+   */
+  async dispatchThreadStop(
+    agentId: string,
+    threadId: string,
+    options?: { reason?: string; force?: boolean }
+  ): Promise<void> {
+    const session = this.connectedAgents.get(agentId);
+    if (!session) {
+      throw new Error(`Gateway agent ${agentId} not connected`);
+    }
+
+    session.stream.write({
+      request_id: uuidv4(),
+      thread_stop: {
+        thread_id: threadId,
+        reason: options?.reason || 'Requested by control plane',
+        force: options?.force || false,
+      },
+    });
+  }
+
+  /**
+   * Subscribe to thread events for a specific thread.
+   * Returns an unsubscribe function.
+   */
+  subscribeThreadEvents(threadId: string, callback: (event: any) => void): () => void {
+    if (!this.threadEventListeners.has(threadId)) {
+      this.threadEventListeners.set(threadId, new Set());
+    }
+    this.threadEventListeners.get(threadId)!.add(callback);
+
+    return () => {
+      const listeners = this.threadEventListeners.get(threadId);
+      if (listeners) {
+        listeners.delete(callback);
+        if (listeners.size === 0) {
+          this.threadEventListeners.delete(threadId);
+        }
+      }
+    };
+  }
+
   /**
    * Clean up an agent session — reject pending requests, unregister from etcd.
    */
@@ -375,6 +636,37 @@ export class GatewayService {
     // Clear heartbeat timer
     if (session.heartbeatTimer) {
       clearInterval(session.heartbeatTimer);
+    }
+
+    // Emit thread_failed for all active threads on this agent
+    if (session.activeThreads.size > 0) {
+      for (const [threadId] of session.activeThreads) {
+        this.logger.warn({ agentId, threadId, reason }, 'Thread failed due to agent disconnect');
+        if (this.executionEvents) {
+          this.executionEvents.emitEvent({
+            executionId: threadId,
+            type: 'gateway_thread_failed',
+            data: {
+              thread_id: threadId,
+              event_type: 'failed',
+              data_json: JSON.stringify({ reason: `Agent disconnected: ${reason}` }),
+              timestamp_ms: Date.now(),
+              sequence: 0,
+            },
+            timestamp: new Date(),
+          });
+        }
+        this.emit('thread_event', {
+          thread_id: threadId,
+          event_type: 'failed',
+          data_json: JSON.stringify({ reason: `Agent disconnected: ${reason}` }),
+          timestamp_ms: Date.now(),
+          sequence: 0,
+        });
+        // Clean up thread event listeners
+        this.threadEventListeners.delete(threadId);
+      }
+      session.activeThreads.clear();
     }
 
     // Reject all pending requests for this agent
