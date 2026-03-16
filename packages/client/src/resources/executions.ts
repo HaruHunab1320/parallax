@@ -9,6 +9,8 @@ import {
   ExecutionCancelResponse,
   ExecutionRetryResponse,
   ExecutionStatsSummary,
+  ExecutionStreamEvent,
+  ExecutionStreamHandlers,
   HourlyStat,
   DailyStat,
 } from '../types/executions.js';
@@ -96,5 +98,133 @@ export class ExecutionsResource {
     }
 
     throw new Error(`Execution ${id} did not complete within ${timeoutMs}ms`);
+  }
+
+  /**
+   * Stream execution events via SSE.
+   * Returns an abort function to close the stream.
+   *
+   * @example
+   * ```ts
+   * const execution = await client.executions.create({ ... });
+   * const abort = client.executions.stream(execution.id, {
+   *   onAgentCompleted: (e) => console.log(`${e.data?.agentName} done (${e.data?.confidence})`),
+   *   onCompleted: () => console.log('All done'),
+   *   onFailed: (e) => console.error('Failed:', e.data?.error),
+   * });
+   * ```
+   */
+  stream(
+    id: string,
+    handlers: ExecutionStreamHandlers = {}
+  ): () => void {
+    const controller = new AbortController();
+    const url = this.http.buildStreamUrl(
+      `/api/executions/${encodeURIComponent(id)}/events/stream`
+    );
+
+    const connect = async () => {
+      try {
+        const response = await fetch(url, {
+          headers: this.http.getAuthHeaders(),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const body = await response.text().catch(() => '');
+          handlers.onError?.(new Error(`Stream failed: ${response.status} ${body}`));
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          handlers.onError?.(new Error('No response body for SSE stream'));
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
+          let currentData = '';
+
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              // Event type is also in the data payload
+            } else if (line.startsWith('data: ')) {
+              currentData = line.slice(6);
+            } else if (line === '' && currentData) {
+              // End of SSE message
+              try {
+                const event = JSON.parse(currentData) as ExecutionStreamEvent;
+                handlers.onEvent?.(event);
+
+                // Route to specific handlers
+                switch (event.type) {
+                  case 'agent_started':
+                    handlers.onAgentStarted?.(event);
+                    break;
+                  case 'agent_completed':
+                    handlers.onAgentCompleted?.(event);
+                    break;
+                  case 'agent_failed':
+                    handlers.onAgentFailed?.(event);
+                    break;
+                  case 'completed':
+                    handlers.onCompleted?.(event);
+                    break;
+                  case 'failed':
+                    handlers.onFailed?.(event);
+                    break;
+                }
+              } catch {
+                // Skip malformed events
+              }
+              currentData = '';
+            }
+          }
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        handlers.onError?.(error instanceof Error ? error : new Error(String(error)));
+      } finally {
+        handlers.onEnd?.();
+      }
+    };
+
+    connect();
+
+    return () => controller.abort();
+  }
+
+  /**
+   * Create an execution and immediately stream its events.
+   * Returns both the execution response and an abort function.
+   *
+   * @example
+   * ```ts
+   * const { execution, abort } = await client.executions.createAndStream(
+   *   { patternName: 'MyPattern', input: { task: 'hello' } },
+   *   {
+   *     onAgentCompleted: (e) => console.log(`${e.data?.agentName}: ${e.data?.confidence}`),
+   *     onCompleted: () => console.log('Done!'),
+   *   }
+   * );
+   * ```
+   */
+  async createAndStream(
+    input: ExecutionCreateInput,
+    handlers: ExecutionStreamHandlers = {}
+  ): Promise<{ execution: ExecutionCreateResponse; abort: () => void }> {
+    const execution = await this.create({ ...input, options: { ...input.options, stream: true } });
+    const abort = this.stream(execution.id, handlers);
+    return { execution, abort };
   }
 }

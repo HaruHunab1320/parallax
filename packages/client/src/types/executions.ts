@@ -91,3 +91,41 @@ export interface DailyStat {
   avg_confidence: number | null;
   avg_duration_ms: number | null;
 }
+
+/** A single event from the execution event stream */
+export interface ExecutionStreamEvent {
+  executionId: string;
+  type: string;
+  data?: {
+    agentId?: string;
+    agentName?: string;
+    confidence?: number;
+    error?: string;
+    count?: number;
+    successCount?: number;
+    failureCount?: number;
+    patternName?: string;
+    [key: string]: unknown;
+  };
+  timestamp: string;
+}
+
+/** Handlers for the execution event stream */
+export interface ExecutionStreamHandlers {
+  /** Called for every event */
+  onEvent?: (event: ExecutionStreamEvent) => void;
+  /** Called when a specific agent starts its task */
+  onAgentStarted?: (event: ExecutionStreamEvent) => void;
+  /** Called when a specific agent completes its task */
+  onAgentCompleted?: (event: ExecutionStreamEvent) => void;
+  /** Called when a specific agent fails */
+  onAgentFailed?: (event: ExecutionStreamEvent) => void;
+  /** Called when the execution completes */
+  onCompleted?: (event: ExecutionStreamEvent) => void;
+  /** Called when the execution fails */
+  onFailed?: (event: ExecutionStreamEvent) => void;
+  /** Called on stream error */
+  onError?: (error: Error) => void;
+  /** Called when the stream ends */
+  onEnd?: () => void;
+}

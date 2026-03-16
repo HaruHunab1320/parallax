@@ -28,6 +28,14 @@ export class TamagotchiDisplay {
   private readonly personaId: PersonaId;
   private readonly sprites: Record<TamagotchiState, AnimationFrames>;
 
+  // Scrolling message state
+  private scrollLines: string[] = [];
+  private scrollOffset = 0;
+  private scrollTickCounter = 0;
+  private scrollActive = false;
+  private readonly SCROLL_TICK_INTERVAL = 20; // ~2 seconds at 10fps
+  private readonly SCROLL_PAUSE_TICKS = 40; // ~4 seconds pause at end before reset
+
   constructor(personaId: string, renderer?: DisplayRenderer) {
     this.personaId = personaId as PersonaId;
     this.sprites = PERSONA_SPRITES[this.personaId] || PERSONA_SPRITES.echo;
@@ -46,6 +54,50 @@ export class TamagotchiDisplay {
 
   getState(): TamagotchiState {
     return this.state;
+  }
+
+  /**
+   * Set a scrolling message that word-wraps into 14-char lines and
+   * auto-scrolls through the content every ~2 seconds.
+   * Replaces normal textLines while active.
+   */
+  setScrollingMessage(message: string): void {
+    this.scrollLines = this.wordWrap(message);
+    this.scrollOffset = 0;
+    this.scrollTickCounter = 0;
+    this.scrollActive = true;
+  }
+
+  /** Word-wrap text into lines of TEXT_MAX_CHARS width. */
+  private wordWrap(text: string): string[] {
+    const lines: string[] = [];
+    const words = text.split(/\s+/);
+    let current = '';
+    for (const word of words) {
+      if (word.length === 0) continue;
+      // If a single word exceeds max width, split it
+      if (word.length > TEXT_MAX_CHARS) {
+        if (current.length > 0) {
+          lines.push(current);
+          current = '';
+        }
+        for (let i = 0; i < word.length; i += TEXT_MAX_CHARS) {
+          lines.push(word.slice(i, i + TEXT_MAX_CHARS));
+        }
+        continue;
+      }
+      const candidate = current.length === 0 ? word : `${current} ${word}`;
+      if (candidate.length <= TEXT_MAX_CHARS) {
+        current = candidate;
+      } else {
+        lines.push(current);
+        current = word;
+      }
+    }
+    if (current.length > 0) {
+      lines.push(current);
+    }
+    return lines;
   }
 
   /** Add a line to the scrolling text log. */
@@ -109,7 +161,10 @@ export class TamagotchiDisplay {
         if (elapsed >= 500) this.setState(TamagotchiState.THINKING);
         break;
       case TamagotchiState.RESPONDING:
-        if (elapsed >= 2000) this.setState(TamagotchiState.IDLE);
+        // Stay in RESPONDING while scrolling message is active;
+        // otherwise fall back to IDLE after 2s
+        if (!this.scrollActive && elapsed >= 2000)
+          this.setState(TamagotchiState.IDLE);
         break;
       case TamagotchiState.ERROR:
         if (elapsed >= 3000) this.setState(TamagotchiState.IDLE);
@@ -135,13 +190,49 @@ export class TamagotchiDisplay {
     // 3. State label
     this.frameBuf.drawString(this.state, STATE_LABEL_X, STATE_LABEL_Y);
 
-    // 4. Text lines
-    for (let i = 0; i < this.textLines.length; i++) {
-      this.frameBuf.drawString(
-        this.textLines[i],
-        TEXT_START_X,
-        TEXT_START_Y + i * TEXT_LINE_HEIGHT
+    // 4. Text lines (scrolling message takes priority when active)
+    if (this.scrollActive && this.scrollLines.length > 0) {
+      this.scrollTickCounter++;
+
+      const maxOffset = Math.max(0, this.scrollLines.length - MAX_TEXT_LINES);
+
+      if (this.scrollOffset < 0) {
+        // Negative offset = pause phase at the end before resetting
+        this.scrollOffset++;
+        if (this.scrollOffset >= 0) {
+          this.scrollActive = false;
+          this.setState(TamagotchiState.IDLE);
+        }
+      } else if (this.scrollTickCounter >= this.SCROLL_TICK_INTERVAL) {
+        this.scrollTickCounter = 0;
+        if (this.scrollOffset < maxOffset) {
+          this.scrollOffset++;
+        } else {
+          // Reached the end — enter pause phase via negative offset
+          this.scrollOffset = -this.SCROLL_PAUSE_TICKS;
+        }
+      }
+
+      const effectiveOffset = Math.max(0, this.scrollOffset);
+      const visibleLines = this.scrollLines.slice(
+        effectiveOffset,
+        effectiveOffset + MAX_TEXT_LINES
       );
+      for (let i = 0; i < visibleLines.length; i++) {
+        this.frameBuf.drawString(
+          visibleLines[i],
+          TEXT_START_X,
+          TEXT_START_Y + i * TEXT_LINE_HEIGHT
+        );
+      }
+    } else {
+      for (let i = 0; i < this.textLines.length; i++) {
+        this.frameBuf.drawString(
+          this.textLines[i],
+          TEXT_START_X,
+          TEXT_START_Y + i * TEXT_LINE_HEIGHT
+        );
+      }
     }
 
     // 5. Push to renderers

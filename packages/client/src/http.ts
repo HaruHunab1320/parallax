@@ -92,6 +92,16 @@ export class HttpClient {
     this.accessToken = token;
   }
 
+  /** Build a full URL for SSE/streaming endpoints */
+  buildStreamUrl(path: string): string {
+    return `${this.config.baseUrl}${path}`;
+  }
+
+  /** Get auth headers for use with raw fetch (e.g. SSE streams) */
+  getAuthHeaders(): Record<string, string> {
+    return this.buildHeaders(false);
+  }
+
   private buildUrl(path: string, query?: Record<string, string | number | boolean | undefined>): string {
     const url = new URL(`${this.config.baseUrl}${path}`);
 

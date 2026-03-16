@@ -1,6 +1,6 @@
 /**
  * @name SignalNoiseConversation
- * @version 1.0.0
+ * @version 1.1.0
  * @description Signal//Noise conversation loop — agents debate and rotate primary speaker based on confidence dominance
  * @input {"type": "object", "properties": {"topic": {"type": "string"}, "priorityWeights": {"type": "object"}, "previousResult": {"type": "object"}}}
  * @agents {"capabilities": ["conversation", "portfolio"]}
@@ -12,36 +12,20 @@ let results = agentResults
 let count = agentCount
 
 // Default priority weights per channel
-let weights = input.priorityWeights ? input.priorityWeights : {"prism": 0.9, "lumina": 0.7, "raven": 0.6, "89": 0.5}
+let weights = input?.priorityWeights ?? {"prism": 0.9, "lumina": 0.7, "raven": 0.6, "89": 0.5}
 
 // Determine primary channel from previous round's result
-// If no previous result, start with prism (Vero)
-let primaryChannel = "prism"
-if (input.previousResult) {
-  if (input.previousResult.nextPrimary) {
-    primaryChannel = input.previousResult.nextPrimary
-  }
-}
+let primaryChannel = input?.previousResult?.nextPrimary ?? "prism"
 
 // Build conversation history from previous round
-let history = []
-if (input.previousResult) {
-  if (input.previousResult.history) {
-    history = input.previousResult.history
-  }
-}
+let history = input?.previousResult?.history ?? []
 
 // Separate primary and background results for this round
 let primaryResult = null
 let backgroundResults = []
 let i = 0
 while (i < results.length) {
-  let agentChannel = ""
-  if (results[i].result) {
-    if (results[i].result.channel) {
-      agentChannel = results[i].result.channel
-    }
-  }
+  let agentChannel = results[i]?.result?.channel ?? ""
   if (agentChannel == primaryChannel) {
     primaryResult = results[i]
   } else {
@@ -56,30 +40,14 @@ let highestDominance = 0
 let nextPrimary = primaryChannel
 let j = 0
 while (j < backgroundResults.length) {
-  let bgChannel = ""
-  if (backgroundResults[j].result) {
-    if (backgroundResults[j].result.channel) {
-      bgChannel = backgroundResults[j].result.channel
-    }
-  }
-  let rawConf = backgroundResults[j].confidence ? backgroundResults[j].confidence : 0.5
-  let weight = 0.25
-  if (bgChannel != "") {
-    if (weights[bgChannel]) {
-      weight = weights[bgChannel]
-    }
-  }
+  let bgChannel = backgroundResults[j]?.result?.channel ?? ""
+  let rawConf = backgroundResults[j]?.confidence ?? 0.5
+  let weight = bgChannel != "" ? (weights[bgChannel] ?? 0.25) : 0.25
   let dominance = rawConf * weight
-  let bgMessage = ""
-  if (backgroundResults[j].result) {
-    if (backgroundResults[j].result.message) {
-      bgMessage = backgroundResults[j].result.message
-    }
-  }
   let entry = {
     channel: bgChannel,
-    agent: backgroundResults[j].agentName,
-    message: bgMessage,
+    agent: backgroundResults[j]?.agentName,
+    message: backgroundResults[j]?.result?.message ?? "",
     confidence: rawConf,
     weight: weight,
     dominance: dominance
@@ -97,54 +65,27 @@ while (j < backgroundResults.length) {
 }
 
 // Extract primary agent info
-let primaryChannel_out = primaryChannel
-if (primaryResult) {
-  if (primaryResult.result) {
-    if (primaryResult.result.channel) {
-      primaryChannel_out = primaryResult.result.channel
-    }
-  }
-}
-let primaryMessage = ""
-if (primaryResult) {
-  if (primaryResult.result) {
-    if (primaryResult.result.message) {
-      primaryMessage = primaryResult.result.message
-    }
-  }
-}
-let primaryConf = 0.5
-if (primaryResult) {
-  if (primaryResult.confidence) {
-    primaryConf = primaryResult.confidence
-  }
-}
-let primaryWeight = 0.5
-if (primaryChannel_out != "") {
-  if (weights[primaryChannel_out]) {
-    primaryWeight = weights[primaryChannel_out]
-  }
-}
+let primaryChannel_out = primaryResult?.result?.channel ?? primaryChannel
+let primaryMessage = primaryResult?.result?.message ?? ""
+let primaryConf = primaryResult?.confidence ?? 0.5
+let primaryWeight = weights[primaryChannel_out] ?? 0.5
 let primaryDominance = primaryConf * primaryWeight
 
 // Compute station-wide confidence
 let totalConf = primaryConf
 let k = 0
 while (k < rankedBackground.length) {
-  totalConf = totalConf + rankedBackground[k].confidence
+  totalConf = totalConf + rankedBackground[k]?.confidence
   k = k + 1
 }
-let stationConfidence = 0
-if (count > 0) {
-  stationConfidence = totalConf / count
-}
+let stationConfidence = count > 0 ? totalConf / count : 0
 
 // Append this round to conversation history (keep last 10 rounds)
 let thisRound = {
   round: history.length + 1,
   primary: {
     channel: primaryChannel_out,
-    agent: primaryResult ? primaryResult.agentName : null,
+    agent: primaryResult?.agentName ?? null,
     message: primaryMessage
   },
   background: rankedBackground
@@ -166,7 +107,7 @@ if (newHistory.length > 10) {
 let result = {
   primary: {
     channel: primaryChannel_out,
-    agent: primaryResult ? primaryResult.agentName : null,
+    agent: primaryResult?.agentName ?? null,
     message: primaryMessage,
     confidence: primaryConf,
     dominance: primaryDominance

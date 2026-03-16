@@ -322,7 +322,7 @@ export function createExecutionsRouter(
   // Get execution events
   router.get('/:id/events', async (req: any, res: any) => {
     const { id } = req.params;
-    
+
     try {
       if (database) {
         const events = await database.executions.getEvents(id);
@@ -337,6 +337,90 @@ export function createExecutionsRouter(
         error: error instanceof Error ? error.message : 'Failed to get events'
       });
     }
+  });
+
+  // SSE stream for execution events
+  router.get('/:id/events/stream', async (req: any, res: any) => {
+    const { id } = req.params;
+
+    // Set SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    // Send initial connection event
+    res.write(`event: connected\ndata: ${JSON.stringify({ executionId: id })}\n\n`);
+
+    // Send any historical events first
+    try {
+      if (database) {
+        const events = await database.executions.getEvents(id);
+        for (const event of events) {
+          const sseEvent = {
+            executionId: id,
+            type: (event as any).type,
+            data: (event as any).data,
+            timestamp: (event as any).time?.toISOString?.() ?? new Date().toISOString(),
+          };
+          res.write(`event: ${sseEvent.type}\ndata: ${JSON.stringify(sseEvent)}\n\n`);
+        }
+      }
+    } catch (error) {
+      logger.warn({ error, executionId: id }, 'Failed to load historical events for SSE');
+    }
+
+    // Check if execution is already terminal
+    try {
+      let status: string | undefined;
+      if (database) {
+        const dbExecution = await database.executions.findById(id);
+        status = dbExecution?.status;
+      } else {
+        status = executions.get(id)?.status;
+      }
+
+      if (status && ['completed', 'failed', 'cancelled'].includes(status)) {
+        res.write(`event: ${status}\ndata: ${JSON.stringify({ executionId: id, type: status })}\n\n`);
+        res.end();
+        return;
+      }
+    } catch {
+      // Continue with live streaming
+    }
+
+    // Subscribe to live events
+    let unsubscribe: (() => void) | undefined;
+
+    if (executionEvents) {
+      unsubscribe = executionEvents.onExecutionId(id, (event) => {
+        const sseEvent = {
+          executionId: event.executionId,
+          type: event.type,
+          data: event.data,
+          timestamp: event.timestamp.toISOString(),
+        };
+        res.write(`event: ${event.type}\ndata: ${JSON.stringify(sseEvent)}\n\n`);
+
+        // Close stream on terminal events
+        if (['completed', 'failed', 'cancelled'].includes(event.type)) {
+          res.end();
+        }
+      });
+    }
+
+    // Heartbeat to keep connection alive
+    const heartbeat = setInterval(() => {
+      res.write(': heartbeat\n\n');
+    }, 15000);
+
+    // Clean up on client disconnect
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      if (unsubscribe) unsubscribe();
+    });
   });
 
   // Cancel execution

@@ -100,11 +100,11 @@ export class PersonaAgent extends ParallaxAgent {
         this.knowledgeKeywords
       );
 
-      // Display: responding
+      // Display: responding — show role/confidence header then scroll full response
       this.display.setState(TamagotchiState.RESPONDING);
-      this.display.addTextLine(
-        `< ${isPrimary ? 'PRI' : 'BG'} ${llmResponse.confidence.toFixed(2)}`
-      );
+      const roleTag = isPrimary ? 'PRI' : 'BG';
+      const header = `[${roleTag} ${llmResponse.confidence.toFixed(2)}]`;
+      this.display.setScrollingMessage(`${header} ${llmResponse.content}`);
 
       return this.createResult(
         {
