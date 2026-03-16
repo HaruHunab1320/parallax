@@ -1,0 +1,25 @@
+{
+  "name": "parallax-coding-swarm-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Thread-capable agent for distributed CLI coding swarm on Raspberry Pis",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@parallaxai/sdk-typescript": "workspace:*",
+    "tmux-manager": "workspace:*",
+    "coding-agent-adapters": "workspace:*",
+    "adapter-types": "workspace:*",
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "@grpc/grpc-js": "^1.12.6",
+    "@types/node": "^22.14.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

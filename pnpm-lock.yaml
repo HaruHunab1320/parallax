@@ -285,6 +285,37 @@ importers:
         specifier: ^5.7.2
         version: 5.8.3
 
+  demos/coding-swarm/coding-swarm-agent:
+    dependencies:
+      '@parallaxai/sdk-typescript':
+        specifier: workspace:*
+        version: link:../../../packages/sdk-typescript
+      adapter-types:
+        specifier: workspace:*
+        version: link:../../../packages/adapter-types
+      coding-agent-adapters:
+        specifier: workspace:*
+        version: link:../../../packages/coding-agent-adapters
+      pino:
+        specifier: ^9.6.0
+        version: 9.7.0
+      tmux-manager:
+        specifier: workspace:*
+        version: link:../../../packages/tmux-manager
+    devDependencies:
+      '@grpc/grpc-js':
+        specifier: ^1.12.6
+        version: 1.13.4
+      '@types/node':
+        specifier: ^22.14.1
+        version: 22.16.5
+      tsx:
+        specifier: ^4.19.2
+        version: 4.20.3
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
+
   demos/document-analysis:
     dependencies:
       '@google/generative-ai':
@@ -15908,7 +15939,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 25.5.0
+      '@types/node': 20.19.9
       '@types/yargs': 17.0.33
       chalk: 4.1.2
 
@@ -17769,14 +17800,14 @@ snapshots:
 
   '@types/bonjour@3.5.13':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 20.19.9
 
   '@types/btoa-lite@1.0.2': {}
 
   '@types/connect-history-api-fallback@1.5.4':
     dependencies:
       '@types/express-serve-static-core': 5.0.6
-      '@types/node': 25.5.0
+      '@types/node': 20.19.9
 
   '@types/connect@3.4.38':
     dependencies:
@@ -17995,7 +18026,7 @@ snapshots:
 
   '@types/http-proxy@1.17.17':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 20.19.9
 
   '@types/inquirer@6.5.0':
     dependencies:
@@ -18048,7 +18079,7 @@ snapshots:
 
   '@types/node-fetch@2.6.13':
     dependencies:
-      '@types/node': 22.16.5
+      '@types/node': 20.19.9
       form-data: 4.0.5
 
   '@types/node-forge@1.3.13':
@@ -18112,7 +18143,7 @@ snapshots:
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 17.0.45
+      '@types/node': 20.19.9
 
   '@types/semver@7.7.1': {}
 
@@ -18135,7 +18166,7 @@ snapshots:
 
   '@types/sockjs@0.3.36':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 20.19.9
 
   '@types/ssh2@1.15.5':
     dependencies:
@@ -22160,7 +22191,7 @@ snapshots:
   jest-util@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 25.5.0
+      '@types/node': 20.19.9
       chalk: 4.1.2
       ci-info: 3.9.0
       graceful-fs: 4.2.11
@@ -22168,13 +22199,13 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 20.19.9
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
   jest-worker@29.7.0:
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 20.19.9
       jest-util: 29.7.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
