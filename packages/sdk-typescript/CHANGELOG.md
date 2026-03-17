@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+
+- **Gateway Thread Protocol** — 6 new proto message types extending the bidirectional gateway stream for long-lived thread lifecycle management (`ThreadSpawnRequest`, `ThreadSpawnResult`, `ThreadEventReport`, `ThreadInputRequest`, `ThreadStopRequest`, `ThreadStatusUpdate`)
+- `handleGatewayThreadSpawn()`, `handleGatewayThreadInput()`, `handleGatewayThreadStop()` — protected handler methods on `ParallaxAgent` that subclasses override to manage local coding agent threads
+- `emitThreadEvent()` and `emitThreadStatusUpdate()` — protected helpers for streaming thread lifecycle events back through the gateway
+- `registerThread()` and `unregisterThread()` — thread tracking with automatic cleanup on disconnect/shutdown
+- `GatewayThreadSpawnRequest`, `GatewayThreadSpawnResult`, `GatewayThreadEvent`, `GatewayThreadInput`, `GatewayThreadStopRequest`, `GatewayThreadStatusUpdate` — TypeScript interfaces exported from `types/thread-types`
+
+### Changed
+
+- `handleGatewayTask()` changed from `private` to `protected` to allow subclass override
+
 ## 0.3.0
 
 ### Added
