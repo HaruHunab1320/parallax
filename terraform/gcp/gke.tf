@@ -39,9 +39,21 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  # Cluster settings
+  # Cluster-level autoscaling
   cluster_autoscaling {
-    enabled = false  # Disable for predictable free tier costs
+    enabled = true
+
+    resource_limits {
+      resource_type = "cpu"
+      minimum       = 6
+      maximum       = 24
+    }
+
+    resource_limits {
+      resource_type = "memory"
+      minimum       = 24
+      maximum       = 96
+    }
   }
 
   maintenance_policy {
@@ -86,7 +98,7 @@ resource "google_container_node_pool" "primary_nodes" {
   }
 
   node_config {
-    spot = true  # Spot VMs: cheaper than on-demand, no 24h forced termination (unlike preemptible)
+    spot = false  # On-demand VMs for stability
     machine_type = var.gke_machine_type
     disk_size_gb = var.gke_disk_size_gb
     disk_type    = "pd-standard"

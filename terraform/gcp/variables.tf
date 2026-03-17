@@ -29,30 +29,30 @@ variable "cluster_name" {
   default     = "parallax-cluster"
 }
 
-# Free tier configurations
+# GKE Node Pool Configuration
 variable "gke_node_count" {
-  description = "Number of GKE nodes"
+  description = "Number of GKE nodes (autoscaler min)"
   type        = number
-  default     = 3  # Minimum for high availability
+  default     = 3
 }
 
 variable "gke_machine_type" {
   description = "GKE node machine type"
   type        = string
-  default     = "e2-medium"  # 2 vCPU, 4GB RAM - good for free tier
+  default     = "e2-standard-4"  # 4 vCPU, 16GB RAM
 }
 
 variable "gke_disk_size_gb" {
   description = "GKE node disk size"
   type        = number
-  default     = 30  # Minimum recommended
+  default     = 50
 }
 
 # Database Configuration
 variable "db_tier" {
   description = "Cloud SQL tier"
   type        = string
-  default     = "db-f1-micro"  # Free tier eligible
+  default     = "db-g1-small"  # 1 vCPU, 1.7GB RAM
 }
 
 variable "db_disk_size" {
