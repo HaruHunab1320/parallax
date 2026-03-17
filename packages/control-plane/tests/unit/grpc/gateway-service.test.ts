@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventEmitter } from 'events';
 import pino from 'pino';
 import { GatewayService } from '@/grpc/services/gateway-service';
+import { ExecutionEventBus } from '@/execution-events';
 import type { IAgentRegistry } from '@/registry/agent-registry-interface';
 
 // ── Helpers ──
@@ -395,6 +396,326 @@ describe('GatewayService', () => {
       expect(service.getConnectedAgentIds()).toHaveLength(0);
       expect(service.isConnected('a1')).toBe(false);
       expect(service.isConnected('a2')).toBe(false);
+    });
+  });
+
+  // ── Thread Protocol ──
+
+  describe('dispatchThreadSpawn', () => {
+    it('sends ThreadSpawnRequest and resolves on ThreadSpawnResult', async () => {
+      const stream = createMockStream();
+      const impl = service.getImplementation();
+      impl.connect(stream as any);
+      stream.emit('data', makeHello({ heartbeat_interval_ms: 60000 }));
+      await vi.advanceTimersByTimeAsync(0);
+
+      let capturedMsg: any;
+      stream.write.mockImplementation((msg: any) => {
+        if (msg.thread_spawn) capturedMsg = msg;
+      });
+
+      const spawnPromise = service.dispatchThreadSpawn('agent-1', {
+        threadId: 'thread-1',
+        adapterType: 'claude',
+        task: 'Build something',
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(capturedMsg).toBeDefined();
+      expect(capturedMsg.thread_spawn.thread_id).toBe('thread-1');
+      expect(capturedMsg.thread_spawn.adapter_type).toBe('claude');
+      expect(capturedMsg.thread_spawn.task).toBe('Build something');
+
+      // Simulate agent responding with ThreadSpawnResult
+      stream.emit('data', {
+        request_id: capturedMsg.request_id,
+        thread_spawn_result: {
+          thread_id: 'thread-1',
+          success: true,
+          adapter_type: 'claude',
+          workspace_dir: '/tmp/workspace',
+        },
+      });
+
+      const result = await spawnPromise;
+      expect(result.thread_id).toBe('thread-1');
+      expect(result.success).toBe(true);
+      expect(result.workspace_dir).toBe('/tmp/workspace');
+    });
+
+    it('resolves with error on timeout', async () => {
+      const stream = createMockStream();
+      const impl = service.getImplementation();
+      impl.connect(stream as any);
+      stream.emit('data', makeHello({ heartbeat_interval_ms: 60000 }));
+      await vi.advanceTimersByTimeAsync(0);
+
+      stream.write.mockImplementation(() => {});
+
+      const spawnPromise = service.dispatchThreadSpawn(
+        'agent-1',
+        { threadId: 'thread-2', adapterType: 'codex', task: 'Slow task' },
+        5000
+      );
+
+      await vi.advanceTimersByTimeAsync(5000);
+
+      const result = await spawnPromise;
+      expect(result.success).toBe(false);
+      expect(result.error_message).toContain('timed out');
+    });
+
+    it('throws when agent not connected', async () => {
+      await expect(
+        service.dispatchThreadSpawn('unknown', {
+          threadId: 'thread-3',
+          adapterType: 'claude',
+          task: 'test',
+        })
+      ).rejects.toThrow('not connected');
+    });
+  });
+
+  describe('dispatchThreadInput', () => {
+    it('writes ThreadInputRequest to stream', async () => {
+      const stream = createMockStream();
+      const impl = service.getImplementation();
+      impl.connect(stream as any);
+      stream.emit('data', makeHello());
+      await vi.advanceTimersByTimeAsync(0);
+
+      service.dispatchThreadInput('agent-1', 'thread-1', 'do something', 'text');
+
+      expect(stream.write).toHaveBeenCalledWith(
+        expect.objectContaining({
+          thread_input: expect.objectContaining({
+            thread_id: 'thread-1',
+            input: 'do something',
+            input_type: 'text',
+          }),
+        })
+      );
+    });
+
+    it('throws when agent not connected', () => {
+      expect(() =>
+        service.dispatchThreadInput('unknown', 'thread-1', 'test')
+      ).toThrow('not connected');
+    });
+  });
+
+  describe('handleThreadEvent', () => {
+    it('emits to ExecutionEventBus and local listeners', async () => {
+      const eventBus = new ExecutionEventBus();
+      const svcWithBus = new GatewayService(registry, logger, 'node-1', eventBus);
+
+      const stream = createMockStream();
+      const impl = svcWithBus.getImplementation();
+      impl.connect(stream as any);
+      stream.emit('data', makeHello());
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Subscribe to local thread events
+      const localEvents: any[] = [];
+      svcWithBus.subscribeThreadEvents('thread-1', (e) => localEvents.push(e));
+
+      // Subscribe to event bus
+      const busEvents: any[] = [];
+      eventBus.onExecution((e) => busEvents.push(e));
+
+      // Simulate agent sending ThreadEventReport
+      stream.emit('data', {
+        request_id: '',
+        thread_event: {
+          thread_id: 'thread-1',
+          event_type: 'output',
+          data_json: '{"text":"hello"}',
+          timestamp_ms: '1234567890',
+          sequence: 1,
+        },
+      });
+
+      expect(localEvents).toHaveLength(1);
+      expect(localEvents[0].thread_id).toBe('thread-1');
+      expect(localEvents[0].event_type).toBe('output');
+      expect(localEvents[0].data_json).toBe('{"text":"hello"}');
+
+      expect(busEvents).toHaveLength(1);
+      expect(busEvents[0].type).toBe('gateway_thread_output');
+      expect(busEvents[0].executionId).toBe('thread-1');
+    });
+
+    it('ignores events with no thread_id', async () => {
+      const eventBus = new ExecutionEventBus();
+      const svcWithBus = new GatewayService(registry, logger, 'node-1', eventBus);
+
+      const stream = createMockStream();
+      const impl = svcWithBus.getImplementation();
+      impl.connect(stream as any);
+      stream.emit('data', makeHello());
+      await vi.advanceTimersByTimeAsync(0);
+
+      const busEvents: any[] = [];
+      eventBus.onExecution((e) => busEvents.push(e));
+
+      stream.emit('data', {
+        request_id: '',
+        thread_event: { event_type: 'output' },
+      });
+
+      expect(busEvents).toHaveLength(0);
+    });
+  });
+
+  describe('handleThreadStatusUpdate', () => {
+    it('emits status to event bus and updates session tracking', async () => {
+      const eventBus = new ExecutionEventBus();
+      const svcWithBus = new GatewayService(registry, logger, 'node-1', eventBus);
+
+      const stream = createMockStream();
+      const impl = svcWithBus.getImplementation();
+      impl.connect(stream as any);
+      stream.emit('data', makeHello({ heartbeat_interval_ms: 60000 }));
+      await vi.advanceTimersByTimeAsync(0);
+
+      // First spawn a thread so it's tracked
+      let capturedMsg: any;
+      stream.write.mockImplementation((msg: any) => {
+        if (msg.thread_spawn) capturedMsg = msg;
+      });
+
+      const spawnPromise = svcWithBus.dispatchThreadSpawn('agent-1', {
+        threadId: 'thread-status-1',
+        adapterType: 'claude',
+        task: 'test',
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      stream.emit('data', {
+        request_id: capturedMsg.request_id,
+        thread_spawn_result: {
+          thread_id: 'thread-status-1',
+          success: true,
+        },
+      });
+      await spawnPromise;
+
+      // Now send status update
+      const busEvents: any[] = [];
+      eventBus.onExecution((e) => busEvents.push(e));
+
+      stream.emit('data', {
+        request_id: '',
+        thread_status_update: {
+          thread_id: 'thread-status-1',
+          status: 'completed',
+          summary: 'All done',
+          timestamp_ms: '9999999',
+        },
+      });
+
+      expect(busEvents).toHaveLength(1);
+      expect(busEvents[0].type).toBe('gateway_thread_status');
+      expect(busEvents[0].data.status).toBe('completed');
+      expect(busEvents[0].data.summary).toBe('All done');
+    });
+  });
+
+  describe('subscribeThreadEvents', () => {
+    it('subscribes and unsubscribes to thread events', async () => {
+      const stream = createMockStream();
+      const impl = service.getImplementation();
+      impl.connect(stream as any);
+      stream.emit('data', makeHello());
+      await vi.advanceTimersByTimeAsync(0);
+
+      const events: any[] = [];
+      const unsubscribe = service.subscribeThreadEvents('thread-sub-1', (e) => events.push(e));
+
+      // Emit a thread event
+      stream.emit('data', {
+        request_id: '',
+        thread_event: {
+          thread_id: 'thread-sub-1',
+          event_type: 'output',
+          data_json: '{"text":"line1"}',
+          timestamp_ms: '1000',
+          sequence: 1,
+        },
+      });
+
+      expect(events).toHaveLength(1);
+
+      // Unsubscribe
+      unsubscribe();
+
+      stream.emit('data', {
+        request_id: '',
+        thread_event: {
+          thread_id: 'thread-sub-1',
+          event_type: 'output',
+          data_json: '{"text":"line2"}',
+          timestamp_ms: '2000',
+          sequence: 2,
+        },
+      });
+
+      // Should NOT receive after unsubscribe
+      expect(events).toHaveLength(1);
+    });
+  });
+
+  describe('cleanupAgent with active threads', () => {
+    it('emits thread_failed for active threads on disconnect', async () => {
+      const eventBus = new ExecutionEventBus();
+      const svcWithBus = new GatewayService(registry, logger, 'node-1', eventBus);
+
+      const stream = createMockStream();
+      const impl = svcWithBus.getImplementation();
+      impl.connect(stream as any);
+      stream.emit('data', makeHello({ heartbeat_interval_ms: 60000 }));
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Spawn a thread
+      let capturedMsg: any;
+      stream.write.mockImplementation((msg: any) => {
+        if (msg.thread_spawn) capturedMsg = msg;
+      });
+
+      const spawnPromise = svcWithBus.dispatchThreadSpawn('agent-1', {
+        threadId: 'thread-cleanup-1',
+        adapterType: 'claude',
+        task: 'test',
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      stream.emit('data', {
+        request_id: capturedMsg.request_id,
+        thread_spawn_result: {
+          thread_id: 'thread-cleanup-1',
+          success: true,
+        },
+      });
+      await spawnPromise;
+
+      // Collect events
+      const busEvents: any[] = [];
+      eventBus.onExecution((e) => busEvents.push(e));
+
+      // Disconnect agent (stream end triggers cleanup)
+      stream.emit('end');
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Should have emitted gateway_thread_failed
+      const failedEvents = busEvents.filter(e => e.type === 'gateway_thread_failed');
+      expect(failedEvents).toHaveLength(1);
+      expect(failedEvents[0].executionId).toBe('thread-cleanup-1');
+
+      const data = failedEvents[0].data;
+      expect(data.thread_id).toBe('thread-cleanup-1');
+      expect(data.event_type).toBe('failed');
+      expect(JSON.parse(data.data_json).reason).toContain('disconnected');
     });
   });
 });
