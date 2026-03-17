@@ -15,6 +15,7 @@ import {
   Zap,
   Clock,
   Users,
+  Monitor,
 } from 'lucide-react';
 
 const navItems = [
@@ -37,6 +38,11 @@ const navItems = [
     title: 'Executions',
     href: '/executions',
     icon: Zap,
+  },
+  {
+    title: 'Threads',
+    href: '/threads',
+    icon: Monitor,
   },
   {
     title: 'Schedules',

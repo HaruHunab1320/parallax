@@ -423,6 +423,66 @@ export function createExecutionsRouter(
     });
   });
 
+  // SSE stream for thread events across an execution
+  // Streams gateway_thread_* events from all threads belonging to this execution.
+  // Also accepts ?threadIds=t1,t2,t3 to subscribe to specific thread IDs.
+  router.get('/:id/threads/stream', async (req: any, res: any) => {
+    const { id } = req.params;
+    const threadIdFilter = req.query.threadIds
+      ? (req.query.threadIds as string).split(',')
+      : null;
+
+    // Set SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    res.write(`event: connected\ndata: ${JSON.stringify({ executionId: id, threadIds: threadIdFilter })}\n\n`);
+
+    // Subscribe to live thread events via event bus
+    let unsubscribe: (() => void) | undefined;
+
+    if (executionEvents) {
+      // Subscribe to all events — thread events use thread_id as executionId in the bus,
+      // so we listen globally and filter for gateway_thread_* types
+      unsubscribe = executionEvents.onExecution((event) => {
+        // Only forward thread-related events
+        if (!event.type.startsWith('gateway_thread_')) return;
+
+        const threadId = event.data?.thread_id;
+        if (!threadId) return;
+
+        // Filter by thread IDs if specified, otherwise forward all
+        if (threadIdFilter && !threadIdFilter.includes(threadId)) return;
+
+        const sseEvent = {
+          executionId: id,
+          threadId,
+          type: event.type,
+          data: event.data,
+          timestamp: event.timestamp.toISOString(),
+        };
+
+        // Use a more specific event name for the SSE client
+        const eventName = event.type.replace('gateway_thread_', 'thread_');
+        res.write(`event: ${eventName}\ndata: ${JSON.stringify(sseEvent)}\n\n`);
+      });
+    }
+
+    // Heartbeat
+    const heartbeat = setInterval(() => {
+      res.write(': heartbeat\n\n');
+    }, 15000);
+
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      if (unsubscribe) unsubscribe();
+    });
+  });
+
   // Cancel execution
   router.post('/:id/cancel', async (req: any, res: any) => {
     const { id } = req.params;

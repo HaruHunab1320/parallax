@@ -1,0 +1,187 @@
+/**
+ * Coding Swarm — Distributed Multi-Agent Build Pattern
+ *
+ * Orchestrates a coding swarm where an architect decomposes a project into
+ * subtasks and three engineers implement them in parallel on Raspberry Pis.
+ * All roles use thread-backed execution via CLI coding agents.
+ *
+ * @name coding-swarm
+ * @version 1.0.0
+ * @description Distributed coding swarm with architect + 3 engineers on heterogeneous hardware
+ * @input {"task":{"type":"string","description":"The project to build"},"repo":{"type":"string","description":"Git repository URL"}}
+ * @agents {"capabilities":["system_design","architecture","code_review","task_decomposition","implementation","testing","debugging"],"minAgents":4,"maxAgents":4}
+ * @threads {"enabled":true,"roles":[{"roleId":"architect","agentType":"claude","objective":"Decompose project into subtasks","approvalPreset":"autonomous"},{"roleId":"engineer_a","agentType":"claude","objective":"Implement assigned subtask","approvalPreset":"autonomous"},{"roleId":"engineer_b","agentType":"codex","objective":"Implement assigned subtask","approvalPreset":"autonomous"},{"roleId":"engineer_c","agentType":"gemini","objective":"Implement assigned subtask","approvalPreset":"autonomous"}]}
+ * @metadata {"category":"demo","demo":"coding-swarm"}
+ */
+
+// === Team Structure ===
+let roles = [
+  "architect",
+  "engineer_a",
+  "engineer_b",
+  "engineer_c"
+]
+
+let roleExecution = {
+  architect: {
+    mode: "thread",
+    agentType: "claude",
+    approvalPreset: "autonomous",
+    singleton: true
+  },
+  engineer_a: {
+    mode: "thread",
+    agentType: "claude",
+    approvalPreset: "autonomous",
+    singleton: true
+  },
+  engineer_b: {
+    mode: "thread",
+    agentType: "codex",
+    approvalPreset: "autonomous",
+    singleton: true
+  },
+  engineer_c: {
+    mode: "thread",
+    agentType: "gemini",
+    approvalPreset: "autonomous",
+    singleton: true
+  }
+}
+
+// Map agentResults to roles (1 agent per singleton role)
+let roleAssignments = {
+  architect: agentResults.slice(0, 1),
+  engineer_a: agentResults.slice(1, 2),
+  engineer_b: agentResults.slice(2, 3),
+  engineer_c: agentResults.slice(3, 4)
+}
+
+// === Helper Functions ===
+
+function calculateConfidence(results) {
+  if (!results || results.length === 0) return 0
+  let sum = results.reduce((acc, r) => acc + (r?.confidence || 0), 0)
+  return sum / results.length
+}
+
+function aggregateMerge(results) {
+  if (!Array.isArray(results)) return results
+  return Object.assign({}, ...results.map(r => r?.result || r))
+}
+
+function aggregateBest(results) {
+  if (!Array.isArray(results)) return results
+  return results.reduce((best, curr) => {
+    return (curr?.confidence || 0) > (best?.confidence || 0) ? curr : best
+  }, results[0])
+}
+
+function spawnRoleThread(roleId, objective) {
+  return {
+    type: "spawnThread",
+    role: roleId,
+    objective: objective,
+    mode: "thread"
+  }
+}
+
+function sendRoleThreadInput(roleId, worker, task, taskInput) {
+  return {
+    type: "sendThreadInput",
+    role: roleId,
+    threadId: worker?.threadId,
+    task: task,
+    input: taskInput
+  }
+}
+
+function awaitRoleThread(roleId, worker, eventType) {
+  return {
+    type: "awaitThread",
+    role: roleId,
+    threadId: worker?.threadId,
+    eventType: eventType || "thread_turn_complete"
+  }
+}
+
+function assignThreadRole(roleId, taskDescription, roleMap) {
+  let roleAgentList = roleMap[roleId] || []
+  if (!roleAgentList || roleAgentList.length === 0) {
+    return { error: "No agents for role: " + roleId, confidence: 0 }
+  }
+  let agent = roleAgentList[0]
+  let threadOps = {
+    spawn: spawnRoleThread(roleId, taskDescription),
+    input: sendRoleThreadInput(roleId, agent, taskDescription, null),
+    wait: awaitRoleThread(roleId, agent, "thread_turn_complete")
+  }
+  return {
+    role: roleId,
+    task: taskDescription,
+    mode: "thread",
+    thread: threadOps,
+    result: threadOps.wait,
+    confidence: 0.8,
+    agentId: agent?.agentId,
+    threadId: agent?.threadId
+  }
+}
+
+function reviewByRole(roleId, subject, roleMap) {
+  let reviewerList = roleMap[roleId] || []
+  if (!reviewerList || reviewerList.length === 0) {
+    return { approved: true, confidence: 0.5, reason: "No reviewer available" }
+  }
+  let reviewer = reviewerList[0]
+  let reviewThread = sendRoleThreadInput(roleId, reviewer, "review", subject)
+  let approved = (reviewer?.confidence || 0) > 0.6
+  return {
+    reviewer: roleId,
+    approved: approved,
+    confidence: reviewer?.confidence || 0.7,
+    thread: reviewThread,
+    feedback: approved ? "Looks good" : "Needs revision"
+  }
+}
+
+// === Workflow Execution ===
+
+// Step 0: Architect decomposes the project into 3 subtasks
+let architectTask = "Analyze the following project request and create a detailed implementation plan.\nBreak it into exactly 3 independent subtasks that can be worked on in parallel.\n\nFor each subtask, provide:\n1. A clear title\n2. Detailed requirements\n3. Files to create/modify\n4. Any dependencies on shared interfaces\n\nOutput a structured plan with a shared interfaces section (created first)\nand 3 subtask sections.\n\nProject: " + input.task + "\nRepository: " + input.repo
+
+let step_0_result = assignThreadRole("architect", architectTask, roleAssignments)
+
+// Step 1: Three engineers implement in parallel
+let engineerTaskA = "Implement Subtask 1 from the architect plan below.\nCreate all required files, write tests, and commit your work.\n\nPlan: " + step_0_result
+let engineerTaskB = "Implement Subtask 2 from the architect plan below.\nCreate all required files, write tests, and commit your work.\n\nPlan: " + step_0_result
+let engineerTaskC = "Implement Subtask 3 from the architect plan below.\nCreate all required files, write tests, and commit your work.\n\nPlan: " + step_0_result
+
+let step_1_sub_0 = assignThreadRole("engineer_a", engineerTaskA, roleAssignments)
+let step_1_sub_1 = assignThreadRole("engineer_b", engineerTaskB, roleAssignments)
+let step_1_sub_2 = assignThreadRole("engineer_c", engineerTaskC, roleAssignments)
+
+let step_1_result = [step_1_sub_0, step_1_sub_1, step_1_sub_2]
+
+// Step 2: Architect reviews all engineer output
+let step_2_result = reviewByRole("architect", step_1_result, roleAssignments)
+
+// Step 3: Aggregate results via merge
+let step_3_result = {
+  aggregation: "merge",
+  result: aggregateMerge(step_1_result),
+  review: step_2_result,
+  confidence: calculateConfidence(step_1_result)
+}
+
+// === Final Output ===
+let finalResult = {
+  patternName: "coding-swarm",
+  workflow: "Swarm Build",
+  result: step_3_result,
+  roles: roles,
+  agentsUsed: agentResults.length,
+  confidence: calculateConfidence(agentResults)
+}
+
+finalResult

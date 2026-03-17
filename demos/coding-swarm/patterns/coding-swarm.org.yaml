@@ -1,0 +1,230 @@
+# Coding Swarm Org Pattern
+#
+# Distributed multi-agent coding demo with thread-backed CLI agents.
+# One architect (Mac) plans and reviews, three engineers (Raspberry Pis)
+# implement in parallel using Claude Code, Codex, and Gemini CLI.
+#
+# Hardware mapping:
+#   Echo  (Mac)  → architect  → Claude Code
+#   Vero  (Pi)   → engineer_a → Claude Code
+#   Sable (Pi)   → engineer_b → Codex
+#   Silas (Pi)   → engineer_c → Gemini CLI
+
+name: coding-swarm
+version: "1.0.0"
+description: |
+  Thread-backed distributed coding swarm. An architect agent decomposes a
+  project into subtasks, three engineer agents implement in parallel on
+  Raspberry Pis, and the architect reviews and merges the results.
+
+structure:
+  name: Coding Swarm
+  description: Architect + 3 distributed engineer agents on heterogeneous hardware
+
+  roles:
+    architect:
+      id: architect
+      name: Architect
+      description: Decomposes the project into subtasks, assigns work, and reviews results
+      agentType: claude
+      singleton: true
+      capabilities:
+        - system_design
+        - architecture
+        - code_review
+        - task_decomposition
+      expertise:
+        - architecture
+        - design
+        - project_planning
+      threadConfig:
+        enabled: true
+        objective: |
+          You are the architect for this project. Analyze the task, create an
+          implementation plan with 3 subtasks (one per engineer), and produce a
+          structured JSON plan. Each subtask should be independently implementable.
+        approvalPreset: autonomous
+        workspace:
+          inherit: true
+        metadata:
+          device: mac
+          agentId: echo
+
+    engineer_a:
+      id: engineer_a
+      name: Engineer A
+      description: Implements subtask using Claude Code on Raspberry Pi
+      agentType: claude
+      singleton: true
+      capabilities:
+        - implementation
+        - testing
+        - debugging
+      reportsTo: architect
+      expertise:
+        - implementation
+        - typescript
+        - testing
+      threadConfig:
+        enabled: true
+        objective: |
+          You are an engineer. Implement the assigned subtask completely,
+          including tests. Commit your work to the feature branch when done.
+        approvalPreset: autonomous
+        workspace:
+          inherit: true
+        metadata:
+          device: pi
+          agentId: vero
+
+    engineer_b:
+      id: engineer_b
+      name: Engineer B
+      description: Implements subtask using Codex on Raspberry Pi
+      agentType: codex
+      singleton: true
+      capabilities:
+        - implementation
+        - testing
+        - debugging
+      reportsTo: architect
+      expertise:
+        - implementation
+        - python
+        - documentation
+      threadConfig:
+        enabled: true
+        objective: |
+          You are an engineer. Implement the assigned subtask completely,
+          including tests. Commit your work to the feature branch when done.
+        approvalPreset: autonomous
+        workspace:
+          inherit: true
+        metadata:
+          device: pi
+          agentId: sable
+
+    engineer_c:
+      id: engineer_c
+      name: Engineer C
+      description: Implements subtask using Gemini CLI on Raspberry Pi
+      agentType: gemini
+      singleton: true
+      capabilities:
+        - implementation
+        - testing
+        - debugging
+      reportsTo: architect
+      expertise:
+        - implementation
+        - api_design
+        - integration
+      threadConfig:
+        enabled: true
+        objective: |
+          You are an engineer. Implement the assigned subtask completely,
+          including tests. Commit your work to the feature branch when done.
+        approvalPreset: autonomous
+        workspace:
+          inherit: true
+        metadata:
+          device: pi
+          agentId: silas
+
+  routing:
+    - from: [engineer_a, engineer_b, engineer_c]
+      to: architect
+      messageTypes:
+        - question
+        - status
+    - from: architect
+      to: [engineer_a, engineer_b, engineer_c]
+      messageTypes:
+        - task
+        - response
+
+  escalation:
+    defaultBehavior: route_to_reports_to
+    timeoutMs: 300000
+    maxDepth: 2
+    onMaxDepth: surface_to_user
+
+workflow:
+  name: Swarm Build
+  input:
+    task:
+      type: string
+      description: The project to build from scratch
+    repo:
+      type: string
+      description: Git repository URL for the workspace
+
+  steps:
+    # Step 0: Architect decomposes the task into 3 subtasks
+    - type: assign
+      role: architect
+      task: |
+        Analyze the following project request and create a detailed implementation plan.
+        Break it into exactly 3 independent subtasks that can be worked on in parallel.
+
+        For each subtask, provide:
+        1. A clear title
+        2. Detailed requirements
+        3. Files to create/modify
+        4. Any dependencies on shared interfaces
+
+        Output a structured plan with a shared interfaces section (created first)
+        and 3 subtask sections.
+
+        Project: ${input.task}
+        Repository: ${input.repo}
+
+    # Step 1: Three engineers implement in parallel
+    - type: parallel
+      steps:
+        - type: assign
+          role: engineer_a
+          task: |
+            Implement Subtask 1 from the architect's plan below.
+            Create all required files, write tests, and commit your work.
+
+            Plan: ${step_0_result}
+
+        - type: assign
+          role: engineer_b
+          task: |
+            Implement Subtask 2 from the architect's plan below.
+            Create all required files, write tests, and commit your work.
+
+            Plan: ${step_0_result}
+
+        - type: assign
+          role: engineer_c
+          task: |
+            Implement Subtask 3 from the architect's plan below.
+            Create all required files, write tests, and commit your work.
+
+            Plan: ${step_0_result}
+
+    # Step 2: Architect reviews all engineer output
+    - type: review
+      reviewer: architect
+      subject: ${step_1_result}
+
+    # Step 3: Aggregate final results
+    - type: aggregate
+      method: merge
+
+  output: step_3_result
+
+metadata:
+  category: demo
+  complexity: high
+  demo: coding-swarm
+  hardware:
+    - type: mac
+      role: architect
+    - type: raspberry_pi
+      role: engineer
+      count: 3
+      display: waveshare_5inch
