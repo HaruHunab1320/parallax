@@ -9,7 +9,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer, Server } from 'http';
 import { Logger } from 'pino';
 import { K8sRuntime } from './k8s-runtime';
-import { AgentConfig, AgentHandle, AgentMessage } from '@parallaxai/runtime-interface';
+import { AgentConfig, SpawnThreadInput, ThreadInput } from '@parallaxai/runtime-interface';
 
 export interface RuntimeServerOptions {
   port: number;
@@ -184,6 +184,102 @@ export class RuntimeServer {
       }
     });
 
+    // ── Thread routes ─────────────────────────────────────────
+
+    // List threads
+    router.get('/threads', async (req: Request, res: Response) => {
+      try {
+        const filter: any = {};
+        if (req.query.executionId) filter.executionId = req.query.executionId;
+        if (req.query.status) filter.status = req.query.status;
+        if (req.query.role) filter.role = req.query.role;
+        if (req.query.agentType) filter.agentType = req.query.agentType;
+
+        const threads = await this.runtime.listThreads(filter);
+        res.json({ threads, count: threads.length });
+      } catch (error) {
+        this.handleError(res, error);
+      }
+    });
+
+    // Get thread by ID
+    router.get('/threads/:id', async (req: Request, res: Response) => {
+      try {
+        const thread = await this.runtime.getThread(req.params.id);
+        if (!thread) {
+          res.status(404).json({ error: 'Thread not found' });
+          return;
+        }
+        res.json(thread);
+      } catch (error) {
+        this.handleError(res, error);
+      }
+    });
+
+    // Spawn thread
+    router.post('/threads', async (req: Request, res: Response) => {
+      try {
+        const input: SpawnThreadInput = req.body;
+
+        if (!input.executionId) {
+          res.status(400).json({ error: 'executionId is required' });
+          return;
+        }
+
+        if (!input.agentType) {
+          res.status(400).json({ error: 'agentType is required' });
+          return;
+        }
+
+        if (!input.name) {
+          res.status(400).json({ error: 'thread name is required' });
+          return;
+        }
+
+        if (!input.objective) {
+          res.status(400).json({ error: 'objective is required' });
+          return;
+        }
+
+        const thread = await this.runtime.spawnThread(input);
+        res.status(201).json(thread);
+      } catch (error) {
+        this.handleError(res, error);
+      }
+    });
+
+    // Stop thread
+    router.delete('/threads/:id', async (req: Request, res: Response) => {
+      try {
+        const force = req.query.force === 'true';
+        const timeout = req.query.timeout
+          ? parseInt(req.query.timeout as string, 10)
+          : undefined;
+
+        await this.runtime.stopThread(req.params.id, { force, timeout });
+        res.status(204).send();
+      } catch (error) {
+        this.handleError(res, error);
+      }
+    });
+
+    // Send input to thread
+    router.post('/threads/:id/send', async (req: Request, res: Response) => {
+      try {
+        const input: ThreadInput = req.body;
+
+        if (!input.message && !input.raw && !input.keys) {
+          res.status(400).json({ error: 'message, raw, or keys is required' });
+          return;
+        }
+
+        await this.runtime.sendToThread(req.params.id, input);
+        res.json({ sent: true });
+      } catch (error) {
+        this.handleError(res, error);
+      }
+    });
+
     this.app.use('/api', router);
 
     // Root endpoint
@@ -194,6 +290,7 @@ export class RuntimeServer {
         endpoints: {
           health: '/api/health',
           agents: '/api/agents',
+          threads: '/api/threads',
           websocket: '/ws',
         },
       });

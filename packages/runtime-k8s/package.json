@@ -1,6 +1,6 @@
 {
   "name": "@parallaxai/runtime-k8s",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Kubernetes-based runtime for Parallax CLI agents",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

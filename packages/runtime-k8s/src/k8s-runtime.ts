@@ -5,7 +5,6 @@
  */
 
 import * as k8s from '@kubernetes/client-node';
-import { EventEmitter } from 'events';
 import { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -20,6 +19,11 @@ import {
   StopOptions,
   SendOptions,
   LogOptions,
+  SpawnThreadInput,
+  ThreadHandle,
+  ThreadFilter,
+  ThreadInput,
+  ThreadStatus,
 } from '@parallaxai/runtime-interface';
 
 export interface K8sRuntimeOptions {
@@ -38,6 +42,11 @@ interface AgentInfo {
   config: AgentConfig;
   handle: AgentHandle;
   resourceName: string;
+}
+
+interface ThreadInfo {
+  handle: ThreadHandle;
+  agentId: string;
 }
 
 const DEFAULT_IMAGES: Record<AgentType, string> = {
@@ -63,11 +72,11 @@ export class K8sRuntime extends BaseRuntimeProvider {
 
   private kc: k8s.KubeConfig;
   private coreApi: k8s.CoreV1Api;
-  private appsApi: k8s.AppsV1Api;
   private customApi: k8s.CustomObjectsApi;
   private namespace: string;
   private imagePrefix: string;
   private agents: Map<string, AgentInfo> = new Map();
+  private threads: Map<string, ThreadInfo> = new Map();
   private watcher: k8s.Watch | null = null;
   private initialized = false;
 
@@ -87,7 +96,6 @@ export class K8sRuntime extends BaseRuntimeProvider {
     }
 
     this.coreApi = this.kc.makeApiClient(k8s.CoreV1Api);
-    this.appsApi = this.kc.makeApiClient(k8s.AppsV1Api);
     this.customApi = this.kc.makeApiClient(k8s.CustomObjectsApi);
     this.namespace = options.namespace || DEFAULT_NAMESPACE;
     this.imagePrefix = options.imagePrefix || DEFAULT_IMAGE_PREFIX;
@@ -474,6 +482,139 @@ export class K8sRuntime extends BaseRuntimeProvider {
       };
     } catch {
       return null;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Thread management
+  // ─────────────────────────────────────────────────────────────
+
+  async spawnThread(input: SpawnThreadInput): Promise<ThreadHandle> {
+    const threadId = input.id || uuidv4();
+    const now = new Date();
+
+    const agentConfig: AgentConfig = {
+      id: threadId,
+      name: input.name,
+      type: this.resolveAgentType(input.agentType),
+      role: input.role,
+      capabilities: [],
+      executionId: input.executionId,
+      env: {
+        PARALLAX_THREAD_ID: threadId,
+        PARALLAX_EXECUTION_ID: input.executionId,
+        PARALLAX_OBJECTIVE: input.objective,
+        ...(input.role ? { PARALLAX_ROLE: input.role } : {}),
+        ...input.env,
+      },
+    };
+
+    this.logger.info({ threadId, executionId: input.executionId, role: input.role }, 'Spawning thread');
+
+    const agentHandle = await this.spawn(agentConfig);
+
+    const threadHandle: ThreadHandle = {
+      id: threadId,
+      executionId: input.executionId,
+      runtimeName: this.name,
+      agentId: agentHandle.id,
+      agentType: input.agentType,
+      role: input.role,
+      status: 'pending',
+      objective: input.objective,
+      createdAt: now,
+      updatedAt: now,
+      metadata: input.metadata,
+    };
+
+    this.threads.set(threadId, { handle: threadHandle, agentId: agentHandle.id });
+
+    return threadHandle;
+  }
+
+  async getThread(threadId: string): Promise<ThreadHandle | null> {
+    const info = this.threads.get(threadId);
+    if (!info) return null;
+
+    // Sync status from the underlying agent
+    const agent = await this.get(info.agentId);
+    if (agent) {
+      info.handle.status = this.agentStatusToThreadStatus(agent.status);
+      info.handle.updatedAt = new Date();
+    } else {
+      info.handle.status = 'completed';
+    }
+
+    return info.handle;
+  }
+
+  async listThreads(filter?: ThreadFilter): Promise<ThreadHandle[]> {
+    const handles: ThreadHandle[] = [];
+
+    for (const info of this.threads.values()) {
+      const agent = await this.get(info.agentId).catch(() => null);
+      if (agent) {
+        info.handle.status = this.agentStatusToThreadStatus(agent.status);
+      }
+
+      if (filter?.executionId && info.handle.executionId !== filter.executionId) continue;
+      if (filter?.role && info.handle.role !== filter.role) continue;
+      if (filter?.agentType) {
+        const types = Array.isArray(filter.agentType) ? filter.agentType : [filter.agentType];
+        if (!types.includes(info.handle.agentType as string)) continue;
+      }
+      if (filter?.status) {
+        const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+        if (!statuses.includes(info.handle.status)) continue;
+      }
+
+      handles.push(info.handle);
+    }
+
+    return handles;
+  }
+
+  async stopThread(threadId: string, options?: StopOptions): Promise<void> {
+    const info = this.threads.get(threadId);
+    if (!info) throw new Error(`Thread ${threadId} not found`);
+
+    await this.stop(info.agentId, options).catch((err) => {
+      this.logger.warn({ threadId, error: err.message }, 'Error stopping thread agent');
+    });
+
+    info.handle.status = 'completed';
+    info.handle.updatedAt = new Date();
+    this.threads.delete(threadId);
+  }
+
+  async sendToThread(threadId: string, input: ThreadInput): Promise<void> {
+    const info = this.threads.get(threadId);
+    if (!info) throw new Error(`Thread ${threadId} not found`);
+
+    const message = input.message ?? input.raw ?? (input.keys ? input.keys.join('') : '');
+    if (!message) return;
+
+    await this.send(info.agentId, message);
+  }
+
+  private resolveAgentType(agentType: string): AgentType {
+    const valid: AgentType[] = ['claude', 'codex', 'gemini', 'aider', 'custom'];
+    if (valid.includes(agentType as AgentType)) return agentType as AgentType;
+    // Map common aliases
+    if (agentType === 'claude-code') return 'claude';
+    return 'custom';
+  }
+
+  private agentStatusToThreadStatus(status: AgentStatus): ThreadStatus {
+    switch (status) {
+      case 'pending': return 'pending';
+      case 'starting': return 'starting';
+      case 'authenticating': return 'preparing';
+      case 'ready': return 'ready';
+      case 'stopping': return 'completed';
+      case 'stopped': return 'completed';
+      case 'error': return 'completed';
+      default: return 'pending';
     }
   }
 
