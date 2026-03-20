@@ -43,6 +43,10 @@ const sidebars: SidebarsConfig = {
       items: [
         'sdk/overview',
         'sdk/typescript',
+        'sdk/gateway-connection',
+        'sdk/gateway-threads',
+        'sdk/thread-handlers',
+        'sdk/wrapping-agents',
         'sdk/pattern-sdk',
         'sdk/agent-registration',
         'sdk/executing-patterns',
@@ -118,6 +122,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'api/control-plane',
         'api/managed-threads',
+        'api/thread-stream',
         'api/agent-protocol',
         'api/webhooks',
       ],
