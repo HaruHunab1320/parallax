@@ -534,18 +534,39 @@ export class K8sRuntime extends BaseRuntimeProvider {
 
   async getThread(threadId: string): Promise<ThreadHandle | null> {
     const info = this.threads.get(threadId);
-    if (!info) return null;
 
-    // Sync status from the underlying agent
-    const agent = await this.get(info.agentId);
-    if (agent) {
-      info.handle.status = this.agentStatusToThreadStatus(agent.status);
-      info.handle.updatedAt = new Date();
-    } else {
+    // threadId === agentId (set via agentConfig.id = threadId in spawnThread).
+    // After a runtime restart the threads Map is empty but agents are re-synced
+    // from K8s, so fall back to a direct agent lookup.
+    const agentId = info?.agentId ?? threadId;
+    const agent = await this.get(agentId);
+
+    if (!agent) {
+      if (!info) return null;
       info.handle.status = 'completed';
+      info.handle.updatedAt = new Date();
+      return info.handle;
     }
 
-    return info.handle;
+    if (info) {
+      info.handle.status = this.agentStatusToThreadStatus(agent.status);
+      info.handle.updatedAt = new Date();
+      return info.handle;
+    }
+
+    // Reconstruct a minimal handle from live agent data
+    return {
+      id: threadId,
+      executionId: agent.podName?.split('-')[1] ?? '',
+      runtimeName: this.name,
+      agentId,
+      agentType: agent.type,
+      role: agent.role,
+      status: this.agentStatusToThreadStatus(agent.status),
+      objective: '',
+      createdAt: agent.startedAt ?? new Date(),
+      updatedAt: new Date(),
+    };
   }
 
   async listThreads(filter?: ThreadFilter): Promise<ThreadHandle[]> {
@@ -576,25 +597,33 @@ export class K8sRuntime extends BaseRuntimeProvider {
 
   async stopThread(threadId: string, options?: StopOptions): Promise<void> {
     const info = this.threads.get(threadId);
-    if (!info) throw new Error(`Thread ${threadId} not found`);
+    // threadId === agentId — fall back after restart when threads Map is empty
+    const agentId = info?.agentId ?? threadId;
 
-    await this.stop(info.agentId, options).catch((err) => {
+    await this.stop(agentId, options).catch((err) => {
       this.logger.warn({ threadId, error: err.message }, 'Error stopping thread agent');
     });
 
-    info.handle.status = 'completed';
-    info.handle.updatedAt = new Date();
-    this.threads.delete(threadId);
+    if (info) {
+      info.handle.status = 'completed';
+      info.handle.updatedAt = new Date();
+      this.threads.delete(threadId);
+    }
   }
 
   async sendToThread(threadId: string, input: ThreadInput): Promise<void> {
     const info = this.threads.get(threadId);
-    if (!info) throw new Error(`Thread ${threadId} not found`);
+    // threadId === agentId — fall back after restart when threads Map is empty.
+    // Sync agents from K8s first so the send can resolve the endpoint.
+    const agentId = info?.agentId ?? threadId;
+    if (!info) {
+      await this.syncAgents();
+    }
 
     const message = input.message ?? input.raw ?? (input.keys ? input.keys.join('') : '');
     if (!message) return;
 
-    await this.send(info.agentId, message);
+    await this.send(agentId, message);
   }
 
   private resolveAgentType(agentType: string): AgentType {

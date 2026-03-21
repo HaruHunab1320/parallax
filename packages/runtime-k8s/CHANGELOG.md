@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.1] - 2026-03-20
+
+### Fixed
+
+- `sendToThread`, `stopThread`, `getThread` now survive runtime pod restarts.
+  The `threads` Map is in-memory and lost on restart, but since `threadId === agentId`
+  (set via `agentConfig.id = threadId` in `spawnThread`), the methods now fall back
+  to treating the thread ID as the agent ID directly. `sendToThread` calls `syncAgents()`
+  first to ensure the agents Map is populated from live K8s state before sending.
+
 ## [0.2.0] - 2026-03-20
 
 ### Added
