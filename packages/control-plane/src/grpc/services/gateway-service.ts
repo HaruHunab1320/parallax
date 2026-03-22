@@ -378,6 +378,14 @@ export class GatewayService extends EventEmitter {
     return Array.from(this.connectedAgents.keys());
   }
 
+  /**
+   * Get all connected gateway agent sessions.
+   * Used by GatewayRuntimeAdapter to find agents for thread dispatch.
+   */
+  getConnectedAgents(): Map<string, GatewayAgentSession> {
+    return this.connectedAgents;
+  }
+
   // ─── Thread protocol handlers ───
 
   /**

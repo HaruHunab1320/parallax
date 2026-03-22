@@ -1,0 +1,188 @@
+# Milady Swarm Org Pattern
+#
+# Orchestrated social campaign with 4 specialized Milady agents.
+# A strategist plans the campaign, three workers execute in parallel
+# (poster, engager, amplifier), and the strategist reviews results.
+#
+# Agent mapping:
+#   MILA (strategist) → content strategy, campaign planning
+#   NOVA (poster)     → thread crafting, content creation
+#   SUKI (engager)    → community engagement, conversation
+#   KIRA (amplifier)  → QT/RT signal amplification
+
+name: milady-swarm
+version: "1.0.0"
+description: |
+  Coordinated social campaign executed by 4 Milady agents. A strategist
+  generates the campaign plan, three specialized workers execute in
+  parallel, and the strategist reviews and can trigger follow-up rounds.
+
+structure:
+  name: Milady Swarm
+  description: Strategist + 3 specialized social media agents
+
+  roles:
+    strategist:
+      id: strategist
+      name: Strategist (MILA)
+      description: Plans campaign strategy, generates talking points, reviews execution results
+      agentType: milady-bridge
+      singleton: true
+      capabilities:
+        - social_media
+        - twitter
+        - content_strategy
+        - campaign_planning
+      expertise:
+        - campaign_strategy
+        - content_planning
+        - narrative_design
+      metadata:
+        agentId: mila
+        miladyPort: 2138
+
+    poster:
+      id: poster
+      name: Poster (NOVA)
+      description: Crafts and posts Twitter threads based on strategy
+      agentType: milady-bridge
+      singleton: true
+      capabilities:
+        - social_media
+        - twitter
+        - thread_crafting
+        - content_creation
+      reportsTo: strategist
+      expertise:
+        - thread_writing
+        - hooks
+        - viral_content
+      metadata:
+        agentId: nova
+        miladyPort: 2139
+
+    engager:
+      id: engager
+      name: Engager (SUKI)
+      description: Engages with community conversations and builds connections
+      agentType: milady-bridge
+      singleton: true
+      capabilities:
+        - social_media
+        - twitter
+        - community_engagement
+        - conversation
+      reportsTo: strategist
+      expertise:
+        - community_building
+        - conversation
+        - audience_growth
+      metadata:
+        agentId: suki
+        miladyPort: 2140
+
+    amplifier:
+      id: amplifier
+      name: Amplifier (KIRA)
+      description: Amplifies signal via QTs, RTs, and strategic engagement
+      agentType: milady-bridge
+      singleton: true
+      capabilities:
+        - social_media
+        - twitter
+        - signal_amplification
+        - quote_tweeting
+      reportsTo: strategist
+      expertise:
+        - amplification
+        - curation
+        - reach_optimization
+      metadata:
+        agentId: kira
+        miladyPort: 2141
+
+  routing:
+    - from: [poster, engager, amplifier]
+      to: strategist
+      messageTypes:
+        - question
+        - status
+    - from: strategist
+      to: [poster, engager, amplifier]
+      messageTypes:
+        - task
+        - response
+
+  escalation:
+    defaultBehavior: route_to_reports_to
+    timeoutMs: 60000
+    maxDepth: 2
+    onMaxDepth: surface_to_user
+
+workflow:
+  name: Social Campaign
+  input:
+    objective:
+      type: string
+      description: Campaign objective — what to promote, announce, or drive conversation about
+    context:
+      type: string
+      description: Additional context (links, prior threads, target audience)
+
+  steps:
+    # Step 0: Strategist generates campaign plan
+    - type: assign
+      role: strategist
+      task: |
+        Generate a content strategy for the following campaign objective.
+        Produce talking points, a thread outline for the poster, engagement
+        themes for the community engager, and amplification targets for the
+        signal amplifier.
+
+        Objective: ${input.objective}
+        Context: ${input.context}
+
+    # Step 1: Three workers execute in parallel
+    - type: parallel
+      steps:
+        - type: assign
+          role: poster
+          task: |
+            Craft and post a Twitter thread based on the strategy below.
+            Make it engaging, punchy, and shareable.
+
+            Strategy: ${step_0_result}
+
+        - type: assign
+          role: engager
+          task: |
+            Engage with relevant community conversations based on the
+            strategy below. Reply thoughtfully, ask questions, build presence.
+
+            Strategy: ${step_0_result}
+
+        - type: assign
+          role: amplifier
+          task: |
+            Amplify the campaign by QTing the poster's thread and engaging
+            with aligned content based on the strategy below.
+
+            Strategy: ${step_0_result}
+
+    # Step 2: Strategist reviews execution results
+    - type: review
+      reviewer: strategist
+      subject: ${step_1_result}
+
+    # Step 3: Aggregate campaign report
+    - type: aggregate
+      method: merge
+
+  output: step_3_result
+
+metadata:
+  category: demo
+  complexity: medium
+  demo: milady-swarm
+  minAgents: 4
+  maxAgents: 4

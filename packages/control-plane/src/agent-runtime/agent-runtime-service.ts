@@ -23,7 +23,7 @@ import { RuntimeClient, RuntimeClientOptions, RuntimeHealthStatus } from './runt
 
 export interface RuntimeRegistration {
   name: string;
-  type: 'local' | 'docker' | 'kubernetes';
+  type: 'local' | 'docker' | 'kubernetes' | 'gateway';
   client: RuntimeClient;
   priority: number; // Lower = higher priority for agent placement
   healthy: boolean;
@@ -52,6 +52,33 @@ export class AgentRuntimeService extends EventEmitter {
     super();
     this.healthCheckInterval = options.healthCheckInterval || 30000;
     this.defaultTimeout = options.defaultTimeout || 30000;
+  }
+
+  /**
+   * Register a runtime provider using a direct adapter (no HTTP server needed).
+   * Used for in-process runtimes like the gateway runtime.
+   */
+  registerRuntimeDirect(
+    name: string,
+    type: 'local' | 'docker' | 'kubernetes' | 'gateway',
+    client: RuntimeClient,
+    priority: number = 100
+  ): void {
+    // Set up event forwarding
+    client.on('thread_event', (data: any) => this.emit('thread_event', { ...data, runtime: name }));
+    client.on('agent_started', (data: any) => this.emit('agent_started', { ...data, runtime: name }));
+    client.on('agent_stopped', (data: any) => this.emit('agent_stopped', { ...data, runtime: name }));
+
+    const registration: RuntimeRegistration = {
+      name,
+      type,
+      client: client as any,
+      priority,
+      healthy: true,
+    };
+
+    this.runtimes.set(name, registration);
+    this.logger.info({ runtime: name, type, priority }, 'Runtime registered (direct)');
   }
 
   /**

@@ -1,8 +1,8 @@
 {
-  "name": "parallax-coding-swarm-agent",
+  "name": "parallax-milady-bridge-agent",
   "version": "0.1.0",
   "private": true,
-  "description": "Thread-capable agent for distributed CLI coding swarm on Raspberry Pis",
+  "description": "Bridge agent wrapping Milady's HTTP API as a ParallaxAgent for orchestrated social campaigns",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -11,11 +11,7 @@
   },
   "dependencies": {
     "@parallaxai/sdk-typescript": "workspace:*",
-    "tmux-manager": "workspace:*",
-    "coding-agent-adapters": "workspace:*",
-    "adapter-types": "workspace:*",
-    "pino": "^9.6.0",
-    "pino-pretty": "^13.0.0"
+    "pino": "^9.6.0"
   },
   "devDependencies": {
     "@grpc/grpc-js": "^1.12.6",

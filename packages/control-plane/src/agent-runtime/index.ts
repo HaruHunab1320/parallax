@@ -10,6 +10,7 @@ export {
   AgentRuntimeServiceOptions,
   RuntimeRegistration,
 } from './agent-runtime-service';
+export { GatewayRuntimeAdapter, GatewayServiceAdapter } from './gateway-runtime-adapter';
 
 // Re-export interface types for convenience
 export {

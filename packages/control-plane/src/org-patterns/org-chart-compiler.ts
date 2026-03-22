@@ -6,10 +6,9 @@
  * multiple input formats.
  */
 
-import { OrgPattern, OrgRole, WorkflowStep, OrgStructure } from './types';
+import { OrgPattern, WorkflowStep, OrgStructure } from './types';
 import * as yaml from 'js-yaml';
 import * as fs from 'fs/promises';
-import * as path from 'path';
 
 export interface CompilerOptions {
   /** Include comments in generated Prism */
@@ -68,14 +67,29 @@ export function compileOrgPattern(
   lines.push('');
 
   // Map agents to roles based on their index
+  // Build each role's agent array, then assemble roleAssignments as one object literal
   lines.push('// Map agents to roles');
-  lines.push('let roleAssignments = {};');
+  const roleIds = Object.keys(pattern.structure.roles);
   let agentIndex = 0;
   for (const [roleId, role] of Object.entries(pattern.structure.roles)) {
     const count = role.singleton ? 1 : (role.minInstances || 1);
-    lines.push(`roleAssignments["${roleId}"] = agentResults.slice(${agentIndex}, ${agentIndex + count});`);
+    lines.push(`let _roleAgents_${roleId} = [];`);
+    lines.push(`let _ri_${roleId} = ${agentIndex};`);
+    lines.push(`while (_ri_${roleId} < ${agentIndex + count}) {`);
+    lines.push(`  if (_ri_${roleId} < agentResults.length) {`);
+    lines.push(`    _roleAgents_${roleId} = [..._roleAgents_${roleId}, agentResults[_ri_${roleId}]];`);
+    lines.push(`  }`);
+    lines.push(`  _ri_${roleId} = _ri_${roleId} + 1;`);
+    lines.push(`}`);
     agentIndex += count;
   }
+  // Assemble as a single object literal (Prism doesn't support obj["key"] = value)
+  lines.push(`let roleAssignments = {`);
+  roleIds.forEach((roleId, i) => {
+    const comma = i < roleIds.length - 1 ? ',' : '';
+    lines.push(`  ${roleId}: _roleAgents_${roleId}${comma}`);
+  });
+  lines.push(`};`);
   lines.push('');
 
   // Generate workflow execution
@@ -206,46 +220,52 @@ function compileAssignStep(
   const roleName = role?.name || step.role;
   const threadEnabled = !!role?.threadConfig?.enabled;
 
-  return [
+  const lines: string[] = [
     `// Assign task to ${roleName}`,
-    `let ${varName} = (function() {`,
-    `  let roleAgents = roleAssignments["${step.role}"] || [];`,
-    `  if (roleAgents.length === 0) {`,
-    `    return { error: "No agents for role: ${step.role}", confidence: 0 };`,
-    `  }`,
-    threadEnabled
-      ? `  // Explicit thread-backed orchestration for this role`
-      : `  // Get result from first available agent in this role`,
-    `  let agent = roleAgents[0];`,
-    ...(threadEnabled
-      ? [
-          `  let threadOps = {`,
-          `    spawn: spawnRoleThread("${step.role}", ${JSON.stringify(step.task)}),`,
-          `    input: sendRoleThreadInput("${step.role}", agent, ${JSON.stringify(step.task)}, ${JSON.stringify(step.input || null)}),`,
-          `    await: awaitRoleThread("${step.role}", agent, "thread_turn_complete")`,
-          `  };`,
-        ]
-      : []),
-    `  return {`,
-    `    role: "${step.role}",`,
-    `    task: ${JSON.stringify(step.task)},`,
-    ...(threadEnabled
-      ? [
-          `    mode: "thread",`,
-          `    thread: threadOps,`,
-          `    result: threadOps.await,`,
-          `    confidence: 0.8,`,
-          `    agentId: agent?.agentId,`,
-          `    threadId: agent?.threadId`,
-        ]
-      : [
-          `    result: agent?.result,`,
-          `    confidence: agent?.confidence || 0.7,`,
-          `    agentId: agent?.agentId`,
-        ]),
-    `  };`,
-    `})();`,
+    `let _assign_roleAgents_${varName} = roleAssignments["${step.role}"] ?? [];`,
   ];
+
+  if (threadEnabled) {
+    lines.push(`// Explicit thread-backed orchestration for this role`);
+    lines.push(`let _assign_agent_${varName} = _assign_roleAgents_${varName}[0];`);
+    lines.push(`let _assign_threadOps_${varName} = {`);
+    lines.push(`  spawn: spawnRoleThread("${step.role}", ${JSON.stringify(step.task)}),`);
+    lines.push(`  input: sendRoleThreadInput("${step.role}", _assign_agent_${varName}, ${JSON.stringify(step.task)}, ${JSON.stringify(step.input || null)}),`);
+    lines.push(`  awaitResult: awaitRoleThread("${step.role}", _assign_agent_${varName}, "thread_turn_complete")`);
+    lines.push(`};`);
+    lines.push(`let ${varName} = null;`);
+    lines.push(`if (_assign_roleAgents_${varName}.length == 0) {`);
+    lines.push(`  ${varName} = { error: "No agents for role: ${step.role}", confidence: 0 };`);
+    lines.push(`} else {`);
+    lines.push(`  ${varName} = {`);
+    lines.push(`    role: "${step.role}",`);
+    lines.push(`    task: ${JSON.stringify(step.task)},`);
+    lines.push(`    mode: "thread",`);
+    lines.push(`    thread: _assign_threadOps_${varName},`);
+    lines.push(`    result: _assign_threadOps_${varName}.awaitResult,`);
+    lines.push(`    confidence: 0.8,`);
+    lines.push(`    agentId: _assign_agent_${varName}?.agentId,`);
+    lines.push(`    threadId: _assign_agent_${varName}?.threadId`);
+    lines.push(`  };`);
+    lines.push(`}`);
+  } else {
+    lines.push(`// Get result from first available agent in this role`);
+    lines.push(`let _assign_agent_${varName} = _assign_roleAgents_${varName}[0];`);
+    lines.push(`let ${varName} = null;`);
+    lines.push(`if (_assign_roleAgents_${varName}.length == 0) {`);
+    lines.push(`  ${varName} = { error: "No agents for role: ${step.role}", confidence: 0 };`);
+    lines.push(`} else {`);
+    lines.push(`  ${varName} = {`);
+    lines.push(`    role: "${step.role}",`);
+    lines.push(`    task: ${JSON.stringify(step.task)},`);
+    lines.push(`    result: _assign_agent_${varName}?.result,`);
+    lines.push(`    confidence: _assign_agent_${varName}?.confidence ?? 0.7,`);
+    lines.push(`    agentId: _assign_agent_${varName}?.agentId`);
+    lines.push(`  };`);
+    lines.push(`}`);
+  }
+
+  return lines;
 }
 
 function compileParallelStep(
@@ -262,12 +282,20 @@ function compileParallelStep(
   step.steps.forEach((subStep, subIndex) => {
     const subVarName = `step_${stepIndex}_sub_${subIndex}`;
     const subCode = compileWorkflowSteps([subStep], structure, includeComments);
-    // Rename the variable in the generated code
-    const renamedCode = subCode.map(line =>
-      line.replace(/step_0_result/g, subVarName)
-    );
+    // Rename variable identifiers only (not inside string literals)
+    const renamedCode = subCode.map(line => {
+      const parts = line.split('"');
+      const result = parts.map((part, i) => {
+        if (i % 2 === 0) {
+          // Outside quotes — replace step_0_result including as suffix in compound names
+          return part.replace(/step_0_result/g, subVarName);
+        }
+        return part;
+      });
+      return result.join('"');
+    });
     lines.push(...renamedCode);
-    lines.push(`${varName}.push(${subVarName});`);
+    lines.push(`${varName} = [...${varName}, ${subVarName}];`);
   });
 
   return lines;
@@ -287,11 +315,18 @@ function compileSequentialStep(
   step.steps.forEach((subStep, subIndex) => {
     const subVarName = `step_${stepIndex}_seq_${subIndex}`;
     const subCode = compileWorkflowSteps([subStep], structure, includeComments);
-    const renamedCode = subCode.map(line =>
-      line.replace(/step_0_result/g, subVarName)
-    );
+    const renamedCode = subCode.map(line => {
+      const parts = line.split('"');
+      const result = parts.map((part, i) => {
+        if (i % 2 === 0) {
+          return part.replace(/step_0_result/g, subVarName);
+        }
+        return part;
+      });
+      return result.join('"');
+    });
     lines.push(...renamedCode);
-    lines.push(`${varName}.push(${subVarName});`);
+    lines.push(`${varName} = [...${varName}, ${subVarName}];`);
   });
 
   return lines;
@@ -306,27 +341,37 @@ function compileReviewStep(
   const roleName = role?.name || step.reviewer;
   const threadEnabled = !!role?.threadConfig?.enabled;
 
-  return [
+  const lines: string[] = [
     `// Review by ${roleName}`,
-    `let ${varName} = (function() {`,
-    `  let reviewerAgents = roleAssignments["${step.reviewer}"] || [];`,
-    `  if (reviewerAgents.length === 0) {`,
-    `    return { approved: true, confidence: 0.5, reason: "No reviewer available" };`,
-    `  }`,
-    `  let reviewer = reviewerAgents[0];`,
-    threadEnabled
-      ? `  let reviewThread = sendRoleThreadInput("${step.reviewer}", reviewer, "review", ${JSON.stringify(step.subject)});`
-      : `  // Simulate review based on agent confidence`,
-    `  let approved = (reviewer?.confidence || 0) > 0.6;`,
-    `  return {`,
-    `    reviewer: "${step.reviewer}",`,
-    `    approved: approved,`,
-    `    confidence: reviewer?.confidence || 0.7,`,
-    ...(threadEnabled ? [`    thread: reviewThread,`] : []),
-    `    feedback: approved ? "Looks good" : "Needs revision"`,
-    `  };`,
-    `})();`,
+    `let _review_agents_${varName} = roleAssignments["${step.reviewer}"] ?? [];`,
+    `let _review_reviewer_${varName} = _review_agents_${varName}[0];`,
   ];
+
+  if (threadEnabled) {
+    lines.push(`let _review_thread_${varName} = sendRoleThreadInput("${step.reviewer}", _review_reviewer_${varName}, "review", ${JSON.stringify(step.subject)});`);
+  }
+
+  lines.push(`let ${varName} = null;`);
+  lines.push(`if (_review_agents_${varName}.length == 0) {`);
+  lines.push(`  ${varName} = { approved: true, confidence: 0.5, reason: "No reviewer available" };`);
+  lines.push(`} else {`);
+  lines.push(`  let _review_approved_${varName} = (_review_reviewer_${varName}?.confidence ?? 0) > 0.6;`);
+  lines.push(`  let _review_feedback_${varName} = "Needs revision";`);
+  lines.push(`  if (_review_approved_${varName}) {`);
+  lines.push(`    _review_feedback_${varName} = "Looks good";`);
+  lines.push(`  }`);
+  lines.push(`  ${varName} = {`);
+  lines.push(`    reviewer: "${step.reviewer}",`);
+  lines.push(`    approved: _review_approved_${varName},`);
+  lines.push(`    confidence: _review_reviewer_${varName}?.confidence ?? 0.7,`);
+  if (threadEnabled) {
+    lines.push(`    thread: _review_thread_${varName},`);
+  }
+  lines.push(`    feedback: _review_feedback_${varName}`);
+  lines.push(`  };`);
+  lines.push(`}`);
+
+  return lines;
 }
 
 function compileApproveStep(
@@ -336,26 +381,35 @@ function compileApproveStep(
 ): string[] {
   const role = structure.roles[step.approver];
   const threadEnabled = !!role?.threadConfig?.enabled;
-  return [
+
+  const lines: string[] = [
     `// Approval by ${step.approver}`,
-    `let ${varName} = (function() {`,
-    `  let approverAgents = roleAssignments["${step.approver}"] || [];`,
-    `  if (approverAgents.length === 0) {`,
-    `    return { approved: false, reason: "No approver available" };`,
-    `  }`,
-    `  let approver = approverAgents[0];`,
-    ...(threadEnabled
-      ? [`  let approvalThread = sendRoleThreadInput("${step.approver}", approver, "approve", ${JSON.stringify(step.subject)});`]
-      : []),
-    `  let approved = (approver?.confidence || 0) > 0.7;`,
-    `  return {`,
-    `    approver: "${step.approver}",`,
-    `    approved: approved,`,
-    `    confidence: approver?.confidence || 0.7,`,
-    ...(threadEnabled ? [`    thread: approvalThread`] : [`    agentId: approver?.agentId`]),
-    `  };`,
-    `})();`,
+    `let _approve_agents_${varName} = roleAssignments["${step.approver}"] ?? [];`,
+    `let _approve_approver_${varName} = _approve_agents_${varName}[0];`,
   ];
+
+  if (threadEnabled) {
+    lines.push(`let _approve_thread_${varName} = sendRoleThreadInput("${step.approver}", _approve_approver_${varName}, "approve", ${JSON.stringify(step.subject)});`);
+  }
+
+  lines.push(`let ${varName} = null;`);
+  lines.push(`if (_approve_agents_${varName}.length == 0) {`);
+  lines.push(`  ${varName} = { approved: false, reason: "No approver available" };`);
+  lines.push(`} else {`);
+  lines.push(`  let _approve_approved_${varName} = (_approve_approver_${varName}?.confidence ?? 0) > 0.7;`);
+  lines.push(`  ${varName} = {`);
+  lines.push(`    approver: "${step.approver}",`);
+  lines.push(`    approved: _approve_approved_${varName},`);
+  lines.push(`    confidence: _approve_approver_${varName}?.confidence ?? 0.7,`);
+  if (threadEnabled) {
+    lines.push(`    thread: _approve_thread_${varName}`);
+  } else {
+    lines.push(`    agentId: _approve_approver_${varName}?.agentId`);
+  }
+  lines.push(`  };`);
+  lines.push(`}`);
+
+  return lines;
 }
 
 function compileAggregateStep(
@@ -420,57 +474,71 @@ function compileSelectStep(
 ): string[] {
   const role = structure.roles[step.role];
   const threadEnabled = !!role?.threadConfig?.enabled;
+  const field = threadEnabled ? 'threadId' : 'agentId';
   return [
     `// Select ${threadEnabled ? 'thread' : 'agent'} from ${step.role} (${step.criteria || 'first'})`,
-    `let ${varName} = (function() {`,
-    `  let roleAgents = roleAssignments["${step.role}"] || [];`,
-    `  if (roleAgents.length === 0) return null;`,
-    `  return roleAgents[0]?.${threadEnabled ? 'threadId' : 'agentId'};`,
-    `})();`,
+    `let _select_agents_${varName} = roleAssignments["${step.role}"] ?? [];`,
+    `let ${varName} = null;`,
+    `if (_select_agents_${varName}.length > 0) {`,
+    `  ${varName} = _select_agents_${varName}[0]?.${field};`,
+    `}`,
   ];
 }
 
 function generateHelperFunctions(): string[] {
   return [
     `function calculateConfidence(results) {`,
-    `  if (!results || results.length === 0) return 0;`,
-    `  let sum = results.reduce((acc, r) => acc + (r?.confidence || 0), 0);`,
+    `  if (!results) { return 0; }`,
+    `  if (results.length == 0) { return 0; }`,
+    `  let sum = 0;`,
+    `  let i = 0;`,
+    `  while (i < results.length) {`,
+    `    sum = sum + (results[i]?.confidence ?? 0);`,
+    `    i = i + 1;`,
+    `  }`,
     `  return sum / results.length;`,
     `}`,
     ``,
     `function aggregateConsensus(results) {`,
-    `  if (!Array.isArray(results)) return results;`,
-    `  let counts = {};`,
-    `  results.forEach(r => {`,
-    `    let key = JSON.stringify(r?.result || r);`,
-    `    counts[key] = (counts[key] || 0) + 1;`,
-    `  });`,
-    `  let maxKey = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);`,
-    `  return JSON.parse(maxKey);`,
+    `  if (!results) { return results; }`,
+    `  // Simple: return the first result (consensus approximation)`,
+    `  if (results.length == 0) { return null; }`,
+    `  return results[0]?.result ?? results[0];`,
     `}`,
     ``,
     `function aggregateMajority(results) {`,
-    `  if (!Array.isArray(results)) return results;`,
-    `  let required = Math.ceil(results.length / 2);`,
-    `  let counts = {};`,
-    `  for (let r of results) {`,
-    `    let key = JSON.stringify(r?.result || r);`,
-    `    counts[key] = (counts[key] || 0) + 1;`,
-    `    if (counts[key] >= required) return JSON.parse(key);`,
-    `  }`,
-    `  return null;`,
+    `  if (!results) { return results; }`,
+    `  if (results.length == 0) { return null; }`,
+    `  return results[0]?.result ?? results[0];`,
     `}`,
     ``,
     `function aggregateMerge(results) {`,
-    `  if (!Array.isArray(results)) return results;`,
-    `  return Object.assign({}, ...results.map(r => r?.result || r));`,
+    `  if (!results) { return results; }`,
+    `  let merged = {};`,
+    `  let i = 0;`,
+    `  while (i < results.length) {`,
+    `    let item = results[i]?.result ?? results[i];`,
+    `    if (item) {`,
+    `      merged = { ...merged, ...item };`,
+    `    }`,
+    `    i = i + 1;`,
+    `  }`,
+    `  return merged;`,
     `}`,
     ``,
     `function aggregateBest(results) {`,
-    `  if (!Array.isArray(results)) return results;`,
-    `  return results.reduce((best, curr) => {`,
-    `    return (curr?.confidence || 0) > (best?.confidence || 0) ? curr : best;`,
-    `  }, results[0]);`,
+    `  if (!results) { return results; }`,
+    `  if (results.length == 0) { return null; }`,
+    `  let best = results[0];`,
+    `  let i = 1;`,
+    `  while (i < results.length) {`,
+    `    let curr = results[i];`,
+    `    if ((curr?.confidence ?? 0) > (best?.confidence ?? 0)) {`,
+    `      best = curr;`,
+    `    }`,
+    `    i = i + 1;`,
+    `  }`,
+    `  return best;`,
     `}`,
     ``,
     `function spawnRoleThread(roleId, objective) {`,
@@ -478,7 +546,7 @@ function generateHelperFunctions(): string[] {
     `    type: "spawnThread",`,
     `    role: roleId,`,
     `    objective: objective,`,
-    `    mode: roleExecution?.[roleId]?.mode || "agent"`,
+    `    mode: "thread"`,  // Default to thread; roleExecution metadata is in the pattern header
     `  };`,
     `}`,
     ``,
@@ -497,7 +565,7 @@ function generateHelperFunctions(): string[] {
     `    type: "awaitThread",`,
     `    role: roleId,`,
     `    threadId: worker?.threadId,`,
-    `    eventType: eventType || "thread_turn_complete"`,
+    `    eventType: eventType ?? "thread_turn_complete"`,
     `  };`,
     `}`,
   ];

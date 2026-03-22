@@ -389,7 +389,8 @@ export async function createServer(): Promise<express.Application> {
   const dockerRuntimeUrl = process.env.PARALLAX_DOCKER_RUNTIME_URL;
   const k8sRuntimeUrl = process.env.PARALLAX_K8S_RUNTIME_URL;
 
-  if (localRuntimeUrl || dockerRuntimeUrl || k8sRuntimeUrl) {
+  // Always create the runtime service — gateway runtime is always available
+  {
     agentRuntimeService = new AgentRuntimeService(logger);
 
     // Register local runtime if configured
@@ -435,6 +436,22 @@ export async function createServer(): Promise<express.Application> {
       } catch (error) {
         logger.warn({ error, url: k8sRuntimeUrl }, 'Failed to connect to Kubernetes runtime');
       }
+    }
+
+    // Register gateway runtime — dispatches threads to gateway-connected agents
+    {
+      const { GatewayRuntimeAdapter } = require('./agent-runtime/gateway-runtime-adapter');
+      const gatewayRuntime = new GatewayRuntimeAdapter(
+        logger.child({ runtime: 'gateway' }),
+        gatewayService
+      );
+      agentRuntimeService.registerRuntimeDirect(
+        'gateway',
+        'gateway',
+        gatewayRuntime,
+        5 // Highest priority — prefer gateway agents over spawning new ones
+      );
+      logger.info('Gateway runtime registered');
     }
 
     // Forward runtime events to execution events
