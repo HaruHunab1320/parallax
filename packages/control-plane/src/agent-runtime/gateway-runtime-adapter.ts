@@ -107,9 +107,11 @@ export class GatewayRuntimeAdapter extends EventEmitter {
   }
 
   async healthCheck(): Promise<RuntimeHealthStatus> {
+    // Always report healthy — gateway agents connect/disconnect dynamically.
+    // The adapter handles "no matching agent" at spawn time, not at health check time.
     const agents = this.gateway.getConnectedAgents();
     return {
-      healthy: agents.size > 0,
+      healthy: true,
       message: `${agents.size} gateway agent(s) connected`,
     };
   }
