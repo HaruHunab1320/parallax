@@ -174,7 +174,7 @@ export class WorkflowExecutor extends EventEmitter {
       context.state = 'failed';
 
       this.logger.error(
-        { executionId, error },
+        { executionId, error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined },
         'Org workflow failed'
       );
 
@@ -197,19 +197,16 @@ export class WorkflowExecutor extends EventEmitter {
     roles: Record<string, OrgRole>,
     context: OrgExecutionContext
   ): Promise<void> {
-    const spawnPromises: Promise<void>[] = [];
-
+    // Spawn agents sequentially to ensure the gateway adapter's
+    // "already has thread" check works correctly between spawns.
+    // Parallel spawns race and can assign the wrong agent.
     for (const [roleId, role] of Object.entries(roles)) {
       const count = role.singleton ? 1 : role.minInstances || 1;
 
       for (let i = 0; i < count; i++) {
-        spawnPromises.push(
-          this.spawnAgentForRole(roleId, role, context, i)
-        );
+        await this.spawnAgentForRole(roleId, role, context, i);
       }
     }
-
-    await Promise.all(spawnPromises);
   }
 
   /**

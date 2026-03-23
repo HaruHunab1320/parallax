@@ -1251,7 +1251,7 @@ export class PatternEngine implements IPatternEngine {
         error instanceof Error ? error.message : String(error);
 
       this.logger.error(
-        { executionId, pattern: pattern.name, error },
+        { executionId, pattern: pattern.name, error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined },
         'Org-chart workflow execution failed'
       );
 
