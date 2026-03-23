@@ -269,24 +269,34 @@ export class PatternEngine implements IPatternEngine {
     const spawnedThreads: ThreadHandle[] = [];
     const threadConfig = pattern.threads;
 
+    // If the thread config has per-role definitions (from org-chart), use those
+    const threadRoles = (threadConfig as any)?.roles as Array<{
+      roleId: string;
+      agentType: string;
+      objective?: string;
+      approvalPreset?: string;
+    }> | undefined;
+
     this.logger.info(
-      { patternName: pattern.name, count: minAgents, threadAgentType: threadConfig?.agentType || 'claude' },
+      { patternName: pattern.name, count: minAgents, threadAgentType: threadConfig?.agentType || 'claude', roles: threadRoles?.map(r => r.roleId) },
       'Spawning threads for pattern execution'
     );
 
     for (let i = 0; i < minAgents; i++) {
+      const roleConfig = threadRoles?.[i];
       try {
         const spawnInput = this.threadPreparationService
           ? await this.threadPreparationService.prepareSpawnInput({
               id: `${executionId}-thread-${i}`,
               executionId,
-              name: `${pattern.name}-thread-${i}`,
-              agentType: threadConfig?.agentType || 'claude',
+              name: roleConfig ? `${pattern.name}-${roleConfig.roleId}` : `${pattern.name}-thread-${i}`,
+              agentType: roleConfig?.agentType || threadConfig?.agentType || 'claude',
               objective:
+                roleConfig?.objective ||
                 threadConfig?.objective ||
                 pattern.description ||
                 `Execute pattern ${pattern.name}`,
-              role: `pattern-worker-${i}`,
+              role: roleConfig?.roleId || `pattern-worker-${i}`,
               preparation: {
                 workspace: workspace
                   ? {
@@ -327,13 +337,14 @@ export class PatternEngine implements IPatternEngine {
           : {
           id: `${executionId}-thread-${i}`,
           executionId,
-          name: `${pattern.name}-thread-${i}`,
-          agentType: threadConfig?.agentType || 'claude',
+          name: roleConfig ? `${pattern.name}-${roleConfig.roleId}` : `${pattern.name}-thread-${i}`,
+          agentType: roleConfig?.agentType || threadConfig?.agentType || 'claude',
           objective:
+            roleConfig?.objective ||
             threadConfig?.objective ||
             pattern.description ||
             `Execute pattern ${pattern.name}`,
-          role: `pattern-worker-${i}`,
+          role: roleConfig?.roleId || `pattern-worker-${i}`,
           preparation: {
             workspace: workspace
               ? {

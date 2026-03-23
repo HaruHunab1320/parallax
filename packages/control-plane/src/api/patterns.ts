@@ -459,9 +459,12 @@ export function createPatternsRouter(
         minAgents: compiled.metadata.agents.minAgents,
         maxAgents: compiled.metadata.agents.maxAgents,
         script: compiled.script,
+        threads: compiled.metadata.threads as any,
+        workspace: compiled.metadata.workspace as any,
         metadata: {
           source: 'yaml',
           orgChart: true,
+          threads: compiled.metadata.threads,
         },
       };
 
