@@ -522,10 +522,12 @@ export class PatternEngine implements IPatternEngine {
       throw new Error(`Pattern ${patternName} not found`);
     }
 
-    // Resolve timeout: options > pattern metadata > default (5 min)
+    // Resolve timeout: options > pattern metadata > default
+    // Thread-based patterns default to no timeout (0); non-thread patterns default to 5 min
+    const defaultTimeout = pattern.threads?.enabled ? 0 : 300000;
     const timeoutMs = options?.timeout
       ?? (pattern.metadata as any)?.timeout
-      ?? 300000;
+      ?? defaultTimeout;
 
     const executionId = options?.executionId || uuidv4();
     const execution: PatternExecution = {
@@ -539,16 +541,18 @@ export class PatternEngine implements IPatternEngine {
     this.executions.set(execution.id, execution);
     this.currentExecutionId = execution.id;
 
-    // Wrap execution in a timeout race
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Execution timed out after ${timeoutMs}ms`)), timeoutMs);
-    });
+    // Wrap execution in a timeout race (skip if timeout is 0 = no limit)
+    const executionPromise = this._executePatternInner(pattern, execution, executionId, input, options, timeoutMs);
 
     try {
-      return await Promise.race([
-        this._executePatternInner(pattern, execution, executionId, input, options, timeoutMs),
-        timeoutPromise,
-      ]);
+      if (timeoutMs > 0) {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error(`Execution timed out after ${timeoutMs}ms`)), timeoutMs);
+        });
+        return await Promise.race([executionPromise, timeoutPromise]);
+      } else {
+        return await executionPromise;
+      }
     } catch (error) {
       // Ensure the execution is marked as failed on timeout
       if (execution.status === 'running') {
