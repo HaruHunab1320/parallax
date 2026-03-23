@@ -336,35 +336,42 @@ export class GatewayRuntimeAdapter extends EventEmitter {
 
     // Match by agent type
     const agentType = input.agentType as string;
+    this.logger.info(
+      { agentType, role: input.role, connectedAgents: Array.from(agents.entries()).map(([id, s]) => ({ id, type: s.metadata?.agentType })) },
+      'Finding gateway agent for thread'
+    );
+
     for (const [id, session] of agents) {
       const sessionType = session.metadata?.agentType;
       if (sessionType === agentType) {
-        // Check this agent doesn't already have an active thread for this execution
         const hasThread = Array.from(this.threads.values())
           .some(t => t.gatewayAgentId === id && t.handle.executionId === input.executionId);
         if (!hasThread) return id;
       }
     }
 
-    // Match by capabilities
-    if (input.metadata?.capabilities) {
-      const required = input.metadata.capabilities as string[];
-      for (const [id, session] of agents) {
-        if (required.every(cap => session.capabilities.includes(cap))) {
-          const hasThread = Array.from(this.threads.values())
-            .some(t => t.gatewayAgentId === id && t.handle.executionId === input.executionId);
-          if (!hasThread) return id;
-        }
+    // Match by capabilities (agent type is often in capabilities list)
+    for (const [id, session] of agents) {
+      if (session.capabilities.includes(agentType)) {
+        const hasThread = Array.from(this.threads.values())
+          .some(t => t.gatewayAgentId === id && t.handle.executionId === input.executionId);
+        if (!hasThread) return id;
       }
     }
 
-    // Fallback: first available agent
-    for (const [id] of agents) {
-      const hasThread = Array.from(this.threads.values())
-        .some(t => t.gatewayAgentId === id && t.handle.executionId === input.executionId);
-      if (!hasThread) return id;
+    // No type-specific match — fall back to first available only if no type was specified
+    if (!agentType) {
+      for (const [id] of agents) {
+        const hasThread = Array.from(this.threads.values())
+          .some(t => t.gatewayAgentId === id && t.handle.executionId === input.executionId);
+        if (!hasThread) return id;
+      }
     }
 
+    this.logger.warn(
+      { agentType, role: input.role },
+      'No matching gateway agent found for requested type'
+    );
     return null;
   }
 }
