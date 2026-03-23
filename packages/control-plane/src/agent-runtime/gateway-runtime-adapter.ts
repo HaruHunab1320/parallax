@@ -323,17 +323,10 @@ export class GatewayRuntimeAdapter extends EventEmitter {
   private findGatewayAgent(input: SpawnThreadInput): string | null {
     const agents = this.gateway.getConnectedAgents();
 
-    // Direct match by agent ID (from pattern metadata)
+    // Direct match by exact agent ID
     const targetAgentId = input.metadata?.agentId as string;
-    if (targetAgentId) {
-      // Try exact match first
-      if (agents.has(targetAgentId)) return targetAgentId;
-      // Try prefixed match (e.g., "swarm-echo" for metadata agentId "echo")
-      for (const [id] of agents) {
-        if (id.endsWith(`-${targetAgentId}`) || id === targetAgentId) {
-          return id;
-        }
-      }
+    if (targetAgentId && agents.has(targetAgentId)) {
+      return targetAgentId;
     }
 
     // Match by agent type
