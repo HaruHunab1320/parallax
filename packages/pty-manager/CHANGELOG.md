@@ -2,6 +2,11 @@
 
 All notable changes to `pty-manager` will be documented in this file.
 
+## [1.10.1] - 2026-03-23
+
+### Fixed
+- **writeRaw and resize fire-and-forget** — `writeRaw` and `resize` no longer await IPC ACKs from the worker. Overlapping calls for the same session (e.g. UI input while orchestrator delivers a task, or rapid resize events) collided on the pending Map key (`writeRaw:${id}`), silently overwriting the first entry and causing 30s timeout errors. Both operations are now fire-and-forget since writing bytes to a PTY and resizing don't need round-trip confirmation.
+
 ## [1.10.0] - 2026-03-10
 
 ### Changed
