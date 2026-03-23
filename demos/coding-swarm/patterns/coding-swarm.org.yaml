@@ -187,6 +187,7 @@ workflow:
           task: |
             Implement Subtask 1 from the architect's plan below.
             Create all required files, write tests, and commit your work.
+            When done, push your branch and create a pull request with gh pr create.
 
             Plan: ${step_0_result}
 
@@ -195,6 +196,7 @@ workflow:
           task: |
             Implement Subtask 2 from the architect's plan below.
             Create all required files, write tests, and commit your work.
+            When done, push your branch and create a pull request with gh pr create.
 
             Plan: ${step_0_result}
 
@@ -203,6 +205,7 @@ workflow:
           task: |
             Implement Subtask 3 from the architect's plan below.
             Create all required files, write tests, and commit your work.
+            When done, push your branch and create a pull request with gh pr create.
 
             Plan: ${step_0_result}
 
