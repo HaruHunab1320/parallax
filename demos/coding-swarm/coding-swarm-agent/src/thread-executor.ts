@@ -133,6 +133,48 @@ export class ThreadExecutor {
       this.logger.warn({ error: err.message }, 'Could not write approval config files');
     }
 
+    // Write swarm coordination MCP config and initial state
+    try {
+      const swarmDir = path.join(workspaceDir, '.parallax-swarm');
+      mkdirSync(swarmDir, { recursive: true });
+
+      // Write initial swarm state
+      const swarmState = {
+        executionId: threadId.split('-thread-')[0] || threadId,
+        sharedDecisions: [],
+        siblings: [],
+      };
+      writeFileSync(path.join(swarmDir, 'state.json'), JSON.stringify(swarmState, null, 2));
+
+      // Write MCP config for Claude Code
+      const mcpEntrypoint = path.join(__dirname, 'mcp', 'swarm-mcp-entrypoint.js');
+      const claudeDir = path.join(workspaceDir, '.claude');
+      mkdirSync(claudeDir, { recursive: true });
+
+      const mcpSettings = {
+        mcpServers: {
+          'parallax-swarm': {
+            command: 'node',
+            args: [mcpEntrypoint],
+            env: {
+              PARALLAX_THREAD_ID: threadId,
+              PARALLAX_EXECUTION_ID: threadId.split('-thread-')[0] || threadId,
+              PARALLAX_ROLE: adapterType,
+              PARALLAX_WORKSPACE_DIR: workspaceDir,
+            },
+          },
+        },
+      };
+      writeFileSync(
+        path.join(claudeDir, 'settings.local.json'),
+        JSON.stringify(mcpSettings, null, 2)
+      );
+
+      this.logger.info({ workspaceDir }, 'Wrote swarm MCP config');
+    } catch (err: any) {
+      this.logger.warn({ error: err.message }, 'Could not write swarm MCP config');
+    }
+
     // Build environment
     const env: Record<string, string> = {
       ...preparation.env,
