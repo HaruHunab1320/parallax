@@ -256,8 +256,9 @@ export function generateClaudeApprovalConfig(preset: ApprovalPreset): ApprovalCo
 
   const cliFlags: string[] = [];
 
-  // Autonomous: pass all tools via --tools flag
+  // Autonomous: skip all permission prompts and pass all tools
   if (preset === 'autonomous') {
+    cliFlags.push('--dangerously-skip-permissions');
     const allTools = Object.keys(CLAUDE_TOOL_CATEGORIES);
     cliFlags.push('--tools', allTools.join(','));
   }

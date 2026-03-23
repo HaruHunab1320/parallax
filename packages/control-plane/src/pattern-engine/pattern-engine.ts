@@ -257,7 +257,8 @@ export class PatternEngine implements IPatternEngine {
   private async spawnThreadsForPattern(
     pattern: Pattern,
     executionId: string,
-    workspace?: Workspace | null
+    workspace?: Workspace | null,
+    input?: any
   ): Promise<ThreadHandle[]> {
     if (!this.agentRuntimeService) {
       this.logger.debug('AgentRuntimeService not available, skipping thread spawn');
@@ -305,13 +306,15 @@ export class PatternEngine implements IPatternEngine {
                       repo: workspace.repo,
                       branch: workspace.branch.name,
                     }
-                  : undefined,
+                  : input?.repo
+                    ? { repo: input.repo }
+                    : undefined,
                 env: {
                   PARALLAX_EXECUTION_ID: executionId,
                   PARALLAX_PATTERN_NAME: pattern.name,
                   PARALLAX_THREAD_INDEX: i.toString(),
                 },
-                approvalPreset: threadConfig?.approvalPreset,
+                approvalPreset: (roleConfig?.approvalPreset || threadConfig?.approvalPreset) as any,
               },
               workspace: workspace
                 ? {
@@ -320,7 +323,9 @@ export class PatternEngine implements IPatternEngine {
                     repo: workspace.repo,
                     branch: workspace.branch.name,
                   }
-                : undefined,
+                : input?.repo
+                  ? { repo: input.repo } as any
+                  : undefined,
               env: {
                 PARALLAX_EXECUTION_ID: executionId,
                 PARALLAX_PATTERN_NAME: pattern.name,
@@ -353,13 +358,15 @@ export class PatternEngine implements IPatternEngine {
                   repo: workspace.repo,
                   branch: workspace.branch.name,
                 }
-              : undefined,
+              : input?.repo
+                ? { repo: input.repo }
+                : undefined,
             env: {
               PARALLAX_EXECUTION_ID: executionId,
               PARALLAX_PATTERN_NAME: pattern.name,
               PARALLAX_THREAD_INDEX: i.toString(),
             },
-            approvalPreset: threadConfig?.approvalPreset,
+            approvalPreset: (roleConfig?.approvalPreset || threadConfig?.approvalPreset) as any,
           },
           workspace: workspace
             ? {
@@ -368,13 +375,15 @@ export class PatternEngine implements IPatternEngine {
                 repo: workspace.repo,
                 branch: workspace.branch.name,
               }
-            : undefined,
+            : input?.repo
+              ? { repo: input.repo } as any
+              : undefined,
           env: {
             PARALLAX_EXECUTION_ID: executionId,
             PARALLAX_PATTERN_NAME: pattern.name,
             PARALLAX_THREAD_INDEX: i.toString(),
           },
-          approvalPreset: threadConfig?.approvalPreset,
+          approvalPreset: roleConfig?.approvalPreset || threadConfig?.approvalPreset,
           metadata: {
             capabilities,
             patternName: pattern.name,
@@ -383,7 +392,7 @@ export class PatternEngine implements IPatternEngine {
           policy: threadConfig?.policy,
         };
 
-        const thread = await this.agentRuntimeService.spawnThread(spawnInput);
+        const thread = await this.agentRuntimeService.spawnThread(spawnInput as any);
 
         spawnedThreads.push(thread);
 
@@ -637,7 +646,7 @@ export class PatternEngine implements IPatternEngine {
 
     try {
       // Select agents based on pattern requirements (may spawn agents if needed)
-      const agents = await this.selectAgents(pattern, executionId, workspace);
+      const agents = await this.selectAgents(pattern, executionId, workspace, input);
       emitEvent('agents_selected', { count: agents.length });
       this.logger.info({ agentCount: agents.length, agents: agents.map((a: any) => ({ id: a.id, endpoint: a.address || a.endpoint })) }, 'Agents selected for execution');
 
@@ -1090,10 +1099,11 @@ export class PatternEngine implements IPatternEngine {
   protected async selectAgents(
     pattern: Pattern,
     executionId?: string,
-    workspace?: Workspace | null
+    workspace?: Workspace | null,
+    input?: any
   ): Promise<any[]> {
     if (pattern.threads?.enabled && this.agentRuntimeService && executionId) {
-      const spawnedHandles = await this.spawnThreadsForPattern(pattern, executionId, workspace);
+      const spawnedHandles = await this.spawnThreadsForPattern(pattern, executionId, workspace, input);
 
       const spawnedThreads = spawnedHandles.map((handle, index) => ({
         id: handle.id,

@@ -455,6 +455,20 @@ jq -nc \
       }
     }
 
+    // Bypass Permissions confirmation prompt
+    if (/Bypass Permissions mode|accept all responsibility/i.test(stripped) &&
+        /No.*exit|Yes.*I accept/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'permission',
+        prompt: 'Bypass Permissions confirmation',
+        options: ['1', '2'],
+        suggestedResponse: '2',
+        canAutoRespond: true,
+        instructions: 'Claude is asking to confirm bypass permissions mode; reply 2 to accept',
+      };
+    }
+
     // Claude survey/feedback prompt (optional)
     if (/how is claude doing this session\?\s*\(optional\)|1:\s*bad\s+2:\s*fine\s+3:\s*good\s+0:\s*dismiss/i.test(stripped)) {
       return {
