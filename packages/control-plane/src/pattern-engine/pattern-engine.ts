@@ -24,6 +24,8 @@ import {
   ExecutionResult,
   ParallelExecutionPlan
 } from '@parallaxai/data-plane';
+import { WorkflowExecutor, WorkflowResult } from '../org-patterns/workflow-executor';
+import { OrgPattern } from '../org-patterns/types';
 
 export class PatternEngine implements IPatternEngine {
   private loader: PatternLoader;
@@ -644,6 +646,24 @@ export class PatternEngine implements IPatternEngine {
       }
     }
 
+    // If this is an org-chart pattern with threads, delegate to the workflow executor
+    if (
+      pattern.threads?.enabled &&
+      (pattern.metadata as any)?.orgChart &&
+      this.agentRuntimeService
+    ) {
+      return this.executeOrgChartWorkflow(
+        pattern,
+        execution,
+        executionId,
+        input,
+        options,
+        timeoutMs,
+        workspace,
+        emitEvent
+      );
+    }
+
     try {
       // Select agents based on pattern requirements (may spawn agents if needed)
       const agents = await this.selectAgents(pattern, executionId, workspace, input);
@@ -1091,6 +1111,154 @@ export class PatternEngine implements IPatternEngine {
       // Clean up spawned agents even on failure
       await this.cleanupSpawnedAgents(executionId);
       await this.cleanupSpawnedThreads(executionId);
+
+      throw error;
+    }
+  }
+
+  /**
+   * Execute a pattern using the org-chart workflow executor.
+   *
+   * This delegates step-by-step execution to WorkflowExecutor, which respects
+   * the workflow ordering (e.g. architect first, engineers in parallel, then review).
+   */
+  private async executeOrgChartWorkflow(
+    pattern: Pattern,
+    execution: PatternExecution,
+    executionId: string,
+    input: any,
+    options: PatternExecutionOptions | undefined,
+    timeoutMs: number,
+    workspace: any,
+    emitEvent: (type: string, data?: any) => void
+  ): Promise<PatternExecution> {
+    const orgPattern: OrgPattern | undefined = (pattern.metadata as any)?.orgPattern;
+    if (!orgPattern) {
+      throw new Error(
+        `Pattern ${pattern.name} is marked as orgChart but has no orgPattern in metadata`
+      );
+    }
+
+    this.logger.info(
+      { executionId, patternName: pattern.name, steps: orgPattern.workflow.steps.length },
+      'Executing org-chart workflow'
+    );
+
+    emitEvent('org_workflow_started', {
+      patternName: pattern.name,
+      stepCount: orgPattern.workflow.steps.length,
+    });
+
+    const executor = new WorkflowExecutor(
+      this.agentRuntimeService!,
+      this.logger,
+      {
+        stepTimeout: timeoutMs > 0 ? timeoutMs : 0,
+        threadPreparationService: this.threadPreparationService,
+      }
+    );
+
+    try {
+      // If workspace was provisioned, inject its info into the input
+      const workflowInput = workspace
+        ? {
+            ...input,
+            workspace: {
+              id: workspace.id,
+              path: workspace.path,
+              repo: workspace.repo,
+              branch: workspace.branch.name,
+              baseBranch: workspace.branch.baseBranch,
+            },
+          }
+        : input;
+
+      const workflowResult: WorkflowResult = await executor.execute(
+        orgPattern,
+        workflowInput
+      );
+
+      // Map workflow result back to PatternExecution format
+      execution.endTime = new Date();
+      execution.status = 'completed';
+      execution.result = workflowResult.output;
+      execution.metrics = {
+        agentsUsed: workflowResult.metrics.agentsUsed,
+        executionTime: workflowResult.metrics.durationMs,
+        averageConfidence: 0.75,
+        patternName: pattern.name,
+        timestamp: new Date().toISOString(),
+        duration: workflowResult.metrics.durationMs,
+        success: true,
+        agentCount: workflowResult.metrics.agentsUsed,
+      };
+
+      emitEvent('org_workflow_completed', {
+        patternName: pattern.name,
+        stepsExecuted: workflowResult.metrics.stepsExecuted,
+        durationMs: workflowResult.metrics.durationMs,
+        agentsUsed: workflowResult.metrics.agentsUsed,
+      });
+
+      // Finalize workspace (push, create PR) if configured
+      if (workspace && pattern.workspace?.createPr && this.workspaceService) {
+        try {
+          emitEvent('workspace_finalizing', { workspaceId: workspace.id });
+          const pr = await this.workspaceService.finalize(workspace.id, {
+            push: true,
+            createPr: true,
+            pr: {
+              title: `[Parallax] ${pattern.name}: ${execution.id.slice(0, 8)}`,
+              body: this.generatePrBody(pattern, execution),
+              targetBranch: workspace.branch.baseBranch,
+              draft: pattern.workspace?.pr?.draft,
+              labels: pattern.workspace?.pr?.labels,
+              reviewers: pattern.workspace?.pr?.reviewers,
+            },
+            cleanup: false,
+          });
+
+          if (pr) {
+            execution.workspace!.prUrl = pr.url;
+            execution.workspace!.prNumber = pr.number;
+            emitEvent('workspace_pr_created', {
+              workspaceId: workspace.id,
+              prNumber: pr.number,
+              prUrl: pr.url,
+            });
+          }
+        } catch (error) {
+          this.logger.warn(
+            { error, workspaceId: workspace.id },
+            'Failed to finalize workspace'
+          );
+        }
+      }
+
+      emitEvent('completed', {
+        patternName: pattern.name,
+        confidence: execution.metrics?.averageConfidence ?? 0,
+        durationMs: execution.metrics?.executionTime ?? 0,
+        agentCount: workflowResult.metrics.agentsUsed,
+        prUrl: execution.workspace?.prUrl,
+      });
+
+      return execution;
+    } catch (error) {
+      execution.endTime = new Date();
+      execution.status = 'failed';
+      execution.error =
+        error instanceof Error ? error.message : String(error);
+
+      this.logger.error(
+        { executionId, pattern: pattern.name, error },
+        'Org-chart workflow execution failed'
+      );
+
+      emitEvent('failed', {
+        patternName: pattern.name,
+        error: execution.error,
+      });
 
       throw error;
     }

@@ -293,6 +293,9 @@ importers:
 
   demos/coding-swarm/coding-swarm-agent:
     dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.0.0
+        version: 1.26.0(zod@3.25.76)
       '@parallaxai/sdk-typescript':
         specifier: workspace:*
         version: link:../../../packages/sdk-typescript
@@ -13297,7 +13300,7 @@ snapshots:
       '@ai-sdk/provider-utils': 1.0.22(zod@3.25.76)
       json-schema: 0.4.0
       secure-json-parse: 2.7.0
-      zod-to-json-schema: 3.24.6(zod@3.25.76)
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
     optionalDependencies:
       zod: 3.25.76
 

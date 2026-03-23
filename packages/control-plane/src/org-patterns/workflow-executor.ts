@@ -135,10 +135,8 @@ export class WorkflowExecutor extends EventEmitter {
           durationMs: Date.now() - stepStart,
         });
 
-        // Store result in variables if it's an assign step
-        if (step.type === 'assign') {
-          context.variables.set(`step_${i}_result`, result);
-        }
+        // Store every step's result so later steps can reference ${step_N_result}
+        context.variables.set(`step_${i}_result`, result);
       }
 
       context.state = 'completed';
@@ -386,13 +384,18 @@ export class WorkflowExecutor extends EventEmitter {
       throw new Error(`Agent ${agentId} not found`);
     }
 
-    agent.status = 'busy';
-    agent.currentTask = step.task;
+    // Resolve variables in both task description and input
+    const resolvedTask = this.resolveVariables(step.task, context);
+    const taskStr = typeof resolvedTask === 'string'
+      ? resolvedTask
+      : JSON.stringify(resolvedTask);
 
-    // Resolve input variables
+    agent.status = 'busy';
+    agent.currentTask = taskStr;
+
     const input = this.resolveVariables(step.input, context);
 
-    const response = await this.sendToExecutionUnit(agent, step.task, input);
+    const response = await this.sendToExecutionUnit(agent, taskStr, input);
 
     agent.status = 'idle';
     agent.currentTask = undefined;
@@ -783,15 +786,109 @@ export class WorkflowExecutor extends EventEmitter {
     input?: any
   ): Promise<any> {
     if (unit.kind === 'thread' && unit.threadId) {
-      await this.runtimeService.sendToThread(unit.threadId, {
-        message: input ? `${message}\n\nInput:\n${JSON.stringify(input, null, 2)}` : message,
-      });
-      return { threadId: unit.threadId, accepted: true };
+      return this.sendToThreadAndWait(unit.threadId, message, input);
     }
 
     return this.runtimeService.send(unit.id, message, {
       expectResponse: true,
       timeout: this.stepTimeout,
+    });
+  }
+
+  /**
+   * Send a message to a thread and wait for completion.
+   *
+   * Subscribes to thread events and resolves when the thread signals
+   * turn_complete or completed. Rejects on failure/stop/timeout.
+   */
+  private sendToThreadAndWait(
+    threadId: string,
+    message: string,
+    input?: any
+  ): Promise<any> {
+    const runtimeService = this.runtimeService;
+
+    return new Promise(async (resolve, reject) => {
+      let settled = false;
+      let timeoutHandle: NodeJS.Timeout | undefined;
+
+      const cleanup = () => {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+        unsubscribe();
+      };
+
+      const finalize = async () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+
+        try {
+          const thread = await runtimeService.getThread(threadId);
+          const summary =
+            (thread as any)?.completion?.summary ||
+            (thread as any)?.summary ||
+            '';
+          resolve({
+            threadId,
+            result: summary || thread,
+            summary,
+          });
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      const unsubscribe = runtimeService.subscribeThread(
+        threadId,
+        async (event) => {
+          if (
+            event.type === 'thread_turn_complete' ||
+            event.type === 'thread_completed'
+          ) {
+            await finalize();
+            return;
+          }
+
+          if (
+            event.type === 'thread_failed' ||
+            event.type === 'thread_stopped'
+          ) {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(
+              new Error(`Thread ${threadId} ended with ${event.type}`)
+            );
+          }
+        }
+      );
+
+      if (this.stepTimeout > 0) {
+        timeoutHandle = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(
+            new Error(
+              `Thread ${threadId} timed out after ${this.stepTimeout}ms`
+            )
+          );
+        }, this.stepTimeout);
+      }
+
+      try {
+        const fullMessage = input
+          ? `${message}\n\nInput:\n${JSON.stringify(input, null, 2)}`
+          : message;
+        await runtimeService.sendToThread(threadId, {
+          message: fullMessage,
+        });
+      } catch (error) {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      }
     });
   }
 
@@ -802,14 +899,69 @@ export class WorkflowExecutor extends EventEmitter {
   }
 
   /**
-   * Resolve variable references in a value
+   * Resolve variable references in a value.
+   *
+   * Supports:
+   *   - Whole-string variable: `$varName`
+   *   - Inline interpolation: `prefix ${varName} suffix`
+   *   - Dotted paths: `${input.task}`, `${input.repo}`
+   *   - Recursive resolution of objects and arrays
    */
   private resolveVariables(value: any, context: OrgExecutionContext): any {
-    if (typeof value === 'string' && value.startsWith('$')) {
-      const varName = value.substring(1);
-      return context.variables.get(varName);
+    if (typeof value === 'string') {
+      // Whole-string variable reference: $varName
+      if (value.startsWith('$') && !value.includes('{')) {
+        const varName = value.substring(1);
+        return this.resolveVarPath(varName, context);
+      }
+
+      // Inline ${...} interpolation
+      const interpolated = value.replace(/\$\{([^}]+)\}/g, (_match, expr: string) => {
+        const resolved = this.resolveVarPath(expr.trim(), context);
+        if (resolved === undefined || resolved === null) return '';
+        if (typeof resolved === 'object') return JSON.stringify(resolved);
+        return String(resolved);
+      });
+
+      // If the entire string was a single ${...} expression, return the raw value
+      // (preserving type) instead of stringifying it
+      const singleExprMatch = value.match(/^\$\{([^}]+)\}$/);
+      if (singleExprMatch) {
+        return this.resolveVarPath(singleExprMatch[1].trim(), context);
+      }
+
+      return interpolated;
     }
+
+    if (Array.isArray(value)) {
+      return value.map((v) => this.resolveVariables(v, context));
+    }
+
+    if (value && typeof value === 'object') {
+      const resolved: Record<string, any> = {};
+      for (const [k, v] of Object.entries(value)) {
+        resolved[k] = this.resolveVariables(v, context);
+      }
+      return resolved;
+    }
+
     return value;
+  }
+
+  /**
+   * Resolve a potentially dotted variable path against context variables.
+   * E.g. "input.task" → context.variables.get("input").task
+   */
+  private resolveVarPath(path: string, context: OrgExecutionContext): any {
+    const parts = path.split('.');
+    let current: any = context.variables.get(parts[0]);
+
+    for (let i = 1; i < parts.length; i++) {
+      if (current === undefined || current === null) return undefined;
+      current = current[parts[i]];
+    }
+
+    return current;
   }
 
   /**

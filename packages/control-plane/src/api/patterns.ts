@@ -466,6 +466,7 @@ export function createPatternsRouter(
           orgChart: true,
           threads: compiled.metadata.threads,
           workspace: compiled.metadata.workspace,
+          orgPattern: orgPattern,
         },
       };
 
