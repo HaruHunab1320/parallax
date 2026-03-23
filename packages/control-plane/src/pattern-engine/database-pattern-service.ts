@@ -227,6 +227,7 @@ export class DatabasePatternService {
       input: (prismaPattern.input as any) || { type: 'any' },
       agents: (prismaPattern.metadata as any)?.agents,
       threads: (prismaPattern.metadata as any)?.threads,
+      workspace: (prismaPattern.metadata as any)?.workspace,
       minAgents: prismaPattern.minAgents || undefined,
       maxAgents: prismaPattern.maxAgents || undefined,
       metadata: (prismaPattern.metadata as any) || {},

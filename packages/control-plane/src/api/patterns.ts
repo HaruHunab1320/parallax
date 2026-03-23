@@ -465,6 +465,7 @@ export function createPatternsRouter(
           source: 'yaml',
           orgChart: true,
           threads: compiled.metadata.threads,
+          workspace: compiled.metadata.workspace,
         },
       };
 

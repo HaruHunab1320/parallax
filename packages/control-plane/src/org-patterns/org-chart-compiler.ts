@@ -142,7 +142,12 @@ export function compileOrgPattern(
         maxAgents: agentCounts.max,
       },
       threads: threadMetadata.enabled ? threadMetadata : undefined,
-      workspace: pattern.metadata?.workspace,
+      workspace: pattern.metadata?.workspace || (
+        // Auto-enable workspace if the workflow input has a 'repo' field
+        pattern.workflow?.input?.repo
+          ? { enabled: true, branchStrategy: 'feature_branch' }
+          : undefined
+      ),
       metadata: {
         ...(pattern.metadata || {}),
         roleExecution: buildRoleExecutionMetadata(pattern.structure),

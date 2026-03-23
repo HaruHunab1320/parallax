@@ -563,29 +563,32 @@ export async function createServer(): Promise<express.Application> {
         logger
       );
       logger.info('Credential service initialized (with database persistence)');
-
-      // Initialize workspace service (git-workspace-service)
-      workspaceService = new WorkspaceService({
-        config: { baseDir: workspacesDir, branchPrefix: 'parallax' },
-        credentialService: credentialService as any,
-        logger,
-      });
-
-      await workspaceService.initialize();
-      logger.info({ workspacesDir }, 'Workspace service initialized');
-
-      // Wire workspace service into pattern engine
-      patternEngine.setWorkspaceService(workspaceService);
-      threadPreparationService?.setWorkspaceService(workspaceService);
     } catch (error) {
-      logger.warn({ error }, 'Failed to initialize GitHub/workspace services - continuing without workspace support');
+      logger.warn({ error }, 'Failed to initialize GitHub provider - falling back to PAT if available');
       githubProvider = null;
-      credentialService = null;
-      workspaceService = null;
     }
-  } else {
-    logger.info('GitHub App not configured - workspace provisioning disabled');
-    logger.info('Set PARALLAX_GITHUB_APP_ID and PARALLAX_GITHUB_PRIVATE_KEY to enable');
+  }
+
+  // Initialize workspace service — works with GitHub App, PAT, or no auth (public repos)
+  try {
+    workspaceService = new WorkspaceService({
+      config: {
+        baseDir: workspacesDir,
+        branchPrefix: 'parallax',
+      },
+      credentialService: credentialService as any,
+      logger,
+    });
+
+    await workspaceService.initialize();
+    logger.info({ workspacesDir, hasCredentialService: !!credentialService }, 'Workspace service initialized');
+
+    // Wire workspace service into pattern engine
+    patternEngine.setWorkspaceService(workspaceService);
+    threadPreparationService?.setWorkspaceService(workspaceService);
+  } catch (error) {
+    logger.warn({ error }, 'Failed to initialize workspace service - continuing without workspace support');
+    workspaceService = null;
   }
 
   // Health checks
