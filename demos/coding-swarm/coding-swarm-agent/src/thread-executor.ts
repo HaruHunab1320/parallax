@@ -210,13 +210,15 @@ export class ThreadExecutor {
       'Thread spawned'
     );
 
-    // Send the initial task once the session is ready
-    this.manager.once('session_ready', (readySession: any) => {
+    // Send the initial task once this specific session is ready
+    const onReady = (readySession: any) => {
       if (readySession.id === session.id) {
         this.logger.info({ threadId }, 'Sending initial task to thread');
         this.manager.send(session.id, task);
+        this.manager.removeListener('session_ready', onReady);
       }
-    });
+    };
+    this.manager.on('session_ready', onReady);
 
     return thread;
   }

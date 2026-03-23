@@ -211,10 +211,12 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
   }
 
   /**
-   * Default input formatting - just return as-is
+   * Default input formatting — collapse newlines to spaces for TUI compatibility.
+   * Multi-line text sent via tmux send-keys -l would trigger Enter on each newline,
+   * which submits the prompt prematurely in TUI-based CLI agents.
    */
   formatInput(message: string): string {
-    return message;
+    return message.replace(/\n+/g, ' ').trim();
   }
 
   /**
