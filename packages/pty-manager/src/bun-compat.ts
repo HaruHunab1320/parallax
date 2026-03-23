@@ -524,10 +524,12 @@ export class BunCompatiblePTYManager extends EventEmitter {
    */
   async writeRaw(id: string, data: string): Promise<void> {
     await this.waitForReady();
-
     this.sendCommand({ cmd: 'writeRaw', id, data });
-
-    await this.createPending(`writeRaw:${id}`);
+    // Fire-and-forget — writeRaw pushes bytes to the terminal and
+    // doesn't need an ACK.  Awaiting createPending caused timeouts
+    // when overlapping calls for the same session collided on the
+    // pending key (`writeRaw:${id}`), since the worker ACK only
+    // carries cmd+id with no sequence number.
   }
 
   /**
@@ -546,16 +548,14 @@ export class BunCompatiblePTYManager extends EventEmitter {
    */
   async resize(id: string, cols: number, rows: number): Promise<void> {
     await this.waitForReady();
-
     this.sendCommand({ cmd: 'resize', id, cols, rows });
-
     const session = this.sessions.get(id);
     if (session) {
       session.cols = cols;
       session.rows = rows;
     }
-
-    await this.createPending(`resize:${id}`);
+    // Fire-and-forget — rapid resize events from the UI collide on
+    // the pending key (`resize:${id}`) causing spurious timeouts.
   }
 
   /**
