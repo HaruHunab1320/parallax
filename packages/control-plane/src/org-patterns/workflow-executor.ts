@@ -65,7 +65,7 @@ export class WorkflowExecutor extends EventEmitter {
     private options: WorkflowExecutorOptions & { threadPreparationService?: ThreadPreparationService } = {}
   ) {
     super();
-    this.stepTimeout = options.stepTimeout || 60000;
+    this.stepTimeout = options.stepTimeout ?? 0; // 0 = no timeout
     this.maxParallel = options.maxParallel || 10;
   }
 
