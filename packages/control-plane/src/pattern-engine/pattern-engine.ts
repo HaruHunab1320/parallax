@@ -487,12 +487,15 @@ export class PatternEngine implements IPatternEngine {
         }
       });
 
-      timeoutHandle = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(new Error(`Thread ${threadId} timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
+      // Only set timeout if > 0 (0 = no timeout)
+      if (timeoutMs > 0) {
+        timeoutHandle = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error(`Thread ${threadId} timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      }
 
       try {
         await runtimeService.sendToThread(threadId, {
