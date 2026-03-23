@@ -116,6 +116,23 @@ export class ThreadExecutor {
       }
     }
 
+    // Write approval config files for the CLI agent
+    const approvalPreset = policy.approvalPreset || 'autonomous';
+    try {
+      const { generateApprovalConfig } = require('coding-agent-adapters');
+      const approvalConfig = generateApprovalConfig(adapterType, approvalPreset);
+      if (approvalConfig?.workspaceFiles) {
+        for (const file of approvalConfig.workspaceFiles) {
+          const filePath = path.join(workspaceDir, file.relativePath);
+          mkdirSync(path.dirname(filePath), { recursive: true });
+          writeFileSync(filePath, file.content, 'utf-8');
+          this.logger.info({ filePath }, 'Wrote approval config file');
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn({ error: err.message }, 'Could not write approval config files');
+    }
+
     // Build environment
     const env: Record<string, string> = {
       ...preparation.env,
@@ -131,7 +148,7 @@ export class ThreadExecutor {
       env,
       adapterConfig: {
         interactive: policy.interactive !== false,
-        approvalPreset: policy.approvalPreset || 'autonomous',
+        approvalPreset,
       },
     });
 
@@ -217,7 +234,7 @@ export class ThreadExecutor {
 
     // Clone the repo
     this.logger.info({ threadId, repo: ws.repo, dir }, 'Cloning repository');
-    execSync(`git clone --depth 1 ${cloneUrl} ${dir}`, {
+    execSync(`git clone --depth 1 --template= ${cloneUrl} ${dir}`, {
       stdio: 'pipe',
       timeout: 120000,
     });

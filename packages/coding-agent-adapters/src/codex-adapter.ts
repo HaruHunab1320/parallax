@@ -16,6 +16,7 @@ import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, ty
 export class CodexAdapter extends BaseCodingAdapter {
   readonly adapterType = 'codex';
   readonly displayName = 'OpenAI Codex';
+  override readonly readySettleMs: number = 2000;
 
   readonly installation: InstallationInfo = {
     command: 'npm install -g @openai/codex',

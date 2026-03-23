@@ -31,6 +31,7 @@ interface GeminiAdapterConfig {
 export class GeminiAdapter extends BaseCodingAdapter {
   readonly adapterType = 'gemini';
   readonly displayName = 'Google Gemini';
+  override readonly readySettleMs: number = 1500;
 
   readonly installation: InstallationInfo = {
     command: 'npm install -g @google/gemini-cli',
