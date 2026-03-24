@@ -75,7 +75,7 @@ structure:
           inherit: true
         metadata:
           device: pi
-          agentId: vero
+          agentId: silas
 
     engineer_b:
       id: engineer_b
@@ -129,7 +129,7 @@ structure:
           inherit: true
         metadata:
           device: pi
-          agentId: silas
+          agentId: vero
 
   routing:
     - from: [engineer_a, engineer_b, engineer_c]
