@@ -612,7 +612,26 @@ export class PatternEngine implements IPatternEngine {
 
     emitEvent('started', { patternName });
 
-    // Provision workspace if pattern requires it
+    // If this is an org-chart pattern with threads, delegate to the workflow executor.
+    // Skip server-side workspace provisioning — gateway agents clone repos locally.
+    if (
+      pattern.threads?.enabled &&
+      (pattern.metadata as any)?.orgChart &&
+      this.agentRuntimeService
+    ) {
+      return this.executeOrgChartWorkflow(
+        pattern,
+        execution,
+        executionId,
+        input,
+        options,
+        timeoutMs,
+        null,
+        emitEvent
+      );
+    }
+
+    // Provision workspace if pattern requires it (non-org-chart patterns)
     let workspace: Workspace | null = null;
     if (pattern.workspace?.enabled && this.workspaceService) {
       const workspaceConfig = this.resolveWorkspaceConfig(pattern, input, executionId, options?.credentials);
@@ -637,31 +656,11 @@ export class PatternEngine implements IPatternEngine {
           emitEvent('workspace_failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
           });
-          // Don't fail the entire execution if workspace provisioning fails
-          // unless the pattern explicitly requires it
           if (pattern.workspace.repo) {
             throw new Error(`Workspace provisioning failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
         }
       }
-    }
-
-    // If this is an org-chart pattern with threads, delegate to the workflow executor
-    if (
-      pattern.threads?.enabled &&
-      (pattern.metadata as any)?.orgChart &&
-      this.agentRuntimeService
-    ) {
-      return this.executeOrgChartWorkflow(
-        pattern,
-        execution,
-        executionId,
-        input,
-        options,
-        timeoutMs,
-        workspace,
-        emitEvent
-      );
     }
 
     try {
