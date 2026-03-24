@@ -96,8 +96,10 @@ export class WorkflowExecutor extends EventEmitter {
     let unsubscribeMessages: (() => void) | null = null;
 
     try {
-      // Initialize agents for all roles
-      await this.initializeAgents(pattern.structure.roles, context);
+      // Note: agents are spawned on-demand during workflow step execution,
+      // NOT upfront. This ensures the architect completes before engineers
+      // are spawned, and the architect's output can be interpolated into
+      // engineer tasks.
 
       // Create message router
       const router = new MessageRouter(
@@ -224,7 +226,7 @@ export class WorkflowExecutor extends EventEmitter {
             executionId: context.id,
             name: `${role.name} ${index + 1}`,
             agentType: Array.isArray(role.agentType) ? role.agentType[0] : role.agentType,
-            objective: role.threadConfig.objective || role.description || `Execute role ${role.name}`,
+            objective: '',  // Task sent later by workflow step execution
             role: roleId,
             preparation: {
               workspace: role.threadConfig.workspace,
@@ -245,7 +247,7 @@ export class WorkflowExecutor extends EventEmitter {
         executionId: context.id,
         name: `${role.name} ${index + 1}`,
         agentType: Array.isArray(role.agentType) ? role.agentType[0] : role.agentType,
-        objective: role.threadConfig.objective || role.description || `Execute role ${role.name}`,
+        objective: '',  // Task sent later by workflow step execution
         role: roleId,
         preparation: {
           workspace: role.threadConfig.workspace,
@@ -369,16 +371,27 @@ export class WorkflowExecutor extends EventEmitter {
     step: Extract<WorkflowStep, { type: 'assign' }>,
     context: OrgExecutionContext
   ): Promise<any> {
-    const agentIds = context.roleAssignments.get(step.role);
-    if (!agentIds || agentIds.length === 0) {
-      throw new Error(`No agents for role: ${step.role}`);
+    const role = context.pattern.structure.roles[step.role];
+    if (!role) {
+      throw new Error(`Role ${step.role} not found in pattern`);
     }
 
-    // Get first available agent
+    // Spawn the agent on-demand if not already spawned
+    let agentIds = context.roleAssignments.get(step.role);
+    if (!agentIds || agentIds.length === 0) {
+      this.logger.info({ role: step.role }, 'Spawning agent on-demand for workflow step');
+      await this.spawnAgentForRole(step.role, role, context, 0);
+      agentIds = context.roleAssignments.get(step.role);
+    }
+
+    if (!agentIds || agentIds.length === 0) {
+      throw new Error(`Failed to spawn agent for role: ${step.role}`);
+    }
+
     const agentId = agentIds[0];
     const agent = context.agents.get(agentId);
     if (!agent) {
-      throw new Error(`Agent ${agentId} not found`);
+      throw new Error(`Agent ${agentId} not found after spawn`);
     }
 
     // Resolve variables in both task description and input

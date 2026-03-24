@@ -211,14 +211,19 @@ export class ThreadExecutor {
     );
 
     // Send the initial task once this specific session is ready
-    const onReady = (readySession: any) => {
-      if (readySession.id === session.id) {
-        this.logger.info({ threadId }, 'Sending initial task to thread');
-        this.manager.send(session.id, task);
-        this.manager.removeListener('session_ready', onReady);
-      }
-    };
-    this.manager.on('session_ready', onReady);
+    // (skip if task is empty — workflow executor will send the task later)
+    if (task && task.trim()) {
+      const onReady = (readySession: any) => {
+        if (readySession.id === session.id) {
+          this.logger.info({ threadId }, 'Sending initial task to thread');
+          this.manager.send(session.id, task);
+          this.manager.removeListener('session_ready', onReady);
+        }
+      };
+      this.manager.on('session_ready', onReady);
+    } else {
+      this.logger.info({ threadId }, 'No initial task — waiting for workflow to send task');
+    }
 
     return thread;
   }
