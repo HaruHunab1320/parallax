@@ -48,7 +48,6 @@ structure:
           inherit: true
         metadata:
           device: mac
-          agentId: swarm-echo
 
     engineer_a:
       id: engineer_a
@@ -75,7 +74,6 @@ structure:
           inherit: true
         metadata:
           device: pi
-          agentId: swarm-silas
 
     engineer_b:
       id: engineer_b
@@ -102,7 +100,6 @@ structure:
           inherit: true
         metadata:
           device: pi
-          agentId: swarm-sable
 
     engineer_c:
       id: engineer_c
@@ -129,7 +126,6 @@ structure:
           inherit: true
         metadata:
           device: pi
-          agentId: swarm-vero
 
   routing:
     - from: [engineer_a, engineer_b, engineer_c]

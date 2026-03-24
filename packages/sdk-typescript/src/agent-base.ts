@@ -2,6 +2,7 @@ import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
 import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 import { AgentResponse, ensureConfidence } from './types/agent-response';
 import type {
   GatewayThreadSpawnRequest,
@@ -89,6 +90,7 @@ export interface GatewayOptions {
 }
 
 export abstract class ParallaxAgent {
+  public readonly uuid: string;
   protected server: grpc.Server;
   protected registryClient: any;
   protected confidenceProto: any;
@@ -109,6 +111,7 @@ export abstract class ParallaxAgent {
     public readonly capabilities: string[],
     public readonly metadata: Record<string, any> = {}
   ) {
+    this.uuid = uuidv4();
     this.server = new grpc.Server();
     this.loadProtos();
   }
@@ -142,7 +145,7 @@ export abstract class ParallaxAgent {
     return ensureConfidence({
       value,
       confidence,
-      agent: this.id,
+      agent: this.uuid,
       reasoning,
       uncertainties,
       metadata: {
@@ -304,11 +307,11 @@ export abstract class ParallaxAgent {
 
     const request = {
       agent: {
-        id: this.id,
+        id: this.uuid,
         name: this.name,
         endpoint: agentAddress,
         capabilities: this.capabilities,
-        metadata: this.metadata
+        metadata: { ...this.metadata, legacyId: this.id }
       },
       auto_renew: true
     };
@@ -402,7 +405,7 @@ export abstract class ParallaxAgent {
       const response = {
         value_json: JSON.stringify(result.value),
         confidence: result.confidence,
-        agent_id: this.id,
+        agent_id: this.uuid,
         timestamp: {
           seconds: Math.floor(Date.now() / 1000),
           nanos: 0
@@ -433,7 +436,7 @@ export abstract class ParallaxAgent {
         call.write({
           value_json: JSON.stringify(result.value),
           confidence: result.confidence,
-          agent_id: this.id,
+          agent_id: this.uuid,
           timestamp: {
             seconds: Math.floor(Date.now() / 1000),
             nanos: 0
@@ -460,7 +463,7 @@ export abstract class ParallaxAgent {
     callback: grpc.sendUnaryData<any>
   ) {
     callback(null, {
-      agent_id: this.id,
+      agent_id: this.uuid,
       name: this.name,
       capabilities: this.capabilities,
       expertise_level: 'EXPERT',
@@ -514,12 +517,12 @@ export abstract class ParallaxAgent {
 
     // Send AgentHello
     stream.write({
-      request_id: `hello-${this.id}`,
+      request_id: `hello-${this.uuid}`,
       hello: {
-        agent_id: this.id,
+        agent_id: this.uuid,
         agent_name: this.name,
         capabilities: this.capabilities,
-        metadata: this.metadata,
+        metadata: { ...this.metadata, legacyId: this.id },
         heartbeat_interval_ms: heartbeatIntervalMs,
       },
     });
@@ -532,7 +535,7 @@ export abstract class ParallaxAgent {
         stream.write({
           request_id: '',
           heartbeat: {
-            agent_id: this.id,
+            agent_id: this.uuid,
             load: 0,
             status: 'healthy',
           },
@@ -567,7 +570,7 @@ export abstract class ParallaxAgent {
         stream.write({
           request_id: '',
           heartbeat: {
-            agent_id: this.id,
+            agent_id: this.uuid,
             load: 0,
             status: 'healthy',
           },

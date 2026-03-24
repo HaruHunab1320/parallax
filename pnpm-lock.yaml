@@ -1675,6 +1675,9 @@ importers:
       google-protobuf:
         specifier: ^3.21.4
         version: 3.21.4
+      uuid:
+        specifier: ^9.0.0
+        version: 9.0.1
     devDependencies:
       '@bufbuild/buf':
         specifier: ^1.50.0
@@ -1691,6 +1694,9 @@ importers:
       '@types/node':
         specifier: ^22.14.1
         version: 22.16.5
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
       grpc-tools:
         specifier: ^1.12.4
         version: 1.13.0
@@ -12775,6 +12781,10 @@ packages:
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    hasBin: true
+
+  uuid@9.0.1:
+    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
     hasBin: true
 
   v8-compile-cache-lib@3.0.1:
@@ -26427,6 +26437,8 @@ snapshots:
   uuid@11.1.0: {}
 
   uuid@8.3.2: {}
+
+  uuid@9.0.1: {}
 
   v8-compile-cache-lib@3.0.1: {}
 
