@@ -229,11 +229,15 @@ export class WorkflowExecutor extends EventEmitter {
             objective: '',  // Task sent later by workflow step execution
             role: roleId,
             preparation: {
-              workspace: role.threadConfig.workspace,
+              workspace: (role.threadConfig.workspace as any)?.inherit
+            ? { ...(role.threadConfig.workspace || {}), repo: context.variables.get('input')?.repo }
+            : role.threadConfig.workspace,
               env: role.threadConfig.env,
               approvalPreset: role.threadConfig.approvalPreset,
             },
-            workspace: role.threadConfig.workspace,
+            workspace: (role.threadConfig.workspace as any)?.inherit
+            ? { ...(role.threadConfig.workspace || {}), repo: context.variables.get('input')?.repo }
+            : role.threadConfig.workspace,
             env: role.threadConfig.env,
             approvalPreset: role.threadConfig.approvalPreset,
             metadata: {
@@ -250,7 +254,9 @@ export class WorkflowExecutor extends EventEmitter {
         objective: '',  // Task sent later by workflow step execution
         role: roleId,
         preparation: {
-          workspace: role.threadConfig.workspace,
+          workspace: (role.threadConfig.workspace as any)?.inherit
+            ? { ...(role.threadConfig.workspace || {}), repo: context.variables.get('input')?.repo }
+            : role.threadConfig.workspace,
           env: role.threadConfig.env,
           approvalPreset: role.threadConfig.approvalPreset,
         },
