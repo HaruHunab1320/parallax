@@ -49,7 +49,7 @@ export interface WorkspaceServiceOptions {
   /**
    * Credential service for managing git credentials
    */
-  credentialService: CredentialService;
+  credentialService?: CredentialService;
 
   /**
    * Optional logger
@@ -61,14 +61,14 @@ export class WorkspaceService {
   private workspaces: Map<string, Workspace> = new Map();
   private readonly baseDir: string;
   private readonly branchPrefix: string;
-  private readonly credentialService: CredentialService;
+  private readonly credentialService: CredentialService | null;
   private readonly logger?: WorkspaceServiceLogger;
   private readonly eventHandlers: Set<WorkspaceEventHandler> = new Set();
 
   constructor(options: WorkspaceServiceOptions) {
     this.baseDir = options.config.baseDir;
     this.branchPrefix = options.config.branchPrefix || 'parallax';
-    this.credentialService = options.credentialService;
+    this.credentialService = options.credentialService ?? null;
     this.logger = options.logger;
   }
 
@@ -146,19 +146,31 @@ export class WorkspaceService {
       await fs.mkdir(workspacePath, { recursive: true });
 
       // Try to get credentials (optional for public repos)
-      credential = await this.credentialService.getCredentials({
-        repo: config.repo,
-        access: 'write',
-        context: {
-          executionId: config.execution.id,
-          taskId: config.task.id,
-          userId: config.user?.id,
-          reason: `Workspace for ${config.task.role} in ${config.execution.patternName}`,
-        },
-        userProvided: config.userCredentials,
-        // If no userCredentials provided, allow returning null for public repos
-        optional: !config.userCredentials,
-      });
+      if (this.credentialService) {
+        credential = await this.credentialService.getCredentials({
+          repo: config.repo,
+          access: 'write',
+          context: {
+            executionId: config.execution.id,
+            taskId: config.task.id,
+            userId: config.user?.id,
+            reason: `Workspace for ${config.task.role} in ${config.execution.patternName}`,
+          },
+          userProvided: config.userCredentials,
+          optional: !config.userCredentials,
+        });
+      } else if (config.userCredentials?.type === 'pat') {
+        // No credential service — use the user-provided PAT directly
+        credential = {
+          id: `pat-${config.execution.id}`,
+          type: 'pat' as any,
+          token: (config.userCredentials as any).token,
+          repo: config.repo,
+          permissions: ['read', 'write'],
+          expiresAt: new Date(Date.now() + 3600000),
+          provider: 'github' as any,
+        };
+      }
 
       if (credential) {
         await this.emitEvent({
@@ -519,7 +531,7 @@ export class WorkspaceService {
 
     // Revoke credentials (only for clone workspaces with credentials - worktrees share parent's credential)
     if (workspace.strategy === 'clone' && workspace.credential) {
-      await this.credentialService.revokeCredential(workspace.credential.id);
+      await this.credentialService?.revokeCredential(workspace.credential.id);
 
       await this.emitEvent({
         type: 'credential:revoked',
@@ -564,7 +576,7 @@ export class WorkspaceService {
     await Promise.all(workspaces.map((w) => this.cleanup(w.id)));
 
     // Also revoke all credentials for this execution
-    await this.credentialService.revokeForExecution(executionId);
+    await this.credentialService?.revokeForExecution(executionId);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -734,7 +746,7 @@ export class WorkspaceService {
     }
 
     // Get provider from credential service
-    const provider = this.credentialService.getProvider(workspace.credential.provider);
+    const provider = this.credentialService?.getProvider(workspace.credential.provider);
     if (!provider) {
       throw new Error(`Provider not configured: ${workspace.credential.provider}`);
     }
