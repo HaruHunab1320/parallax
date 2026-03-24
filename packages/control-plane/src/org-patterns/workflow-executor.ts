@@ -833,17 +833,20 @@ export class WorkflowExecutor extends EventEmitter {
       const unsubscribe = runtimeService.subscribeThread(
         threadId,
         async (event) => {
+          const eventType = (event.type || (event as any).event_type) as string;
           if (
-            event.type === 'thread_turn_complete' ||
-            event.type === 'thread_completed'
+            eventType === 'thread_turn_complete' ||
+            eventType === 'turn_complete' ||
+            eventType === 'thread_completed' ||
+            eventType === 'completed'
           ) {
             await finalize();
             return;
           }
 
           if (
-            event.type === 'thread_failed' ||
-            event.type === 'thread_stopped'
+            eventType === 'thread_failed' || eventType === 'failed' ||
+            eventType === 'thread_stopped' || eventType === 'stopped'
           ) {
             if (settled) return;
             settled = true;

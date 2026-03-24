@@ -869,11 +869,11 @@ export class TmuxSession extends EventEmitter {
     const formatted = this.adapter.formatInput(message);
     this.transport.sendText(this.tmuxSessionName, formatted);
 
-    // Send Enter separately after a delay for TUI compatibility
-    // 500ms accounts for slow hardware (Pi Zero) and heavy TUI frameworks (Codex, Gemini)
+    // Send Enter after a delay for TUI compatibility.
+    // 1500ms to ensure the TUI has processed the pasted text.
     setTimeout(() => {
       this.transport.sendKey(this.tmuxSessionName, 'enter');
-    }, 500);
+    }, 1500);
 
     return msg;
   }
