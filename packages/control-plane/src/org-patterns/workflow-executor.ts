@@ -221,33 +221,9 @@ export class WorkflowExecutor extends EventEmitter {
     index: number
   ): Promise<void> {
     if (role.threadConfig?.enabled) {
-      const spawnInput = this.options.threadPreparationService
-        ? await this.options.threadPreparationService.prepareSpawnInput({
-            executionId: context.id,
-            name: `${role.name} ${index + 1}`,
-            agentType: Array.isArray(role.agentType) ? role.agentType[0] : role.agentType,
-            objective: '',  // Task sent later by workflow step execution
-            role: roleId,
-            preparation: {
-              workspace: (role.threadConfig.workspace as any)?.inherit
-            ? { ...(role.threadConfig.workspace || {}), repo: context.variables.get('input')?.repo }
-            : role.threadConfig.workspace,
-              env: role.threadConfig.env,
-              approvalPreset: role.threadConfig.approvalPreset,
-            },
-            workspace: (role.threadConfig.workspace as any)?.inherit
-            ? { ...(role.threadConfig.workspace || {}), repo: context.variables.get('input')?.repo }
-            : role.threadConfig.workspace,
-            env: role.threadConfig.env,
-            approvalPreset: role.threadConfig.approvalPreset,
-            metadata: {
-              roleName: role.name,
-              orgPattern: context.pattern.name,
-              ...(role.threadConfig.metadata || {}),
-            },
-            policy: role.threadConfig.policy,
-          })
-        : {
+      // Skip threadPreparationService — it provisions workspaces server-side.
+      // Gateway agents clone repos locally via their thread executor.
+      const spawnInput = {
         executionId: context.id,
         name: `${role.name} ${index + 1}`,
         agentType: Array.isArray(role.agentType) ? role.agentType[0] : role.agentType,
