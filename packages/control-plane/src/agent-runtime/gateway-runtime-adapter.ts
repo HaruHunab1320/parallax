@@ -323,13 +323,35 @@ export class GatewayRuntimeAdapter extends EventEmitter {
   private findGatewayAgent(input: SpawnThreadInput): string | null {
     const agents = this.gateway.getConnectedAgents();
 
-    // Match by agent type
+    // Match by agent type, with optional metadata constraints
     const agentType = input.agentType as string;
+    const requiredMetadata = input.metadata as Record<string, any> || {};
     this.logger.info(
-      { agentType, role: input.role, connectedAgents: Array.from(agents.entries()).map(([id, s]) => ({ id, type: s.metadata?.agentType })) },
+      { agentType, role: input.role, requiredMetadata: Object.keys(requiredMetadata), connectedAgents: Array.from(agents.entries()).map(([id, s]) => ({ id, type: s.metadata?.agentType, device: s.metadata?.device })) },
       'Finding gateway agent for thread'
     );
 
+    // First pass: match by type AND metadata constraints (e.g., device: mac)
+    const metadataKeys = Object.keys(requiredMetadata).filter(k =>
+      !['roleName', 'orgPattern', 'capabilities', 'patternName', 'threadIndex'].includes(k)
+    );
+
+    if (metadataKeys.length > 0) {
+      for (const [id, session] of agents) {
+        const sessionType = session.metadata?.agentType;
+        if (sessionType !== agentType) continue;
+        const hasThread = Array.from(this.threads.values())
+          .some(t => t.gatewayAgentId === id && t.handle.executionId === input.executionId);
+        if (hasThread) continue;
+        // Check metadata constraints
+        const matches = metadataKeys.every(key =>
+          session.metadata?.[key] === requiredMetadata[key]
+        );
+        if (matches) return id;
+      }
+    }
+
+    // Second pass: match by type only (ignore metadata)
     for (const [id, session] of agents) {
       const sessionType = session.metadata?.agentType;
       if (sessionType === agentType) {

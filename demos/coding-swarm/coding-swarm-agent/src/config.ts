@@ -11,6 +11,8 @@ export interface SwarmAgentConfig {
   name: string;
   /** Default coding agent type for this Pi */
   agentType: AdapterType;
+  /** Device type (mac, pi) — used for pattern role matching */
+  device: string;
   /** Gateway endpoint (host:port) */
   gatewayEndpoint: string;
   /** Tmux session prefix */
@@ -30,6 +32,7 @@ export function loadConfig(): SwarmAgentConfig {
     id,
     name,
     agentType,
+    device: process.env.AGENT_DEVICE || 'unknown',
     gatewayEndpoint,
     tmuxPrefix: process.env.TMUX_PREFIX || 'swarm',
     terminalCols: parseInt(process.env.TERMINAL_COLS || '100'),

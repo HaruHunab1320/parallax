@@ -29,7 +29,7 @@ echo ""
 # Start agent in background tmux session
 tmux kill-session -t swarm-agent 2>/dev/null || true
 tmux new-session -d -s swarm-agent \
-  "cd $AGENT_DIR && AGENT_ID=$AGENT_ID AGENT_TYPE=$AGENT_TYPE AGENT_NAME=$AGENT_NAME PARALLAX_GATEWAY=$GATEWAY node dist/index.js"
+  "cd $AGENT_DIR && AGENT_ID=$AGENT_ID AGENT_TYPE=$AGENT_TYPE AGENT_NAME=$AGENT_NAME AGENT_DEVICE=mac PARALLAX_GATEWAY=$GATEWAY node dist/index.js"
 
 echo "Agent running in tmux session 'swarm-agent'"
 echo "Watching for coding CLI sessions..."

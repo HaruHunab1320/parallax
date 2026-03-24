@@ -34,7 +34,8 @@ export class SwarmAgent extends ParallaxAgent {
       {
         type: 'coding-swarm-agent',
         agentType: config.agentType,
-        device: config.id,
+        device: config.device,
+        agentName: config.id,
       }
     );
 
