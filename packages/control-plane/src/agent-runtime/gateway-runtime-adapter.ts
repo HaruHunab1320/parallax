@@ -221,10 +221,12 @@ export class GatewayRuntimeAdapter extends EventEmitter {
   async sendToThread(threadId: string, input: ThreadInput): Promise<void> {
     const info = this.threads.get(threadId);
     if (!info) {
+      this.logger.error({ threadId, knownThreads: Array.from(this.threads.keys()) }, 'Thread not found in gateway runtime for sendToThread');
       throw new Error(`Thread ${threadId} not found in gateway runtime`);
     }
 
     const message = input.message || input.raw || input.keys?.join('') || '';
+    this.logger.info({ threadId, agentId: info.gatewayAgentId, messageLength: message.length }, 'Sending input to thread via gateway');
 
     this.gateway.dispatchThreadInput(
       info.gatewayAgentId,

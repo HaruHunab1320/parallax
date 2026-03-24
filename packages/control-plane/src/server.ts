@@ -323,7 +323,8 @@ export async function createServer(): Promise<express.Application> {
 
   // Start timeout checker — periodically fails timed-out executions
   const timeoutChecker = new TimeoutChecker(database.executions, logger, {
-    defaultTimeoutMs: parseInt(process.env.PARALLAX_DEFAULT_EXECUTION_TIMEOUT || '300000'),
+    // Default 2 hours for thread-based executions (coding agents take time)
+    defaultTimeoutMs: parseInt(process.env.PARALLAX_DEFAULT_EXECUTION_TIMEOUT || '7200000'),
     isLeader: haEnabled && haServices
       ? () => haServices!.leaderElection.isLeader()
       : () => true,
