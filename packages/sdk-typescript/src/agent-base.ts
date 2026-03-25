@@ -775,15 +775,10 @@ export abstract class ParallaxAgent {
       this.gatewayHeartbeatTimer = undefined;
     }
 
-    // Clean up active threads
-    for (const [threadId, entry] of this.activeThreads) {
-      try {
-        entry.cleanup();
-      } catch {
-        // Best-effort cleanup
-      }
-      this.activeThreads.delete(threadId);
-    }
+    // Do NOT clean up active threads on disconnect — they should survive
+    // reconnects. The threads run independently in tmux sessions and will
+    // be re-associated after the gateway reconnects. Only explicit
+    // thread_stop requests should kill threads.
 
     this.gatewayStream = undefined;
 
