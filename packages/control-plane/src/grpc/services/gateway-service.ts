@@ -577,17 +577,22 @@ export class GatewayService extends EventEmitter {
   ): void {
     const session = this.connectedAgents.get(agentId);
     if (!session) {
-      throw new Error(`Gateway agent ${agentId} not connected`);
+      this.logger.warn({ agentId, threadId }, 'Cannot dispatch thread input — agent not connected');
+      return; // Don't throw — let the workflow handle the missing response via timeout
     }
 
-    session.stream.write({
-      request_id: '',
-      thread_input: {
-        thread_id: threadId,
-        input,
-        input_type: inputType,
-      },
-    });
+    try {
+      session.stream.write({
+        request_id: '',
+        thread_input: {
+          thread_id: threadId,
+          input,
+          input_type: inputType,
+        },
+      });
+    } catch (error: any) {
+      this.logger.warn({ agentId, threadId, error: error.message }, 'Failed to write thread input to gateway stream');
+    }
   }
 
   /**
