@@ -150,7 +150,7 @@ export class SwarmAgent extends ParallaxAgent {
    * Routes text to the running tmux session.
    */
   protected async handleGatewayThreadInput(request: GatewayThreadInput): Promise<void> {
-    logger.debug({ threadId: request.thread_id, inputType: request.input_type }, 'Thread input received');
+    logger.info({ threadId: request.thread_id, inputType: request.input_type, inputLength: request.input?.length }, 'Thread input received');
     this.executor.sendInput(request.thread_id, request.input);
   }
 

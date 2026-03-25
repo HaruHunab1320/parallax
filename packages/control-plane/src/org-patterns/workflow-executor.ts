@@ -96,10 +96,19 @@ export class WorkflowExecutor extends EventEmitter {
     let unsubscribeMessages: (() => void) | null = null;
 
     try {
-      // Note: agents are spawned on-demand during workflow step execution,
-      // NOT upfront. This ensures the architect completes before engineers
-      // are spawned, and the architect's output can be interpolated into
-      // engineer tasks.
+      // Boot phase: spawn ALL agents upfront so CLIs can boot in parallel.
+      // No task is sent yet — agents start idle, waiting for input.
+      // This ensures slow CLIs (Gemini, Codex) are ready by the time
+      // the architect finishes planning.
+      await this.initializeAgents(pattern.structure.roles, context);
+
+      // Ready gate: wait for all agents to report ready
+      await this.waitForAllAgentsReady(context);
+
+      this.logger.info(
+        { executionId, agentCount: context.agents.size },
+        'All agents ready — starting workflow execution'
+      );
 
       // Create message router
       const router = new MessageRouter(
@@ -209,6 +218,44 @@ export class WorkflowExecutor extends EventEmitter {
         await this.spawnAgentForRole(roleId, role, context, i);
       }
     }
+  }
+
+  /**
+   * Wait for all spawned thread agents to report ready.
+   * Each agent emits a 'ready' event once its CLI has booted.
+   * Times out after 120s per agent.
+   */
+  private async waitForAllAgentsReady(
+    context: OrgExecutionContext
+  ): Promise<void> {
+    const threadAgents = Array.from(context.agents.values())
+      .filter(a => a.kind === 'thread' && a.threadId);
+
+    if (threadAgents.length === 0) return;
+
+    const READY_TIMEOUT = 120000; // 2 min per agent
+
+    await Promise.all(threadAgents.map(agent => {
+      return new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          this.logger.warn({ threadId: agent.threadId, role: agent.role }, 'Agent ready timeout — proceeding anyway');
+          resolve(); // Don't fail the whole execution, just proceed
+        }, READY_TIMEOUT);
+
+        const unsubscribe = this.runtimeService.subscribeThread(
+          agent.threadId!,
+          (event) => {
+            const eventType = (event.type || (event as any).event_type) as string;
+            if (eventType === 'ready' || eventType === 'thread_ready') {
+              clearTimeout(timer);
+              unsubscribe();
+              this.logger.info({ threadId: agent.threadId, role: agent.role }, 'Agent ready');
+              resolve();
+            }
+          }
+        );
+      });
+    }));
   }
 
   /**
