@@ -555,13 +555,29 @@ export abstract class ParallaxAgent {
           stream.end();
         }
       } else if (message.task_request) {
-        await this.handleGatewayTask(stream, message.request_id, message.task_request);
+        try {
+          await this.handleGatewayTask(stream, message.request_id, message.task_request);
+        } catch (err: any) {
+          console.error(`Error handling task request: ${err.message}`);
+        }
       } else if (message.thread_spawn) {
-        await this.handleGatewayThreadSpawn(stream, message.request_id, message.thread_spawn);
+        try {
+          await this.handleGatewayThreadSpawn(stream, message.request_id, message.thread_spawn);
+        } catch (err: any) {
+          console.error(`Error handling thread spawn: ${err.message}`);
+        }
       } else if (message.thread_input) {
-        await this.handleGatewayThreadInput(message.thread_input);
+        try {
+          await this.handleGatewayThreadInput(message.thread_input);
+        } catch (err: any) {
+          console.error(`Error handling thread input: ${err.message}`);
+        }
       } else if (message.thread_stop) {
-        await this.handleGatewayThreadStop(stream, message.request_id, message.thread_stop);
+        try {
+          await this.handleGatewayThreadStop(stream, message.request_id, message.thread_stop);
+        } catch (err: any) {
+          console.error(`Error handling thread stop: ${err.message}`);
+        }
       } else if (message.cancel_task) {
         console.log(`Task cancelled: ${message.cancel_task.task_id} (${message.cancel_task.reason})`);
         // Cancellation support can be extended in subclasses
