@@ -97,13 +97,11 @@ export class WorkflowExecutor extends EventEmitter {
 
     try {
       // Boot phase: spawn ALL agents upfront so CLIs can boot in parallel.
-      // No task is sent yet — agents start idle, waiting for input.
-      // This ensures slow CLIs (Gemini, Codex) are ready by the time
-      // the architect finishes planning.
+      // Set up ready-event listeners BEFORE spawning so we don't miss
+      // fast-booting agents whose ready event fires during the spawn sequence.
+      const readyGate = this.createReadyGate(pattern.structure.roles, context);
       await this.initializeAgents(pattern.structure.roles, context);
-
-      // Ready gate: wait for all agents to report ready
-      await this.waitForAllAgentsReady(context);
+      await readyGate;
 
       this.logger.info(
         { executionId, agentCount: context.agents.size },
@@ -221,41 +219,59 @@ export class WorkflowExecutor extends EventEmitter {
   }
 
   /**
-   * Wait for all spawned thread agents to report ready.
-   * Each agent emits a 'ready' event once its CLI has booted.
-   * Times out after 120s per agent.
+   * Create a ready gate that resolves when all agents report ready.
+   * Must be called BEFORE initializeAgents so subscriptions catch
+   * ready events that fire during the spawn sequence.
+   *
+   * Returns a promise that resolves when all agents are ready (or timeout).
+   * The gate listens on the gateway service's thread event listeners directly
+   * since the agents aren't spawned yet (no threadToRuntime mapping).
    */
-  private async waitForAllAgentsReady(
+  private createReadyGate(
+    roles: Record<string, OrgRole>,
     context: OrgExecutionContext
   ): Promise<void> {
-    const threadAgents = Array.from(context.agents.values())
-      .filter(a => a.kind === 'thread' && a.threadId);
+    const threadRoles = Object.entries(roles).filter(
+      ([_, role]) => role.threadConfig?.enabled
+    );
+    const totalExpected = threadRoles.reduce(
+      (sum, [_, role]) => sum + (role.singleton ? 1 : role.minInstances || 1),
+      0
+    );
 
-    if (threadAgents.length === 0) return;
+    if (totalExpected === 0) return Promise.resolve();
 
-    const READY_TIMEOUT = 120000; // 2 min per agent
+    const READY_TIMEOUT = 120000;
+    let readyCount = 0;
 
-    await Promise.all(threadAgents.map(agent => {
-      return new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(() => {
-          this.logger.warn({ threadId: agent.threadId, role: agent.role }, 'Agent ready timeout — proceeding anyway');
-          resolve(); // Don't fail the whole execution, just proceed
-        }, READY_TIMEOUT);
-
-        const unsubscribe = this.runtimeService.subscribeThread(
-          agent.threadId!,
-          (event) => {
-            const eventType = (event.type || (event as any).event_type) as string;
-            if (eventType === 'ready' || eventType === 'thread_ready') {
-              clearTimeout(timer);
-              unsubscribe();
-              this.logger.info({ threadId: agent.threadId, role: agent.role }, 'Agent ready');
-              resolve();
-            }
-          }
+    return new Promise<void>((resolve) => {
+      const timer = setTimeout(() => {
+        this.logger.warn(
+          { readyCount, totalExpected },
+          'Ready gate timeout — proceeding with available agents'
         );
-      });
-    }));
+        resolve();
+      }, READY_TIMEOUT);
+
+      // Listen for ALL thread events on the runtime service
+      // (events arrive even before threads are in the threadToRuntime map
+      // because the gateway adapter subscribes during spawnThread)
+      const handler = (data: any) => {
+        const eventType = (data?.event?.event_type || data?.event?.type || '') as string;
+        if (eventType === 'ready' || eventType === 'thread_ready') {
+          readyCount++;
+          const threadId = data?.event?.thread_id || 'unknown';
+          this.logger.info({ threadId, readyCount, totalExpected }, 'Agent ready');
+          if (readyCount >= totalExpected) {
+            clearTimeout(timer);
+            this.runtimeService.removeListener('thread_event', handler);
+            resolve();
+          }
+        }
+      };
+
+      this.runtimeService.on('thread_event', handler);
+    });
   }
 
   /**
