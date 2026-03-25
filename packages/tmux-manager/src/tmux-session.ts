@@ -267,10 +267,11 @@ export class TmuxSession extends EventEmitter {
     if (this._status === 'busy' && this.adapter.detectTaskComplete?.(this.outputBuffer)) {
       this._status = 'ready';
       this._lastBlockingPromptHash = null;
+      const completedOutput = this.outputBuffer;
       this.outputBuffer = '';
       this.clearStallTimer();
       this.emit('status_changed', 'ready');
-      this.emit('task_complete');
+      this.emit('task_complete', { output: completedOutput });
       this.logger.info({ sessionId: this.id }, 'Task complete (adapter fast-path)');
       return;
     }
@@ -401,10 +402,11 @@ export class TmuxSession extends EventEmitter {
 
       this._status = 'ready';
       this._lastBlockingPromptHash = null;
+      const completedOutput = this.outputBuffer;
       this.outputBuffer = '';
       this.clearStallTimer();
       this.emit('status_changed', 'ready');
-      this.emit('task_complete');
+      this.emit('task_complete', { output: completedOutput });
       this.logger.info({ sessionId: this.id }, 'Task complete — agent returned to idle prompt');
     }, TmuxSession.TASK_COMPLETE_DEBOUNCE_MS);
   }
@@ -949,10 +951,11 @@ export class TmuxSession extends EventEmitter {
       case 'task_complete':
         this._status = 'ready';
         this._lastBlockingPromptHash = null;
+        const hookOutput = this.outputBuffer;
         this.outputBuffer = '';
         this.clearStallTimer();
         this.emit('status_changed', 'ready');
-        this.emit('task_complete');
+        this.emit('task_complete', { output: hookOutput });
         break;
       case 'permission_approved':
         this._lastActivityAt = new Date();

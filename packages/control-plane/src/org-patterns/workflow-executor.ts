@@ -856,14 +856,27 @@ export class WorkflowExecutor extends EventEmitter {
         unsubscribe();
       };
 
-      const finalize = async () => {
+      const finalize = async (eventData?: any) => {
         if (settled) return;
         settled = true;
         cleanup();
 
         try {
+          // Extract output from event data (sent by ManagedThread with turn_complete)
+          let output = '';
+          if (eventData) {
+            const dataJson = eventData.data_json || (eventData as any).data_json;
+            if (dataJson) {
+              try {
+                const parsed = JSON.parse(dataJson);
+                output = parsed.output || '';
+              } catch { /* ignore parse errors */ }
+            }
+          }
+
           const thread = await runtimeService.getThread(threadId);
           const summary =
+            output ||
             (thread as any)?.completion?.summary ||
             (thread as any)?.summary ||
             '';
@@ -887,7 +900,7 @@ export class WorkflowExecutor extends EventEmitter {
             eventType === 'thread_completed' ||
             eventType === 'completed'
           ) {
-            await finalize();
+            await finalize(event);
             return;
           }
 

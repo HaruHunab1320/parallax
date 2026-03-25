@@ -181,8 +181,8 @@ export class TmuxManager extends EventEmitter {
       this.emit('session_status_changed', session.toHandle());
     });
 
-    session.on('task_complete', () => {
-      this.emit('task_complete', session.toHandle());
+    session.on('task_complete', (data?: any) => {
+      this.emit('task_complete', session.toHandle(), data);
     });
 
     session.on('tool_running', (info: ToolRunningInfo) => {

@@ -78,9 +78,11 @@ export class ManagedThread {
       }
     });
 
-    on('task_complete', (session: any) => {
+    on('task_complete', (session: any, data?: any) => {
       if (session.id !== sessionId) return;
-      this.emitEvent('turn_complete', {});
+      this.emitEvent('turn_complete', {
+        output: data?.output || '',
+      });
       this.emitStatus('running', 'Turn complete, ready for next input');
     });
 
