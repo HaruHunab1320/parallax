@@ -948,11 +948,11 @@ export class WorkflowExecutor extends EventEmitter {
       }
 
       try {
-        const fullMessage = input
-          ? `${message}\n\nInput:\n${JSON.stringify(input, null, 2)}`
-          : message;
+        // Send only the task message — the input data is already interpolated
+        // into the message via ${step_N_result}. Don't append raw input as
+        // JSON which can be 100KB+.
         await runtimeService.sendToThread(threadId, {
-          message: fullMessage,
+          message,
         });
       } catch (error) {
         if (settled) return;
