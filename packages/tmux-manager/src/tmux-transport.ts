@@ -162,7 +162,23 @@ export class TmuxTransport {
    * Send literal text to the tmux session (no key interpretation).
    */
   sendText(sessionName: string, text: string): void {
-    this.tmuxExec(`send-keys -t ${this.shellEscape(sessionName)} -l ${this.shellEscape(text)}`);
+    // For large texts, use load-buffer + paste-buffer to avoid E2BIG
+    // (shell argument size limit ~128KB on Linux)
+    if (text.length > 50000) {
+      const fs = require('fs');
+      const os = require('os');
+      const path = require('path');
+      const tmpFile = path.join(os.tmpdir(), `tmux-paste-${Date.now()}.txt`);
+      try {
+        fs.writeFileSync(tmpFile, text);
+        this.tmuxExec(`load-buffer ${this.shellEscape(tmpFile)}`);
+        this.tmuxExec(`paste-buffer -t ${this.shellEscape(sessionName)}`);
+      } finally {
+        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+      }
+    } else {
+      this.tmuxExec(`send-keys -t ${this.shellEscape(sessionName)} -l ${this.shellEscape(text)}`);
+    }
   }
 
   /**
