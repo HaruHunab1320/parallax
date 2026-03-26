@@ -156,61 +156,97 @@ workflow:
       description: Git repository URL for the workspace
 
   steps:
-    # Step 0: Architect decomposes the task into 3 subtasks
+    # Step 0: Architect creates subtask 1 for Engineer A
     - type: assign
       role: architect
       task: |
-        Analyze the following project request and create a detailed implementation plan.
-        Break it into exactly 3 independent subtasks that can be worked on in parallel.
-
-        For each subtask, provide:
-        1. A clear title
-        2. Detailed requirements
-        3. Files to create/modify
-        4. Any dependencies on shared interfaces
-
-        Output a structured plan with a shared interfaces section (created first)
-        and 3 subtask sections.
+        You are the architect for this project. Analyze the codebase and create
+        a focused, specific implementation plan for SUBTASK 1 ONLY.
 
         Project: ${input.task}
         Repository: ${input.repo}
 
-    # Step 1: Three engineers implement in parallel
-    - type: parallel
-      steps:
-        - type: assign
-          role: engineer_a
-          task: |
-            Implement Subtask 1 from the architect's plan below.
-            Create all required files, write tests, and commit your work.
-            When done, push your branch and create a pull request with gh pr create.
+        Create the implementation plan for: SimulationController — a game engine
+        component with angel attack phases (Detection, Approach, Contact, Resolution),
+        timers, automatic state changes, and win/lose conditions with start/pause/reset.
 
-            Plan: ${step_0_result}
+        Output ONLY the specific instructions for this one subtask. Include:
+        - Exact files to create/modify
+        - Key interfaces and types
+        - Implementation details
+        - How it integrates with useNervStore
 
-        - type: assign
-          role: engineer_b
-          task: |
-            Implement Subtask 2 from the architect's plan below.
-            Create all required files, write tests, and commit your work.
-            When done, push your branch and create a pull request with gh pr create.
+    # Step 1: Engineer A starts on subtask 1
+    - type: assign
+      role: engineer_a
+      task: |
+        Implement the following subtask. Create all required files, write tests,
+        and commit your work. When done, push your branch and create a PR.
 
-            Plan: ${step_0_result}
+        ${step_0_result}
 
-        - type: assign
-          role: engineer_c
-          task: |
-            Implement Subtask 3 from the architect's plan below.
-            Create all required files, write tests, and commit your work.
-            When done, push your branch and create a pull request with gh pr create.
+    # Step 2: Architect creates subtask 2 for Engineer B
+    - type: assign
+      role: architect
+      task: |
+        Create a focused implementation plan for SUBTASK 2 ONLY.
 
-            Plan: ${step_0_result}
+        Project: ${input.task}
 
-    # Step 2: Architect reviews all engineer output
+        Create the implementation plan for: PilotPanel — dynamic pilot management
+        UI with add/remove pilots, status toggles (ACTIVE/INACTIVE/BERSERK),
+        sync ratio sliders, EVA unit assignment. Terminal commands: pilot --list,
+        pilot --assign.
+
+        Output ONLY the specific instructions for this one subtask. Include:
+        - Exact files to create/modify
+        - Key interfaces and types
+        - Implementation details
+        - How it integrates with useNervStore
+
+    # Step 3: Engineer B starts on subtask 2
+    - type: assign
+      role: engineer_b
+      task: |
+        Implement the following subtask. Create all required files, write tests,
+        and commit your work. When done, push your branch and create a PR.
+
+        ${step_2_result}
+
+    # Step 4: Architect creates subtask 3 for Engineer C
+    - type: assign
+      role: architect
+      task: |
+        Create a focused implementation plan for SUBTASK 3 ONLY.
+
+        Project: ${input.task}
+
+        Create the implementation plan for: AlertLog with real-time telemetry —
+        scrollable timestamped alert feed with severity filtering
+        (INFO/WARNING/CRITICAL/EMERGENCY), acknowledgment, plus simulated
+        telemetry stream driving sync ratio fluctuations and MAGI re-votes.
+
+        Output ONLY the specific instructions for this one subtask. Include:
+        - Exact files to create/modify
+        - Key interfaces and types
+        - Implementation details
+        - How it integrates with useNervStore
+
+    # Step 5: Engineer C starts on subtask 3
+    - type: assign
+      role: engineer_c
+      task: |
+        Implement the following subtask. Create all required files, write tests,
+        and commit your work. When done, push your branch and create a PR.
+
+        ${step_4_result}
+
+    # Step 6: Architect reviews all engineer output
     - type: review
       reviewer: architect
-      subject: ${step_1_result}
+      subject: ${step_5_result}
 
-    # Step 3: Aggregate final results
+    # Step 7: Aggregate final results
     - type: aggregate
       method: merge
 
