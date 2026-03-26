@@ -871,11 +871,14 @@ export class TmuxSession extends EventEmitter {
     const formatted = this.adapter.formatInput(message);
     this.transport.sendText(this.tmuxSessionName, formatted);
 
-    // Send Enter after a delay for TUI compatibility.
-    // 1500ms to ensure the TUI has processed the pasted text.
-    setTimeout(() => {
-      this.transport.sendKey(this.tmuxSessionName, 'enter');
-    }, 1500);
+    // sendText is synchronous (execSync per chunk). All text is now delivered.
+    // Wait 1500ms for the TUI to finish processing, then send Enter.
+    // Use setImmediate to ensure we're past any stale setTimeout callbacks.
+    setImmediate(() => {
+      setTimeout(() => {
+        this.transport.sendKey(this.tmuxSessionName, 'enter');
+      }, 1500);
+    });
 
     return msg;
   }
