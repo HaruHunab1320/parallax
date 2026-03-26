@@ -164,17 +164,14 @@ export class TmuxTransport {
   sendText(sessionName: string, text: string): void {
     // For large texts, use load-buffer + paste-buffer to avoid E2BIG
     // (shell argument size limit ~128KB on Linux)
-    if (text.length > 50000) {
-      const fs = require('fs');
-      const os = require('os');
-      const path = require('path');
-      const tmpFile = path.join(os.tmpdir(), `tmux-paste-${Date.now()}.txt`);
-      try {
-        fs.writeFileSync(tmpFile, text);
-        this.tmuxExec(`load-buffer ${this.shellEscape(tmpFile)}`);
-        this.tmuxExec(`paste-buffer -t ${this.shellEscape(sessionName)}`);
-      } finally {
-        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+    // For large text, chunk send-keys to avoid E2BIG (Linux shell arg limit ~128KB).
+    // We use send-keys -l (not paste-buffer) because TUI apps like Claude Code
+    // treat pasted text differently from typed input.
+    const CHUNK_SIZE = 4000; // Safe chunk size for shell arguments after escaping
+    if (text.length > CHUNK_SIZE) {
+      for (let i = 0; i < text.length; i += CHUNK_SIZE) {
+        const chunk = text.slice(i, i + CHUNK_SIZE);
+        this.tmuxExec(`send-keys -t ${this.shellEscape(sessionName)} -l ${this.shellEscape(chunk)}`);
       }
     } else {
       this.tmuxExec(`send-keys -t ${this.shellEscape(sessionName)} -l ${this.shellEscape(text)}`);
