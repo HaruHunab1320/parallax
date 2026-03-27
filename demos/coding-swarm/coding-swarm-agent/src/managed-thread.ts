@@ -1,13 +1,13 @@
 /**
  * Managed Thread
  *
- * Bridges pty-manager session events to gateway thread protocol messages.
+ * Bridges tmux-manager session events to gateway thread protocol messages.
  * Each ManagedThread wraps a single coding CLI session and translates
- * pty-manager events to GatewayThreadEvent/GatewayThreadStatusUpdate.
+ * pty-manager-style events to GatewayThreadEvent/GatewayThreadStatusUpdate.
  */
 
 import type { GatewayThreadEvent, GatewayThreadStatusUpdate } from '@parallaxai/sdk-typescript';
-import type { PTYManager } from 'pty-manager';
+import type { TmuxManager } from 'tmux-manager';
 import type { Logger } from 'pino';
 
 export interface ManagedThreadInfo {
@@ -25,7 +25,7 @@ export class ManagedThread {
 
   constructor(
     private readonly info: ManagedThreadInfo,
-    private readonly manager: PTYManager,
+    private readonly manager: TmuxManager,
     private readonly onEvent: (event: GatewayThreadEvent) => void,
     private readonly onStatusUpdate: (update: GatewayThreadStatusUpdate) => void,
     private readonly logger: Logger
@@ -78,10 +78,10 @@ export class ManagedThread {
       }
     });
 
-    on('task_complete', (session: any) => {
+    on('task_complete', (session: any, data?: any) => {
       if (session.id !== sessionId) return;
       this.emitEvent('turn_complete', {
-        output: '',
+        output: data?.output || '',
       });
       this.emitStatus('running', 'Turn complete, ready for next input');
     });
@@ -146,7 +146,7 @@ export class ManagedThread {
   }
 
   /**
-   * Send text input to the thread's PTY session.
+   * Send text input to the thread's tmux session.
    */
   sendInput(input: string): void {
     this.manager.send(this.info.sessionId, input);
@@ -163,7 +163,7 @@ export class ManagedThread {
   }
 
   /**
-   * Stop the underlying PTY session.
+   * Stop the underlying tmux session.
    */
   async stop(force: boolean = false): Promise<void> {
     this.cleanup();

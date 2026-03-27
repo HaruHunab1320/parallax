@@ -40,6 +40,7 @@ export class SwarmAgent extends ParallaxAgent {
     );
 
     this.executor = new ThreadExecutor(config.agentType, logger, {
+      tmuxPrefix: config.tmuxPrefix,
       terminalCols: config.terminalCols,
       terminalRows: config.terminalRows,
     });
@@ -62,7 +63,7 @@ export class SwarmAgent extends ParallaxAgent {
 
   /**
    * Handle thread spawn request from the control plane.
-   * Creates a new coding CLI session via pty-manager.
+   * Creates a new coding CLI session via tmux-manager.
    */
   protected async handleGatewayThreadSpawn(
     stream: grpc.ClientDuplexStream<any, any>,
@@ -146,7 +147,7 @@ export class SwarmAgent extends ParallaxAgent {
 
   /**
    * Handle thread input from the control plane.
-   * Routes text to the running PTY session.
+   * Routes text to the running tmux session.
    */
   protected async handleGatewayThreadInput(request: GatewayThreadInput): Promise<void> {
     logger.info({ threadId: request.thread_id, inputType: request.input_type, inputLength: request.input?.length }, 'Thread input received');

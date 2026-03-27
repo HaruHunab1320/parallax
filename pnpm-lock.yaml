@@ -311,9 +311,9 @@ importers:
       pino-pretty:
         specifier: ^13.0.0
         version: 13.0.0
-      pty-manager:
+      tmux-manager:
         specifier: workspace:*
-        version: link:../../../packages/pty-manager
+        version: link:../../../packages/tmux-manager
     devDependencies:
       '@grpc/grpc-js':
         specifier: ^1.12.6
