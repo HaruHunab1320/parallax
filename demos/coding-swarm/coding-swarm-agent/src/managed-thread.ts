@@ -24,7 +24,7 @@ export class ManagedThread {
   private readonly listeners: Array<() => void> = [];
 
   constructor(
-    private readonly info: ManagedThreadInfo,
+    public readonly info: ManagedThreadInfo,
     private readonly manager: TmuxManager,
     private readonly onEvent: (event: GatewayThreadEvent) => void,
     private readonly onStatusUpdate: (update: GatewayThreadStatusUpdate) => void,

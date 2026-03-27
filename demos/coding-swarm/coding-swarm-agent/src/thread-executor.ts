@@ -230,6 +230,8 @@ export class ThreadExecutor {
 
   /**
    * Send input to a running thread.
+   * Uses deferred delivery — waits for session_ready if not already ready,
+   * then adds a per-adapter settle delay before sending.
    */
   sendInput(threadId: string, input: string): void {
     const thread = this.threads.get(threadId);
@@ -237,7 +239,57 @@ export class ThreadExecutor {
       this.logger.warn({ threadId }, 'Thread not found for input');
       return;
     }
-    thread.sendInput(input);
+
+    const session = this.manager.get(thread.info.sessionId);
+    if (!session) {
+      this.logger.warn({ threadId, sessionId: thread.info.sessionId }, 'Session not found for input');
+      return;
+    }
+
+    const POST_READY_DELAY: Record<string, number> = {
+      claude: 800,
+      codex: 2000,
+      gemini: 1500,
+      aider: 200,
+      hermes: 200,
+    };
+
+    const settleMs = POST_READY_DELAY[thread.info.adapterType] || 500;
+
+    const deliverTask = () => {
+      this.logger.info({ threadId, settleMs, adapterType: thread.info.adapterType }, 'Delivering task after settle delay');
+      setTimeout(() => {
+        thread.sendInput(input);
+        // Retry: check after 5s if agent accepted (output grew)
+        setTimeout(() => {
+          const currentSession = this.manager.get(thread.info.sessionId);
+          if (currentSession && currentSession.status === 'ready') {
+            this.logger.info({ threadId }, 'Agent may not have accepted task — retrying');
+            thread.sendInput(input);
+          }
+        }, 5000);
+      }, settleMs);
+    };
+
+    if (session.status === 'ready') {
+      deliverTask();
+    } else {
+      this.logger.info({ threadId, sessionStatus: session.status }, 'Session not ready — deferring task delivery');
+      const onReady = (readySession: any) => {
+        if (readySession.id === thread.info.sessionId) {
+          this.manager.removeListener('session_ready', onReady);
+          deliverTask();
+        }
+      };
+      this.manager.on('session_ready', onReady);
+
+      // Timeout: force delivery after 30s even if not ready
+      setTimeout(() => {
+        this.manager.removeListener('session_ready', onReady);
+        this.logger.warn({ threadId }, 'Session ready timeout — force delivering task');
+        thread.sendInput(input);
+      }, 30000);
+    }
   }
 
   /**
