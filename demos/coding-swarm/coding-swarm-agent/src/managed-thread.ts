@@ -79,7 +79,9 @@ export class ManagedThread {
     });
 
     on('task_complete', (session: any, data?: any) => {
+      this.logger.info({ sessionId: session?.id, expectedSessionId: sessionId, match: session?.id === sessionId }, 'task_complete event received');
       if (session.id !== sessionId) return;
+      this.logger.info({ threadId }, 'Emitting turn_complete to gateway');
       this.emitEvent('turn_complete', {
         output: data?.output || '',
       });

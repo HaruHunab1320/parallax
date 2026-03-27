@@ -156,7 +156,7 @@ workflow:
       description: Git repository URL for the workspace
 
   steps:
-    # Step 0: Architect creates subtask 1 for Engineer A
+    # Step 0: Architect creates plan for subtask 1 (SimulationController)
     - type: assign
       role: architect
       task: |
@@ -176,16 +176,7 @@ workflow:
         - Implementation details
         - How it integrates with useNervStore
 
-    # Step 1: Engineer A starts on subtask 1
-    - type: assign
-      role: engineer_a
-      task: |
-        Implement the following subtask. Create all required files, write tests,
-        and commit your work. When done, push your branch and create a PR.
-
-        ${step_0_result}
-
-    # Step 2: Architect creates subtask 2 for Engineer B
+    # Step 1: Architect creates plan for subtask 2 (PilotPanel)
     - type: assign
       role: architect
       task: |
@@ -204,16 +195,7 @@ workflow:
         - Implementation details
         - How it integrates with useNervStore
 
-    # Step 3: Engineer B starts on subtask 2
-    - type: assign
-      role: engineer_b
-      task: |
-        Implement the following subtask. Create all required files, write tests,
-        and commit your work. When done, push your branch and create a PR.
-
-        ${step_2_result}
-
-    # Step 4: Architect creates subtask 3 for Engineer C
+    # Step 2: Architect creates plan for subtask 3 (AlertLog + Telemetry)
     - type: assign
       role: architect
       task: |
@@ -232,16 +214,34 @@ workflow:
         - Implementation details
         - How it integrates with useNervStore
 
-    # Step 5: Engineer C starts on subtask 3
-    - type: assign
-      role: engineer_c
-      task: |
-        Implement the following subtask. Create all required files, write tests,
-        and commit your work. When done, push your branch and create a PR.
+    # Step 3: All 3 engineers start in parallel with their specific plans
+    - type: parallel
+      steps:
+        - type: assign
+          role: engineer_a
+          task: |
+            Implement the following subtask. Create all required files, write tests,
+            and commit your work. When done, push your branch and create a PR.
 
-        ${step_4_result}
+            ${step_0_result}
 
-    # Step 6: Architect reviews all engineer output
+        - type: assign
+          role: engineer_b
+          task: |
+            Implement the following subtask. Create all required files, write tests,
+            and commit your work. When done, push your branch and create a PR.
+
+            ${step_1_result}
+
+        - type: assign
+          role: engineer_c
+          task: |
+            Implement the following subtask. Create all required files, write tests,
+            and commit your work. When done, push your branch and create a PR.
+
+            ${step_2_result}
+
+    # Step 4: Architect reviews all engineer output
     - type: review
       reviewer: architect
       subject: ${step_5_result}
