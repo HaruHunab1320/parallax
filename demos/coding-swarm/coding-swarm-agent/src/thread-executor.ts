@@ -2,11 +2,11 @@
  * Thread Executor
  *
  * Manages the lifecycle of coding agent threads on this machine.
- * Uses tmux-manager + coding-agent-adapters for session management,
+ * Uses pty-manager + coding-agent-adapters for session management,
  * and local git operations for workspace provisioning.
  */
 
-import { TmuxManager } from 'tmux-manager';
+import { PTYManager } from 'pty-manager';
 import { createAdapter } from 'coding-agent-adapters';
 import type { GatewayThreadEvent, GatewayThreadStatusUpdate } from '@parallaxai/sdk-typescript';
 import type { Logger } from 'pino';
@@ -43,7 +43,7 @@ interface Policy {
 }
 
 export class ThreadExecutor {
-  private manager: TmuxManager;
+  private manager: PTYManager;
   private threads: Map<string, ManagedThread> = new Map();
   private workspacesDir: string;
 
@@ -51,14 +51,12 @@ export class ThreadExecutor {
     private readonly defaultAdapterType: AdapterType,
     private readonly logger: Logger,
     config?: {
-      tmuxPrefix?: string;
       workspacesDir?: string;
       terminalCols?: number;
       terminalRows?: number;
     }
   ) {
-    this.manager = new TmuxManager({
-      sessionPrefix: config?.tmuxPrefix || 'swarm',
+    this.manager = new PTYManager({
       logger: {
         info: (...args: any[]) => typeof args[0] === 'string' ? logger.info(args[0]) : logger.info(args[0], args[1]),
         warn: (...args: any[]) => typeof args[0] === 'string' ? logger.warn(args[0]) : logger.warn(args[0], args[1]),
@@ -180,7 +178,7 @@ export class ThreadExecutor {
       ...preparation.env,
     };
 
-    // Spawn the coding CLI via tmux-manager
+    // Spawn the coding CLI via pty-manager
     const session = await this.manager.spawn({
       name: threadId,
       type: adapterType,
@@ -326,7 +324,7 @@ export class ThreadExecutor {
   }
 
   /**
-   * Shut down all threads and the tmux manager.
+   * Shut down all threads and the PTY manager.
    */
   async shutdown(): Promise<void> {
     for (const [threadId, thread] of this.threads) {
