@@ -34,8 +34,9 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   readonly adapterType = 'claude';
   readonly displayName = 'Claude Code';
 
-  /** Heaviest TUI — status bar, shortcuts, update notices, /ide suggestions */
-  override readonly readySettleMs: number = 500;
+  /** Heaviest TUI — status bar, shortcuts, update notices, /ide suggestions.
+   *  3000ms needed because detectReady fires early during boot rendering. */
+  override readonly readySettleMs: number = 3000;
 
   readonly installation: InstallationInfo = {
     command: 'npm install -g @anthropic-ai/claude-code',
@@ -455,9 +456,11 @@ jq -nc \
       }
     }
 
-    // Bypass Permissions confirmation prompt
-    if (/Bypass Permissions mode|accept all responsibility/i.test(stripped) &&
-        /No.*exit|Yes.*I accept/i.test(stripped)) {
+    // Bypass Permissions confirmation prompt — only match the actual modal dialog,
+    // NOT the status bar hint "bypass permissions on". The dialog has numbered options.
+    if (/Bypass Permissions mode.*accept all responsibility/is.test(stripped) &&
+        /❯\s*1\.\s*No.*exit/i.test(stripped) &&
+        /2\.\s*Yes.*I accept/i.test(stripped)) {
       return {
         detected: true,
         type: 'permission',

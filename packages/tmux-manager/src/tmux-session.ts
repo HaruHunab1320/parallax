@@ -637,7 +637,9 @@ export class TmuxSession extends EventEmitter {
     }
 
     // Auto-response / blocking prompt detection
-    if (this._status !== 'stopping' && this._status !== 'stopped') {
+    // Skip during 'busy' — the agent is processing a task we just sent.
+    // Auto-responding during busy state sends stray keys that corrupt input.
+    if (this._status !== 'stopping' && this._status !== 'stopped' && this._status !== 'busy') {
       const blockingPrompt = this.detectAndHandleBlockingPrompt();
       if (blockingPrompt) return;
     }
@@ -871,14 +873,13 @@ export class TmuxSession extends EventEmitter {
     const formatted = this.adapter.formatInput(message);
     this.transport.sendText(this.tmuxSessionName, formatted);
 
-    // sendText is synchronous (execSync per chunk). All text is now delivered.
-    // Wait 1500ms for the TUI to finish processing, then send Enter.
-    // Use setImmediate to ensure we're past any stale setTimeout callbacks.
-    setImmediate(() => {
-      setTimeout(() => {
-        this.transport.sendKey(this.tmuxSessionName, 'enter');
-      }, 1500);
-    });
+    // Send Enter after text. Use execSync sleep to ensure the TUI
+    // has processed the text before Enter arrives.
+    const { execSync } = require('child_process');
+    try {
+      execSync('sleep 1.5');
+    } catch { /* ignore */ }
+    this.transport.sendKey(this.tmuxSessionName, 'enter');
 
     return msg;
   }
