@@ -885,7 +885,13 @@ export class WorkflowExecutor extends EventEmitter {
             if (dataJson) {
               try {
                 const parsed = JSON.parse(dataJson);
-                output = parsed.output || '';
+                let raw = parsed.output || '';
+                // Strip ANSI escape codes from terminal output
+                // eslint-disable-next-line no-control-regex
+                raw = raw.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+                // Strip literal \u001b[...] sequences (JSON-escaped ANSI)
+                raw = raw.replace(/\\u001b\[[0-9;]*[a-zA-Z]/g, '');
+                output = raw;
               } catch { /* ignore parse errors */ }
             }
           }
