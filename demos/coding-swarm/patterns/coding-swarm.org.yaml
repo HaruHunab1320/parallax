@@ -78,8 +78,8 @@ structure:
     engineer_b:
       id: engineer_b
       name: Engineer B
-      description: Implements subtask using Codex on Raspberry Pi
-      agentType: codex
+      description: Implements subtask using Claude Code on Raspberry Pi
+      agentType: claude
       singleton: true
       capabilities:
         - implementation
@@ -104,8 +104,8 @@ structure:
     engineer_c:
       id: engineer_c
       name: Engineer C
-      description: Implements subtask using Gemini CLI on Raspberry Pi
-      agentType: gemini
+      description: Implements subtask using Claude Code on Raspberry Pi
+      agentType: claude
       singleton: true
       capabilities:
         - implementation
