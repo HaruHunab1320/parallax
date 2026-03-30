@@ -1,6 +1,6 @@
 {
   "name": "adapter-types",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared adapter interface, base class, and types for PTY/tmux session managers",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

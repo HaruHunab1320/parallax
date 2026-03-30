@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.15.0] - 2026-03-30
+
+### Added
+- **37 approval-preset tests** — comprehensive test coverage for `generateApprovalConfig()` across all adapter types and preset levels.
+- **Sandbox validation warning** — logged once when sandbox mode is not available for the adapter.
+
+### Fixed
+- **Auto-response disabled during busy state** — `tryAutoResponse()` no longer fires when the session status is `busy`, preventing TUI input corruption from stale status bar text matching auto-response rules.
+- **`readySettleMs` tuning** — increased to 3000ms for Claude adapter; adjusted for Codex and Gemini to prevent premature task delivery.
+- **Bypass permissions detection tightened** — Claude adapter now matches the modal dialog pattern specifically, not the status bar.
+- **Enter key timing** — switched from blocking `execSync('sleep 1.5')` to non-blocking `setTimeout` to prevent event loop starvation during Enter key delivery.
+
+### Changed
+- **Console.log migrated to Pino** — `printMissingAdapters()` and other diagnostic output now uses structured Pino logging instead of `console.log`.
+- **`--dangerously-skip-permissions` flag** — added to autonomous preset CLI flags for Claude adapter.
+- Biome linter applied (formatting normalization across all source files).
+
 ## [0.14.0] - 2026-03-13
 
 ### Added
