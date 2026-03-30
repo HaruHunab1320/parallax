@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  parseAgentUri,
-  parseLogsUri,
   listAgentResources,
   listLogsResources,
+  parseAgentUri,
+  parseLogsUri,
   readAgentResource,
   readLogsResource,
 } from '../src/resources/index.js';
@@ -108,7 +108,10 @@ describe('Agent Resources', () => {
 
   describe('readAgentResource', () => {
     it('should read existing agent resource', async () => {
-      const result = await readAgentResource(mockRuntime as any, 'agents://agent-1');
+      const result = await readAgentResource(
+        mockRuntime as any,
+        'agents://agent-1'
+      );
 
       expect(result).not.toBeNull();
       expect(result!.contents).toHaveLength(1);
@@ -122,13 +125,19 @@ describe('Agent Resources', () => {
     });
 
     it('should return null for invalid URI', async () => {
-      const result = await readAgentResource(mockRuntime as any, 'invalid://uri');
+      const result = await readAgentResource(
+        mockRuntime as any,
+        'invalid://uri'
+      );
 
       expect(result).toBeNull();
     });
 
     it('should return null for non-existent agent', async () => {
-      const result = await readAgentResource(mockRuntime as any, 'agents://non-existent');
+      const result = await readAgentResource(
+        mockRuntime as any,
+        'agents://non-existent'
+      );
 
       expect(result).toBeNull();
     });
@@ -155,7 +164,10 @@ describe('Logs Resources', () => {
 
   describe('readLogsResource', () => {
     it('should read agent logs', async () => {
-      const result = await readLogsResource(mockRuntime as any, 'logs://agent-1');
+      const result = await readLogsResource(
+        mockRuntime as any,
+        'logs://agent-1'
+      );
 
       expect(result).not.toBeNull();
       expect(result!.contents).toHaveLength(1);
@@ -166,13 +178,19 @@ describe('Logs Resources', () => {
     });
 
     it('should return null for invalid URI', async () => {
-      const result = await readLogsResource(mockRuntime as any, 'invalid://uri');
+      const result = await readLogsResource(
+        mockRuntime as any,
+        'invalid://uri'
+      );
 
       expect(result).toBeNull();
     });
 
     it('should return null for non-existent agent', async () => {
-      const result = await readLogsResource(mockRuntime as any, 'logs://non-existent');
+      const result = await readLogsResource(
+        mockRuntime as any,
+        'logs://non-existent'
+      );
 
       expect(result).toBeNull();
     });

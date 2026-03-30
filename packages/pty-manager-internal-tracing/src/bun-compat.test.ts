@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { isBun } from './bun-compat';
 
 describe('bun-compat', () => {
@@ -69,9 +69,7 @@ describe('bun-compat', () => {
     it('should support default export as adapter array', () => {
       // Alternative: module.default is an array of adapters
       const mockModule = {
-        default: [
-          { adapterType: 'aider' },
-        ],
+        default: [{ adapterType: 'aider' }],
       };
 
       expect(Array.isArray(mockModule.default)).toBe(true);

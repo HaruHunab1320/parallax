@@ -6,9 +6,9 @@
  * multiple input formats.
  */
 
-import { OrgPattern, WorkflowStep, OrgStructure } from './types';
+import * as fs from 'node:fs/promises';
 import * as yaml from 'js-yaml';
-import * as fs from 'fs/promises';
+import type { OrgPattern, OrgStructure, WorkflowStep } from './types';
 
 export interface CompilerOptions {
   /** Include comments in generated Prism */
@@ -62,8 +62,12 @@ export function compileOrgPattern(
   if (includeComments) {
     lines.push('// === Team Structure ===');
   }
-  lines.push(`let roles = ${JSON.stringify(Object.keys(pattern.structure.roles), null, 2)};`);
-  lines.push(`let roleExecution = ${JSON.stringify(buildRoleExecutionMetadata(pattern.structure), null, 2)};`);
+  lines.push(
+    `let roles = ${JSON.stringify(Object.keys(pattern.structure.roles), null, 2)};`
+  );
+  lines.push(
+    `let roleExecution = ${JSON.stringify(buildRoleExecutionMetadata(pattern.structure), null, 2)};`
+  );
   lines.push('');
 
   // Map agents to roles based on their index
@@ -72,12 +76,14 @@ export function compileOrgPattern(
   const roleIds = Object.keys(pattern.structure.roles);
   let agentIndex = 0;
   for (const [roleId, role] of Object.entries(pattern.structure.roles)) {
-    const count = role.singleton ? 1 : (role.minInstances || 1);
+    const count = role.singleton ? 1 : role.minInstances || 1;
     lines.push(`let _roleAgents_${roleId} = [];`);
     lines.push(`let _ri_${roleId} = ${agentIndex};`);
     lines.push(`while (_ri_${roleId} < ${agentIndex + count}) {`);
     lines.push(`  if (_ri_${roleId} < agentResults.length) {`);
-    lines.push(`    _roleAgents_${roleId} = [..._roleAgents_${roleId}, agentResults[_ri_${roleId}]];`);
+    lines.push(
+      `    _roleAgents_${roleId} = [..._roleAgents_${roleId}, agentResults[_ri_${roleId}]];`
+    );
     lines.push(`  }`);
     lines.push(`  _ri_${roleId} = _ri_${roleId} + 1;`);
     lines.push(`}`);
@@ -98,7 +104,11 @@ export function compileOrgPattern(
   }
 
   // Generate step variables
-  const stepCode = compileWorkflowSteps(pattern.workflow.steps, pattern.structure, includeComments);
+  const stepCode = compileWorkflowSteps(
+    pattern.workflow.steps,
+    pattern.structure,
+    includeComments
+  );
   lines.push(...stepCode);
 
   // Generate output
@@ -107,7 +117,9 @@ export function compileOrgPattern(
     lines.push('// === Final Output ===');
   }
 
-  const outputVar = pattern.workflow.output || 'step_' + (pattern.workflow.steps.length - 1) + '_result';
+  const outputVar =
+    pattern.workflow.output ||
+    `step_${pattern.workflow.steps.length - 1}_result`;
   lines.push(`let finalResult = {`);
   lines.push(`  patternName: "${pattern.name}",`);
   lines.push(`  workflow: "${pattern.workflow.name}",`);
@@ -134,7 +146,8 @@ export function compileOrgPattern(
     metadata: {
       name: pattern.name,
       version: pattern.version || '1.0.0',
-      description: pattern.description || `Compiled from org-chart: ${pattern.name}`,
+      description:
+        pattern.description || `Compiled from org-chart: ${pattern.name}`,
       input: pattern.workflow.input || {},
       agents: {
         capabilities: allCapabilities,
@@ -142,12 +155,12 @@ export function compileOrgPattern(
         maxAgents: agentCounts.max,
       },
       threads: threadMetadata.enabled ? threadMetadata : undefined,
-      workspace: pattern.metadata?.workspace || (
+      workspace:
+        pattern.metadata?.workspace ||
         // Auto-enable workspace if the workflow input has a 'repo' field
-        pattern.workflow?.input?.repo
+        (pattern.workflow?.input?.repo
           ? { enabled: true, branchStrategy: 'feature_branch' }
-          : undefined
-      ),
+          : undefined),
       metadata: {
         ...(pattern.metadata || {}),
         roleExecution: buildRoleExecutionMetadata(pattern.structure),
@@ -179,11 +192,27 @@ function compileWorkflowSteps(
         break;
 
       case 'parallel':
-        lines.push(...compileParallelStep(step, varName, index, structure, includeComments));
+        lines.push(
+          ...compileParallelStep(
+            step,
+            varName,
+            index,
+            structure,
+            includeComments
+          )
+        );
         break;
 
       case 'sequential':
-        lines.push(...compileSequentialStep(step, varName, index, structure, includeComments));
+        lines.push(
+          ...compileSequentialStep(
+            step,
+            varName,
+            index,
+            structure,
+            includeComments
+          )
+        );
         break;
 
       case 'review':
@@ -199,7 +228,15 @@ function compileWorkflowSteps(
         break;
 
       case 'condition':
-        lines.push(...compileConditionStep(step, varName, index, structure, includeComments));
+        lines.push(
+          ...compileConditionStep(
+            step,
+            varName,
+            index,
+            structure,
+            includeComments
+          )
+        );
         break;
 
       case 'select':
@@ -232,15 +269,25 @@ function compileAssignStep(
 
   if (threadEnabled) {
     lines.push(`// Explicit thread-backed orchestration for this role`);
-    lines.push(`let _assign_agent_${varName} = _assign_roleAgents_${varName}[0];`);
+    lines.push(
+      `let _assign_agent_${varName} = _assign_roleAgents_${varName}[0];`
+    );
     lines.push(`let _assign_threadOps_${varName} = {`);
-    lines.push(`  spawn: spawnRoleThread("${step.role}", ${JSON.stringify(step.task)}),`);
-    lines.push(`  input: sendRoleThreadInput("${step.role}", _assign_agent_${varName}, ${JSON.stringify(step.task)}, ${JSON.stringify(step.input || null)}),`);
-    lines.push(`  awaitResult: awaitRoleThread("${step.role}", _assign_agent_${varName}, "thread_turn_complete")`);
+    lines.push(
+      `  spawn: spawnRoleThread("${step.role}", ${JSON.stringify(step.task)}),`
+    );
+    lines.push(
+      `  input: sendRoleThreadInput("${step.role}", _assign_agent_${varName}, ${JSON.stringify(step.task)}, ${JSON.stringify(step.input || null)}),`
+    );
+    lines.push(
+      `  awaitResult: awaitRoleThread("${step.role}", _assign_agent_${varName}, "thread_turn_complete")`
+    );
     lines.push(`};`);
     lines.push(`let ${varName} = null;`);
     lines.push(`if (_assign_roleAgents_${varName}.length == 0) {`);
-    lines.push(`  ${varName} = { error: "No agents for role: ${step.role}", confidence: 0 };`);
+    lines.push(
+      `  ${varName} = { error: "No agents for role: ${step.role}", confidence: 0 };`
+    );
     lines.push(`} else {`);
     lines.push(`  ${varName} = {`);
     lines.push(`    role: "${step.role}",`);
@@ -255,10 +302,14 @@ function compileAssignStep(
     lines.push(`}`);
   } else {
     lines.push(`// Get result from first available agent in this role`);
-    lines.push(`let _assign_agent_${varName} = _assign_roleAgents_${varName}[0];`);
+    lines.push(
+      `let _assign_agent_${varName} = _assign_roleAgents_${varName}[0];`
+    );
     lines.push(`let ${varName} = null;`);
     lines.push(`if (_assign_roleAgents_${varName}.length == 0) {`);
-    lines.push(`  ${varName} = { error: "No agents for role: ${step.role}", confidence: 0 };`);
+    lines.push(
+      `  ${varName} = { error: "No agents for role: ${step.role}", confidence: 0 };`
+    );
     lines.push(`} else {`);
     lines.push(`  ${varName} = {`);
     lines.push(`    role: "${step.role}",`);
@@ -280,15 +331,13 @@ function compileParallelStep(
   structure: OrgStructure,
   includeComments: boolean
 ): string[] {
-  const lines: string[] = [
-    `let ${varName} = [];`,
-  ];
+  const lines: string[] = [`let ${varName} = [];`];
 
   step.steps.forEach((subStep, subIndex) => {
     const subVarName = `step_${stepIndex}_sub_${subIndex}`;
     const subCode = compileWorkflowSteps([subStep], structure, includeComments);
     // Rename variable identifiers only (not inside string literals)
-    const renamedCode = subCode.map(line => {
+    const renamedCode = subCode.map((line) => {
       const parts = line.split('"');
       const result = parts.map((part, i) => {
         if (i % 2 === 0) {
@@ -313,14 +362,12 @@ function compileSequentialStep(
   structure: OrgStructure,
   includeComments: boolean
 ): string[] {
-  const lines: string[] = [
-    `let ${varName} = [];`,
-  ];
+  const lines: string[] = [`let ${varName} = [];`];
 
   step.steps.forEach((subStep, subIndex) => {
     const subVarName = `step_${stepIndex}_seq_${subIndex}`;
     const subCode = compileWorkflowSteps([subStep], structure, includeComments);
-    const renamedCode = subCode.map(line => {
+    const renamedCode = subCode.map((line) => {
       const parts = line.split('"');
       const result = parts.map((part, i) => {
         if (i % 2 === 0) {
@@ -353,14 +400,20 @@ function compileReviewStep(
   ];
 
   if (threadEnabled) {
-    lines.push(`let _review_thread_${varName} = sendRoleThreadInput("${step.reviewer}", _review_reviewer_${varName}, "review", ${JSON.stringify(step.subject)});`);
+    lines.push(
+      `let _review_thread_${varName} = sendRoleThreadInput("${step.reviewer}", _review_reviewer_${varName}, "review", ${JSON.stringify(step.subject)});`
+    );
   }
 
   lines.push(`let ${varName} = null;`);
   lines.push(`if (_review_agents_${varName}.length == 0) {`);
-  lines.push(`  ${varName} = { approved: true, confidence: 0.5, reason: "No reviewer available" };`);
+  lines.push(
+    `  ${varName} = { approved: true, confidence: 0.5, reason: "No reviewer available" };`
+  );
   lines.push(`} else {`);
-  lines.push(`  let _review_approved_${varName} = (_review_reviewer_${varName}?.confidence ?? 0) > 0.6;`);
+  lines.push(
+    `  let _review_approved_${varName} = (_review_reviewer_${varName}?.confidence ?? 0) > 0.6;`
+  );
   lines.push(`  let _review_feedback_${varName} = "Needs revision";`);
   lines.push(`  if (_review_approved_${varName}) {`);
   lines.push(`    _review_feedback_${varName} = "Looks good";`);
@@ -394,18 +447,26 @@ function compileApproveStep(
   ];
 
   if (threadEnabled) {
-    lines.push(`let _approve_thread_${varName} = sendRoleThreadInput("${step.approver}", _approve_approver_${varName}, "approve", ${JSON.stringify(step.subject)});`);
+    lines.push(
+      `let _approve_thread_${varName} = sendRoleThreadInput("${step.approver}", _approve_approver_${varName}, "approve", ${JSON.stringify(step.subject)});`
+    );
   }
 
   lines.push(`let ${varName} = null;`);
   lines.push(`if (_approve_agents_${varName}.length == 0) {`);
-  lines.push(`  ${varName} = { approved: false, reason: "No approver available" };`);
+  lines.push(
+    `  ${varName} = { approved: false, reason: "No approver available" };`
+  );
   lines.push(`} else {`);
-  lines.push(`  let _approve_approved_${varName} = (_approve_approver_${varName}?.confidence ?? 0) > 0.7;`);
+  lines.push(
+    `  let _approve_approved_${varName} = (_approve_approver_${varName}?.confidence ?? 0) > 0.7;`
+  );
   lines.push(`  ${varName} = {`);
   lines.push(`    approver: "${step.approver}",`);
   lines.push(`    approved: _approve_approved_${varName},`);
-  lines.push(`    confidence: _approve_approver_${varName}?.confidence ?? 0.7,`);
+  lines.push(
+    `    confidence: _approve_approver_${varName}?.confidence ?? 0.7,`
+  );
   if (threadEnabled) {
     lines.push(`    thread: _approve_thread_${varName}`);
   } else {
@@ -448,22 +509,30 @@ function compileConditionStep(
   lines.push(`if (${checkExpr}) {`);
 
   // Compile then branch
-  const thenCode = compileWorkflowSteps([step.then], structure, includeComments);
+  const thenCode = compileWorkflowSteps(
+    [step.then],
+    structure,
+    includeComments
+  );
   const thenVarName = `step_${stepIndex}_then`;
-  const renamedThenCode = thenCode.map(line =>
+  const renamedThenCode = thenCode.map((line) =>
     line.replace(/step_0_result/g, thenVarName)
   );
-  lines.push(...renamedThenCode.map(l => '  ' + l));
+  lines.push(...renamedThenCode.map((l) => `  ${l}`));
   lines.push(`  ${varName} = ${thenVarName};`);
 
   if (step.else) {
     lines.push(`} else {`);
-    const elseCode = compileWorkflowSteps([step.else], structure, includeComments);
+    const elseCode = compileWorkflowSteps(
+      [step.else],
+      structure,
+      includeComments
+    );
     const elseVarName = `step_${stepIndex}_else`;
-    const renamedElseCode = elseCode.map(line =>
+    const renamedElseCode = elseCode.map((line) =>
       line.replace(/step_0_result/g, elseVarName)
     );
-    lines.push(...renamedElseCode.map(l => '  ' + l));
+    lines.push(...renamedElseCode.map((l) => `  ${l}`));
     lines.push(`  ${varName} = ${elseVarName};`);
   }
 
@@ -551,7 +620,7 @@ function generateHelperFunctions(): string[] {
     `    type: "spawnThread",`,
     `    role: roleId,`,
     `    objective: objective,`,
-    `    mode: "thread"`,  // Default to thread; roleExecution metadata is in the pattern header
+    `    mode: "thread"`, // Default to thread; roleExecution metadata is in the pattern header
     `  };`,
     `}`,
     ``,
@@ -588,7 +657,10 @@ function extractCapabilities(structure: OrgStructure): string[] {
   return Array.from(capabilities);
 }
 
-function calculateAgentCounts(structure: OrgStructure): { min: number; max: number } {
+function calculateAgentCounts(structure: OrgStructure): {
+  min: number;
+  max: number;
+} {
   let min = 0;
   let max = 0;
 
@@ -610,7 +682,9 @@ function extractThreadMetadata(structure: OrgStructure): Record<string, any> {
     .filter(([_, role]) => role.threadConfig?.enabled)
     .map(([roleId, role]) => ({
       roleId,
-      agentType: Array.isArray(role.agentType) ? role.agentType[0] : role.agentType,
+      agentType: Array.isArray(role.agentType)
+        ? role.agentType[0]
+        : role.agentType,
       objective: role.threadConfig?.objective,
       approvalPreset: role.threadConfig?.approvalPreset,
     }));
@@ -621,12 +695,16 @@ function extractThreadMetadata(structure: OrgStructure): Record<string, any> {
   };
 }
 
-function buildRoleExecutionMetadata(structure: OrgStructure): Record<string, any> {
+function buildRoleExecutionMetadata(
+  structure: OrgStructure
+): Record<string, any> {
   const entries = Object.entries(structure.roles).map(([roleId, role]) => [
     roleId,
     {
       mode: role.threadConfig?.enabled ? 'thread' : 'agent',
-      agentType: Array.isArray(role.agentType) ? role.agentType[0] : role.agentType,
+      agentType: Array.isArray(role.agentType)
+        ? role.agentType[0]
+        : role.agentType,
       approvalPreset: role.threadConfig?.approvalPreset,
     },
   ]);
@@ -641,7 +719,9 @@ function capitalize(str: string): string {
 /**
  * Load an org-chart pattern from a YAML file
  */
-export async function loadOrgPatternFromFile(filePath: string): Promise<OrgPattern> {
+export async function loadOrgPatternFromFile(
+  filePath: string
+): Promise<OrgPattern> {
   const content = await fs.readFile(filePath, 'utf-8');
   return yaml.load(content) as OrgPattern;
 }

@@ -1,6 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { TracerProvider, TracingConfig, getGlobalTracer } from './tracer-provider';
 import pino from 'pino';
+import { describe, expect, it } from 'vitest';
+import {
+  getGlobalTracer,
+  TracerProvider,
+  type TracingConfig,
+} from './tracer-provider';
 
 const logger = pino({ level: 'silent' });
 

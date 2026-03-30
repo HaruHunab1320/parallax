@@ -1,5 +1,5 @@
 import { drawString as fontDrawString } from './font';
-import { SpriteFrame } from './types';
+import type { SpriteFrame } from './types';
 
 /**
  * 128x64 frame buffer in SSD1306 page-column format.

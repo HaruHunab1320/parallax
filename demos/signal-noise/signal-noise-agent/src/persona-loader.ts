@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export interface PersonaConfig {
   id: string;
@@ -71,8 +71,10 @@ function parseFrontMatter(content: string): {
     const key = line.slice(0, colonIdx).trim();
     let value = line.slice(colonIdx + 1).trim();
     // Strip surrounding quotes
-    if ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))) {
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
       value = value.slice(1, -1);
     }
     frontMatter[key] = value;

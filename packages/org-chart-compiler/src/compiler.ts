@@ -4,21 +4,21 @@
  * Main compiler class for org-chart patterns.
  */
 
+import * as fs from 'node:fs/promises';
 import * as yaml from 'js-yaml';
-import * as fs from 'fs/promises';
+import { builtInTargets, getTarget } from './targets';
+import { buildJsonPlan } from './targets/json.target';
 import type {
-  OrgPattern,
-  OrgStructure,
+  CompileContext,
   CompileOptions,
   CompileResult,
   CompileTarget,
-  CompileContext,
-  ValidationResult,
+  OrgPattern,
+  OrgStructure,
   PatternMetadata,
+  ValidationResult,
 } from './types';
 import { validatePattern } from './validation/validator';
-import { builtInTargets, getTarget } from './targets';
-import { buildJsonPlan } from './targets/json.target';
 
 /**
  * Custom target registry
@@ -47,7 +47,7 @@ export class OrgChartCompiler {
   static async loadFromFile(filePath: string): Promise<OrgPattern> {
     const content = await fs.readFile(filePath, 'utf-8');
     const isJson = filePath.endsWith('.json');
-    return this.parse(content, isJson ? 'json' : 'yaml');
+    return OrgChartCompiler.parse(content, isJson ? 'json' : 'yaml');
   }
 
   /**
@@ -60,14 +60,23 @@ export class OrgChartCompiler {
   /**
    * Compile a pattern to the specified target
    */
-  static compile(pattern: OrgPattern, options: CompileOptions = {}): CompileResult {
-    const targetName = typeof options.target === 'string' ? options.target : options.target?.name || 'prism';
-    const target = typeof options.target === 'object'
-      ? options.target
-      : getTarget(targetName) || customTargets.get(targetName);
+  static compile(
+    pattern: OrgPattern,
+    options: CompileOptions = {}
+  ): CompileResult {
+    const targetName =
+      typeof options.target === 'string'
+        ? options.target
+        : options.target?.name || 'prism';
+    const target =
+      typeof options.target === 'object'
+        ? options.target
+        : getTarget(targetName) || customTargets.get(targetName);
 
     if (!target) {
-      throw new Error(`Unknown target: ${targetName}. Available targets: ${this.getTargets().join(', ')}`);
+      throw new Error(
+        `Unknown target: ${targetName}. Available targets: ${OrgChartCompiler.getTargets().join(', ')}`
+      );
     }
 
     const includeComments = options.includeComments ?? true;
@@ -113,11 +122,12 @@ export class OrgChartCompiler {
     const output = target.join(parts);
 
     // Build metadata
-    const metadata = this.extractMetadata(pattern);
+    const metadata = OrgChartCompiler.extractMetadata(pattern);
 
     return {
       name: pattern.name,
-      output: options.prettyPrint !== false ? output : output.replace(/\n+/g, ' '),
+      output:
+        options.prettyPrint !== false ? output : output.replace(/\n+/g, ' '),
       format: target.format,
       metadata,
     };
@@ -131,11 +141,16 @@ export class OrgChartCompiler {
     outputPath?: string,
     options?: CompileOptions
   ): Promise<string> {
-    const pattern = await this.loadFromFile(inputPath);
-    const result = this.compile(pattern, options);
+    const pattern = await OrgChartCompiler.loadFromFile(inputPath);
+    const result = OrgChartCompiler.compile(pattern, options);
 
     // Determine output path
-    const ext = result.format === 'json' ? '.json' : result.format === 'yaml' ? '.yaml' : '.prism';
+    const ext =
+      result.format === 'json'
+        ? '.json'
+        : result.format === 'yaml'
+          ? '.yaml'
+          : '.prism';
     const outPath = outputPath || inputPath.replace(/\.ya?ml$/, ext);
 
     // Write output
@@ -183,14 +198,19 @@ export class OrgChartCompiler {
    * Extract metadata from a pattern
    */
   private static extractMetadata(pattern: OrgPattern): PatternMetadata {
-    const capabilities = this.extractCapabilities(pattern.structure);
-    const agentCounts = this.calculateAgentCounts(pattern.structure);
+    const capabilities = OrgChartCompiler.extractCapabilities(
+      pattern.structure
+    );
+    const agentCounts = OrgChartCompiler.calculateAgentCounts(
+      pattern.structure
+    );
     const roles = Object.keys(pattern.structure.roles);
 
     return {
       name: pattern.name,
       version: pattern.version || '1.0.0',
-      description: pattern.description || `Compiled from org-chart: ${pattern.name}`,
+      description:
+        pattern.description || `Compiled from org-chart: ${pattern.name}`,
       input: pattern.workflow.input || {},
       capabilities,
       agentCounts,
@@ -216,7 +236,10 @@ export class OrgChartCompiler {
   /**
    * Calculate min/max agent counts from roles
    */
-  private static calculateAgentCounts(structure: OrgStructure): { min: number; max: number } {
+  private static calculateAgentCounts(structure: OrgStructure): {
+    min: number;
+    max: number;
+  } {
     let min = 0;
     let max = 0;
 
@@ -237,14 +260,17 @@ export class OrgChartCompiler {
 /**
  * Create a custom compile target
  */
-export function createTarget(config: Partial<CompileTarget> & { name: string }): CompileTarget {
+export function createTarget(
+  config: Partial<CompileTarget> & { name: string }
+): CompileTarget {
   // Use prism target as base
   return {
     format: config.format || 'code',
     emitHeader: config.emitHeader || (() => ''),
     emitRole: config.emitRole || ((_role, id) => `// Role: ${id}`),
     emitWorkflow: config.emitWorkflow || ((wf) => `// Workflow: ${wf.name}`),
-    emitStep: config.emitStep || ((step, idx) => `// Step ${idx}: ${step.type}`),
+    emitStep:
+      config.emitStep || ((step, idx) => `// Step ${idx}: ${step.type}`),
     emitFooter: config.emitFooter || (() => ''),
     join: config.join || ((parts) => parts.join('\n')),
     ...config,

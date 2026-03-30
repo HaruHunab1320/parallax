@@ -4,16 +4,16 @@
  * REST API for managing local CLI agent sessions.
  */
 
-import express, { Request, Response } from 'express';
-import { WebSocketServer, WebSocket } from 'ws';
-import { createServer, Server, IncomingMessage } from 'http';
-import { Logger } from 'pino';
-import { LocalRuntime } from './local-runtime';
-import {
+import { createServer, type IncomingMessage, type Server } from 'node:http';
+import type {
   AgentConfig,
   SpawnThreadInput,
   ThreadInput,
 } from '@parallaxai/runtime-interface';
+import express, { type Request, type Response } from 'express';
+import type { Logger } from 'pino';
+import { WebSocket, WebSocketServer } from 'ws';
+import type { LocalRuntime } from './local-runtime';
 
 export interface RuntimeServerOptions {
   port: number;
@@ -340,7 +340,11 @@ export class RuntimeServer {
   private broadcast(event: string, data: any): void {
     if (!this.wss) return;
 
-    const message = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
+    const message = JSON.stringify({
+      event,
+      data,
+      timestamp: new Date().toISOString(),
+    });
 
     this.wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -353,7 +357,11 @@ export class RuntimeServer {
     const subscribers = this.agentSubscribers.get(agentId);
     if (!subscribers) return;
 
-    const message = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
+    const message = JSON.stringify({
+      event,
+      data,
+      timestamp: new Date().toISOString(),
+    });
 
     subscribers.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -472,74 +480,85 @@ export class RuntimeServer {
    * Streams raw PTY data for xterm.js integration
    */
   private setupTerminalWebSocket(): void {
-    this.terminalWss!.on('connection', (ws: WebSocket, req: IncomingMessage, agentId: string) => {
-      this.logger.info({ agentId }, 'Terminal WebSocket connection');
+    this.terminalWss!.on(
+      'connection',
+      (ws: WebSocket, _req: IncomingMessage, agentId: string) => {
+        this.logger.info({ agentId }, 'Terminal WebSocket connection');
 
-      // Attach to the agent's terminal
-      const terminal = this.runtime.attachTerminal(agentId);
+        // Attach to the agent's terminal
+        const terminal = this.runtime.attachTerminal(agentId);
 
-      if (!terminal) {
-        this.logger.warn({ agentId }, 'Terminal attach failed - agent not found');
-        ws.close(4404, 'Agent not found');
-        return;
-      }
-
-      // Track connection
-      if (!this.terminalConnections.has(agentId)) {
-        this.terminalConnections.set(agentId, new Set());
-      }
-      this.terminalConnections.get(agentId)!.add(ws);
-
-      // Send initial message
-      ws.send(JSON.stringify({
-        type: 'connected',
-        agentId,
-        timestamp: new Date().toISOString(),
-      }));
-
-      // Forward PTY output to WebSocket
-      const unsubscribe = terminal.onData((data: string) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          // Send raw terminal data as binary/text
-          ws.send(data);
+        if (!terminal) {
+          this.logger.warn(
+            { agentId },
+            'Terminal attach failed - agent not found'
+          );
+          ws.close(4404, 'Agent not found');
+          return;
         }
-      });
 
-      // Handle incoming data from xterm.js
-      ws.on('message', (data: Buffer | ArrayBuffer | Buffer[]) => {
-        try {
-          const message = data.toString();
+        // Track connection
+        if (!this.terminalConnections.has(agentId)) {
+          this.terminalConnections.set(agentId, new Set());
+        }
+        this.terminalConnections.get(agentId)!.add(ws);
 
-          // Check if it's a control message (JSON)
-          if (message.startsWith('{')) {
-            const ctrl = JSON.parse(message);
+        // Send initial message
+        ws.send(
+          JSON.stringify({
+            type: 'connected',
+            agentId,
+            timestamp: new Date().toISOString(),
+          })
+        );
 
-            if (ctrl.type === 'resize' && ctrl.cols && ctrl.rows) {
-              terminal.resize(ctrl.cols, ctrl.rows);
-              this.logger.debug({ agentId, cols: ctrl.cols, rows: ctrl.rows }, 'Terminal resized');
-            }
-          } else {
-            // Raw terminal input - write directly to PTY
-            terminal.write(message);
+        // Forward PTY output to WebSocket
+        const unsubscribe = terminal.onData((data: string) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            // Send raw terminal data as binary/text
+            ws.send(data);
           }
-        } catch {
-          // Not JSON, treat as raw input
-          terminal.write(data.toString());
-        }
-      });
+        });
 
-      // Clean up on close
-      ws.on('close', () => {
-        this.logger.info({ agentId }, 'Terminal WebSocket disconnected');
-        unsubscribe();
-        this.terminalConnections.get(agentId)?.delete(ws);
-      });
+        // Handle incoming data from xterm.js
+        ws.on('message', (data: Buffer | ArrayBuffer | Buffer[]) => {
+          try {
+            const message = data.toString();
 
-      ws.on('error', (error: Error) => {
-        this.logger.error({ agentId, error }, 'Terminal WebSocket error');
-        unsubscribe();
-      });
-    });
+            // Check if it's a control message (JSON)
+            if (message.startsWith('{')) {
+              const ctrl = JSON.parse(message);
+
+              if (ctrl.type === 'resize' && ctrl.cols && ctrl.rows) {
+                terminal.resize(ctrl.cols, ctrl.rows);
+                this.logger.debug(
+                  { agentId, cols: ctrl.cols, rows: ctrl.rows },
+                  'Terminal resized'
+                );
+              }
+            } else {
+              // Raw terminal input - write directly to PTY
+              terminal.write(message);
+            }
+          } catch {
+            // Not JSON, treat as raw input
+            terminal.write(data.toString());
+          }
+        });
+
+        // Clean up on close
+        ws.on('close', () => {
+          this.logger.info({ agentId }, 'Terminal WebSocket disconnected');
+          unsubscribe();
+          this.terminalConnections.get(agentId)?.delete(ws);
+        });
+
+        ws.on('error', (error: Error) => {
+          this.logger.error({ agentId, error }, 'Terminal WebSocket error');
+          unsubscribe();
+        });
+      }
+    );
   }
 
   /**
@@ -555,17 +574,19 @@ export class RuntimeServer {
       const threadIdFilter = url.searchParams.get('threadId');
 
       // Send initial message
-      ws.send(JSON.stringify({
-        type: 'connected',
-        filter:
-          agentIdFilter || threadIdFilter
-            ? {
-                ...(agentIdFilter ? { agentId: agentIdFilter } : {}),
-                ...(threadIdFilter ? { threadId: threadIdFilter } : {}),
-              }
-            : null,
-        timestamp: new Date().toISOString(),
-      }));
+      ws.send(
+        JSON.stringify({
+          type: 'connected',
+          filter:
+            agentIdFilter || threadIdFilter
+              ? {
+                  ...(agentIdFilter ? { agentId: agentIdFilter } : {}),
+                  ...(threadIdFilter ? { threadId: threadIdFilter } : {}),
+                }
+              : null,
+          timestamp: new Date().toISOString(),
+        })
+      );
 
       // Helper to send event if it matches filter
       const sendEvent = (event: string, data: Record<string, unknown>) => {
@@ -586,23 +607,31 @@ export class RuntimeServer {
           if (eventThreadId && eventThreadId !== threadIdFilter) return;
         }
 
-        ws.send(JSON.stringify({
-          event,
-          data,
-          timestamp: new Date().toISOString(),
-        }));
+        ws.send(
+          JSON.stringify({
+            event,
+            data,
+            timestamp: new Date().toISOString(),
+          })
+        );
       };
 
       // Subscribe to runtime events
       const handlers: Record<string, (...args: unknown[]) => void> = {
-        agent_started: (agent: unknown) => sendEvent('agent_started', { agent }),
+        agent_started: (agent: unknown) =>
+          sendEvent('agent_started', { agent }),
         agent_ready: (agent: unknown) => sendEvent('agent_ready', { agent }),
-        agent_stopped: (agent: unknown, reason: unknown) => sendEvent('agent_stopped', { agent, reason: reason as string }),
-        agent_error: (agent: unknown, error: unknown) => sendEvent('agent_error', { agent, error: error as string }),
-        login_required: (agent: unknown, loginUrl: unknown) => sendEvent('login_required', { agent, loginUrl: loginUrl as string }),
+        agent_stopped: (agent: unknown, reason: unknown) =>
+          sendEvent('agent_stopped', { agent, reason: reason as string }),
+        agent_error: (agent: unknown, error: unknown) =>
+          sendEvent('agent_error', { agent, error: error as string }),
+        login_required: (agent: unknown, loginUrl: unknown) =>
+          sendEvent('login_required', { agent, loginUrl: loginUrl as string }),
         message: (message: unknown) => sendEvent('message', { message }),
-        question: (agent: unknown, question: unknown) => sendEvent('question', { agent, question: question as string }),
-        thread_event: (thread: unknown, event: unknown) => sendEvent('thread_event', { thread, event }),
+        question: (agent: unknown, question: unknown) =>
+          sendEvent('question', { agent, question: question as string }),
+        thread_event: (thread: unknown, event: unknown) =>
+          sendEvent('thread_event', { thread, event }),
       };
 
       // Attach all handlers
@@ -617,7 +646,12 @@ export class RuntimeServer {
 
           // Ping/pong for keepalive
           if (msg.type === 'ping') {
-            ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
+            ws.send(
+              JSON.stringify({
+                type: 'pong',
+                timestamp: new Date().toISOString(),
+              })
+            );
           }
         } catch (error) {
           this.logger.error({ error }, 'Events WebSocket message error');

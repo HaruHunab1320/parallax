@@ -36,12 +36,7 @@ export interface AdapterPatterns {
  */
 const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
   claude: {
-    ready: [
-      'Claude Code',
-      'How can I help',
-      'What would you like',
-      'Ready',
-    ],
+    ready: ['Claude Code', 'How can I help', 'What would you like', 'Ready'],
     auth: [
       'ANTHROPIC_API_KEY',
       'API key not found',
@@ -49,17 +44,9 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
       'Please sign in',
       'Invalid API key',
     ],
-    blocking: [
-      'update available',
-      '[y/n]',
-    ],
-    loading: [
-      'Reading X files…',
-    ],
-    turnComplete: [
-      'Cooked for 1m 6s',
-      '<CustomVerb> for 4m 39s',
-    ],
+    blocking: ['update available', '[y/n]'],
+    loading: ['Reading X files…'],
+    turnComplete: ['Cooked for 1m 6s', '<CustomVerb> for 4m 39s'],
     toolWait: [],
     exit: [],
     source: 'baseline',
@@ -80,10 +67,7 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
       'gcloud auth',
       'Application Default Credentials',
     ],
-    blocking: [
-      'update available',
-      '[y/n]',
-    ],
+    blocking: ['update available', '[y/n]'],
     loading: [
       '<phrase> (esc to cancel, 25s)',
       'Waiting for user confirmation...',
@@ -92,38 +76,22 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
       'Warming up the AI hamsters',
     ],
     turnComplete: [],
-    toolWait: [
-      'Interactive shell awaiting input... press tab to focus shell',
-    ],
-    exit: [
-      'Agent powering down. Goodbye!',
-    ],
+    toolWait: ['Interactive shell awaiting input... press tab to focus shell'],
+    exit: ['Agent powering down. Goodbye!'],
     source: 'baseline',
   },
 
   codex: {
-    ready: [
-      'Codex',
-      'How can I help',
-      'Ready',
-    ],
+    ready: ['Codex', 'How can I help', 'Ready'],
     auth: [
       'OPENAI_API_KEY',
       'API key not found',
       'Unauthorized',
       'Invalid API key',
     ],
-    blocking: [
-      'update available',
-      '[y/n]',
-    ],
-    loading: [
-      '• Working (0s • esc to interrupt)',
-      'Booting MCP server: alpha',
-    ],
-    turnComplete: [
-      'Worked for 1m 05s',
-    ],
+    blocking: ['update available', '[y/n]'],
+    loading: ['• Working (0s • esc to interrupt)', 'Booting MCP server: alpha'],
+    turnComplete: ['Worked for 1m 05s'],
     toolWait: [
       'Waiting for background terminal · <command>',
       'Searching the web',
@@ -133,67 +101,40 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
   },
 
   aider: {
-    ready: [
-      'Aider',
-      'What would you like',
-      'Ready',
-    ],
-    auth: [
-      'API key',
-      'OPENAI_API_KEY',
-      'ANTHROPIC_API_KEY',
-      'No API key',
-    ],
-    blocking: [
-      '(Y)es/(N)o',
-      '[y/n]',
-    ],
+    ready: ['Aider', 'What would you like', 'Ready'],
+    auth: ['API key', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'No API key'],
+    blocking: ['(Y)es/(N)o', '[y/n]'],
     loading: [
       'Waiting for <model>',
       'Waiting for LLM',
       'Generating commit message with <model>',
     ],
-    turnComplete: [
-      'Aider is waiting for your input',
-    ],
+    turnComplete: ['Aider is waiting for your input'],
     toolWait: [],
     exit: [],
     source: 'baseline',
   },
   hermes: {
-    ready: [
-      "❯",
-      "⚕ Hermes",
-      "Welcome to Hermes Agent",
-    ],
+    ready: ['❯', '⚕ Hermes', 'Welcome to Hermes Agent'],
     auth: [
       "isn't configured yet",
-      "no API keys or providers found",
-      "Run setup now? [Y/n]",
+      'no API keys or providers found',
+      'Run setup now? [Y/n]',
     ],
     blocking: [
-      "Hermes needs your input",
-      "Sudo Password Required",
-      "Dangerous Command",
+      'Hermes needs your input',
+      'Sudo Password Required',
+      'Dangerous Command',
     ],
-    loading: [
-      "deliberating...",
-      "(0.0s)",
-      "⚕ ❯",
-    ],
-    turnComplete: [
-      "╭─ ⚕ Hermes",
-      "❯",
-    ],
+    loading: ['deliberating...', '(0.0s)', '⚕ ❯'],
+    turnComplete: ['╭─ ⚕ Hermes', '❯'],
     toolWait: [
-      "Hermes needs your input",
-      "Sudo Password Required",
-      "Dangerous Command",
+      'Hermes needs your input',
+      'Sudo Password Required',
+      'Dangerous Command',
     ],
-    exit: [
-      "Goodbye! ⚕",
-    ],
-    source: "baseline",
+    exit: ['Goodbye! ⚕'],
+    source: 'baseline',
   },
 };
 
@@ -227,7 +168,7 @@ async function tryLoadFromMonitor(
     // Dynamic import - will fail gracefully if package not installed
     // Uses string variable to avoid TypeScript trying to resolve the module
     const moduleName = 'agent-adapter-monitor';
-    const monitor = await import(/* webpackIgnore: true */ moduleName) as {
+    const monitor = (await import(/* webpackIgnore: true */ moduleName)) as {
       getPatternsForVersion: (
         adapter: string,
         version: string
@@ -341,7 +282,9 @@ export function getBaselinePatterns(adapter: AdapterType): AdapterPatterns {
 /**
  * Check if dynamic patterns are available
  */
-export async function hasDynamicPatterns(adapter: AdapterType): Promise<boolean> {
+export async function hasDynamicPatterns(
+  adapter: AdapterType
+): Promise<boolean> {
   const patterns = await tryLoadFromMonitor(adapter);
   return patterns !== null;
 }

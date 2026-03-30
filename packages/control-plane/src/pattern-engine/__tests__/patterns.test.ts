@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PatternEngine } from '../pattern-engine';
-import { RuntimeManager } from '../../runtime-manager';
-import { EtcdRegistry } from '../../registry';
-import { createMockAgents, MockAgent } from './pattern-test-utils';
+import path from 'node:path';
 import { pino } from 'pino';
-import path from 'path';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { EtcdRegistry } from '../../registry';
+import { RuntimeManager } from '../../runtime-manager';
+import { PatternEngine } from '../pattern-engine';
+import { createMockAgents, type MockAgent } from './pattern-test-utils';
 
 describe('Pattern Execution Tests', () => {
   let patternEngine: PatternEngine;
@@ -16,7 +16,12 @@ describe('Pattern Execution Tests', () => {
   beforeEach(async () => {
     // Create real RuntimeManager with Prism runtime
     runtimeManager = new RuntimeManager(
-      { maxInstances: 2, instanceTimeout: 30000, warmupInstances: 1, metricsEnabled: false },
+      {
+        maxInstances: 2,
+        instanceTimeout: 30000,
+        warmupInstances: 1,
+        metricsEnabled: false,
+      },
       logger
     );
 
@@ -39,11 +44,13 @@ describe('Pattern Execution Tests', () => {
     mockAgents = createMockAgents(5);
 
     // Override agent selection to use mock agents (with addresses for agentProxy)
-    mockAgents.forEach((a, i) => (a as any).endpoint = `mock-agent-${i}:50051`);
+    mockAgents.forEach(
+      (a, i) => ((a as any).endpoint = `mock-agent-${i}:50051`)
+    );
     (patternEngine as any).selectAgents = async () => mockAgents;
 
     // Mock agentProxy to bridge to mock agents instead of real gRPC
-    const agentMap = new Map(mockAgents.map(a => [(a as any).endpoint, a]));
+    const agentMap = new Map(mockAgents.map((a) => [(a as any).endpoint, a]));
     (patternEngine as any).agentProxy = {
       healthCheck: async () => true,
       executeTask: async (address: string, task: any) => {
@@ -67,7 +74,7 @@ describe('Pattern Execution Tests', () => {
 
       const result = await patternEngine.executePattern('ConsensusBuilder', {
         task: 'Test consensus',
-        data: { test: true }
+        data: { test: true },
       });
 
       expect(result.status).toBe('completed');
@@ -90,7 +97,7 @@ describe('Pattern Execution Tests', () => {
 
       const result = await patternEngine.executePattern('ConsensusBuilder', {
         task: 'Test low consensus',
-        data: {}
+        data: {},
       });
 
       expect(result.status).toBe('completed');
@@ -111,7 +118,7 @@ describe('Pattern Execution Tests', () => {
       const result = await patternEngine.executePattern('ConfidenceCascade', {
         task: 'Test cascade',
         data: {},
-        minConfidence: 0.85
+        minConfidence: 0.85,
       });
 
       expect(result.status).toBe('completed');
@@ -127,7 +134,7 @@ describe('Pattern Execution Tests', () => {
       const result = await patternEngine.executePattern('ConfidenceCascade', {
         task: 'Test early stop',
         data: {},
-        minConfidence: 0.8
+        minConfidence: 0.8,
       });
 
       expect(result.status).toBe('completed');
@@ -144,7 +151,7 @@ describe('Pattern Execution Tests', () => {
 
       const result = await patternEngine.executePattern('UncertaintyRouter', {
         task: 'Test routing',
-        context: { complexity: 'unknown' }
+        context: { complexity: 'unknown' },
       });
 
       expect(result.status).toBe('completed');
@@ -158,7 +165,7 @@ describe('Pattern Execution Tests', () => {
 
       const result = await patternEngine.executePattern('UncertaintyRouter', {
         task: 'Test simple task',
-        context: {}
+        context: {},
       });
 
       expect(result.status).toBe('completed');

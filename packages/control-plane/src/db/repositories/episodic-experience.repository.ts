@@ -1,5 +1,5 @@
-import { Prisma } from '@prisma/client';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
+import type { Prisma } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 
 export interface PersistedEpisodicExperience {
@@ -123,7 +123,9 @@ export class EpisodicExperienceRepository extends BaseRepository {
         params.push(filter.limit);
       }
 
-      const rows = await this.prisma.$queryRawUnsafe<PersistedEpisodicExperience[]>(
+      const rows = await this.prisma.$queryRawUnsafe<
+        PersistedEpisodicExperience[]
+      >(
         `
           SELECT
             "id",
@@ -148,7 +150,9 @@ export class EpisodicExperienceRepository extends BaseRepository {
     }, 'EpisodicExperienceRepository.findAll');
   }
 
-  async findLatestForThread(threadId: string): Promise<PersistedEpisodicExperience | null> {
+  async findLatestForThread(
+    threadId: string
+  ): Promise<PersistedEpisodicExperience | null> {
     return this.executeQuery(async () => {
       const rows = await this.prisma.$queryRaw<PersistedEpisodicExperience[]>`
         SELECT

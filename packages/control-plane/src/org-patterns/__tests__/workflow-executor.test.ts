@@ -8,13 +8,13 @@
  * the wiring logic in isolation.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
+import type { AgentHandle, AgentMessage } from '@parallaxai/runtime-interface';
 import pino from 'pino';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AgentRuntimeService } from '../../agent-runtime';
+import type { OrgPattern } from '../types';
 import { WorkflowExecutor } from '../workflow-executor';
-import { OrgPattern } from '../types';
-import { AgentRuntimeService } from '../../agent-runtime';
-import { AgentHandle, AgentMessage } from '@parallaxai/runtime-interface';
 
 // Create a silent logger for tests
 const logger = pino({ level: 'silent' });
@@ -48,7 +48,7 @@ class MockRuntimeService extends EventEmitter {
     agentId: string,
     message: string,
     options?: { expectResponse?: boolean; timeout?: number }
-  ): Promise<AgentMessage | void> {
+  ): Promise<AgentMessage | undefined> {
     this.sentMessages.push({ agentId, message });
 
     if (options?.expectResponse) {
@@ -62,7 +62,10 @@ class MockRuntimeService extends EventEmitter {
     }
   }
 
-  subscribe(agentId: string, callback: (message: AgentMessage) => void): () => void {
+  subscribe(
+    agentId: string,
+    _callback: (message: AgentMessage) => void
+  ): () => void {
     this.subscribedAgents.add(agentId);
     return () => {
       this.subscribedAgents.delete(agentId);
@@ -203,7 +206,7 @@ describe('WorkflowExecutor', () => {
       // Check that agents were spawned for both roles
       expect(mockRuntime.spawnedAgents.length).toBe(2);
 
-      const roles = mockRuntime.spawnedAgents.map(a => a.config.role);
+      const roles = mockRuntime.spawnedAgents.map((a) => a.config.role);
       expect(roles).toContain('architect');
       expect(roles).toContain('engineer');
     });
@@ -238,7 +241,9 @@ describe('WorkflowExecutor', () => {
       // Should spawn 1 architect + 3 engineers
       expect(mockRuntime.spawnedAgents.length).toBe(4);
 
-      const engineers = mockRuntime.spawnedAgents.filter(a => a.config.role === 'engineer');
+      const engineers = mockRuntime.spawnedAgents.filter(
+        (a) => a.config.role === 'engineer'
+      );
       expect(engineers.length).toBe(3);
     });
   });
@@ -274,9 +279,9 @@ describe('WorkflowExecutor', () => {
       // Should have sent messages to both agents
       expect(mockRuntime.sentMessages.length).toBeGreaterThanOrEqual(2);
 
-      const messages = mockRuntime.sentMessages.map(m => m.message);
-      expect(messages.some(m => m.includes('Design:'))).toBe(true);
-      expect(messages.some(m => m.includes('Implement:'))).toBe(true);
+      const messages = mockRuntime.sentMessages.map((m) => m.message);
+      expect(messages.some((m) => m.includes('Design:'))).toBe(true);
+      expect(messages.some((m) => m.includes('Implement:'))).toBe(true);
     });
 
     it('should handle three-level hierarchy', async () => {
@@ -363,7 +368,7 @@ describe('WorkflowExecutor', () => {
       });
 
       // Give time for subscriptions to be set up
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Simulate the architect (top-level) sending a message
       if (architectCallback) {
@@ -434,7 +439,11 @@ describe('Org Hierarchy Patterns', () => {
         input: { task: { type: 'string' } },
         steps: [
           { type: 'assign', role: 'navigator', task: 'Plan: ${input.task}' },
-          { type: 'assign', role: 'driver', task: 'Implement: ${step_0_result}' },
+          {
+            type: 'assign',
+            role: 'driver',
+            task: 'Implement: ${step_0_result}',
+          },
         ],
         output: 'step_1_result',
       },
@@ -448,7 +457,7 @@ describe('Org Hierarchy Patterns', () => {
     expect(result.steps.length).toBe(2);
 
     // Verify correct roles were spawned
-    const roles = mockRuntime.spawnedAgents.map(a => a.config.role);
+    const roles = mockRuntime.spawnedAgents.map((a) => a.config.role);
     expect(roles).toContain('navigator');
     expect(roles).toContain('driver');
   });
@@ -482,7 +491,11 @@ describe('Org Hierarchy Patterns', () => {
         name: 'Review Workflow',
         input: { task: { type: 'string' } },
         steps: [
-          { type: 'assign', role: 'developer', task: 'Implement: ${input.task}' },
+          {
+            type: 'assign',
+            role: 'developer',
+            task: 'Implement: ${input.task}',
+          },
           { type: 'review', reviewer: 'reviewer', subject: '$step_0_result' },
         ],
         output: 'step_1_result',

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { Logger } from 'pino';
+import type { Logger } from 'pino';
 
 // Singleton instance
 let prisma: PrismaClient | undefined;
@@ -13,16 +13,20 @@ export function getPrismaClient(logger?: Logger): PrismaClient {
     if (logger) {
       // Log database events
       prisma.$on('query' as never, (e: any) => {
-        logger.debug({
-          query: e.query,
-          params: e.params,
-          duration: e.duration,
-        }, 'Database query');
+        logger.debug(
+          {
+            query: e.query,
+            params: e.params,
+            duration: e.duration,
+          },
+          'Database query'
+        );
       });
     }
 
     // Handle connection errors
-    prisma.$connect()
+    prisma
+      .$connect()
       .then(() => {
         logger?.info('Database connected successfully');
       })

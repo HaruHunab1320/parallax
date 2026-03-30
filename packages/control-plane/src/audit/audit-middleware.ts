@@ -4,8 +4,13 @@
  * Express middleware for automatic audit logging of API actions.
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { AuditService, AuditAction, AuditResource, AuditStatus } from './audit-service';
+import type { NextFunction, Request, Response } from 'express';
+import type {
+  AuditAction,
+  AuditResource,
+  AuditService,
+  AuditStatus,
+} from './audit-service';
 
 export interface AuditMiddlewareOptions {
   action: AuditAction;
@@ -47,7 +52,8 @@ export function createAuditMiddleware(
       const status: AuditStatus = res.statusCode >= 400 ? 'failure' : 'success';
 
       // Get resource ID
-      const resourceId = options.getResourceId?.(req) || req.params.id || req.params.name;
+      const resourceId =
+        options.getResourceId?.(req) || req.params.id || req.params.name;
 
       // Get additional details
       let details = options.getDetails?.(req, res);
@@ -63,16 +69,18 @@ export function createAuditMiddleware(
 
       // Log asynchronously (don't block response)
       setImmediate(() => {
-        auditService.logFromRequest(
-          req,
-          options.action,
-          options.resource,
-          resourceId,
-          status,
-          details
-        ).catch(() => {
-          // Silently ignore audit logging errors
-        });
+        auditService
+          .logFromRequest(
+            req,
+            options.action,
+            options.resource,
+            resourceId,
+            status,
+            details
+          )
+          .catch(() => {
+            // Silently ignore audit logging errors
+          });
       });
 
       return originalEnd.apply(this, args as any);
@@ -102,7 +110,10 @@ export function auditPattern(auditService: AuditService, action: AuditAction) {
 /**
  * Audit middleware for execution operations
  */
-export function auditExecution(auditService: AuditService, action: AuditAction) {
+export function auditExecution(
+  auditService: AuditService,
+  action: AuditAction
+) {
   return createAuditMiddleware(auditService, {
     action,
     resource: 'execution',
@@ -201,7 +212,10 @@ export function auditApiKey(auditService: AuditService, action: AuditAction) {
 /**
  * Audit middleware for backup operations
  */
-export function auditBackup(auditService: AuditService, action: 'create' | 'read') {
+export function auditBackup(
+  auditService: AuditService,
+  action: 'create' | 'read'
+) {
   return createAuditMiddleware(auditService, {
     action,
     resource: 'backup',

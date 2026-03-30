@@ -8,9 +8,9 @@ import type {
   OrgPattern,
   OrgRole,
   OrgWorkflow,
-  WorkflowStep,
-  ValidationResult,
   ValidationError,
+  ValidationResult,
+  WorkflowStep,
 } from '../types';
 
 /**
@@ -256,7 +256,13 @@ function validateStep(
         });
       } else {
         step.steps.forEach((subStep, index) => {
-          validateStep(subStep, `${path}.steps[${index}]`, roleIds, errors, warnings);
+          validateStep(
+            subStep,
+            `${path}.steps[${index}]`,
+            roleIds,
+            errors,
+            warnings
+          );
         });
       }
       break;
@@ -309,7 +315,7 @@ function validateStep(
       }
       break;
 
-    case 'aggregate':
+    case 'aggregate': {
       const validMethods = ['consensus', 'majority', 'merge', 'best', 'custom'];
       if (!validMethods.includes(step.method)) {
         errors.push({
@@ -319,6 +325,7 @@ function validateStep(
         });
       }
       break;
+    }
 
     case 'condition':
       if (!step.check) {

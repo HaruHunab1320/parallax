@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('AgentsResource', () => {
@@ -76,9 +76,7 @@ describe('AgentsResource', () => {
 
   it('should get capability stats', async () => {
     mockFetch({
-      stats: [
-        { capability: 'conversation', agent_count: 4, active_count: 3 },
-      ],
+      stats: [{ capability: 'conversation', agent_count: 4, active_count: 3 }],
     });
 
     const result = await client.agents.capabilityStats();

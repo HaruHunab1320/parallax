@@ -6,13 +6,13 @@
  * execution, thread completion handling, and error propagation.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
+import type { ThreadEvent, ThreadHandle } from '@parallaxai/runtime-interface';
 import pino from 'pino';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { AgentRuntimeService } from '../../agent-runtime';
+import type { OrgPattern, OrgRole } from '../types';
 import { WorkflowExecutor } from '../workflow-executor';
-import { OrgPattern, OrgRole } from '../types';
-import { AgentRuntimeService } from '../../agent-runtime';
-import { ThreadHandle, ThreadEvent } from '@parallaxai/runtime-interface';
 
 const logger = pino({ level: 'silent' });
 
@@ -110,11 +110,23 @@ class MockThreadRuntimeService extends EventEmitter {
 
   // Stubs for non-thread agent operations (unused in these tests)
   async spawn(): Promise<any> {
-    return { id: 'stub', name: 'stub', type: 'echo', status: 'ready', capabilities: [] };
+    return {
+      id: 'stub',
+      name: 'stub',
+      type: 'echo',
+      status: 'ready',
+      capabilities: [],
+    };
   }
   async stop(): Promise<void> {}
   async send(): Promise<any> {
-    return { id: 'msg', agentId: 'stub', type: 'response', content: 'ok', timestamp: new Date() };
+    return {
+      id: 'msg',
+      agentId: 'stub',
+      type: 'response',
+      content: 'ok',
+      timestamp: new Date(),
+    };
   }
   subscribe(): () => void {
     return () => {};
@@ -140,7 +152,11 @@ function makeOrgPattern(overrides: Partial<OrgPattern> = {}): OrgPattern {
     structure: {
       name: 'test',
       roles: {
-        architect: makeRole({ id: 'architect', name: 'Architect', singleton: true }),
+        architect: makeRole({
+          id: 'architect',
+          name: 'Architect',
+          singleton: true,
+        }),
         engineer: makeRole({
           id: 'engineer',
           name: 'Engineer',
@@ -157,12 +173,25 @@ function makeOrgPattern(overrides: Partial<OrgPattern> = {}): OrgPattern {
     workflow: {
       name: 'default',
       steps: [
-        { type: 'assign', role: 'architect', task: 'Design the solution', input: '${input.task}' },
+        {
+          type: 'assign',
+          role: 'architect',
+          task: 'Design the solution',
+          input: '${input.task}',
+        },
         {
           type: 'parallel',
           steps: [
-            { type: 'assign', role: 'engineer', task: 'Implement based on: ${step_0_result}' },
-            { type: 'assign', role: 'engineer', task: 'Implement based on: ${step_0_result}' },
+            {
+              type: 'assign',
+              role: 'engineer',
+              task: 'Implement based on: ${step_0_result}',
+            },
+            {
+              type: 'assign',
+              role: 'engineer',
+              task: 'Implement based on: ${step_0_result}',
+            },
           ],
         },
         { type: 'review', reviewer: 'reviewer', subject: '${step_1_result}' },
@@ -254,7 +283,7 @@ describe('WorkflowExecutor thread integration', () => {
   it('runs parallel steps concurrently', async () => {
     // Use a slow auto-complete to verify parallelism
     runtime.autoComplete = false;
-    const completionTimestamps: number[] = [];
+    const _completionTimestamps: number[] = [];
 
     const pattern: OrgPattern = {
       name: 'parallel-test',
@@ -397,7 +426,9 @@ describe('WorkflowExecutor thread integration', () => {
       timestamp: new Date().toISOString(),
     } as any);
 
-    await expect(promise).rejects.toThrow('Thread thread-0 ended with thread_failed');
+    await expect(promise).rejects.toThrow(
+      'Thread thread-0 ended with thread_failed'
+    );
   });
 
   it('cleans up all threads after execution', async () => {

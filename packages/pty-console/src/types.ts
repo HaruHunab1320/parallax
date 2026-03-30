@@ -1,11 +1,11 @@
 import type {
+  AuthRequiredInfo,
+  AutoResponseRule,
+  BlockingPromptInfo,
   SessionHandle,
   SessionMessage,
   StopOptions,
   TerminalAttachment,
-  BlockingPromptInfo,
-  AuthRequiredInfo,
-  AutoResponseRule,
   ToolRunningInfo,
   WorkerSessionHandle,
 } from 'pty-manager';
@@ -61,21 +61,28 @@ export interface PTYManagerLike {
   attachTerminal(sessionId: string): TerminalAttachment | null;
   send(sessionId: string, message: string): SessionMessage;
   stop(sessionId: string, options?: StopOptions): Promise<void>;
-  getSession(sessionId: string): {
-    sendKeys: (keys: string[] | string) => void;
-    resize: (cols: number, rows: number) => void;
-    writeRaw: (data: string) => void;
-    addAutoResponseRule: (rule: AutoResponseRule) => void;
-    clearAutoResponseRules: () => void;
-  } | undefined;
+  getSession(sessionId: string):
+    | {
+        sendKeys: (keys: string[] | string) => void;
+        resize: (cols: number, rows: number) => void;
+        writeRaw: (data: string) => void;
+        addAutoResponseRule: (rule: AutoResponseRule) => void;
+        clearAutoResponseRules: () => void;
+      }
+    | undefined;
 }
 
 export interface PTYManagerAsyncLike {
   on(event: string, listener: (...args: unknown[]) => void): unknown;
   off(event: string, listener: (...args: unknown[]) => void): unknown;
   list(): Promise<(SessionHandle | WorkerSessionHandle)[]>;
-  get(sessionId: string): SessionHandle | WorkerSessionHandle | null | undefined;
-  onSessionData(sessionId: string, callback: (data: string) => void): () => void;
+  get(
+    sessionId: string
+  ): SessionHandle | WorkerSessionHandle | null | undefined;
+  onSessionData(
+    sessionId: string,
+    callback: (data: string) => void
+  ): () => void;
   send(sessionId: string, data: string): Promise<void>;
   sendKeys(sessionId: string, keys: string[] | string): Promise<void>;
   writeRaw(sessionId: string, data: string): Promise<void>;

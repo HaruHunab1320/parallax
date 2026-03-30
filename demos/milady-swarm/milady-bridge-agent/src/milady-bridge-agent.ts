@@ -1,7 +1,7 @@
-import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 import type { AgentResponse } from '@parallaxai/sdk-typescript';
+import { ParallaxAgent } from '@parallaxai/sdk-typescript';
 import pino from 'pino';
-import { MiladyClient } from './milady-client';
+import type { MiladyClient } from './milady-client';
 import type { MiladyTask } from './types';
 
 const logger = pino({ name: 'milady-bridge-agent' });
@@ -30,12 +30,7 @@ export class MiladyBridgeAgent extends ParallaxAgent {
   private readonly client: MiladyClient;
   private readonly role: string;
 
-  constructor(
-    id: string,
-    name: string,
-    role: string,
-    client: MiladyClient
-  ) {
+  constructor(id: string, name: string, role: string, client: MiladyClient) {
     const capabilities = MiladyBridgeAgent.capabilitiesForRole(role);
     super(id, name, capabilities, { role, type: 'milady-bridge' });
     this.client = client;
@@ -56,7 +51,11 @@ export class MiladyBridgeAgent extends ParallaxAgent {
       const response = await this.client.chat(prompt);
 
       logger.info(
-        { agentId: this.id, agentName: response.agentName, responseLength: response.text.length },
+        {
+          agentId: this.id,
+          agentName: response.agentName,
+          responseLength: response.text.length,
+        },
         'Milady responded'
       );
 
@@ -123,7 +122,13 @@ export class MiladyBridgeAgent extends ParallaxAgent {
 
     // Check if the response mentions the action type or contains substance
     const actionKeywords: Record<string, string[]> = {
-      generate_strategy: ['talking point', 'strategy', 'thread', 'engagement', 'amplif'],
+      generate_strategy: [
+        'talking point',
+        'strategy',
+        'thread',
+        'engagement',
+        'amplif',
+      ],
       post_thread: ['thread', 'tweet', 'post', '1/', '🧵'],
       quote_tweet: ['quote', 'QT', 'RT'],
       reply: ['reply', 'replied', 'response'],

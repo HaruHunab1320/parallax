@@ -1,7 +1,7 @@
+import { EventEmitter } from 'node:events';
 import { Etcd3 } from 'etcd3';
-import { ServiceRegistration } from './types';
-import { Logger } from 'pino';
-import { EventEmitter } from 'events';
+import type { Logger } from 'pino';
+import type { ServiceRegistration } from './types';
 
 export class EtcdRegistry extends EventEmitter {
   private client: Etcd3;
@@ -28,7 +28,7 @@ export class EtcdRegistry extends EventEmitter {
       if (service.ttl) {
         const lease = this.client.lease(service.ttl);
         await lease.put(key).value(value);
-        
+
         // Auto-refresh lease
         lease.on('lost', () => {
           this.logger.warn({ service: service.id }, 'Service lease lost');
@@ -41,14 +41,17 @@ export class EtcdRegistry extends EventEmitter {
       this.logger.info({ service: service.id }, 'Service registered');
       this.emit('service:registered', service);
     } catch (error) {
-      this.logger.error({ service: service.id, error }, 'Failed to register service');
+      this.logger.error(
+        { service: service.id, error },
+        'Failed to register service'
+      );
       throw error;
     }
   }
 
   async unregister(type: string, id: string): Promise<void> {
     const key = this.getServiceKey(type, id);
-    
+
     try {
       await this.client.delete().key(key);
       this.logger.info({ type, id }, 'Service unregistered');
@@ -59,7 +62,10 @@ export class EtcdRegistry extends EventEmitter {
     }
   }
 
-  async getService(type: string, id: string): Promise<ServiceRegistration | null> {
+  async getService(
+    type: string,
+    id: string
+  ): Promise<ServiceRegistration | null> {
     const key = this.getServiceKey(type, id);
 
     try {
@@ -89,14 +95,14 @@ export class EtcdRegistry extends EventEmitter {
   }
 
   async listServices(type?: string): Promise<ServiceRegistration[]> {
-    const prefix = type 
+    const prefix = type
       ? `/${this.namespace}/services/${type}/`
       : `/${this.namespace}/services/`;
 
     try {
       const response = await this.client.getAll().prefix(prefix);
-      
-      return Object.values(response).map(value => 
+
+      return Object.values(response).map((value) =>
         JSON.parse(value as string)
       );
     } catch (error) {
@@ -107,13 +113,14 @@ export class EtcdRegistry extends EventEmitter {
 
   async watchServices(
     type: string,
-    callback: (event: 'added' | 'modified' | 'deleted', service: ServiceRegistration | { type: string; id: string }) => void
+    callback: (
+      event: 'added' | 'modified' | 'deleted',
+      service: ServiceRegistration | { type: string; id: string }
+    ) => void
   ): Promise<() => void> {
     const prefix = `/${this.namespace}/services/${type}/`;
-    
-    const watcher = await this.client.watch()
-      .prefix(prefix)
-      .create();
+
+    const watcher = await this.client.watch().prefix(prefix).create();
 
     watcher.on('put', async (res) => {
       try {
@@ -144,7 +151,11 @@ export class EtcdRegistry extends EventEmitter {
     return `/${this.namespace}/services/${type}/${id}`;
   }
 
-  async updateHealth(type: string, id: string, status: 'healthy' | 'unhealthy'): Promise<void> {
+  async updateHealth(
+    type: string,
+    id: string,
+    status: 'healthy' | 'unhealthy'
+  ): Promise<void> {
     const service = await this.getService(type, id);
     if (service) {
       service.health.status = status;
@@ -159,7 +170,7 @@ export class EtcdRegistry extends EventEmitter {
       watcher.cancel();
     }
     this.watchHandles.clear();
-    
+
     // Close etcd client
     this.client.close();
   }

@@ -1,15 +1,29 @@
-import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import type { SessionHandle } from '../../../packages/pty-manager-internal-tracing/src/types.ts';
-import * as InternalPTYManagerModule from '../../../packages/pty-manager-internal-tracing/src/pty-manager.ts';
 import { ClaudeAdapter } from '../../../packages/coding-agent-adapters/src/claude-adapter.ts';
+import * as InternalPTYManagerModule from '../../../packages/pty-manager-internal-tracing/src/pty-manager.ts';
+import type { SessionHandle } from '../../../packages/pty-manager-internal-tracing/src/types.ts';
 
-const PTYManager = (InternalPTYManagerModule as { PTYManager?: typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager'] }).PTYManager
-  ?? ((InternalPTYManagerModule as { default?: { PTYManager?: typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager'] } }).default?.PTYManager as typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager']);
+const PTYManager =
+  (
+    InternalPTYManagerModule as {
+      PTYManager?: typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager'];
+    }
+  ).PTYManager ??
+  ((
+    InternalPTYManagerModule as {
+      default?: {
+        PTYManager?: typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager'];
+      };
+    }
+  ).default
+    ?.PTYManager as typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager']);
 
 if (!PTYManager) {
-  throw new Error('Failed to resolve PTYManager from pty-manager-internal-tracing');
+  throw new Error(
+    'Failed to resolve PTYManager from pty-manager-internal-tracing'
+  );
 }
 
 function createManagerLogger() {
@@ -65,9 +79,17 @@ function parseArgs(argv: string[]): CliArgs {
 
   const out: CliArgs = {
     workdir: resolve(process.env.CLAUDE_CAPTURE_WORKDIR ?? process.cwd()),
-    outputDir: resolve(process.env.CLAUDE_CAPTURE_OUTPUT_DIR ?? '.parallax/pty-captures'),
-    cols: Number.parseInt(process.env.CLAUDE_CAPTURE_COLS ?? String(stdoutCols), 10),
-    rows: Number.parseInt(process.env.CLAUDE_CAPTURE_ROWS ?? String(stdoutRows), 10),
+    outputDir: resolve(
+      process.env.CLAUDE_CAPTURE_OUTPUT_DIR ?? '.parallax/pty-captures'
+    ),
+    cols: Number.parseInt(
+      process.env.CLAUDE_CAPTURE_COLS ?? String(stdoutCols),
+      10
+    ),
+    rows: Number.parseInt(
+      process.env.CLAUDE_CAPTURE_ROWS ?? String(stdoutRows),
+      10
+    ),
     renderMode: process.env.CLAUDE_CAPTURE_RENDER === 'plain' ? 'plain' : 'raw',
     continue: process.env.CLAUDE_CAPTURE_CONTINUE === '1',
   };
@@ -163,7 +185,9 @@ function toPlainDisplay(data: string): string {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    throw new Error('Interactive capture requires a TTY (run in a normal terminal)');
+    throw new Error(
+      'Interactive capture requires a TTY (run in a normal terminal)'
+    );
   }
   const runId = `claude-interactive-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}`;
   const captureDir = join(args.outputDir, runId);
@@ -222,11 +246,21 @@ async function main(): Promise<void> {
     const snapshot = session ? manager.getCaptureSnapshot(session.id) : null;
     process.stderr.write(`\n[claude-capture] stopped (${reason})\n`);
     if (snapshot) {
-      process.stderr.write(`[claude-capture] raw: ${snapshot.paths.rawEventsPath}\n`);
-      process.stderr.write(`[claude-capture] states: ${snapshot.paths.statesPath}\n`);
-      process.stderr.write(`[claude-capture] transitions: ${snapshot.paths.transitionsPath}\n`);
-      process.stderr.write(`[claude-capture] lifecycle: ${snapshot.paths.lifecyclePath}\n`);
-      process.stderr.write(`[claude-capture] final-state: ${snapshot.state.state} (${snapshot.state.ruleId ?? 'no-rule'})\n`);
+      process.stderr.write(
+        `[claude-capture] raw: ${snapshot.paths.rawEventsPath}\n`
+      );
+      process.stderr.write(
+        `[claude-capture] states: ${snapshot.paths.statesPath}\n`
+      );
+      process.stderr.write(
+        `[claude-capture] transitions: ${snapshot.paths.transitionsPath}\n`
+      );
+      process.stderr.write(
+        `[claude-capture] lifecycle: ${snapshot.paths.lifecyclePath}\n`
+      );
+      process.stderr.write(
+        `[claude-capture] final-state: ${snapshot.state.state} (${snapshot.state.ruleId ?? 'no-rule'})\n`
+      );
     }
   };
 
@@ -234,7 +268,10 @@ async function main(): Promise<void> {
     if (!session) return;
     const attachment = manager.attachTerminal(session.id);
     if (!attachment) return;
-    attachment.resize(process.stdout.columns || args.cols, process.stdout.rows || args.rows);
+    attachment.resize(
+      process.stdout.columns || args.cols,
+      process.stdout.rows || args.rows
+    );
   };
 
   const onStdinData = (chunk: Buffer | string): void => {
@@ -281,7 +318,9 @@ async function main(): Promise<void> {
   manager.on('auth_required', (authSession, info) => {
     if (!session || authSession.id !== session.id) return;
     const suffix = info.url ? ` ${info.url}` : '';
-    process.stderr.write(`\n[claude-capture] auth_required: ${info.method}${suffix}\n`);
+    process.stderr.write(
+      `\n[claude-capture] auth_required: ${info.method}${suffix}\n`
+    );
   });
 
   session = await manager.spawn({
@@ -303,7 +342,9 @@ async function main(): Promise<void> {
   const attachment = manager.attachTerminal(session.id);
   if (!attachment) {
     await teardown('attach_failed');
-    throw new Error(`Failed to attach terminal stream for session ${session.id}`);
+    throw new Error(
+      `Failed to attach terminal stream for session ${session.id}`
+    );
   }
 
   process.stderr.write(`[claude-capture] session=${session.id}\n`);
@@ -314,11 +355,15 @@ async function main(): Promise<void> {
   } else if (args.continue) {
     process.stderr.write('[claude-capture] continue=true\n');
   }
-  process.stderr.write(`[claude-capture] auto-respond=${autoRespond ? 'on' : 'off'}\n`);
+  process.stderr.write(
+    `[claude-capture] auto-respond=${autoRespond ? 'on' : 'off'}\n`
+  );
   process.stderr.write('[claude-capture] press Ctrl+] to detach\n\n');
 
   unsubOutput = attachment.onData((data) => {
-    process.stdout.write(args.renderMode === 'plain' ? toPlainDisplay(data) : data);
+    process.stdout.write(
+      args.renderMode === 'plain' ? toPlainDisplay(data) : data
+    );
   });
 
   process.stdin.setRawMode(true);

@@ -6,9 +6,9 @@
 
 export { McpAuthHandler } from './auth-handler.js';
 export {
-  type McpAuthConfig,
   type ApiKeyConfig,
   type AuthContext,
   type AuthErrorCode,
+  type McpAuthConfig,
   McpAuthError,
 } from './types.js';

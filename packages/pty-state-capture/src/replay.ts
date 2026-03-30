@@ -1,9 +1,13 @@
-import { readFile } from 'node:fs/promises';
 import { Buffer } from 'node:buffer';
+import { readFile } from 'node:fs/promises';
 import { SessionStateCapture } from './session-capture';
-import { TurnExtractor } from './turn-extractor';
-import type { SessionCaptureOptions, SessionCaptureSnapshot, Turn } from './types';
 import type { TurnExtractorOptions } from './turn-extractor';
+import { TurnExtractor } from './turn-extractor';
+import type {
+  SessionCaptureOptions,
+  SessionCaptureSnapshot,
+  Turn,
+} from './types';
 
 interface RawEventRow {
   sessionId: string;
@@ -13,7 +17,7 @@ interface RawEventRow {
 
 export async function replayRawJsonl(
   rawEventsPath: string,
-  options: SessionCaptureOptions,
+  options: SessionCaptureOptions
 ): Promise<SessionCaptureSnapshot> {
   const text = await readFile(rawEventsPath, 'utf8');
   const capture = new SessionStateCapture(options);
@@ -31,7 +35,7 @@ export async function replayRawJsonl(
 export async function* replayTurns(
   rawEventsPath: string,
   options: SessionCaptureOptions,
-  turnOptions?: TurnExtractorOptions,
+  turnOptions?: TurnExtractorOptions
 ): AsyncGenerator<Turn> {
   const text = await readFile(rawEventsPath, 'utf8');
   const capture = new SessionStateCapture({

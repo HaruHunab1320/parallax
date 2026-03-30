@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { createAdapter } from './adapter-factory';
 
 describe('createAdapter', () => {
@@ -64,7 +64,9 @@ describe('createAdapter', () => {
     const detection1 = adapter.detectLogin('Please log in to continue');
     expect(detection1.required).toBe(true);
 
-    const detection2 = adapter.detectLogin('Auth required at https://example.com/login');
+    const detection2 = adapter.detectLogin(
+      'Auth required at https://example.com/login'
+    );
     expect(detection2.required).toBe(true);
     expect(detection2.url).toBe('https://example.com/login');
 
@@ -87,7 +89,12 @@ describe('createAdapter', () => {
     const adapter = createAdapter({
       command: 'cli',
       blockingPrompts: [
-        { pattern: /\[Y\/n\]/i, type: 'config', autoResponse: 'Y', description: 'Confirm' },
+        {
+          pattern: /\[Y\/n\]/i,
+          type: 'config',
+          autoResponse: 'Y',
+          description: 'Confirm',
+        },
         { pattern: /accept\?/i, type: 'tos' }, // No auto-response
       ],
     });

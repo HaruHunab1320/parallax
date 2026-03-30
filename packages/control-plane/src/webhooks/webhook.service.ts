@@ -1,5 +1,5 @@
-import { createHmac } from 'crypto';
-import { Logger } from 'pino';
+import { createHmac } from 'node:crypto';
+import type { Logger } from 'pino';
 
 export interface WebhookConfig {
   url: string;
@@ -69,7 +69,7 @@ export class WebhookService {
               executionId: payload.executionId,
               url,
               statusCode: result.statusCode,
-              attempt
+              attempt,
             },
             'Webhook delivered successfully'
           );
@@ -83,7 +83,7 @@ export class WebhookService {
             url,
             statusCode: result.statusCode,
             attempt,
-            error: result.error
+            error: result.error,
           },
           'Webhook delivery failed, will retry'
         );
@@ -97,7 +97,7 @@ export class WebhookService {
 
       // Exponential backoff: 1s, 2s, 4s
       if (attempt < this.maxRetries) {
-        await this.sleep(Math.pow(2, attempt - 1) * 1000);
+        await this.sleep(2 ** (attempt - 1) * 1000);
       }
     }
 
@@ -109,7 +109,7 @@ export class WebhookService {
     return {
       success: false,
       error: lastError,
-      attempts: this.maxRetries
+      attempts: this.maxRetries,
     };
   }
 
@@ -129,9 +129,7 @@ export class WebhookService {
 
     // Add HMAC signature if secret provided
     if (secret) {
-      const signature = createHmac('sha256', secret)
-        .update(body)
-        .digest('hex');
+      const signature = createHmac('sha256', secret).update(body).digest('hex');
       headers['X-Parallax-Signature'] = `sha256=${signature}`;
     }
 
@@ -158,7 +156,7 @@ export class WebhookService {
         success: false,
         statusCode: response.status,
         error: `HTTP ${response.status}: ${errorText.slice(0, 200)}`,
-        attempts: 1
+        attempts: 1,
       };
     } catch (error) {
       clearTimeout(timeoutId);
@@ -167,7 +165,7 @@ export class WebhookService {
         return {
           success: false,
           error: `Timeout after ${this.timeoutMs}ms`,
-          attempts: 1
+          attempts: 1,
         };
       }
 
@@ -176,7 +174,7 @@ export class WebhookService {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**

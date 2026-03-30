@@ -1,26 +1,32 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ParallaxMcpServer } from './mcp-server.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { McpAuthError } from './auth/index.js';
+import { ParallaxMcpServer } from './mcp-server.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mocks
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Capture the CallTool handler so we can invoke it directly
-let callToolHandler: ((request: { params: { name: string; arguments?: Record<string, unknown> } }) => Promise<unknown>) | null = null;
+let callToolHandler:
+  | ((request: {
+      params: { name: string; arguments?: Record<string, unknown> };
+    }) => Promise<unknown>)
+  | null = null;
 let listToolsHandler: (() => Promise<unknown>) | null = null;
 
 vi.mock('@modelcontextprotocol/sdk/server/index.js', () => ({
   Server: vi.fn().mockImplementation(() => ({
-    setRequestHandler: vi.fn().mockImplementation((schema: { method?: string }, handler: Function) => {
-      // Capture the handlers by checking the schema method name
-      if (schema?.method === 'tools/call') {
-        callToolHandler = handler as typeof callToolHandler;
-      }
-      if (schema?.method === 'tools/list') {
-        listToolsHandler = handler as typeof listToolsHandler;
-      }
-    }),
+    setRequestHandler: vi
+      .fn()
+      .mockImplementation((schema: { method?: string }, handler: Function) => {
+        // Capture the handlers by checking the schema method name
+        if (schema?.method === 'tools/call') {
+          callToolHandler = handler as typeof callToolHandler;
+        }
+        if (schema?.method === 'tools/list') {
+          listToolsHandler = handler as typeof listToolsHandler;
+        }
+      }),
     connect: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
   })),
@@ -41,37 +47,67 @@ vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
 
 // Mock the AgentManager
 const mockSpawn = vi.fn().mockResolvedValue({
-  id: 'agent-1', name: 'test', type: 'claude', status: 'starting',
-  capabilities: ['code'], role: 'engineer',
+  id: 'agent-1',
+  name: 'test',
+  type: 'claude',
+  status: 'starting',
+  capabilities: ['code'],
+  role: 'engineer',
 });
 const mockStop = vi.fn().mockResolvedValue(undefined);
 const mockList = vi.fn().mockResolvedValue([]);
 const mockGet = vi.fn().mockResolvedValue({
-  id: 'agent-1', name: 'test', type: 'claude', status: 'ready',
-  capabilities: ['code'], role: 'engineer',
+  id: 'agent-1',
+  name: 'test',
+  type: 'claude',
+  status: 'ready',
+  capabilities: ['code'],
+  role: 'engineer',
 });
 const mockSend = vi.fn().mockResolvedValue({
-  id: 'msg-1', agentId: 'agent-1', direction: 'inbound', type: 'task',
+  id: 'msg-1',
+  agentId: 'agent-1',
+  direction: 'inbound',
+  type: 'task',
   timestamp: new Date(),
 });
-const mockLogs = vi.fn().mockImplementation(async function* () { yield 'line 1'; });
+const mockLogs = vi.fn().mockImplementation(async function* () {
+  yield 'line 1';
+});
 const mockMetricsFn = vi.fn().mockReturnValue({ uptime: 60, messageCount: 3 });
 const mockGetHealth = vi.fn().mockResolvedValue({
-  healthy: true, agentCount: 0, maxAgents: 10, adapters: [],
-  workspaceServiceEnabled: false, stallDetectionEnabled: true,
+  healthy: true,
+  agentCount: 0,
+  maxAgents: 10,
+  adapters: [],
+  workspaceServiceEnabled: false,
+  stallDetectionEnabled: true,
 });
 const mockProvisionWorkspace = vi.fn().mockResolvedValue({
-  id: 'ws-1', path: '/tmp/ws-1', repo: 'https://github.com/test/repo',
-  branch: { name: 'parallax/exec-1/engineer-test' }, status: 'ready', strategy: 'clone',
+  id: 'ws-1',
+  path: '/tmp/ws-1',
+  repo: 'https://github.com/test/repo',
+  branch: { name: 'parallax/exec-1/engineer-test' },
+  status: 'ready',
+  strategy: 'clone',
 });
 const mockFinalizeWorkspace = vi.fn().mockResolvedValue({
-  number: 42, url: 'https://github.com/test/repo/pull/42',
+  number: 42,
+  url: 'https://github.com/test/repo/pull/42',
 });
 const mockCleanupWorkspace = vi.fn().mockResolvedValue(undefined);
 const mockGetWorkspaceFiles = vi.fn().mockReturnValue([
-  { relativePath: 'CLAUDE.md', description: 'Claude memory file', autoLoaded: true, type: 'memory', format: 'markdown' },
+  {
+    relativePath: 'CLAUDE.md',
+    description: 'Claude memory file',
+    autoLoaded: true,
+    type: 'memory',
+    format: 'markdown',
+  },
 ]);
-const mockWriteWorkspaceFile = vi.fn().mockResolvedValue('/tmp/workspace/CLAUDE.md');
+const mockWriteWorkspaceFile = vi
+  .fn()
+  .mockResolvedValue('/tmp/workspace/CLAUDE.md');
 const mockHasWorkspaceService = vi.fn().mockReturnValue(false);
 const mockInitialize = vi.fn().mockResolvedValue(undefined);
 const mockShutdown = vi.fn().mockResolvedValue(undefined);
@@ -169,7 +205,9 @@ describe('ParallaxMcpServer', () => {
       const server = new ParallaxMcpServer({
         logger,
         auth: {
-          apiKeys: [{ key: 'valid-key', permissions: ['agents:*'], name: 'admin' }],
+          apiKeys: [
+            { key: 'valid-key', permissions: ['agents:*'], name: 'admin' },
+          ],
         },
       });
 
@@ -186,7 +224,9 @@ describe('ParallaxMcpServer', () => {
         },
       });
 
-      await expect(server.authenticate('bad-key')).rejects.toThrow(McpAuthError);
+      await expect(server.authenticate('bad-key')).rejects.toThrow(
+        McpAuthError
+      );
     });
 
     it('authenticateFromHeader extracts Bearer token', async () => {
@@ -209,7 +249,9 @@ describe('ParallaxMcpServer', () => {
         },
       });
 
-      await expect(server.authenticateFromHeader(undefined)).rejects.toThrow('No credentials provided');
+      await expect(server.authenticateFromHeader(undefined)).rejects.toThrow(
+        'No credentials provided'
+      );
     });
   });
 
@@ -224,7 +266,13 @@ describe('ParallaxMcpServer', () => {
       const server = new ParallaxMcpServer({
         logger,
         auth: {
-          apiKeys: [{ key: 'limited', permissions: ['agents:spawn', 'agents:list'], name: 'limited' }],
+          apiKeys: [
+            {
+              key: 'limited',
+              permissions: ['agents:spawn', 'agents:list'],
+              name: 'limited',
+            },
+          ],
         },
       });
 
@@ -265,13 +313,19 @@ describe('ParallaxMcpServer', () => {
       const result = await callToolHandler!({
         params: {
           name: 'spawn',
-          arguments: { name: 'test', type: 'claude', capabilities: ['code'], waitForReady: true },
+          arguments: {
+            name: 'test',
+            type: 'claude',
+            capabilities: ['code'],
+            waitForReady: true,
+          },
         },
       });
 
       expect(mockSpawn).toHaveBeenCalled();
       expect(result).toHaveProperty('content');
-      const content = (result as { content: { text: string }[] }).content[0].text;
+      const content = (result as { content: { text: string }[] }).content[0]
+        .text;
       expect(JSON.parse(content).success).toBe(true);
     });
 
@@ -309,7 +363,14 @@ describe('ParallaxMcpServer', () => {
       new ParallaxMcpServer({ logger });
 
       await callToolHandler!({
-        params: { name: 'send', arguments: { agentId: 'agent-1', message: 'hello', expectResponse: false } },
+        params: {
+          name: 'send',
+          arguments: {
+            agentId: 'agent-1',
+            message: 'hello',
+            expectResponse: false,
+          },
+        },
       });
 
       expect(mockSend).toHaveBeenCalled();
@@ -323,7 +384,8 @@ describe('ParallaxMcpServer', () => {
       });
 
       expect(mockGetHealth).toHaveBeenCalled();
-      const content = (result as { content: { text: string }[] }).content[0].text;
+      const content = (result as { content: { text: string }[] }).content[0]
+        .text;
       expect(JSON.parse(content).success).toBe(true);
     });
 
@@ -391,7 +453,8 @@ describe('ParallaxMcpServer', () => {
       });
 
       expect(mockGetWorkspaceFiles).toHaveBeenCalledWith('claude');
-      const content = (result as { content: { text: string }[] }).content[0].text;
+      const content = (result as { content: { text: string }[] }).content[0]
+        .text;
       const parsed = JSON.parse(content);
       expect(parsed.success).toBe(true);
       expect(parsed.agentType).toBe('claude');
@@ -417,9 +480,10 @@ describe('ParallaxMcpServer', () => {
         'claude',
         '/tmp/workspace',
         '# Instructions\nBe helpful.',
-        { fileName: undefined, append: undefined },
+        { fileName: undefined, append: undefined }
       );
-      const content = (result as { content: { text: string }[] }).content[0].text;
+      const content = (result as { content: { text: string }[] }).content[0]
+        .text;
       const parsed = JSON.parse(content);
       expect(parsed.success).toBe(true);
       expect(parsed.path).toBe('/tmp/workspace/CLAUDE.md');
@@ -432,7 +496,8 @@ describe('ParallaxMcpServer', () => {
         params: { name: 'list_presets', arguments: {} },
       });
 
-      const content = (result as { content: { text: string }[] }).content[0].text;
+      const content = (result as { content: { text: string }[] }).content[0]
+        .text;
       const parsed = JSON.parse(content);
       expect(parsed.success).toBe(true);
       expect(parsed.presets).toHaveLength(4);
@@ -448,7 +513,8 @@ describe('ParallaxMcpServer', () => {
         },
       });
 
-      const content = (result as { content: { text: string }[] }).content[0].text;
+      const content = (result as { content: { text: string }[] }).content[0]
+        .text;
       const parsed = JSON.parse(content);
       expect(parsed.success).toBe(true);
       expect(parsed.config.preset).toBe('standard');
@@ -463,7 +529,8 @@ describe('ParallaxMcpServer', () => {
       });
 
       expect((result as { isError: boolean }).isError).toBe(true);
-      const content = (result as { content: { text: string }[] }).content[0].text;
+      const content = (result as { content: { text: string }[] }).content[0]
+        .text;
       expect(JSON.parse(content).error).toContain('Unknown tool');
     });
 
@@ -471,7 +538,9 @@ describe('ParallaxMcpServer', () => {
       const server = new ParallaxMcpServer({
         logger,
         auth: {
-          apiKeys: [{ key: 'limited', permissions: ['agents:spawn'], name: 'limited' }],
+          apiKeys: [
+            { key: 'limited', permissions: ['agents:spawn'], name: 'limited' },
+          ],
         },
       });
 
@@ -480,12 +549,16 @@ describe('ParallaxMcpServer', () => {
       const result = await callToolHandler!({
         params: {
           name: 'provision_workspace',
-          arguments: { repo: 'https://github.com/test/repo', executionId: 'exec-1' },
+          arguments: {
+            repo: 'https://github.com/test/repo',
+            executionId: 'exec-1',
+          },
         },
       });
 
       expect((result as { isError: boolean }).isError).toBe(true);
-      const content = (result as { content: { text: string }[] }).content[0].text;
+      const content = (result as { content: { text: string }[] }).content[0]
+        .text;
       expect(JSON.parse(content).code).toBe('INSUFFICIENT_PERMISSIONS');
     });
   });
@@ -493,7 +566,11 @@ describe('ParallaxMcpServer', () => {
   describe('connect / disconnect', () => {
     it('connects to transport', async () => {
       const server = new ParallaxMcpServer({ logger });
-      const transport = { start: vi.fn(), close: vi.fn(), send: vi.fn() } as never;
+      const transport = {
+        start: vi.fn(),
+        close: vi.fn(),
+        send: vi.fn(),
+      } as never;
 
       await server.connect(transport);
       expect(server.isConnected()).toBe(true);
@@ -502,15 +579,25 @@ describe('ParallaxMcpServer', () => {
 
     it('rejects double connect', async () => {
       const server = new ParallaxMcpServer({ logger });
-      const transport = { start: vi.fn(), close: vi.fn(), send: vi.fn() } as never;
+      const transport = {
+        start: vi.fn(),
+        close: vi.fn(),
+        send: vi.fn(),
+      } as never;
 
       await server.connect(transport);
-      await expect(server.connect(transport)).rejects.toThrow('Already connected');
+      await expect(server.connect(transport)).rejects.toThrow(
+        'Already connected'
+      );
     });
 
     it('disconnects and shuts down manager', async () => {
       const server = new ParallaxMcpServer({ logger });
-      const transport = { start: vi.fn(), close: vi.fn(), send: vi.fn() } as never;
+      const transport = {
+        start: vi.fn(),
+        close: vi.fn(),
+        send: vi.fn(),
+      } as never;
 
       await server.connect(transport);
       await server.disconnect();

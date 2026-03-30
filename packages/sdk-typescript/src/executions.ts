@@ -1,20 +1,20 @@
 import {
-  Execution,
-  ExecutionServiceClient,
-  StreamExecutionRequest,
-  StreamExecutionResponse,
-  GetExecutionRequest,
-  GetExecutionResponse,
-  ListExecutionsRequest,
-  ListExecutionsResponse,
-} from "../generated/executions";
-import {
-  ChannelCredentials,
-  ClientOptions,
-  ClientReadableStream,
+  type ChannelCredentials,
+  type ClientOptions,
+  type ClientReadableStream,
   Metadata,
-  ServiceError,
-} from "@grpc/grpc-js";
+  type ServiceError,
+} from '@grpc/grpc-js';
+import {
+  type Execution,
+  ExecutionServiceClient,
+  type GetExecutionRequest,
+  type GetExecutionResponse,
+  type ListExecutionsRequest,
+  type ListExecutionsResponse,
+  type StreamExecutionRequest,
+  type StreamExecutionResponse,
+} from '../generated/executions';
 
 export type ExecutionStreamEvent = {
   type: string;
@@ -40,35 +40,45 @@ export class ExecutionClient {
     this.client = new ExecutionServiceClient(address, credentials, options);
   }
 
-  get(executionId: string, metadata?: Metadata): Promise<Execution | undefined> {
+  get(
+    executionId: string,
+    metadata?: Metadata
+  ): Promise<Execution | undefined> {
     return new Promise((resolve, reject) => {
       const request: GetExecutionRequest = { executionId };
       this.client.getExecution(
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: GetExecutionResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response.execution);
         }
-        resolve(response.execution);
-      });
+      );
     });
   }
 
-  list(limit = 100, offset = 0, status = "", metadata?: Metadata): Promise<ListExecutionsResponse> {
+  list(
+    limit = 100,
+    offset = 0,
+    status = '',
+    metadata?: Metadata
+  ): Promise<ListExecutionsResponse> {
     return new Promise((resolve, reject) => {
       const request: ListExecutionsRequest = { limit, offset, status };
       this.client.listExecutions(
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: ListExecutionsResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 
@@ -78,19 +88,24 @@ export class ExecutionClient {
     metadata?: Metadata
   ): ClientReadableStream<StreamExecutionResponse> {
     const request: StreamExecutionRequest = { executionId };
-    const stream = this.client.streamExecution(request, metadata || new Metadata());
+    const stream = this.client.streamExecution(
+      request,
+      metadata || new Metadata()
+    );
 
-    stream.on("data", (message: StreamExecutionResponse) => {
+    stream.on('data', (message: StreamExecutionResponse) => {
       handlers.onEvent?.(toExecutionStreamEvent(message));
     });
-    stream.on("error", (error: ServiceError) => handlers.onError?.(error));
-    stream.on("end", () => handlers.onEnd?.());
+    stream.on('error', (error: ServiceError) => handlers.onError?.(error));
+    stream.on('end', () => handlers.onEnd?.());
 
     return stream;
   }
 }
 
-export function toExecutionStreamEvent(message: StreamExecutionResponse): ExecutionStreamEvent {
+export function toExecutionStreamEvent(
+  message: StreamExecutionResponse
+): ExecutionStreamEvent {
   return {
     type: message.eventType,
     execution: message.execution,

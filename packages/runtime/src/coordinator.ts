@@ -1,6 +1,6 @@
-import { Agent, AgentResult, CoordinationPattern } from './types';
 import { AgentRegistry } from './agent-registry';
 import { ConfidenceProtocol } from './confidence-protocol';
+import type { Agent, AgentResult, CoordinationPattern } from './types';
 
 export class ParallaxCoordinator {
   private registry: AgentRegistry;
@@ -43,7 +43,7 @@ export class ParallaxCoordinator {
     data?: any
   ): Promise<AgentResult<T>[]> {
     const agents = await this.registry.getAvailableAgents();
-    
+
     const results = await Promise.all(
       agents.map((agent) => agent.analyze<T>(task, data))
     );

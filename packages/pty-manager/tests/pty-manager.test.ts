@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PTYManager } from '../src/pty-manager';
-import { ShellAdapter } from '../src/adapters/shell-adapter';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAdapter } from '../src/adapters/adapter-factory';
+import { ShellAdapter } from '../src/adapters/shell-adapter';
+import { PTYManager } from '../src/pty-manager';
 
 describe('PTYManager', () => {
   let manager: PTYManager;
@@ -91,7 +91,9 @@ describe('PTYManager', () => {
   describe('logs', () => {
     it('should throw for non-existent session', async () => {
       const generator = manager.logs('nonexistent');
-      await expect(generator.next()).rejects.toThrow('Session not found: nonexistent');
+      await expect(generator.next()).rejects.toThrow(
+        'Session not found: nonexistent'
+      );
     });
   });
 

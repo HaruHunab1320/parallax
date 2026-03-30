@@ -8,9 +8,19 @@
 // Git Providers
 // ─────────────────────────────────────────────────────────────
 
-export type GitProvider = 'github' | 'gitlab' | 'bitbucket' | 'azure_devops' | 'self_hosted';
+export type GitProvider =
+  | 'github'
+  | 'gitlab'
+  | 'bitbucket'
+  | 'azure_devops'
+  | 'self_hosted';
 
-export type CredentialType = 'github_app' | 'oauth' | 'deploy_key' | 'pat' | 'ssh_key';
+export type CredentialType =
+  | 'github_app'
+  | 'oauth'
+  | 'deploy_key'
+  | 'pat'
+  | 'ssh_key';
 
 // ─────────────────────────────────────────────────────────────
 // Branch Configuration
@@ -691,8 +701,8 @@ export type PermissionLevel = 'none' | 'read' | 'write';
  * Repository access scope
  */
 export type RepositoryScope =
-  | { type: 'all' }                    // All repositories user has access to
-  | { type: 'public' }                 // Only public repositories
+  | { type: 'all' } // All repositories user has access to
+  | { type: 'public' } // Only public repositories
   | { type: 'selected'; repos: string[] }; // Specific repos (owner/repo format)
 
 /**
@@ -763,7 +773,7 @@ export const DEFAULT_AGENT_PERMISSIONS: AgentPermissions = {
   pullRequests: 'write',
   issues: 'write',
   metadata: 'read',
-  canDeleteBranch: true,  // Needed for cleanup
+  canDeleteBranch: true, // Needed for cleanup
   canForcePush: false,
   canDeleteRepository: false,
   canAdminister: false,
@@ -1058,7 +1068,11 @@ export interface GitProviderAdapter {
   /**
    * Check if a branch exists
    */
-  branchExists(repo: string, branch: string, credential: GitCredential): Promise<boolean>;
+  branchExists(
+    repo: string,
+    branch: string,
+    credential: GitCredential
+  ): Promise<boolean>;
 
   /**
    * Get the default branch for a repository
@@ -1093,4 +1107,6 @@ export interface WorkspaceEvent {
   error?: string;
 }
 
-export type WorkspaceEventHandler = (event: WorkspaceEvent) => void | Promise<void>;
+export type WorkspaceEventHandler = (
+  event: WorkspaceEvent
+) => void | Promise<void>;

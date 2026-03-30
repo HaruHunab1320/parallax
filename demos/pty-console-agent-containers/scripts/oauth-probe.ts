@@ -2,20 +2,71 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import type { SessionHandle, SpawnConfig } from '../../../packages/pty-manager/src/types.ts';
-import * as PTYManagerModule from '../../../packages/pty-manager/src/pty-manager.ts';
-import * as PTYConsoleBridgeModule from '../../../packages/pty-console/src/pty-console-bridge.ts';
 import * as CodexAdapterModule from '../../../packages/coding-agent-adapters/src/codex-adapter.ts';
 import * as GeminiAdapterModule from '../../../packages/coding-agent-adapters/src/gemini-adapter.ts';
+import * as PTYConsoleBridgeModule from '../../../packages/pty-console/src/pty-console-bridge.ts';
+import * as PTYManagerModule from '../../../packages/pty-manager/src/pty-manager.ts';
+import type {
+  SessionHandle,
+  SpawnConfig,
+} from '../../../packages/pty-manager/src/types.ts';
 
-const PTYManager = (PTYManagerModule as { PTYManager?: typeof import('../../../packages/pty-manager/src/pty-manager.ts')['PTYManager'] }).PTYManager
-  ?? ((PTYManagerModule as { default?: { PTYManager?: typeof import('../../../packages/pty-manager/src/pty-manager.ts')['PTYManager'] } }).default?.PTYManager as typeof import('../../../packages/pty-manager/src/pty-manager.ts')['PTYManager']);
-const PTYConsoleBridge = (PTYConsoleBridgeModule as { PTYConsoleBridge?: typeof import('../../../packages/pty-console/src/pty-console-bridge.ts')['PTYConsoleBridge'] }).PTYConsoleBridge
-  ?? ((PTYConsoleBridgeModule as { default?: { PTYConsoleBridge?: typeof import('../../../packages/pty-console/src/pty-console-bridge.ts')['PTYConsoleBridge'] } }).default?.PTYConsoleBridge as typeof import('../../../packages/pty-console/src/pty-console-bridge.ts')['PTYConsoleBridge']);
-const CodexAdapter = (CodexAdapterModule as { CodexAdapter?: typeof import('../../../packages/coding-agent-adapters/src/codex-adapter.ts')['CodexAdapter'] }).CodexAdapter
-  ?? ((CodexAdapterModule as { default?: { CodexAdapter?: typeof import('../../../packages/coding-agent-adapters/src/codex-adapter.ts')['CodexAdapter'] } }).default?.CodexAdapter as typeof import('../../../packages/coding-agent-adapters/src/codex-adapter.ts')['CodexAdapter']);
-const GeminiAdapter = (GeminiAdapterModule as { GeminiAdapter?: typeof import('../../../packages/coding-agent-adapters/src/gemini-adapter.ts')['GeminiAdapter'] }).GeminiAdapter
-  ?? ((GeminiAdapterModule as { default?: { GeminiAdapter?: typeof import('../../../packages/coding-agent-adapters/src/gemini-adapter.ts')['GeminiAdapter'] } }).default?.GeminiAdapter as typeof import('../../../packages/coding-agent-adapters/src/gemini-adapter.ts')['GeminiAdapter']);
+const PTYManager =
+  (
+    PTYManagerModule as {
+      PTYManager?: typeof import('../../../packages/pty-manager/src/pty-manager.ts')['PTYManager'];
+    }
+  ).PTYManager ??
+  ((
+    PTYManagerModule as {
+      default?: {
+        PTYManager?: typeof import('../../../packages/pty-manager/src/pty-manager.ts')['PTYManager'];
+      };
+    }
+  ).default
+    ?.PTYManager as typeof import('../../../packages/pty-manager/src/pty-manager.ts')['PTYManager']);
+const PTYConsoleBridge =
+  (
+    PTYConsoleBridgeModule as {
+      PTYConsoleBridge?: typeof import('../../../packages/pty-console/src/pty-console-bridge.ts')['PTYConsoleBridge'];
+    }
+  ).PTYConsoleBridge ??
+  ((
+    PTYConsoleBridgeModule as {
+      default?: {
+        PTYConsoleBridge?: typeof import('../../../packages/pty-console/src/pty-console-bridge.ts')['PTYConsoleBridge'];
+      };
+    }
+  ).default
+    ?.PTYConsoleBridge as typeof import('../../../packages/pty-console/src/pty-console-bridge.ts')['PTYConsoleBridge']);
+const CodexAdapter =
+  (
+    CodexAdapterModule as {
+      CodexAdapter?: typeof import('../../../packages/coding-agent-adapters/src/codex-adapter.ts')['CodexAdapter'];
+    }
+  ).CodexAdapter ??
+  ((
+    CodexAdapterModule as {
+      default?: {
+        CodexAdapter?: typeof import('../../../packages/coding-agent-adapters/src/codex-adapter.ts')['CodexAdapter'];
+      };
+    }
+  ).default
+    ?.CodexAdapter as typeof import('../../../packages/coding-agent-adapters/src/codex-adapter.ts')['CodexAdapter']);
+const GeminiAdapter =
+  (
+    GeminiAdapterModule as {
+      GeminiAdapter?: typeof import('../../../packages/coding-agent-adapters/src/gemini-adapter.ts')['GeminiAdapter'];
+    }
+  ).GeminiAdapter ??
+  ((
+    GeminiAdapterModule as {
+      default?: {
+        GeminiAdapter?: typeof import('../../../packages/coding-agent-adapters/src/gemini-adapter.ts')['GeminiAdapter'];
+      };
+    }
+  ).default
+    ?.GeminiAdapter as typeof import('../../../packages/coding-agent-adapters/src/gemini-adapter.ts')['GeminiAdapter']);
 
 if (!PTYManager || !PTYConsoleBridge || !CodexAdapter || !GeminiAdapter) {
   throw new Error('Failed to resolve required modules for OAuth probe script');
@@ -65,7 +116,9 @@ class DockerizedGeminiAdapter extends GeminiAdapter {
 
 const OAUTH_TIMEOUT_MS = 90_000;
 const manager = new PTYManager();
-const bridge = new PTYConsoleBridge(manager, { maxBufferedCharsPerSession: 300_000 });
+const bridge = new PTYConsoleBridge(manager, {
+  maxBufferedCharsPerSession: 300_000,
+});
 
 async function main(): Promise<void> {
   manager.registerAdapter(new DockerizedCodexAdapter());
@@ -109,7 +162,7 @@ function baseEnv(): Record<string, string> {
 }
 
 async function waitForUrls(
-  sessions: SessionHandle[],
+  _sessions: SessionHandle[]
 ): Promise<Map<AgentType, string | null>> {
   const urls = new Map<AgentType, string | null>([
     ['codex', null],
@@ -124,7 +177,11 @@ async function waitForUrls(
     if (!urlMatch?.length) return;
     const handle = manager.get(sessionId);
     if (!handle) return;
-    if ((handle.type !== 'codex' && handle.type !== 'gemini') || done.has(handle.type)) return;
+    if (
+      (handle.type !== 'codex' && handle.type !== 'gemini') ||
+      done.has(handle.type)
+    )
+      return;
     urls.set(handle.type, urlMatch[urlMatch.length - 1]);
     done.add(handle.type);
   };
@@ -200,7 +257,9 @@ function buildDockerArgs(options: {
   return args;
 }
 
-function getAuthMounts(agentType: AgentType): Array<{ hostPath: string; containerPath: string }> {
+function getAuthMounts(
+  agentType: AgentType
+): Array<{ hostPath: string; containerPath: string }> {
   const home = homedir();
   const mounts: Array<{ hostPath: string; containerPath: string }> = [];
   const maybeAdd = (hostPath: string, containerPath: string) => {
@@ -216,13 +275,15 @@ function getAuthMounts(agentType: AgentType): Array<{ hostPath: string; containe
 }
 
 function stripAnsi(input: string): string {
-  return input
-    .replace(/\x1b\[\d*[CDABGdEF]/g, ' ')
-    .replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ')
-    .replace(/\x1b\[\d*[JK]/g, ' ')
-    .replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '')
-    // eslint-disable-next-line no-control-regex
-    .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+  return (
+    input
+      .replace(/\x1b\[\d*[CDABGdEF]/g, ' ')
+      .replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ')
+      .replace(/\x1b\[\d*[JK]/g, ' ')
+      .replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '')
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '')
+  );
 }
 
 main().catch(async (err) => {

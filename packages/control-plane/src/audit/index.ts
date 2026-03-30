@@ -5,22 +5,21 @@
  */
 
 export {
-  AuditService,
-  AuditAction,
-  AuditResource,
-  AuditStatus,
-  AuditEntry,
-  AuditQueryOptions,
-} from './audit-service';
-
-export {
-  createAuditMiddleware,
-  auditPattern,
-  auditExecution,
-  auditUser,
-  auditSchedule,
-  auditTrigger,
+  AuditMiddlewareOptions,
   auditApiKey,
   auditBackup,
-  AuditMiddlewareOptions,
+  auditExecution,
+  auditPattern,
+  auditSchedule,
+  auditTrigger,
+  auditUser,
+  createAuditMiddleware,
 } from './audit-middleware';
+export {
+  AuditAction,
+  AuditEntry,
+  AuditQueryOptions,
+  AuditResource,
+  AuditService,
+  AuditStatus,
+} from './audit-service';

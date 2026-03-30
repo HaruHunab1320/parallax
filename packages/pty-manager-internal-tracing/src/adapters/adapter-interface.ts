@@ -5,11 +5,11 @@
  */
 
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from '../types';
 
 /**
@@ -69,7 +69,11 @@ export interface CLIAdapter {
   /**
    * Detect if CLI has exited or crashed
    */
-  detectExit(output: string): { exited: boolean; code?: number; error?: string };
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  };
 
   /**
    * Parse structured response from output buffer
@@ -100,7 +104,11 @@ export interface CLIAdapter {
   /**
    * Optional: Validate that the CLI is installed and accessible
    */
-  validateInstallation?(): Promise<{ installed: boolean; version?: string; error?: string }>;
+  validateInstallation?(): Promise<{
+    installed: boolean;
+    version?: string;
+    error?: string;
+  }>;
 
   /** Ms of output silence after detectReady match before emitting session_ready (default: 100) */
   readonly readySettleMs?: number;

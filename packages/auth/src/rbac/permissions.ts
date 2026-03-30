@@ -22,9 +22,9 @@ export const Actions = {
 } as const;
 
 export const Scopes = {
-  OWN: 'own',      // Only own resources
+  OWN: 'own', // Only own resources
   TENANT: 'tenant', // All resources in tenant
-  ALL: 'all',      // All resources (admin)
+  ALL: 'all', // All resources (admin)
 } as const;
 
 /**

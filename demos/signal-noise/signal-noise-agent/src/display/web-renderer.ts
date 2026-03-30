@@ -1,12 +1,12 @@
-import { DisplayRenderer, PersonaId } from './types';
-import type { Server } from 'http';
+import type { Server } from 'node:http';
+import type { DisplayRenderer, PersonaId } from './types';
 
 /** Persona color schemes: [r, g, b] for "on" pixels */
 const PERSONA_COLORS: Record<PersonaId, [number, number, number]> = {
-  vero: [0, 255, 255],    // cyan (#00ffff)
-  silas: [255, 170, 0],   // amber (#ffaa00)
-  sable: [0, 255, 0],     // green (#00ff00)
-  echo: [224, 224, 255],  // soft white (#e0e0ff)
+  vero: [0, 255, 255], // cyan (#00ffff)
+  silas: [255, 170, 0], // amber (#ffaa00)
+  sable: [0, 255, 0], // green (#00ff00)
+  echo: [224, 224, 255], // soft white (#e0e0ff)
 };
 
 const PERSONA_HEX: Record<PersonaId, string> = {

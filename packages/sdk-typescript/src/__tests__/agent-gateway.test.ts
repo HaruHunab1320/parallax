@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import * as grpc from '@grpc/grpc-js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxAgent } from '../agent-base';
 import type { AgentResponse } from '../types/agent-response';
 
@@ -28,7 +28,11 @@ vi.mock('@grpc/grpc-js', () => ({
   Server: vi.fn(() => ({
     addService: vi.fn(),
     bindAsync: vi.fn(
-      (_addr: string, _creds: unknown, cb: (err: Error | null, port: number) => void) => {
+      (
+        _addr: string,
+        _creds: unknown,
+        cb: (err: Error | null, port: number) => void
+      ) => {
         cb(null, 50051);
       }
     ),
@@ -48,9 +52,12 @@ vi.mock('@grpc/grpc-js', () => ({
       },
       registry: {
         Registry: vi.fn(() => ({
-          waitForReady: vi.fn((_d: number, cb: (err: Error | null) => void) => cb(null)),
-          register: vi.fn((_r: unknown, cb: (err: Error | null, res: unknown) => void) =>
-            cb(null, { lease_id: 'test-lease' })
+          waitForReady: vi.fn((_d: number, cb: (err: Error | null) => void) =>
+            cb(null)
+          ),
+          register: vi.fn(
+            (_r: unknown, cb: (err: Error | null, res: unknown) => void) =>
+              cb(null, { lease_id: 'test-lease' })
           ),
           unregister: vi.fn((_r: unknown, cb: () => void) => cb()),
         })),
@@ -182,7 +189,11 @@ describe('ParallaxAgent Gateway', () => {
 
       // Simulate accepted ack from server
       mockStream.emit('data', {
-        ack: { accepted: true, message: 'Connected', assigned_node_id: 'node-1' },
+        ack: {
+          accepted: true,
+          message: 'Connected',
+          assigned_node_id: 'node-1',
+        },
       });
 
       await connectPromise;
@@ -205,7 +216,9 @@ describe('ParallaxAgent Gateway', () => {
 
   describe('Task handling', () => {
     async function connectAgent() {
-      const p = agent.connectViaGateway('localhost:50051', { autoReconnect: false });
+      const p = agent.connectViaGateway('localhost:50051', {
+        autoReconnect: false,
+      });
       await vi.advanceTimersByTimeAsync(0);
       mockStream.emit('data', {
         ack: { accepted: true, message: 'OK', assigned_node_id: 'node-1' },
@@ -342,7 +355,9 @@ describe('ParallaxAgent Thread Protocol', () => {
   });
 
   async function connectAgent() {
-    const p = agent.connectViaGateway('localhost:50051', { autoReconnect: false });
+    const p = agent.connectViaGateway('localhost:50051', {
+      autoReconnect: false,
+    });
     await vi.advanceTimersByTimeAsync(0);
     mockStream.emit('data', {
       ack: { accepted: true, message: 'OK', assigned_node_id: 'node-1' },
@@ -525,7 +540,9 @@ describe('ParallaxAgent Thread Protocol', () => {
       const pkgDef = grpc.loadPackageDefinition({} as any) as any;
       (baseAgent as any).gatewayProto = pkgDef.parallax.gateway;
 
-      const p = baseAgent.connectViaGateway('localhost:50051', { autoReconnect: false });
+      const p = baseAgent.connectViaGateway('localhost:50051', {
+        autoReconnect: false,
+      });
       await vi.advanceTimersByTimeAsync(0);
       mockStream.emit('data', {
         ack: { accepted: true, message: 'OK', assigned_node_id: 'node-1' },

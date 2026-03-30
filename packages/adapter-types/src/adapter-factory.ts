@@ -7,12 +7,12 @@
 import type { CLIAdapter } from './adapter-interface.js';
 import { BaseCLIAdapter } from './base-adapter.js';
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
-  AutoResponseRule,
   AdapterFactoryConfig,
+  AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from './types.js';
 
 /**
@@ -76,7 +76,8 @@ class ConfiguredAdapter extends BaseCLIAdapter {
       return { required: false };
     }
 
-    const { patterns, extractUrl, extractInstructions } = this.adapterConfig.loginDetection;
+    const { patterns, extractUrl, extractInstructions } =
+      this.adapterConfig.loginDetection;
     const stripped = this.stripAnsi(output);
 
     for (const pattern of patterns) {
@@ -85,7 +86,8 @@ class ConfiguredAdapter extends BaseCLIAdapter {
           required: true,
           type: 'browser',
           url: extractUrl?.(stripped) || undefined,
-          instructions: extractInstructions?.(stripped) || 'Authentication required',
+          instructions:
+            extractInstructions?.(stripped) || 'Authentication required',
         };
       }
     }
@@ -105,7 +107,8 @@ class ConfiguredAdapter extends BaseCLIAdapter {
             type: prompt.type,
             prompt: stripped.slice(-200),
             suggestedResponse: prompt.autoResponse,
-            canAutoRespond: prompt.autoResponse !== undefined && prompt.safe !== false,
+            canAutoRespond:
+              prompt.autoResponse !== undefined && prompt.safe !== false,
             instructions: prompt.description,
           };
         }
@@ -117,16 +120,25 @@ class ConfiguredAdapter extends BaseCLIAdapter {
   }
 
   detectReady(output: string): boolean {
-    if (!this.adapterConfig.readyIndicators || this.adapterConfig.readyIndicators.length === 0) {
+    if (
+      !this.adapterConfig.readyIndicators ||
+      this.adapterConfig.readyIndicators.length === 0
+    ) {
       // Default: ready after any output
       return output.length > 10;
     }
 
     const stripped = this.stripAnsi(output);
-    return this.adapterConfig.readyIndicators.some((pattern) => pattern.test(stripped));
+    return this.adapterConfig.readyIndicators.some((pattern) =>
+      pattern.test(stripped)
+    );
   }
 
-  detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     if (this.adapterConfig.exitIndicators) {
       for (const indicator of this.adapterConfig.exitIndicators) {
         const match = output.match(indicator.pattern);
@@ -166,6 +178,6 @@ class ConfiguredAdapter extends BaseCLIAdapter {
   }
 
   getPromptPattern(): RegExp {
-    return this.adapterConfig.promptPattern || /[\$#>]\s*$/m;
+    return this.adapterConfig.promptPattern || /[$#>]\s*$/m;
   }
 }

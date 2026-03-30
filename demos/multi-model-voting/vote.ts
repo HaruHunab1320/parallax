@@ -12,7 +12,7 @@
  *   ./vote.ts --question "What severity level?" --options "low,medium,high,critical"
  */
 
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 
 const CONTROL_PLANE_URL = process.env.PARALLAX_URL || 'http://localhost:8080';
 
@@ -50,7 +50,9 @@ async function runVote(config: VoteConfig): Promise<VoteResult> {
   console.log(`   Question: "${config.question}"`);
   console.log(`   Options: ${config.options.join(', ')}`);
   if (config.context) {
-    console.log(`   Context: ${config.context.substring(0, 100)}${config.context.length > 100 ? '...' : ''}`);
+    console.log(
+      `   Context: ${config.context.substring(0, 100)}${config.context.length > 100 ? '...' : ''}`
+    );
   }
   console.log('');
 
@@ -62,14 +64,16 @@ async function runVote(config: VoteConfig): Promise<VoteResult> {
       patternName: 'MultiModelVoting',
       input: {
         task: 'Vote on this question',
-        data: config
-      }
-    })
+        data: config,
+      },
+    }),
   });
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Failed to create execution: ${response.status} - ${error}`);
+    throw new Error(
+      `Failed to create execution: ${response.status} - ${error}`
+    );
   }
 
   const execution: any = await response.json();
@@ -85,9 +89,13 @@ async function runVote(config: VoteConfig): Promise<VoteResult> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < maxWait) {
-    const statusResponse = await fetch(`${CONTROL_PLANE_URL}/api/executions/${executionId}`);
+    const statusResponse = await fetch(
+      `${CONTROL_PLANE_URL}/api/executions/${executionId}`
+    );
     if (!statusResponse.ok) {
-      throw new Error(`Failed to get execution status: ${statusResponse.status}`);
+      throw new Error(
+        `Failed to get execution status: ${statusResponse.status}`
+      );
     }
 
     const status: any = await statusResponse.json();
@@ -100,7 +108,7 @@ async function runVote(config: VoteConfig): Promise<VoteResult> {
     }
 
     process.stdout.write('.');
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
   if (!result) {
@@ -121,42 +129,59 @@ function printResult(result: VoteResult, config: VoteConfig) {
     blue: '\x1b[34m',
     magenta: '\x1b[35m',
     cyan: '\x1b[36m',
-    gray: '\x1b[90m'
+    gray: '\x1b[90m',
   };
 
   const consensusColors: Record<string, string> = {
     unanimous: colors.green,
     majority: colors.yellow,
-    split: colors.red
+    split: colors.red,
   };
 
   const consensusEmoji: Record<string, string> = {
     unanimous: '✅',
     majority: '🤝',
-    split: '⚠️'
+    split: '⚠️',
   };
 
-  console.log(`${colors.bright}════════════════════════════════════════════════════════════${colors.reset}`);
-  console.log(`${colors.bright}                    VOTING RESULTS                          ${colors.reset}`);
-  console.log(`${colors.bright}════════════════════════════════════════════════════════════${colors.reset}\n`);
+  console.log(
+    `${colors.bright}════════════════════════════════════════════════════════════${colors.reset}`
+  );
+  console.log(
+    `${colors.bright}                    VOTING RESULTS                          ${colors.reset}`
+  );
+  console.log(
+    `${colors.bright}════════════════════════════════════════════════════════════${colors.reset}\n`
+  );
 
   // Question
   console.log(`${colors.cyan}Question:${colors.reset} ${config.question}\n`);
 
   // Decision
-  const consensusColor = consensusColors[result.consensus?.type] || colors.reset;
+  const consensusColor =
+    consensusColors[result.consensus?.type] || colors.reset;
   const emoji = consensusEmoji[result.consensus?.type] || '❓';
 
   if (result.decision) {
-    console.log(`${colors.bright}Decision: ${colors.green}${result.decision.toUpperCase()}${colors.reset}`);
+    console.log(
+      `${colors.bright}Decision: ${colors.green}${result.decision.toUpperCase()}${colors.reset}`
+    );
   } else {
-    console.log(`${colors.bright}Decision: ${colors.red}NO CONSENSUS${colors.reset}`);
+    console.log(
+      `${colors.bright}Decision: ${colors.red}NO CONSENSUS${colors.reset}`
+    );
   }
 
   // Consensus info
-  console.log(`${colors.cyan}Consensus:${colors.reset} ${emoji} ${consensusColor}${result.consensus?.type?.toUpperCase() || 'UNKNOWN'}${colors.reset}`);
-  console.log(`${colors.cyan}Confidence:${colors.reset} ${((result.consensus?.confidence || 0) * 100).toFixed(0)}%`);
-  console.log(`${colors.cyan}Votes:${colors.reset} ${result.votes?.forWinner || 0}/${result.votes?.total || 0} for winner\n`);
+  console.log(
+    `${colors.cyan}Consensus:${colors.reset} ${emoji} ${consensusColor}${result.consensus?.type?.toUpperCase() || 'UNKNOWN'}${colors.reset}`
+  );
+  console.log(
+    `${colors.cyan}Confidence:${colors.reset} ${((result.consensus?.confidence || 0) * 100).toFixed(0)}%`
+  );
+  console.log(
+    `${colors.cyan}Votes:${colors.reset} ${result.votes?.forWinner || 0}/${result.votes?.total || 0} for winner\n`
+  );
 
   // Summary
   console.log(`${colors.gray}${result.summary}${colors.reset}\n`);
@@ -168,17 +193,26 @@ function printResult(result: VoteResult, config: VoteConfig) {
 
   // Vote breakdown
   console.log(`${colors.bright}Individual Votes:${colors.reset}`);
-  console.log(`${colors.gray}────────────────────────────────────────────────────────────${colors.reset}`);
+  console.log(
+    `${colors.gray}────────────────────────────────────────────────────────────${colors.reset}`
+  );
 
   for (const vote of result.votes?.breakdown || []) {
-    const voteColor = vote.decision === result.decision ? colors.green : colors.yellow;
-    console.log(`\n  ${colors.blue}${vote.agent}${colors.reset} (${vote.model})`);
+    const voteColor =
+      vote.decision === result.decision ? colors.green : colors.yellow;
+    console.log(
+      `\n  ${colors.blue}${vote.agent}${colors.reset} (${vote.model})`
+    );
     console.log(`    Vote: ${voteColor}${vote.decision}${colors.reset}`);
     console.log(`    Confidence: ${(vote.confidence * 100).toFixed(0)}%`);
-    console.log(`    ${colors.gray}${vote.reasoning?.substring(0, 100)}${vote.reasoning?.length > 100 ? '...' : ''}${colors.reset}`);
+    console.log(
+      `    ${colors.gray}${vote.reasoning?.substring(0, 100)}${vote.reasoning?.length > 100 ? '...' : ''}${colors.reset}`
+    );
   }
 
-  console.log(`\n${colors.bright}════════════════════════════════════════════════════════════${colors.reset}\n`);
+  console.log(
+    `\n${colors.bright}════════════════════════════════════════════════════════════${colors.reset}\n`
+  );
 }
 
 async function main() {
@@ -190,7 +224,8 @@ async function main() {
     config = {
       question: 'Is the following content appropriate for a general audience?',
       options: ['yes', 'no'],
-      context: 'The content is: "Learn how to bake delicious chocolate chip cookies with this easy recipe!"'
+      context:
+        'The content is: "Learn how to bake delicious chocolate chip cookies with this easy recipe!"',
     };
     console.log('🗳️  Multi-Model Voting Demo');
     console.log('   Using sample question (no arguments provided)');
@@ -209,9 +244,10 @@ async function main() {
     const contextIdx = args.indexOf('--context');
 
     const question = args[questionIdx + 1];
-    const options = optionsIdx >= 0
-      ? args[optionsIdx + 1].split(',').map(o => o.trim())
-      : ['yes', 'no'];
+    const options =
+      optionsIdx >= 0
+        ? args[optionsIdx + 1].split(',').map((o) => o.trim())
+        : ['yes', 'no'];
     const context = contextIdx >= 0 ? args[contextIdx + 1] : undefined;
 
     config = { question, options, context };
@@ -219,7 +255,7 @@ async function main() {
     // Simple question with yes/no options
     config = {
       question: args.join(' '),
-      options: ['yes', 'no']
+      options: ['yes', 'no'],
     };
   }
 
@@ -227,7 +263,9 @@ async function main() {
     const result = await runVote(config);
     printResult(result, config);
   } catch (error) {
-    console.error(`\n❌ Vote failed: ${error instanceof Error ? error.message : error}`);
+    console.error(
+      `\n❌ Vote failed: ${error instanceof Error ? error.message : error}`
+    );
     process.exit(1);
   }
 }

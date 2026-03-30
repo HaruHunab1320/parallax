@@ -1,12 +1,12 @@
-import { HttpClient } from '../http.js';
-import {
+import type { HttpClient } from '../http.js';
+import type {
   Schedule,
-  ScheduleListResponse,
-  ScheduleListParams,
   ScheduleCreateInput,
-  ScheduleUpdateInput,
+  ScheduleListParams,
+  ScheduleListResponse,
   ScheduleRun,
   ScheduleRunsResponse,
+  ScheduleUpdateInput,
 } from '../types/schedules.js';
 
 export class SchedulesResource {
@@ -31,8 +31,12 @@ export class SchedulesResource {
   async create(input: ScheduleCreateInput): Promise<Schedule> {
     return this.http.post<Schedule>('/api/schedules', {
       ...input,
-      startAt: input.startAt instanceof Date ? input.startAt.toISOString() : input.startAt,
-      endAt: input.endAt instanceof Date ? input.endAt.toISOString() : input.endAt,
+      startAt:
+        input.startAt instanceof Date
+          ? input.startAt.toISOString()
+          : input.startAt,
+      endAt:
+        input.endAt instanceof Date ? input.endAt.toISOString() : input.endAt,
     });
   }
 
@@ -40,8 +44,14 @@ export class SchedulesResource {
   async update(id: string, updates: ScheduleUpdateInput): Promise<Schedule> {
     return this.http.put<Schedule>(`/api/schedules/${encodeURIComponent(id)}`, {
       ...updates,
-      startAt: updates.startAt instanceof Date ? updates.startAt.toISOString() : updates.startAt,
-      endAt: updates.endAt instanceof Date ? updates.endAt.toISOString() : updates.endAt,
+      startAt:
+        updates.startAt instanceof Date
+          ? updates.startAt.toISOString()
+          : updates.startAt,
+      endAt:
+        updates.endAt instanceof Date
+          ? updates.endAt.toISOString()
+          : updates.endAt,
     });
   }
 

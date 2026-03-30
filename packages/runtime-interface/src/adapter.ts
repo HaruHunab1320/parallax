@@ -4,7 +4,7 @@
  * Defines how to interact with different CLI agent tools.
  */
 
-import { AgentConfig, AgentMessage, MessageType } from './types';
+import type { AgentConfig, MessageType } from './types';
 
 /**
  * Parsed output from a CLI agent
@@ -12,8 +12,8 @@ import { AgentConfig, AgentMessage, MessageType } from './types';
 export interface ParsedOutput {
   type: MessageType;
   content: string;
-  isComplete: boolean;      // Whether this is a complete response
-  isQuestion: boolean;      // Whether agent is asking a question
+  isComplete: boolean; // Whether this is a complete response
+  isQuestion: boolean; // Whether agent is asking a question
   metadata?: Record<string, unknown>;
 }
 
@@ -31,15 +31,15 @@ export interface LoginDetection {
  * Types of blocking prompts that can occur during startup or execution
  */
 export type BlockingPromptType =
-  | 'login'          // Authentication required
-  | 'update'         // Update/upgrade available
-  | 'config'         // Configuration choice needed
-  | 'tos'            // Terms of service acceptance
-  | 'model_select'   // Model/version selection
+  | 'login' // Authentication required
+  | 'update' // Update/upgrade available
+  | 'config' // Configuration choice needed
+  | 'tos' // Terms of service acceptance
+  | 'model_select' // Model/version selection
   | 'project_select' // Project/workspace selection
-  | 'permission'     // Permission request
-  | 'tool_wait'      // Agent waiting on tool/shell interaction
-  | 'unknown';       // Unrecognized blocking prompt
+  | 'permission' // Permission request
+  | 'tool_wait' // Agent waiting on tool/shell interaction
+  | 'unknown'; // Unrecognized blocking prompt
 
 /**
  * Blocking prompt detection result
@@ -152,7 +152,11 @@ export interface CLIAdapter {
   /**
    * Detect if agent has exited or crashed
    */
-  detectExit(output: string): { exited: boolean; code?: number; error?: string };
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  };
 
   /**
    * Parse structured response from output buffer
@@ -174,7 +178,11 @@ export interface CLIAdapter {
   /**
    * Optional: Validate that the CLI is installed and accessible
    */
-  validateInstallation?(): Promise<{ installed: boolean; version?: string; error?: string }>;
+  validateInstallation?(): Promise<{
+    installed: boolean;
+    version?: string;
+    error?: string;
+  }>;
 
   /**
    * Optional: Get health check command

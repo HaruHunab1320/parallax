@@ -4,7 +4,10 @@ import fs from 'fs-extra';
 const validator = createValidator();
 
 // Read the actual generated pattern
-const code = fs.readFileSync('examples/patterns/comprehensive-code-review-with-team-consensus.prism', 'utf8');
+const code = fs.readFileSync(
+  'examples/patterns/comprehensive-code-review-with-team-consensus.prism',
+  'utf8'
+);
 
 // Split into lines to find line 13
 const lines = code.split('\n');

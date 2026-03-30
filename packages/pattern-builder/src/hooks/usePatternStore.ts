@@ -4,31 +4,31 @@
  * Zustand store for managing the pattern builder state
  */
 
-import { create } from 'zustand';
 import {
-  Connection,
-  EdgeChange,
-  NodeChange,
   addEdge,
-  applyNodeChanges,
   applyEdgeChanges,
+  applyNodeChanges,
+  type Connection,
+  type EdgeChange,
+  type NodeChange,
 } from '@xyflow/react';
 import { nanoid } from 'nanoid';
+import { create } from 'zustand';
+import type { ExamplePattern } from '../data/example-patterns';
 import {
-  PatternNode,
-  PatternEdge,
-  PatternNodeType,
-  PatternNodeData,
-  PatternMetadata,
-  ValidationError,
-  ValidationWarning,
-  getNodeDefinition,
+  type AgentsNodeData,
   DEFAULT_EDGE_OPTIONS,
-  InputNodeData,
-  AgentsNodeData,
-  OutputNodeData,
+  getNodeDefinition,
+  type InputNodeData,
+  type OutputNodeData,
+  type PatternEdge,
+  type PatternMetadata,
+  type PatternNode,
+  type PatternNodeData,
+  type PatternNodeType,
+  type ValidationError,
+  type ValidationWarning,
 } from '../types';
-import { ExamplePattern } from '../data/example-patterns';
 
 export interface PatternBuilderState {
   // Pattern metadata
@@ -54,7 +54,10 @@ export interface PatternBuilderState {
   setMetadata: (metadata: Partial<PatternMetadata>) => void;
 
   // Actions - Nodes
-  addNode: (type: PatternNodeType, position: { x: number; y: number }) => string;
+  addNode: (
+    type: PatternNodeType,
+    position: { x: number; y: number }
+  ) => string;
   updateNode: (id: string, data: Partial<PatternNodeData>) => void;
   removeNode: (id: string) => void;
   onNodesChange: (changes: NodeChange<PatternNode>[]) => void;
@@ -157,9 +160,7 @@ export const usePatternStore = create<PatternBuilderState>((set, get) => ({
   updateNode: (id, data) =>
     set((state) => ({
       nodes: state.nodes.map((node) =>
-        node.id === id
-          ? { ...node, data: { ...node.data, ...data } }
-          : node
+        node.id === id ? { ...node, data: { ...node.data, ...data } } : node
       ),
     })),
 
@@ -366,7 +367,9 @@ function generateYamlFromFlow(
   if (agentsNode) {
     const agentsData = agentsNode.data as AgentsNodeData;
     lines.push('agents:');
-    lines.push(`  capabilities: [${(agentsData.capabilities || []).join(', ')}]`);
+    lines.push(
+      `  capabilities: [${(agentsData.capabilities || []).join(', ')}]`
+    );
     lines.push(`  min: ${agentsData.minAgents || 1}`);
     lines.push('');
   }

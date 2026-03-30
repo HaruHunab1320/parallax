@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { BaseCLIAdapter } from '../src/adapters/base-adapter';
-import type { SpawnConfig, ParsedOutput, LoginDetection } from '../src/types';
+import type { LoginDetection, ParsedOutput, SpawnConfig } from '../src/types';
 
 // Concrete implementation for testing
 class TestAdapter extends BaseCLIAdapter {
@@ -53,7 +53,9 @@ describe('BaseCLIAdapter', () => {
     expect(adapter.displayName).toBe('Test Adapter');
     expect(adapter.getCommand()).toBe('test-cli');
     expect(adapter.getArgs({ name: 'x', type: 'test' })).toEqual(['--test']);
-    expect(adapter.getEnv({ name: 'x', type: 'test' })).toEqual({ TEST: 'true' });
+    expect(adapter.getEnv({ name: 'x', type: 'test' })).toEqual({
+      TEST: 'true',
+    });
   });
 
   it('should detect login from subclass implementation', () => {
@@ -93,7 +95,9 @@ describe('BaseCLIAdapter', () => {
   it('should detect blocking prompts - update prompts', () => {
     const adapter = new TestAdapter();
 
-    const detection = adapter.detectBlockingPrompt('Update available now! [Y/n]');
+    const detection = adapter.detectBlockingPrompt(
+      'Update available now! [Y/n]'
+    );
     expect(detection.detected).toBe(true);
     expect(detection.type).toBe('update');
     expect(detection.canAutoRespond).toBe(true);
@@ -103,7 +107,9 @@ describe('BaseCLIAdapter', () => {
   it('should detect blocking prompts - TOS', () => {
     const adapter = new TestAdapter();
 
-    const detection = adapter.detectBlockingPrompt('Accept terms of service? [Y/n]');
+    const detection = adapter.detectBlockingPrompt(
+      'Accept terms of service? [Y/n]'
+    );
     expect(detection.detected).toBe(true);
     expect(detection.type).toBe('tos');
     expect(detection.canAutoRespond).toBe(false);
@@ -139,7 +145,9 @@ describe('BaseCLIAdapter', () => {
   it('should detect unknown y/n prompts', () => {
     const adapter = new TestAdapter();
 
-    const detection = adapter.detectBlockingPrompt('Continue with something? [y/n]');
+    const detection = adapter.detectBlockingPrompt(
+      'Continue with something? [y/n]'
+    );
     expect(detection.detected).toBe(true);
     expect(detection.type).toBe('unknown');
     expect(detection.options).toEqual(['y', 'n']);
@@ -172,7 +180,9 @@ describe('BaseCLIAdapter', () => {
     expect(result?.content).toBe('\x1B[31mred\x1B[0m text'.trim());
     // Note: TestAdapter doesn't strip ANSI in parseOutput, but detectBlockingPrompt does
 
-    const detection = adapter.detectBlockingPrompt('\x1B[31mUpdate available\x1B[0m [Y/n]');
+    const detection = adapter.detectBlockingPrompt(
+      '\x1B[31mUpdate available\x1B[0m [Y/n]'
+    );
     expect(detection.detected).toBe(true);
   });
 
@@ -186,8 +196,9 @@ describe('BaseCLIAdapter', () => {
 
     // OSC hyperlink: \x1b]8;;url\x07visible\x1b]8;;\x07
     // The OSC wrappers should be stripped, visible text preserved
-    const input = '\x1b]8;;https://example.com\x07Click here\x1b]8;;\x07 to continue';
-    const detection = adapter.detectBlockingPrompt(input + '?');
+    const input =
+      '\x1b]8;;https://example.com\x07Click here\x1b]8;;\x07 to continue';
+    const detection = adapter.detectBlockingPrompt(`${input}?`);
 
     // The stripped output should contain visible text
     expect(detection.detected).toBe(true);
@@ -202,7 +213,7 @@ describe('BaseCLIAdapter', () => {
 
     // OSC window title: \x1b]0;Title\x07
     const input = 'Hello \x1b]0;Window Title\x07World';
-    const detection = adapter.detectBlockingPrompt(input + '?');
+    const detection = adapter.detectBlockingPrompt(`${input}?`);
 
     expect(detection.detected).toBe(true);
     expect(detection.prompt).not.toContain('Window Title');

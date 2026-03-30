@@ -1,4 +1,4 @@
-import { Agent, Prisma } from '@prisma/client';
+import type { Agent, Prisma } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 
 export class AgentRepository extends BaseRepository {
@@ -11,18 +11,20 @@ export class AgentRepository extends BaseRepository {
 
   async findById(id: string): Promise<Agent | null> {
     return this.executeQuery(
-      () => this.prisma.agent.findUnique({
-        where: { id },
-      }),
+      () =>
+        this.prisma.agent.findUnique({
+          where: { id },
+        }),
       'AgentRepository.findById'
     );
   }
 
   async findByName(name: string): Promise<Agent | null> {
     return this.executeQuery(
-      () => this.prisma.agent.findFirst({
-        where: { name },
-      }),
+      () =>
+        this.prisma.agent.findFirst({
+          where: { name },
+        }),
       'AgentRepository.findByName'
     );
   }
@@ -41,40 +43,40 @@ export class AgentRepository extends BaseRepository {
 
   async findActive(): Promise<Agent[]> {
     return this.executeQuery(
-      () => this.prisma.agent.findMany({
-        where: {
-          status: 'active',
-          lastSeen: {
-            gte: new Date(Date.now() - 60000), // Active in last minute
+      () =>
+        this.prisma.agent.findMany({
+          where: {
+            status: 'active',
+            lastSeen: {
+              gte: new Date(Date.now() - 60000), // Active in last minute
+            },
           },
-        },
-      }),
+        }),
       'AgentRepository.findActive'
     );
   }
 
-  async update(
-    id: string,
-    data: Prisma.AgentUpdateInput
-  ): Promise<Agent> {
+  async update(id: string, data: Prisma.AgentUpdateInput): Promise<Agent> {
     return this.executeQuery(
-      () => this.prisma.agent.update({
-        where: { id },
-        data,
-      }),
+      () =>
+        this.prisma.agent.update({
+          where: { id },
+          data,
+        }),
       'AgentRepository.update'
     );
   }
 
   async updateHeartbeat(id: string): Promise<Agent> {
     return this.executeQuery(
-      () => this.prisma.agent.update({
-        where: { id },
-        data: {
-          lastSeen: new Date(),
-          status: 'active',
-        },
-      }),
+      () =>
+        this.prisma.agent.update({
+          where: { id },
+          data: {
+            lastSeen: new Date(),
+            status: 'active',
+          },
+        }),
       'AgentRepository.updateHeartbeat'
     );
   }
@@ -90,79 +92,74 @@ export class AgentRepository extends BaseRepository {
     }
   ): Promise<Agent> {
     return this.executeQuery(
-      () => this.prisma.agent.upsert({
-        where: { id },
-        update: {
-          endpoint: data.endpoint,
-          status: data.status ?? 'active',
-          lastSeen: new Date(),
-          metadata: data.metadata ?? {},
-          capabilities: data.capabilities ?? [],
-        },
-        create: {
-          id,
-          name: data.name,
-          endpoint: data.endpoint,
-          capabilities: data.capabilities ?? [],
-          status: data.status ?? 'active',
-          metadata: data.metadata ?? {},
-          lastSeen: new Date(),
-        },
-      }),
+      () =>
+        this.prisma.agent.upsert({
+          where: { id },
+          update: {
+            endpoint: data.endpoint,
+            status: data.status ?? 'active',
+            lastSeen: new Date(),
+            metadata: data.metadata ?? {},
+            capabilities: data.capabilities ?? [],
+          },
+          create: {
+            id,
+            name: data.name,
+            endpoint: data.endpoint,
+            capabilities: data.capabilities ?? [],
+            status: data.status ?? 'active',
+            metadata: data.metadata ?? {},
+            lastSeen: new Date(),
+          },
+        }),
       'AgentRepository.upsert'
     );
   }
 
   async delete(id: string): Promise<Agent> {
     return this.executeQuery(
-      () => this.prisma.agent.delete({
-        where: { id },
-      }),
+      () =>
+        this.prisma.agent.delete({
+          where: { id },
+        }),
       'AgentRepository.delete'
     );
   }
 
   async deleteStale(threshold: Date): Promise<number> {
-    return this.executeQuery(
-      async () => {
-        const result = await this.prisma.agent.deleteMany({
-          where: {
-            status: 'inactive',
-            lastSeen: {
-              lt: threshold,
-            },
+    return this.executeQuery(async () => {
+      const result = await this.prisma.agent.deleteMany({
+        where: {
+          status: 'inactive',
+          lastSeen: {
+            lt: threshold,
           },
-        });
-        return result.count;
-      },
-      'AgentRepository.deleteStale'
-    );
+        },
+      });
+      return result.count;
+    }, 'AgentRepository.deleteStale');
   }
 
   async markInactive(threshold: Date): Promise<number> {
-    return this.executeQuery(
-      async () => {
-        const result = await this.prisma.agent.updateMany({
-          where: {
-            lastSeen: {
-              lt: threshold,
-            },
-            status: 'active',
+    return this.executeQuery(async () => {
+      const result = await this.prisma.agent.updateMany({
+        where: {
+          lastSeen: {
+            lt: threshold,
           },
-          data: {
-            status: 'inactive',
-          },
-        });
-        return result.count;
-      },
-      'AgentRepository.markInactive'
-    );
+          status: 'active',
+        },
+        data: {
+          status: 'inactive',
+        },
+      });
+      return result.count;
+    }, 'AgentRepository.markInactive');
   }
 
   async getCapabilitiesStats(): Promise<any> {
-    return this.executeQuery(
-      async () => {
-        const result = await this.prisma.$queryRaw<any[]>`
+    return this.executeQuery(async () => {
+      const result = await this.prisma.$queryRaw<any[]>`
           SELECT 
             capability,
             COUNT(*) as agent_count,
@@ -176,10 +173,8 @@ export class AgentRepository extends BaseRepository {
           ) as capabilities_expanded
           GROUP BY capability
           ORDER BY agent_count DESC`;
-        
-        return result;
-      },
-      'AgentRepository.getCapabilitiesStats'
-    );
+
+      return result;
+    }, 'AgentRepository.getCapabilitiesStats');
   }
 }

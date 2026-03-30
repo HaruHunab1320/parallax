@@ -4,16 +4,16 @@
  * Factory function for creating CLI adapters from configuration.
  */
 
+import type {
+  AdapterFactoryConfig,
+  AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
+} from '../types';
 import type { CLIAdapter } from './adapter-interface';
 import { BaseCLIAdapter } from './base-adapter';
-import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
-  AutoResponseRule,
-  AdapterFactoryConfig,
-} from '../types';
 
 /**
  * Creates a CLI adapter from configuration
@@ -76,7 +76,8 @@ class ConfiguredAdapter extends BaseCLIAdapter {
       return { required: false };
     }
 
-    const { patterns, extractUrl, extractInstructions } = this.config.loginDetection;
+    const { patterns, extractUrl, extractInstructions } =
+      this.config.loginDetection;
     const stripped = this.stripAnsi(output);
 
     for (const pattern of patterns) {
@@ -85,7 +86,8 @@ class ConfiguredAdapter extends BaseCLIAdapter {
           required: true,
           type: 'browser',
           url: extractUrl?.(stripped) || undefined,
-          instructions: extractInstructions?.(stripped) || 'Authentication required',
+          instructions:
+            extractInstructions?.(stripped) || 'Authentication required',
         };
       }
     }
@@ -105,7 +107,8 @@ class ConfiguredAdapter extends BaseCLIAdapter {
             type: prompt.type,
             prompt: stripped.slice(-200),
             suggestedResponse: prompt.autoResponse,
-            canAutoRespond: prompt.autoResponse !== undefined && prompt.safe !== false,
+            canAutoRespond:
+              prompt.autoResponse !== undefined && prompt.safe !== false,
             instructions: prompt.description,
           };
         }
@@ -117,16 +120,25 @@ class ConfiguredAdapter extends BaseCLIAdapter {
   }
 
   detectReady(output: string): boolean {
-    if (!this.config.readyIndicators || this.config.readyIndicators.length === 0) {
+    if (
+      !this.config.readyIndicators ||
+      this.config.readyIndicators.length === 0
+    ) {
       // Default: ready after any output
       return output.length > 10;
     }
 
     const stripped = this.stripAnsi(output);
-    return this.config.readyIndicators.some((pattern) => pattern.test(stripped));
+    return this.config.readyIndicators.some((pattern) =>
+      pattern.test(stripped)
+    );
   }
 
-  detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     if (this.config.exitIndicators) {
       for (const indicator of this.config.exitIndicators) {
         const match = output.match(indicator.pattern);
@@ -166,6 +178,6 @@ class ConfiguredAdapter extends BaseCLIAdapter {
   }
 
   getPromptPattern(): RegExp {
-    return this.config.promptPattern || /[\$#>]\s*$/m;
+    return this.config.promptPattern || /[$#>]\s*$/m;
   }
 }

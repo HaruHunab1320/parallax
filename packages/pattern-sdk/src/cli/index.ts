@@ -5,12 +5,12 @@
  * Generate orchestration patterns at development time
  */
 
-import { Command } from 'commander';
 import chalk from 'chalk';
+import { Command } from 'commander';
+import { compileCommand } from './commands/compile';
 import { patternCommand } from './commands/pattern';
 import { templateCommand } from './commands/template';
 import { validateCommand } from './commands/validate';
-import { compileCommand } from './commands/compile';
 
 const program = new Command();
 
@@ -18,7 +18,9 @@ program
   .name('parallax-generate')
   .description('Generate Parallax orchestration patterns using AI')
   .version('0.1.0')
-  .addHelpText('after', `
+  .addHelpText(
+    'after',
+    `
 ${chalk.gray('Examples:')}
   ${chalk.green('$')} parallax-generate pattern "Multi-stage review with consensus"
   ${chalk.green('$')} parallax-generate pattern --interactive
@@ -27,7 +29,8 @@ ${chalk.gray('Examples:')}
   ${chalk.green('$')} parallax-generate compile patterns/ -o dist/
   ${chalk.green('$')} parallax-generate template list
   ${chalk.green('$')} parallax-generate validate ./patterns/review.prism
-  `);
+  `
+  );
 
 // Add commands
 program.addCommand(patternCommand);

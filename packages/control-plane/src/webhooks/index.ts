@@ -1,1 +1,6 @@
-export { WebhookService, WebhookConfig, WebhookPayload, WebhookDeliveryResult } from './webhook.service';
+export {
+  WebhookConfig,
+  WebhookDeliveryResult,
+  WebhookPayload,
+  WebhookService,
+} from './webhook.service';

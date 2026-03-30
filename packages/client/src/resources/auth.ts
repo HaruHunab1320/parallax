@@ -1,12 +1,12 @@
-import { HttpClient } from '../http.js';
-import {
+import type { ParallaxClientConfig } from '../config.js';
+import type { HttpClient } from '../http.js';
+import type {
   AuthResponse,
-  TokenRefreshResponse,
-  PasswordResetResponse,
-  TokenVerifyResponse,
   AuthUser,
+  PasswordResetResponse,
+  TokenRefreshResponse,
+  TokenVerifyResponse,
 } from '../types/auth.js';
-import { ParallaxClientConfig } from '../config.js';
 
 export class AuthResource {
   private config: ParallaxClientConfig;

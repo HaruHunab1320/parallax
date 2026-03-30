@@ -2,9 +2,9 @@
  * Stop Thread Tool - Stops a running thread
  */
 
-import type { LocalRuntime } from '@parallaxai/runtime-local';
 import type { ThreadRuntimeProvider } from '@parallaxai/runtime-interface';
-import { StopThreadInputSchema, type StopThreadInput } from './schemas.js';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import { type StopThreadInput, StopThreadInputSchema } from './schemas.js';
 
 export const STOP_THREAD_TOOL = {
   name: 'stop_thread',
@@ -15,7 +15,9 @@ export const STOP_THREAD_TOOL = {
 export async function executeStopThread(
   runtime: LocalRuntime,
   input: StopThreadInput
-): Promise<{ success: true; threadId: string } | { success: false; error: string }> {
+): Promise<
+  { success: true; threadId: string } | { success: false; error: string }
+> {
   try {
     const threadRuntime = runtime as LocalRuntime & ThreadRuntimeProvider;
     const thread = await threadRuntime.getThread(input.threadId);

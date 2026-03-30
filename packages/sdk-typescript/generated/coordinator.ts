@@ -6,25 +6,25 @@
 // source: coordinator.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf";
+import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf';
 import {
   type CallOptions,
   type ChannelCredentials,
-  Client,
+  type Client,
   type ClientOptions,
   type ClientReadableStream,
   type ClientUnaryCall,
   type handleServerStreamingCall,
   type handleUnaryCall,
-  makeGenericClientConstructor,
   type Metadata,
+  makeGenericClientConstructor,
   type ServiceError,
   type UntypedServiceImplementation,
-} from "@grpc/grpc-js";
-import { ConfidenceResult } from "./confidence";
-import { Struct } from "./google/protobuf/struct";
+} from '@grpc/grpc-js';
+import { ConfidenceResult } from './confidence';
+import { Struct } from './google/protobuf/struct';
 
-export const protobufPackage = "parallax.coordinator";
+export const protobufPackage = 'parallax.coordinator';
 
 /** Coordination request */
 export interface CoordinateRequest {
@@ -53,50 +53,51 @@ export enum CoordinateRequest_Strategy {
   UNRECOGNIZED = -1,
 }
 
-export function coordinateRequest_StrategyFromJSON(object: any): CoordinateRequest_Strategy {
+export function coordinateRequest_StrategyFromJSON(
+  object: any
+): CoordinateRequest_Strategy {
   switch (object) {
     case 0:
-    case "UNKNOWN":
+    case 'UNKNOWN':
       return CoordinateRequest_Strategy.UNKNOWN;
     case 1:
-    case "CONSENSUS":
+    case 'CONSENSUS':
       return CoordinateRequest_Strategy.CONSENSUS;
     case 2:
-    case "EPISTEMIC":
+    case 'EPISTEMIC':
       return CoordinateRequest_Strategy.EPISTEMIC;
     case 3:
-    case "CASCADE":
+    case 'CASCADE':
       return CoordinateRequest_Strategy.CASCADE;
     case 4:
-    case "UNCERTAINTY_ROUTE":
+    case 'UNCERTAINTY_ROUTE':
       return CoordinateRequest_Strategy.UNCERTAINTY_ROUTE;
     case 5:
-    case "CUSTOM":
+    case 'CUSTOM':
       return CoordinateRequest_Strategy.CUSTOM;
-    case -1:
-    case "UNRECOGNIZED":
     default:
       return CoordinateRequest_Strategy.UNRECOGNIZED;
   }
 }
 
-export function coordinateRequest_StrategyToJSON(object: CoordinateRequest_Strategy): string {
+export function coordinateRequest_StrategyToJSON(
+  object: CoordinateRequest_Strategy
+): string {
   switch (object) {
     case CoordinateRequest_Strategy.UNKNOWN:
-      return "UNKNOWN";
+      return 'UNKNOWN';
     case CoordinateRequest_Strategy.CONSENSUS:
-      return "CONSENSUS";
+      return 'CONSENSUS';
     case CoordinateRequest_Strategy.EPISTEMIC:
-      return "EPISTEMIC";
+      return 'EPISTEMIC';
     case CoordinateRequest_Strategy.CASCADE:
-      return "CASCADE";
+      return 'CASCADE';
     case CoordinateRequest_Strategy.UNCERTAINTY_ROUTE:
-      return "UNCERTAINTY_ROUTE";
+      return 'UNCERTAINTY_ROUTE';
     case CoordinateRequest_Strategy.CUSTOM:
-      return "CUSTOM";
-    case CoordinateRequest_Strategy.UNRECOGNIZED:
+      return 'CUSTOM';
     default:
-      return "UNRECOGNIZED";
+      return 'UNRECOGNIZED';
   }
 }
 
@@ -164,34 +165,48 @@ export interface GetHistoryResponse_HistoryEntry {
 }
 
 function createBaseCoordinateRequest(): CoordinateRequest {
-  return { taskId: "", description: "", strategy: 0, customPattern: "", data: undefined, constraints: undefined };
+  return {
+    taskId: '',
+    description: '',
+    strategy: 0,
+    customPattern: '',
+    data: undefined,
+    constraints: undefined,
+  };
 }
 
 export const CoordinateRequest: MessageFns<CoordinateRequest> = {
-  encode(message: CoordinateRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.taskId !== "") {
+  encode(
+    message: CoordinateRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.taskId !== '') {
       writer.uint32(10).string(message.taskId);
     }
-    if (message.description !== "") {
+    if (message.description !== '') {
       writer.uint32(18).string(message.description);
     }
     if (message.strategy !== 0) {
       writer.uint32(24).int32(message.strategy);
     }
-    if (message.customPattern !== "") {
+    if (message.customPattern !== '') {
       writer.uint32(34).string(message.customPattern);
     }
     if (message.data !== undefined) {
       Struct.encode(Struct.wrap(message.data), writer.uint32(42).fork()).join();
     }
     if (message.constraints !== undefined) {
-      CoordinateRequest_Constraints.encode(message.constraints, writer.uint32(50).fork()).join();
+      CoordinateRequest_Constraints.encode(
+        message.constraints,
+        writer.uint32(50).fork()
+      ).join();
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): CoordinateRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseCoordinateRequest();
     while (reader.pos < end) {
@@ -242,7 +257,10 @@ export const CoordinateRequest: MessageFns<CoordinateRequest> = {
             break;
           }
 
-          message.constraints = CoordinateRequest_Constraints.decode(reader, reader.uint32());
+          message.constraints = CoordinateRequest_Constraints.decode(
+            reader,
+            reader.uint32()
+          );
           continue;
         }
       }
@@ -256,203 +274,258 @@ export const CoordinateRequest: MessageFns<CoordinateRequest> = {
 
   fromJSON(object: any): CoordinateRequest {
     return {
-      taskId: isSet(object.taskId) ? globalThis.String(object.taskId) : "",
-      description: isSet(object.description) ? globalThis.String(object.description) : "",
-      strategy: isSet(object.strategy) ? coordinateRequest_StrategyFromJSON(object.strategy) : 0,
-      customPattern: isSet(object.customPattern) ? globalThis.String(object.customPattern) : "",
+      taskId: isSet(object.taskId) ? globalThis.String(object.taskId) : '',
+      description: isSet(object.description)
+        ? globalThis.String(object.description)
+        : '',
+      strategy: isSet(object.strategy)
+        ? coordinateRequest_StrategyFromJSON(object.strategy)
+        : 0,
+      customPattern: isSet(object.customPattern)
+        ? globalThis.String(object.customPattern)
+        : '',
       data: isObject(object.data) ? object.data : undefined,
-      constraints: isSet(object.constraints) ? CoordinateRequest_Constraints.fromJSON(object.constraints) : undefined,
+      constraints: isSet(object.constraints)
+        ? CoordinateRequest_Constraints.fromJSON(object.constraints)
+        : undefined,
     };
   },
 
   toJSON(message: CoordinateRequest): unknown {
     const obj: any = {};
-    if (message.taskId !== "") {
+    if (message.taskId !== '') {
       obj.taskId = message.taskId;
     }
-    if (message.description !== "") {
+    if (message.description !== '') {
       obj.description = message.description;
     }
     if (message.strategy !== 0) {
       obj.strategy = coordinateRequest_StrategyToJSON(message.strategy);
     }
-    if (message.customPattern !== "") {
+    if (message.customPattern !== '') {
       obj.customPattern = message.customPattern;
     }
     if (message.data !== undefined) {
       obj.data = message.data;
     }
     if (message.constraints !== undefined) {
-      obj.constraints = CoordinateRequest_Constraints.toJSON(message.constraints);
+      obj.constraints = CoordinateRequest_Constraints.toJSON(
+        message.constraints
+      );
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<CoordinateRequest>, I>>(base?: I): CoordinateRequest {
+  create<I extends Exact<DeepPartial<CoordinateRequest>, I>>(
+    base?: I
+  ): CoordinateRequest {
     return CoordinateRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<CoordinateRequest>, I>>(object: I): CoordinateRequest {
+  fromPartial<I extends Exact<DeepPartial<CoordinateRequest>, I>>(
+    object: I
+  ): CoordinateRequest {
     const message = createBaseCoordinateRequest();
-    message.taskId = object.taskId ?? "";
-    message.description = object.description ?? "";
+    message.taskId = object.taskId ?? '';
+    message.description = object.description ?? '';
     message.strategy = object.strategy ?? 0;
-    message.customPattern = object.customPattern ?? "";
+    message.customPattern = object.customPattern ?? '';
     message.data = object.data ?? undefined;
-    message.constraints = (object.constraints !== undefined && object.constraints !== null)
-      ? CoordinateRequest_Constraints.fromPartial(object.constraints)
-      : undefined;
+    message.constraints =
+      object.constraints !== undefined && object.constraints !== null
+        ? CoordinateRequest_Constraints.fromPartial(object.constraints)
+        : undefined;
     return message;
   },
 };
 
 function createBaseCoordinateRequest_Constraints(): CoordinateRequest_Constraints {
-  return { minConfidence: 0, maxAgents: 0, requiredCapabilities: [], timeoutMs: 0 };
+  return {
+    minConfidence: 0,
+    maxAgents: 0,
+    requiredCapabilities: [],
+    timeoutMs: 0,
+  };
 }
 
-export const CoordinateRequest_Constraints: MessageFns<CoordinateRequest_Constraints> = {
-  encode(message: CoordinateRequest_Constraints, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.minConfidence !== 0) {
-      writer.uint32(9).double(message.minConfidence);
-    }
-    if (message.maxAgents !== 0) {
-      writer.uint32(16).int32(message.maxAgents);
-    }
-    for (const v of message.requiredCapabilities) {
-      writer.uint32(26).string(v!);
-    }
-    if (message.timeoutMs !== 0) {
-      writer.uint32(32).int32(message.timeoutMs);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): CoordinateRequest_Constraints {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCoordinateRequest_Constraints();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 9) {
-            break;
-          }
-
-          message.minConfidence = reader.double();
-          continue;
-        }
-        case 2: {
-          if (tag !== 16) {
-            break;
-          }
-
-          message.maxAgents = reader.int32();
-          continue;
-        }
-        case 3: {
-          if (tag !== 26) {
-            break;
-          }
-
-          message.requiredCapabilities.push(reader.string());
-          continue;
-        }
-        case 4: {
-          if (tag !== 32) {
-            break;
-          }
-
-          message.timeoutMs = reader.int32();
-          continue;
-        }
+export const CoordinateRequest_Constraints: MessageFns<CoordinateRequest_Constraints> =
+  {
+    encode(
+      message: CoordinateRequest_Constraints,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.minConfidence !== 0) {
+        writer.uint32(9).double(message.minConfidence);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.maxAgents !== 0) {
+        writer.uint32(16).int32(message.maxAgents);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      for (const v of message.requiredCapabilities) {
+        writer.uint32(26).string(v!);
+      }
+      if (message.timeoutMs !== 0) {
+        writer.uint32(32).int32(message.timeoutMs);
+      }
+      return writer;
+    },
 
-  fromJSON(object: any): CoordinateRequest_Constraints {
-    return {
-      minConfidence: isSet(object.minConfidence) ? globalThis.Number(object.minConfidence) : 0,
-      maxAgents: isSet(object.maxAgents) ? globalThis.Number(object.maxAgents) : 0,
-      requiredCapabilities: globalThis.Array.isArray(object?.requiredCapabilities)
-        ? object.requiredCapabilities.map((e: any) => globalThis.String(e))
-        : [],
-      timeoutMs: isSet(object.timeoutMs) ? globalThis.Number(object.timeoutMs) : 0,
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): CoordinateRequest_Constraints {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCoordinateRequest_Constraints();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 9) {
+              break;
+            }
 
-  toJSON(message: CoordinateRequest_Constraints): unknown {
-    const obj: any = {};
-    if (message.minConfidence !== 0) {
-      obj.minConfidence = message.minConfidence;
-    }
-    if (message.maxAgents !== 0) {
-      obj.maxAgents = Math.round(message.maxAgents);
-    }
-    if (message.requiredCapabilities?.length) {
-      obj.requiredCapabilities = message.requiredCapabilities;
-    }
-    if (message.timeoutMs !== 0) {
-      obj.timeoutMs = Math.round(message.timeoutMs);
-    }
-    return obj;
-  },
+            message.minConfidence = reader.double();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<CoordinateRequest_Constraints>, I>>(base?: I): CoordinateRequest_Constraints {
-    return CoordinateRequest_Constraints.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<CoordinateRequest_Constraints>, I>>(
-    object: I,
-  ): CoordinateRequest_Constraints {
-    const message = createBaseCoordinateRequest_Constraints();
-    message.minConfidence = object.minConfidence ?? 0;
-    message.maxAgents = object.maxAgents ?? 0;
-    message.requiredCapabilities = object.requiredCapabilities?.map((e) => e) || [];
-    message.timeoutMs = object.timeoutMs ?? 0;
-    return message;
-  },
-};
+            message.maxAgents = reader.int32();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.requiredCapabilities.push(reader.string());
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.timeoutMs = reader.int32();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): CoordinateRequest_Constraints {
+      return {
+        minConfidence: isSet(object.minConfidence)
+          ? globalThis.Number(object.minConfidence)
+          : 0,
+        maxAgents: isSet(object.maxAgents)
+          ? globalThis.Number(object.maxAgents)
+          : 0,
+        requiredCapabilities: globalThis.Array.isArray(
+          object?.requiredCapabilities
+        )
+          ? object.requiredCapabilities.map((e: any) => globalThis.String(e))
+          : [],
+        timeoutMs: isSet(object.timeoutMs)
+          ? globalThis.Number(object.timeoutMs)
+          : 0,
+      };
+    },
+
+    toJSON(message: CoordinateRequest_Constraints): unknown {
+      const obj: any = {};
+      if (message.minConfidence !== 0) {
+        obj.minConfidence = message.minConfidence;
+      }
+      if (message.maxAgents !== 0) {
+        obj.maxAgents = Math.round(message.maxAgents);
+      }
+      if (message.requiredCapabilities?.length) {
+        obj.requiredCapabilities = message.requiredCapabilities;
+      }
+      if (message.timeoutMs !== 0) {
+        obj.timeoutMs = Math.round(message.timeoutMs);
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<CoordinateRequest_Constraints>, I>>(
+      base?: I
+    ): CoordinateRequest_Constraints {
+      return CoordinateRequest_Constraints.fromPartial(base ?? ({} as any));
+    },
+    fromPartial<I extends Exact<DeepPartial<CoordinateRequest_Constraints>, I>>(
+      object: I
+    ): CoordinateRequest_Constraints {
+      const message = createBaseCoordinateRequest_Constraints();
+      message.minConfidence = object.minConfidence ?? 0;
+      message.maxAgents = object.maxAgents ?? 0;
+      message.requiredCapabilities =
+        object.requiredCapabilities?.map((e) => e) || [];
+      message.timeoutMs = object.timeoutMs ?? 0;
+      return message;
+    },
+  };
 
 function createBaseCoordinateResponse(): CoordinateResponse {
   return {
-    taskId: "",
+    taskId: '',
     consensus: undefined,
     epistemic: undefined,
     custom: undefined,
     overallConfidence: 0,
-    explanation: "",
+    explanation: '',
   };
 }
 
 export const CoordinateResponse: MessageFns<CoordinateResponse> = {
-  encode(message: CoordinateResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.taskId !== "") {
+  encode(
+    message: CoordinateResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.taskId !== '') {
       writer.uint32(10).string(message.taskId);
     }
     if (message.consensus !== undefined) {
-      CoordinateResponse_ConsensusResult.encode(message.consensus, writer.uint32(18).fork()).join();
+      CoordinateResponse_ConsensusResult.encode(
+        message.consensus,
+        writer.uint32(18).fork()
+      ).join();
     }
     if (message.epistemic !== undefined) {
-      CoordinateResponse_EpistemicResult.encode(message.epistemic, writer.uint32(26).fork()).join();
+      CoordinateResponse_EpistemicResult.encode(
+        message.epistemic,
+        writer.uint32(26).fork()
+      ).join();
     }
     if (message.custom !== undefined) {
-      Struct.encode(Struct.wrap(message.custom), writer.uint32(34).fork()).join();
+      Struct.encode(
+        Struct.wrap(message.custom),
+        writer.uint32(34).fork()
+      ).join();
     }
     if (message.overallConfidence !== 0) {
       writer.uint32(41).double(message.overallConfidence);
     }
-    if (message.explanation !== "") {
+    if (message.explanation !== '') {
       writer.uint32(50).string(message.explanation);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): CoordinateResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): CoordinateResponse {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseCoordinateResponse();
     while (reader.pos < end) {
@@ -471,7 +544,10 @@ export const CoordinateResponse: MessageFns<CoordinateResponse> = {
             break;
           }
 
-          message.consensus = CoordinateResponse_ConsensusResult.decode(reader, reader.uint32());
+          message.consensus = CoordinateResponse_ConsensusResult.decode(
+            reader,
+            reader.uint32()
+          );
           continue;
         }
         case 3: {
@@ -479,7 +555,10 @@ export const CoordinateResponse: MessageFns<CoordinateResponse> = {
             break;
           }
 
-          message.epistemic = CoordinateResponse_EpistemicResult.decode(reader, reader.uint32());
+          message.epistemic = CoordinateResponse_EpistemicResult.decode(
+            reader,
+            reader.uint32()
+          );
           continue;
         }
         case 4: {
@@ -487,7 +566,9 @@ export const CoordinateResponse: MessageFns<CoordinateResponse> = {
             break;
           }
 
-          message.custom = Struct.unwrap(Struct.decode(reader, reader.uint32()));
+          message.custom = Struct.unwrap(
+            Struct.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 5: {
@@ -517,25 +598,37 @@ export const CoordinateResponse: MessageFns<CoordinateResponse> = {
 
   fromJSON(object: any): CoordinateResponse {
     return {
-      taskId: isSet(object.taskId) ? globalThis.String(object.taskId) : "",
-      consensus: isSet(object.consensus) ? CoordinateResponse_ConsensusResult.fromJSON(object.consensus) : undefined,
-      epistemic: isSet(object.epistemic) ? CoordinateResponse_EpistemicResult.fromJSON(object.epistemic) : undefined,
+      taskId: isSet(object.taskId) ? globalThis.String(object.taskId) : '',
+      consensus: isSet(object.consensus)
+        ? CoordinateResponse_ConsensusResult.fromJSON(object.consensus)
+        : undefined,
+      epistemic: isSet(object.epistemic)
+        ? CoordinateResponse_EpistemicResult.fromJSON(object.epistemic)
+        : undefined,
       custom: isObject(object.custom) ? object.custom : undefined,
-      overallConfidence: isSet(object.overallConfidence) ? globalThis.Number(object.overallConfidence) : 0,
-      explanation: isSet(object.explanation) ? globalThis.String(object.explanation) : "",
+      overallConfidence: isSet(object.overallConfidence)
+        ? globalThis.Number(object.overallConfidence)
+        : 0,
+      explanation: isSet(object.explanation)
+        ? globalThis.String(object.explanation)
+        : '',
     };
   },
 
   toJSON(message: CoordinateResponse): unknown {
     const obj: any = {};
-    if (message.taskId !== "") {
+    if (message.taskId !== '') {
       obj.taskId = message.taskId;
     }
     if (message.consensus !== undefined) {
-      obj.consensus = CoordinateResponse_ConsensusResult.toJSON(message.consensus);
+      obj.consensus = CoordinateResponse_ConsensusResult.toJSON(
+        message.consensus
+      );
     }
     if (message.epistemic !== undefined) {
-      obj.epistemic = CoordinateResponse_EpistemicResult.toJSON(message.epistemic);
+      obj.epistemic = CoordinateResponse_EpistemicResult.toJSON(
+        message.epistemic
+      );
     }
     if (message.custom !== undefined) {
       obj.custom = message.custom;
@@ -543,482 +636,592 @@ export const CoordinateResponse: MessageFns<CoordinateResponse> = {
     if (message.overallConfidence !== 0) {
       obj.overallConfidence = message.overallConfidence;
     }
-    if (message.explanation !== "") {
+    if (message.explanation !== '') {
       obj.explanation = message.explanation;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<CoordinateResponse>, I>>(base?: I): CoordinateResponse {
+  create<I extends Exact<DeepPartial<CoordinateResponse>, I>>(
+    base?: I
+  ): CoordinateResponse {
     return CoordinateResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<CoordinateResponse>, I>>(object: I): CoordinateResponse {
+  fromPartial<I extends Exact<DeepPartial<CoordinateResponse>, I>>(
+    object: I
+  ): CoordinateResponse {
     const message = createBaseCoordinateResponse();
-    message.taskId = object.taskId ?? "";
-    message.consensus = (object.consensus !== undefined && object.consensus !== null)
-      ? CoordinateResponse_ConsensusResult.fromPartial(object.consensus)
-      : undefined;
-    message.epistemic = (object.epistemic !== undefined && object.epistemic !== null)
-      ? CoordinateResponse_EpistemicResult.fromPartial(object.epistemic)
-      : undefined;
+    message.taskId = object.taskId ?? '';
+    message.consensus =
+      object.consensus !== undefined && object.consensus !== null
+        ? CoordinateResponse_ConsensusResult.fromPartial(object.consensus)
+        : undefined;
+    message.epistemic =
+      object.epistemic !== undefined && object.epistemic !== null
+        ? CoordinateResponse_EpistemicResult.fromPartial(object.epistemic)
+        : undefined;
     message.custom = object.custom ?? undefined;
     message.overallConfidence = object.overallConfidence ?? 0;
-    message.explanation = object.explanation ?? "";
+    message.explanation = object.explanation ?? '';
     return message;
   },
 };
 
 function createBaseCoordinateResponse_ConsensusResult(): CoordinateResponse_ConsensusResult {
-  return { consensusLevel: 0, recommendation: "", agentResults: [] };
+  return { consensusLevel: 0, recommendation: '', agentResults: [] };
 }
 
-export const CoordinateResponse_ConsensusResult: MessageFns<CoordinateResponse_ConsensusResult> = {
-  encode(message: CoordinateResponse_ConsensusResult, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.consensusLevel !== 0) {
-      writer.uint32(9).double(message.consensusLevel);
-    }
-    if (message.recommendation !== "") {
-      writer.uint32(18).string(message.recommendation);
-    }
-    for (const v of message.agentResults) {
-      ConfidenceResult.encode(v!, writer.uint32(26).fork()).join();
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): CoordinateResponse_ConsensusResult {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCoordinateResponse_ConsensusResult();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 9) {
-            break;
-          }
-
-          message.consensusLevel = reader.double();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.recommendation = reader.string();
-          continue;
-        }
-        case 3: {
-          if (tag !== 26) {
-            break;
-          }
-
-          message.agentResults.push(ConfidenceResult.decode(reader, reader.uint32()));
-          continue;
-        }
+export const CoordinateResponse_ConsensusResult: MessageFns<CoordinateResponse_ConsensusResult> =
+  {
+    encode(
+      message: CoordinateResponse_ConsensusResult,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.consensusLevel !== 0) {
+        writer.uint32(9).double(message.consensusLevel);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.recommendation !== '') {
+        writer.uint32(18).string(message.recommendation);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      for (const v of message.agentResults) {
+        ConfidenceResult.encode(v!, writer.uint32(26).fork()).join();
+      }
+      return writer;
+    },
 
-  fromJSON(object: any): CoordinateResponse_ConsensusResult {
-    return {
-      consensusLevel: isSet(object.consensusLevel) ? globalThis.Number(object.consensusLevel) : 0,
-      recommendation: isSet(object.recommendation) ? globalThis.String(object.recommendation) : "",
-      agentResults: globalThis.Array.isArray(object?.agentResults)
-        ? object.agentResults.map((e: any) => ConfidenceResult.fromJSON(e))
-        : [],
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): CoordinateResponse_ConsensusResult {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCoordinateResponse_ConsensusResult();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 9) {
+              break;
+            }
 
-  toJSON(message: CoordinateResponse_ConsensusResult): unknown {
-    const obj: any = {};
-    if (message.consensusLevel !== 0) {
-      obj.consensusLevel = message.consensusLevel;
-    }
-    if (message.recommendation !== "") {
-      obj.recommendation = message.recommendation;
-    }
-    if (message.agentResults?.length) {
-      obj.agentResults = message.agentResults.map((e) => ConfidenceResult.toJSON(e));
-    }
-    return obj;
-  },
+            message.consensusLevel = reader.double();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<CoordinateResponse_ConsensusResult>, I>>(
-    base?: I,
-  ): CoordinateResponse_ConsensusResult {
-    return CoordinateResponse_ConsensusResult.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<CoordinateResponse_ConsensusResult>, I>>(
-    object: I,
-  ): CoordinateResponse_ConsensusResult {
-    const message = createBaseCoordinateResponse_ConsensusResult();
-    message.consensusLevel = object.consensusLevel ?? 0;
-    message.recommendation = object.recommendation ?? "";
-    message.agentResults = object.agentResults?.map((e) => ConfidenceResult.fromPartial(e)) || [];
-    return message;
-  },
-};
+            message.recommendation = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.agentResults.push(
+              ConfidenceResult.decode(reader, reader.uint32())
+            );
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): CoordinateResponse_ConsensusResult {
+      return {
+        consensusLevel: isSet(object.consensusLevel)
+          ? globalThis.Number(object.consensusLevel)
+          : 0,
+        recommendation: isSet(object.recommendation)
+          ? globalThis.String(object.recommendation)
+          : '',
+        agentResults: globalThis.Array.isArray(object?.agentResults)
+          ? object.agentResults.map((e: any) => ConfidenceResult.fromJSON(e))
+          : [],
+      };
+    },
+
+    toJSON(message: CoordinateResponse_ConsensusResult): unknown {
+      const obj: any = {};
+      if (message.consensusLevel !== 0) {
+        obj.consensusLevel = message.consensusLevel;
+      }
+      if (message.recommendation !== '') {
+        obj.recommendation = message.recommendation;
+      }
+      if (message.agentResults?.length) {
+        obj.agentResults = message.agentResults.map((e) =>
+          ConfidenceResult.toJSON(e)
+        );
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<CoordinateResponse_ConsensusResult>, I>>(
+      base?: I
+    ): CoordinateResponse_ConsensusResult {
+      return CoordinateResponse_ConsensusResult.fromPartial(
+        base ?? ({} as any)
+      );
+    },
+    fromPartial<
+      I extends Exact<DeepPartial<CoordinateResponse_ConsensusResult>, I>,
+    >(object: I): CoordinateResponse_ConsensusResult {
+      const message = createBaseCoordinateResponse_ConsensusResult();
+      message.consensusLevel = object.consensusLevel ?? 0;
+      message.recommendation = object.recommendation ?? '';
+      message.agentResults =
+        object.agentResults?.map((e) => ConfidenceResult.fromPartial(e)) || [];
+      return message;
+    },
+  };
 
 function createBaseCoordinateResponse_EpistemicResult(): CoordinateResponse_EpistemicResult {
-  return { disagreements: [], parallelPaths: [], recommendation: "" };
+  return { disagreements: [], parallelPaths: [], recommendation: '' };
 }
 
-export const CoordinateResponse_EpistemicResult: MessageFns<CoordinateResponse_EpistemicResult> = {
-  encode(message: CoordinateResponse_EpistemicResult, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    for (const v of message.disagreements) {
-      CoordinateResponse_EpistemicResult_Disagreement.encode(v!, writer.uint32(10).fork()).join();
-    }
-    for (const v of message.parallelPaths) {
-      CoordinateResponse_ParallelPath.encode(v!, writer.uint32(18).fork()).join();
-    }
-    if (message.recommendation !== "") {
-      writer.uint32(26).string(message.recommendation);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): CoordinateResponse_EpistemicResult {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCoordinateResponse_EpistemicResult();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.disagreements.push(CoordinateResponse_EpistemicResult_Disagreement.decode(reader, reader.uint32()));
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.parallelPaths.push(CoordinateResponse_ParallelPath.decode(reader, reader.uint32()));
-          continue;
-        }
-        case 3: {
-          if (tag !== 26) {
-            break;
-          }
-
-          message.recommendation = reader.string();
-          continue;
-        }
+export const CoordinateResponse_EpistemicResult: MessageFns<CoordinateResponse_EpistemicResult> =
+  {
+    encode(
+      message: CoordinateResponse_EpistemicResult,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      for (const v of message.disagreements) {
+        CoordinateResponse_EpistemicResult_Disagreement.encode(
+          v!,
+          writer.uint32(10).fork()
+        ).join();
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      for (const v of message.parallelPaths) {
+        CoordinateResponse_ParallelPath.encode(
+          v!,
+          writer.uint32(18).fork()
+        ).join();
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      if (message.recommendation !== '') {
+        writer.uint32(26).string(message.recommendation);
+      }
+      return writer;
+    },
 
-  fromJSON(object: any): CoordinateResponse_EpistemicResult {
-    return {
-      disagreements: globalThis.Array.isArray(object?.disagreements)
-        ? object.disagreements.map((e: any) => CoordinateResponse_EpistemicResult_Disagreement.fromJSON(e))
-        : [],
-      parallelPaths: globalThis.Array.isArray(object?.parallelPaths)
-        ? object.parallelPaths.map((e: any) => CoordinateResponse_ParallelPath.fromJSON(e))
-        : [],
-      recommendation: isSet(object.recommendation) ? globalThis.String(object.recommendation) : "",
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): CoordinateResponse_EpistemicResult {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCoordinateResponse_EpistemicResult();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: CoordinateResponse_EpistemicResult): unknown {
-    const obj: any = {};
-    if (message.disagreements?.length) {
-      obj.disagreements = message.disagreements.map((e) => CoordinateResponse_EpistemicResult_Disagreement.toJSON(e));
-    }
-    if (message.parallelPaths?.length) {
-      obj.parallelPaths = message.parallelPaths.map((e) => CoordinateResponse_ParallelPath.toJSON(e));
-    }
-    if (message.recommendation !== "") {
-      obj.recommendation = message.recommendation;
-    }
-    return obj;
-  },
+            message.disagreements.push(
+              CoordinateResponse_EpistemicResult_Disagreement.decode(
+                reader,
+                reader.uint32()
+              )
+            );
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<CoordinateResponse_EpistemicResult>, I>>(
-    base?: I,
-  ): CoordinateResponse_EpistemicResult {
-    return CoordinateResponse_EpistemicResult.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<CoordinateResponse_EpistemicResult>, I>>(
-    object: I,
-  ): CoordinateResponse_EpistemicResult {
-    const message = createBaseCoordinateResponse_EpistemicResult();
-    message.disagreements =
-      object.disagreements?.map((e) => CoordinateResponse_EpistemicResult_Disagreement.fromPartial(e)) || [];
-    message.parallelPaths = object.parallelPaths?.map((e) => CoordinateResponse_ParallelPath.fromPartial(e)) || [];
-    message.recommendation = object.recommendation ?? "";
-    return message;
-  },
-};
+            message.parallelPaths.push(
+              CoordinateResponse_ParallelPath.decode(reader, reader.uint32())
+            );
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.recommendation = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): CoordinateResponse_EpistemicResult {
+      return {
+        disagreements: globalThis.Array.isArray(object?.disagreements)
+          ? object.disagreements.map((e: any) =>
+              CoordinateResponse_EpistemicResult_Disagreement.fromJSON(e)
+            )
+          : [],
+        parallelPaths: globalThis.Array.isArray(object?.parallelPaths)
+          ? object.parallelPaths.map((e: any) =>
+              CoordinateResponse_ParallelPath.fromJSON(e)
+            )
+          : [],
+        recommendation: isSet(object.recommendation)
+          ? globalThis.String(object.recommendation)
+          : '',
+      };
+    },
+
+    toJSON(message: CoordinateResponse_EpistemicResult): unknown {
+      const obj: any = {};
+      if (message.disagreements?.length) {
+        obj.disagreements = message.disagreements.map((e) =>
+          CoordinateResponse_EpistemicResult_Disagreement.toJSON(e)
+        );
+      }
+      if (message.parallelPaths?.length) {
+        obj.parallelPaths = message.parallelPaths.map((e) =>
+          CoordinateResponse_ParallelPath.toJSON(e)
+        );
+      }
+      if (message.recommendation !== '') {
+        obj.recommendation = message.recommendation;
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<CoordinateResponse_EpistemicResult>, I>>(
+      base?: I
+    ): CoordinateResponse_EpistemicResult {
+      return CoordinateResponse_EpistemicResult.fromPartial(
+        base ?? ({} as any)
+      );
+    },
+    fromPartial<
+      I extends Exact<DeepPartial<CoordinateResponse_EpistemicResult>, I>,
+    >(object: I): CoordinateResponse_EpistemicResult {
+      const message = createBaseCoordinateResponse_EpistemicResult();
+      message.disagreements =
+        object.disagreements?.map((e) =>
+          CoordinateResponse_EpistemicResult_Disagreement.fromPartial(e)
+        ) || [];
+      message.parallelPaths =
+        object.parallelPaths?.map((e) =>
+          CoordinateResponse_ParallelPath.fromPartial(e)
+        ) || [];
+      message.recommendation = object.recommendation ?? '';
+      return message;
+    },
+  };
 
 function createBaseCoordinateResponse_EpistemicResult_Disagreement(): CoordinateResponse_EpistemicResult_Disagreement {
-  return { agent1Id: "", agent2Id: "", issue: "", confidenceDelta: 0 };
+  return { agent1Id: '', agent2Id: '', issue: '', confidenceDelta: 0 };
 }
 
-export const CoordinateResponse_EpistemicResult_Disagreement: MessageFns<
-  CoordinateResponse_EpistemicResult_Disagreement
-> = {
-  encode(
-    message: CoordinateResponse_EpistemicResult_Disagreement,
-    writer: BinaryWriter = new BinaryWriter(),
-  ): BinaryWriter {
-    if (message.agent1Id !== "") {
-      writer.uint32(10).string(message.agent1Id);
-    }
-    if (message.agent2Id !== "") {
-      writer.uint32(18).string(message.agent2Id);
-    }
-    if (message.issue !== "") {
-      writer.uint32(26).string(message.issue);
-    }
-    if (message.confidenceDelta !== 0) {
-      writer.uint32(33).double(message.confidenceDelta);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): CoordinateResponse_EpistemicResult_Disagreement {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCoordinateResponse_EpistemicResult_Disagreement();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.agent1Id = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.agent2Id = reader.string();
-          continue;
-        }
-        case 3: {
-          if (tag !== 26) {
-            break;
-          }
-
-          message.issue = reader.string();
-          continue;
-        }
-        case 4: {
-          if (tag !== 33) {
-            break;
-          }
-
-          message.confidenceDelta = reader.double();
-          continue;
-        }
+export const CoordinateResponse_EpistemicResult_Disagreement: MessageFns<CoordinateResponse_EpistemicResult_Disagreement> =
+  {
+    encode(
+      message: CoordinateResponse_EpistemicResult_Disagreement,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.agent1Id !== '') {
+        writer.uint32(10).string(message.agent1Id);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.agent2Id !== '') {
+        writer.uint32(18).string(message.agent2Id);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      if (message.issue !== '') {
+        writer.uint32(26).string(message.issue);
+      }
+      if (message.confidenceDelta !== 0) {
+        writer.uint32(33).double(message.confidenceDelta);
+      }
+      return writer;
+    },
 
-  fromJSON(object: any): CoordinateResponse_EpistemicResult_Disagreement {
-    return {
-      agent1Id: isSet(object.agent1Id) ? globalThis.String(object.agent1Id) : "",
-      agent2Id: isSet(object.agent2Id) ? globalThis.String(object.agent2Id) : "",
-      issue: isSet(object.issue) ? globalThis.String(object.issue) : "",
-      confidenceDelta: isSet(object.confidenceDelta) ? globalThis.Number(object.confidenceDelta) : 0,
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): CoordinateResponse_EpistemicResult_Disagreement {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message =
+        createBaseCoordinateResponse_EpistemicResult_Disagreement();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: CoordinateResponse_EpistemicResult_Disagreement): unknown {
-    const obj: any = {};
-    if (message.agent1Id !== "") {
-      obj.agent1Id = message.agent1Id;
-    }
-    if (message.agent2Id !== "") {
-      obj.agent2Id = message.agent2Id;
-    }
-    if (message.issue !== "") {
-      obj.issue = message.issue;
-    }
-    if (message.confidenceDelta !== 0) {
-      obj.confidenceDelta = message.confidenceDelta;
-    }
-    return obj;
-  },
+            message.agent1Id = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<CoordinateResponse_EpistemicResult_Disagreement>, I>>(
-    base?: I,
-  ): CoordinateResponse_EpistemicResult_Disagreement {
-    return CoordinateResponse_EpistemicResult_Disagreement.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<CoordinateResponse_EpistemicResult_Disagreement>, I>>(
-    object: I,
-  ): CoordinateResponse_EpistemicResult_Disagreement {
-    const message = createBaseCoordinateResponse_EpistemicResult_Disagreement();
-    message.agent1Id = object.agent1Id ?? "";
-    message.agent2Id = object.agent2Id ?? "";
-    message.issue = object.issue ?? "";
-    message.confidenceDelta = object.confidenceDelta ?? 0;
-    return message;
-  },
-};
+            message.agent2Id = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.issue = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 33) {
+              break;
+            }
+
+            message.confidenceDelta = reader.double();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): CoordinateResponse_EpistemicResult_Disagreement {
+      return {
+        agent1Id: isSet(object.agent1Id)
+          ? globalThis.String(object.agent1Id)
+          : '',
+        agent2Id: isSet(object.agent2Id)
+          ? globalThis.String(object.agent2Id)
+          : '',
+        issue: isSet(object.issue) ? globalThis.String(object.issue) : '',
+        confidenceDelta: isSet(object.confidenceDelta)
+          ? globalThis.Number(object.confidenceDelta)
+          : 0,
+      };
+    },
+
+    toJSON(message: CoordinateResponse_EpistemicResult_Disagreement): unknown {
+      const obj: any = {};
+      if (message.agent1Id !== '') {
+        obj.agent1Id = message.agent1Id;
+      }
+      if (message.agent2Id !== '') {
+        obj.agent2Id = message.agent2Id;
+      }
+      if (message.issue !== '') {
+        obj.issue = message.issue;
+      }
+      if (message.confidenceDelta !== 0) {
+        obj.confidenceDelta = message.confidenceDelta;
+      }
+      return obj;
+    },
+
+    create<
+      I extends Exact<
+        DeepPartial<CoordinateResponse_EpistemicResult_Disagreement>,
+        I
+      >,
+    >(base?: I): CoordinateResponse_EpistemicResult_Disagreement {
+      return CoordinateResponse_EpistemicResult_Disagreement.fromPartial(
+        base ?? ({} as any)
+      );
+    },
+    fromPartial<
+      I extends Exact<
+        DeepPartial<CoordinateResponse_EpistemicResult_Disagreement>,
+        I
+      >,
+    >(object: I): CoordinateResponse_EpistemicResult_Disagreement {
+      const message =
+        createBaseCoordinateResponse_EpistemicResult_Disagreement();
+      message.agent1Id = object.agent1Id ?? '';
+      message.agent2Id = object.agent2Id ?? '';
+      message.issue = object.issue ?? '';
+      message.confidenceDelta = object.confidenceDelta ?? 0;
+      return message;
+    },
+  };
 
 function createBaseCoordinateResponse_ParallelPath(): CoordinateResponse_ParallelPath {
-  return { pathId: "", description: "", confidence: 0, supportingAgents: [], details: undefined };
+  return {
+    pathId: '',
+    description: '',
+    confidence: 0,
+    supportingAgents: [],
+    details: undefined,
+  };
 }
 
-export const CoordinateResponse_ParallelPath: MessageFns<CoordinateResponse_ParallelPath> = {
-  encode(message: CoordinateResponse_ParallelPath, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.pathId !== "") {
-      writer.uint32(10).string(message.pathId);
-    }
-    if (message.description !== "") {
-      writer.uint32(18).string(message.description);
-    }
-    if (message.confidence !== 0) {
-      writer.uint32(25).double(message.confidence);
-    }
-    for (const v of message.supportingAgents) {
-      writer.uint32(34).string(v!);
-    }
-    if (message.details !== undefined) {
-      Struct.encode(Struct.wrap(message.details), writer.uint32(42).fork()).join();
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): CoordinateResponse_ParallelPath {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCoordinateResponse_ParallelPath();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.pathId = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.description = reader.string();
-          continue;
-        }
-        case 3: {
-          if (tag !== 25) {
-            break;
-          }
-
-          message.confidence = reader.double();
-          continue;
-        }
-        case 4: {
-          if (tag !== 34) {
-            break;
-          }
-
-          message.supportingAgents.push(reader.string());
-          continue;
-        }
-        case 5: {
-          if (tag !== 42) {
-            break;
-          }
-
-          message.details = Struct.unwrap(Struct.decode(reader, reader.uint32()));
-          continue;
-        }
+export const CoordinateResponse_ParallelPath: MessageFns<CoordinateResponse_ParallelPath> =
+  {
+    encode(
+      message: CoordinateResponse_ParallelPath,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.pathId !== '') {
+        writer.uint32(10).string(message.pathId);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.description !== '') {
+        writer.uint32(18).string(message.description);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      if (message.confidence !== 0) {
+        writer.uint32(25).double(message.confidence);
+      }
+      for (const v of message.supportingAgents) {
+        writer.uint32(34).string(v!);
+      }
+      if (message.details !== undefined) {
+        Struct.encode(
+          Struct.wrap(message.details),
+          writer.uint32(42).fork()
+        ).join();
+      }
+      return writer;
+    },
 
-  fromJSON(object: any): CoordinateResponse_ParallelPath {
-    return {
-      pathId: isSet(object.pathId) ? globalThis.String(object.pathId) : "",
-      description: isSet(object.description) ? globalThis.String(object.description) : "",
-      confidence: isSet(object.confidence) ? globalThis.Number(object.confidence) : 0,
-      supportingAgents: globalThis.Array.isArray(object?.supportingAgents)
-        ? object.supportingAgents.map((e: any) => globalThis.String(e))
-        : [],
-      details: isObject(object.details) ? object.details : undefined,
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): CoordinateResponse_ParallelPath {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCoordinateResponse_ParallelPath();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: CoordinateResponse_ParallelPath): unknown {
-    const obj: any = {};
-    if (message.pathId !== "") {
-      obj.pathId = message.pathId;
-    }
-    if (message.description !== "") {
-      obj.description = message.description;
-    }
-    if (message.confidence !== 0) {
-      obj.confidence = message.confidence;
-    }
-    if (message.supportingAgents?.length) {
-      obj.supportingAgents = message.supportingAgents;
-    }
-    if (message.details !== undefined) {
-      obj.details = message.details;
-    }
-    return obj;
-  },
+            message.pathId = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<CoordinateResponse_ParallelPath>, I>>(base?: I): CoordinateResponse_ParallelPath {
-    return CoordinateResponse_ParallelPath.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<CoordinateResponse_ParallelPath>, I>>(
-    object: I,
-  ): CoordinateResponse_ParallelPath {
-    const message = createBaseCoordinateResponse_ParallelPath();
-    message.pathId = object.pathId ?? "";
-    message.description = object.description ?? "";
-    message.confidence = object.confidence ?? 0;
-    message.supportingAgents = object.supportingAgents?.map((e) => e) || [];
-    message.details = object.details ?? undefined;
-    return message;
-  },
-};
+            message.description = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 25) {
+              break;
+            }
+
+            message.confidence = reader.double();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.supportingAgents.push(reader.string());
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.details = Struct.unwrap(
+              Struct.decode(reader, reader.uint32())
+            );
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): CoordinateResponse_ParallelPath {
+      return {
+        pathId: isSet(object.pathId) ? globalThis.String(object.pathId) : '',
+        description: isSet(object.description)
+          ? globalThis.String(object.description)
+          : '',
+        confidence: isSet(object.confidence)
+          ? globalThis.Number(object.confidence)
+          : 0,
+        supportingAgents: globalThis.Array.isArray(object?.supportingAgents)
+          ? object.supportingAgents.map((e: any) => globalThis.String(e))
+          : [],
+        details: isObject(object.details) ? object.details : undefined,
+      };
+    },
+
+    toJSON(message: CoordinateResponse_ParallelPath): unknown {
+      const obj: any = {};
+      if (message.pathId !== '') {
+        obj.pathId = message.pathId;
+      }
+      if (message.description !== '') {
+        obj.description = message.description;
+      }
+      if (message.confidence !== 0) {
+        obj.confidence = message.confidence;
+      }
+      if (message.supportingAgents?.length) {
+        obj.supportingAgents = message.supportingAgents;
+      }
+      if (message.details !== undefined) {
+        obj.details = message.details;
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<CoordinateResponse_ParallelPath>, I>>(
+      base?: I
+    ): CoordinateResponse_ParallelPath {
+      return CoordinateResponse_ParallelPath.fromPartial(base ?? ({} as any));
+    },
+    fromPartial<
+      I extends Exact<DeepPartial<CoordinateResponse_ParallelPath>, I>,
+    >(object: I): CoordinateResponse_ParallelPath {
+      const message = createBaseCoordinateResponse_ParallelPath();
+      message.pathId = object.pathId ?? '';
+      message.description = object.description ?? '';
+      message.confidence = object.confidence ?? 0;
+      message.supportingAgents = object.supportingAgents?.map((e) => e) || [];
+      message.details = object.details ?? undefined;
+      return message;
+    },
+  };
 
 function createBaseGetHistoryRequest(): GetHistoryRequest {
-  return { taskId: "", limit: 0, sinceTimestamp: 0 };
+  return { taskId: '', limit: 0, sinceTimestamp: 0 };
 }
 
 export const GetHistoryRequest: MessageFns<GetHistoryRequest> = {
-  encode(message: GetHistoryRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.taskId !== "") {
+  encode(
+    message: GetHistoryRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.taskId !== '') {
       writer.uint32(10).string(message.taskId);
     }
     if (message.limit !== 0) {
@@ -1031,7 +1234,8 @@ export const GetHistoryRequest: MessageFns<GetHistoryRequest> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): GetHistoryRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseGetHistoryRequest();
     while (reader.pos < end) {
@@ -1072,15 +1276,17 @@ export const GetHistoryRequest: MessageFns<GetHistoryRequest> = {
 
   fromJSON(object: any): GetHistoryRequest {
     return {
-      taskId: isSet(object.taskId) ? globalThis.String(object.taskId) : "",
+      taskId: isSet(object.taskId) ? globalThis.String(object.taskId) : '',
       limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
-      sinceTimestamp: isSet(object.sinceTimestamp) ? globalThis.Number(object.sinceTimestamp) : 0,
+      sinceTimestamp: isSet(object.sinceTimestamp)
+        ? globalThis.Number(object.sinceTimestamp)
+        : 0,
     };
   },
 
   toJSON(message: GetHistoryRequest): unknown {
     const obj: any = {};
-    if (message.taskId !== "") {
+    if (message.taskId !== '') {
       obj.taskId = message.taskId;
     }
     if (message.limit !== 0) {
@@ -1092,12 +1298,16 @@ export const GetHistoryRequest: MessageFns<GetHistoryRequest> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<GetHistoryRequest>, I>>(base?: I): GetHistoryRequest {
+  create<I extends Exact<DeepPartial<GetHistoryRequest>, I>>(
+    base?: I
+  ): GetHistoryRequest {
     return GetHistoryRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<GetHistoryRequest>, I>>(object: I): GetHistoryRequest {
+  fromPartial<I extends Exact<DeepPartial<GetHistoryRequest>, I>>(
+    object: I
+  ): GetHistoryRequest {
     const message = createBaseGetHistoryRequest();
-    message.taskId = object.taskId ?? "";
+    message.taskId = object.taskId ?? '';
     message.limit = object.limit ?? 0;
     message.sinceTimestamp = object.sinceTimestamp ?? 0;
     return message;
@@ -1109,15 +1319,25 @@ function createBaseGetHistoryResponse(): GetHistoryResponse {
 }
 
 export const GetHistoryResponse: MessageFns<GetHistoryResponse> = {
-  encode(message: GetHistoryResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: GetHistoryResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.entries) {
-      GetHistoryResponse_HistoryEntry.encode(v!, writer.uint32(10).fork()).join();
+      GetHistoryResponse_HistoryEntry.encode(
+        v!,
+        writer.uint32(10).fork()
+      ).join();
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): GetHistoryResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): GetHistoryResponse {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseGetHistoryResponse();
     while (reader.pos < end) {
@@ -1128,7 +1348,9 @@ export const GetHistoryResponse: MessageFns<GetHistoryResponse> = {
             break;
           }
 
-          message.entries.push(GetHistoryResponse_HistoryEntry.decode(reader, reader.uint32()));
+          message.entries.push(
+            GetHistoryResponse_HistoryEntry.decode(reader, reader.uint32())
+          );
           continue;
         }
       }
@@ -1143,7 +1365,9 @@ export const GetHistoryResponse: MessageFns<GetHistoryResponse> = {
   fromJSON(object: any): GetHistoryResponse {
     return {
       entries: globalThis.Array.isArray(object?.entries)
-        ? object.entries.map((e: any) => GetHistoryResponse_HistoryEntry.fromJSON(e))
+        ? object.entries.map((e: any) =>
+            GetHistoryResponse_HistoryEntry.fromJSON(e)
+          )
         : [],
     };
   },
@@ -1151,17 +1375,26 @@ export const GetHistoryResponse: MessageFns<GetHistoryResponse> = {
   toJSON(message: GetHistoryResponse): unknown {
     const obj: any = {};
     if (message.entries?.length) {
-      obj.entries = message.entries.map((e) => GetHistoryResponse_HistoryEntry.toJSON(e));
+      obj.entries = message.entries.map((e) =>
+        GetHistoryResponse_HistoryEntry.toJSON(e)
+      );
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<GetHistoryResponse>, I>>(base?: I): GetHistoryResponse {
+  create<I extends Exact<DeepPartial<GetHistoryResponse>, I>>(
+    base?: I
+  ): GetHistoryResponse {
     return GetHistoryResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<GetHistoryResponse>, I>>(object: I): GetHistoryResponse {
+  fromPartial<I extends Exact<DeepPartial<GetHistoryResponse>, I>>(
+    object: I
+  ): GetHistoryResponse {
     const message = createBaseGetHistoryResponse();
-    message.entries = object.entries?.map((e) => GetHistoryResponse_HistoryEntry.fromPartial(e)) || [];
+    message.entries =
+      object.entries?.map((e) =>
+        GetHistoryResponse_HistoryEntry.fromPartial(e)
+      ) || [];
     return message;
   },
 };
@@ -1170,132 +1403,171 @@ function createBaseGetHistoryResponse_HistoryEntry(): GetHistoryResponse_History
   return { request: undefined, response: undefined, timestamp: 0 };
 }
 
-export const GetHistoryResponse_HistoryEntry: MessageFns<GetHistoryResponse_HistoryEntry> = {
-  encode(message: GetHistoryResponse_HistoryEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.request !== undefined) {
-      CoordinateRequest.encode(message.request, writer.uint32(10).fork()).join();
-    }
-    if (message.response !== undefined) {
-      CoordinateResponse.encode(message.response, writer.uint32(18).fork()).join();
-    }
-    if (message.timestamp !== 0) {
-      writer.uint32(24).int64(message.timestamp);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): GetHistoryResponse_HistoryEntry {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseGetHistoryResponse_HistoryEntry();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.request = CoordinateRequest.decode(reader, reader.uint32());
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.response = CoordinateResponse.decode(reader, reader.uint32());
-          continue;
-        }
-        case 3: {
-          if (tag !== 24) {
-            break;
-          }
-
-          message.timestamp = longToNumber(reader.int64());
-          continue;
-        }
+export const GetHistoryResponse_HistoryEntry: MessageFns<GetHistoryResponse_HistoryEntry> =
+  {
+    encode(
+      message: GetHistoryResponse_HistoryEntry,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.request !== undefined) {
+        CoordinateRequest.encode(
+          message.request,
+          writer.uint32(10).fork()
+        ).join();
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.response !== undefined) {
+        CoordinateResponse.encode(
+          message.response,
+          writer.uint32(18).fork()
+        ).join();
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      if (message.timestamp !== 0) {
+        writer.uint32(24).int64(message.timestamp);
+      }
+      return writer;
+    },
 
-  fromJSON(object: any): GetHistoryResponse_HistoryEntry {
-    return {
-      request: isSet(object.request) ? CoordinateRequest.fromJSON(object.request) : undefined,
-      response: isSet(object.response) ? CoordinateResponse.fromJSON(object.response) : undefined,
-      timestamp: isSet(object.timestamp) ? globalThis.Number(object.timestamp) : 0,
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): GetHistoryResponse_HistoryEntry {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseGetHistoryResponse_HistoryEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: GetHistoryResponse_HistoryEntry): unknown {
-    const obj: any = {};
-    if (message.request !== undefined) {
-      obj.request = CoordinateRequest.toJSON(message.request);
-    }
-    if (message.response !== undefined) {
-      obj.response = CoordinateResponse.toJSON(message.response);
-    }
-    if (message.timestamp !== 0) {
-      obj.timestamp = Math.round(message.timestamp);
-    }
-    return obj;
-  },
+            message.request = CoordinateRequest.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<GetHistoryResponse_HistoryEntry>, I>>(base?: I): GetHistoryResponse_HistoryEntry {
-    return GetHistoryResponse_HistoryEntry.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<GetHistoryResponse_HistoryEntry>, I>>(
-    object: I,
-  ): GetHistoryResponse_HistoryEntry {
-    const message = createBaseGetHistoryResponse_HistoryEntry();
-    message.request = (object.request !== undefined && object.request !== null)
-      ? CoordinateRequest.fromPartial(object.request)
-      : undefined;
-    message.response = (object.response !== undefined && object.response !== null)
-      ? CoordinateResponse.fromPartial(object.response)
-      : undefined;
-    message.timestamp = object.timestamp ?? 0;
-    return message;
-  },
-};
+            message.response = CoordinateResponse.decode(
+              reader,
+              reader.uint32()
+            );
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.timestamp = longToNumber(reader.int64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): GetHistoryResponse_HistoryEntry {
+      return {
+        request: isSet(object.request)
+          ? CoordinateRequest.fromJSON(object.request)
+          : undefined,
+        response: isSet(object.response)
+          ? CoordinateResponse.fromJSON(object.response)
+          : undefined,
+        timestamp: isSet(object.timestamp)
+          ? globalThis.Number(object.timestamp)
+          : 0,
+      };
+    },
+
+    toJSON(message: GetHistoryResponse_HistoryEntry): unknown {
+      const obj: any = {};
+      if (message.request !== undefined) {
+        obj.request = CoordinateRequest.toJSON(message.request);
+      }
+      if (message.response !== undefined) {
+        obj.response = CoordinateResponse.toJSON(message.response);
+      }
+      if (message.timestamp !== 0) {
+        obj.timestamp = Math.round(message.timestamp);
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<GetHistoryResponse_HistoryEntry>, I>>(
+      base?: I
+    ): GetHistoryResponse_HistoryEntry {
+      return GetHistoryResponse_HistoryEntry.fromPartial(base ?? ({} as any));
+    },
+    fromPartial<
+      I extends Exact<DeepPartial<GetHistoryResponse_HistoryEntry>, I>,
+    >(object: I): GetHistoryResponse_HistoryEntry {
+      const message = createBaseGetHistoryResponse_HistoryEntry();
+      message.request =
+        object.request !== undefined && object.request !== null
+          ? CoordinateRequest.fromPartial(object.request)
+          : undefined;
+      message.response =
+        object.response !== undefined && object.response !== null
+          ? CoordinateResponse.fromPartial(object.response)
+          : undefined;
+      message.timestamp = object.timestamp ?? 0;
+      return message;
+    },
+  };
 
 /** Coordinator service */
 export type CoordinatorService = typeof CoordinatorService;
 export const CoordinatorService = {
   /** Coordinate agents for a task */
   coordinate: {
-    path: "/parallax.coordinator.Coordinator/Coordinate",
+    path: '/parallax.coordinator.Coordinator/Coordinate',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: CoordinateRequest): Buffer => Buffer.from(CoordinateRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): CoordinateRequest => CoordinateRequest.decode(value),
-    responseSerialize: (value: CoordinateResponse): Buffer => Buffer.from(CoordinateResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): CoordinateResponse => CoordinateResponse.decode(value),
+    requestSerialize: (value: CoordinateRequest): Buffer =>
+      Buffer.from(CoordinateRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): CoordinateRequest =>
+      CoordinateRequest.decode(value),
+    responseSerialize: (value: CoordinateResponse): Buffer =>
+      Buffer.from(CoordinateResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): CoordinateResponse =>
+      CoordinateResponse.decode(value),
   },
   /** Stream coordination for real-time updates */
   streamCoordinate: {
-    path: "/parallax.coordinator.Coordinator/StreamCoordinate",
+    path: '/parallax.coordinator.Coordinator/StreamCoordinate',
     requestStream: false,
     responseStream: true,
-    requestSerialize: (value: CoordinateRequest): Buffer => Buffer.from(CoordinateRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): CoordinateRequest => CoordinateRequest.decode(value),
-    responseSerialize: (value: CoordinateResponse): Buffer => Buffer.from(CoordinateResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): CoordinateResponse => CoordinateResponse.decode(value),
+    requestSerialize: (value: CoordinateRequest): Buffer =>
+      Buffer.from(CoordinateRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): CoordinateRequest =>
+      CoordinateRequest.decode(value),
+    responseSerialize: (value: CoordinateResponse): Buffer =>
+      Buffer.from(CoordinateResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): CoordinateResponse =>
+      CoordinateResponse.decode(value),
   },
   /** Get coordination history */
   getHistory: {
-    path: "/parallax.coordinator.Coordinator/GetHistory",
+    path: '/parallax.coordinator.Coordinator/GetHistory',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: GetHistoryRequest): Buffer => Buffer.from(GetHistoryRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): GetHistoryRequest => GetHistoryRequest.decode(value),
-    responseSerialize: (value: GetHistoryResponse): Buffer => Buffer.from(GetHistoryResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): GetHistoryResponse => GetHistoryResponse.decode(value),
+    requestSerialize: (value: GetHistoryRequest): Buffer =>
+      Buffer.from(GetHistoryRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): GetHistoryRequest =>
+      GetHistoryRequest.decode(value),
+    responseSerialize: (value: GetHistoryResponse): Buffer =>
+      Buffer.from(GetHistoryResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): GetHistoryResponse =>
+      GetHistoryResponse.decode(value),
   },
 } as const;
 
@@ -1303,7 +1575,10 @@ export interface CoordinatorServer extends UntypedServiceImplementation {
   /** Coordinate agents for a task */
   coordinate: handleUnaryCall<CoordinateRequest, CoordinateResponse>;
   /** Stream coordination for real-time updates */
-  streamCoordinate: handleServerStreamingCall<CoordinateRequest, CoordinateResponse>;
+  streamCoordinate: handleServerStreamingCall<
+    CoordinateRequest,
+    CoordinateResponse
+  >;
   /** Get coordination history */
   getHistory: handleUnaryCall<GetHistoryRequest, GetHistoryResponse>;
 }
@@ -1312,81 +1587,99 @@ export interface CoordinatorClient extends Client {
   /** Coordinate agents for a task */
   coordinate(
     request: CoordinateRequest,
-    callback: (error: ServiceError | null, response: CoordinateResponse) => void,
+    callback: (error: ServiceError | null, response: CoordinateResponse) => void
   ): ClientUnaryCall;
   coordinate(
     request: CoordinateRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: CoordinateResponse) => void,
+    callback: (error: ServiceError | null, response: CoordinateResponse) => void
   ): ClientUnaryCall;
   coordinate(
     request: CoordinateRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: CoordinateResponse) => void,
+    callback: (error: ServiceError | null, response: CoordinateResponse) => void
   ): ClientUnaryCall;
   /** Stream coordination for real-time updates */
   streamCoordinate(
     request: CoordinateRequest,
-    options?: Partial<CallOptions>,
+    options?: Partial<CallOptions>
   ): ClientReadableStream<CoordinateResponse>;
   streamCoordinate(
     request: CoordinateRequest,
     metadata?: Metadata,
-    options?: Partial<CallOptions>,
+    options?: Partial<CallOptions>
   ): ClientReadableStream<CoordinateResponse>;
   /** Get coordination history */
   getHistory(
     request: GetHistoryRequest,
-    callback: (error: ServiceError | null, response: GetHistoryResponse) => void,
+    callback: (error: ServiceError | null, response: GetHistoryResponse) => void
   ): ClientUnaryCall;
   getHistory(
     request: GetHistoryRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: GetHistoryResponse) => void,
+    callback: (error: ServiceError | null, response: GetHistoryResponse) => void
   ): ClientUnaryCall;
   getHistory(
     request: GetHistoryRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: GetHistoryResponse) => void,
+    callback: (error: ServiceError | null, response: GetHistoryResponse) => void
   ): ClientUnaryCall;
 }
 
 export const CoordinatorClient = makeGenericClientConstructor(
   CoordinatorService,
-  "parallax.coordinator.Coordinator",
+  'parallax.coordinator.Coordinator'
 ) as unknown as {
-  new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): CoordinatorClient;
+  new (
+    address: string,
+    credentials: ChannelCredentials,
+    options?: Partial<ClientOptions>
+  ): CoordinatorClient;
   service: typeof CoordinatorService;
   serviceName: string;
 };
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : Partial<T>;
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends globalThis.Array<infer U>
+    ? globalThis.Array<DeepPartial<U>>
+    : T extends ReadonlyArray<infer U>
+      ? ReadonlyArray<DeepPartial<U>>
+      : T extends {}
+        ? { [K in keyof T]?: DeepPartial<T[K]> }
+        : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+      [K in Exclude<keyof I, KeysOfUnion<P>>]: never;
+    };
 
 function longToNumber(int64: { toString(): string }): number {
   const num = globalThis.Number(int64.toString());
   if (num > globalThis.Number.MAX_SAFE_INTEGER) {
-    throw new globalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+    throw new globalThis.Error('Value is larger than Number.MAX_SAFE_INTEGER');
   }
   if (num < globalThis.Number.MIN_SAFE_INTEGER) {
-    throw new globalThis.Error("Value is smaller than Number.MIN_SAFE_INTEGER");
+    throw new globalThis.Error('Value is smaller than Number.MIN_SAFE_INTEGER');
   }
   return num;
 }
 
 function isObject(value: any): boolean {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function isSet(value: any): boolean {

@@ -78,12 +78,7 @@ export const SNAPSHOT_PATHS = {
  * Known ready patterns per adapter (baseline - will be updated by monitoring)
  */
 export const BASELINE_READY_PATTERNS: Record<AdapterType, string[]> = {
-  claude: [
-    'Claude Code',
-    'How can I help',
-    'What would you like',
-    'Ready',
-  ],
+  claude: ['Claude Code', 'How can I help', 'What would you like', 'Ready'],
 
   gemini: [
     'Type your message',
@@ -92,17 +87,9 @@ export const BASELINE_READY_PATTERNS: Record<AdapterType, string[]> = {
     'Ready',
   ],
 
-  codex: [
-    'Codex',
-    'How can I help',
-    'Ready',
-  ],
+  codex: ['Codex', 'How can I help', 'Ready'],
 
-  aider: [
-    'Aider',
-    'What would you like',
-    'Ready',
-  ],
+  aider: ['Aider', 'What would you like', 'Ready'],
 };
 
 /**
@@ -110,9 +97,7 @@ export const BASELINE_READY_PATTERNS: Record<AdapterType, string[]> = {
  * Source: AGENT_LOADING_STATUS_PATTERNS.json
  */
 export const BASELINE_LOADING_PATTERNS: Record<AdapterType, string[]> = {
-  claude: [
-    'Reading X files…',
-  ],
+  claude: ['Reading X files…'],
 
   gemini: [
     '<phrase> (esc to cancel, 25s)',
@@ -122,10 +107,7 @@ export const BASELINE_LOADING_PATTERNS: Record<AdapterType, string[]> = {
     'Warming up the AI hamsters',
   ],
 
-  codex: [
-    '• Working (0s • esc to interrupt)',
-    'Booting MCP server: alpha',
-  ],
+  codex: ['• Working (0s • esc to interrupt)', 'Booting MCP server: alpha'],
 
   aider: [
     'Waiting for <model>',
@@ -139,20 +121,13 @@ export const BASELINE_LOADING_PATTERNS: Record<AdapterType, string[]> = {
  * Source: AGENT_LOADING_STATUS_PATTERNS.json
  */
 export const BASELINE_TURN_COMPLETE_PATTERNS: Record<AdapterType, string[]> = {
-  claude: [
-    'Cooked for 1m 6s',
-    '<CustomVerb> for 4m 39s',
-  ],
+  claude: ['Cooked for 1m 6s', '<CustomVerb> for 4m 39s'],
 
   gemini: [],
 
-  codex: [
-    'Worked for 1m 05s',
-  ],
+  codex: ['Worked for 1m 05s'],
 
-  aider: [
-    'Aider is waiting for your input',
-  ],
+  aider: ['Aider is waiting for your input'],
 };
 
 /**
@@ -162,14 +137,9 @@ export const BASELINE_TURN_COMPLETE_PATTERNS: Record<AdapterType, string[]> = {
 export const BASELINE_TOOL_WAIT_PATTERNS: Record<AdapterType, string[]> = {
   claude: [],
 
-  gemini: [
-    'Interactive shell awaiting input... press tab to focus shell',
-  ],
+  gemini: ['Interactive shell awaiting input... press tab to focus shell'],
 
-  codex: [
-    'Waiting for background terminal · <command>',
-    'Searching the web',
-  ],
+  codex: ['Waiting for background terminal · <command>', 'Searching the web'],
 
   aider: [],
 };
@@ -181,9 +151,7 @@ export const BASELINE_TOOL_WAIT_PATTERNS: Record<AdapterType, string[]> = {
 export const BASELINE_EXIT_PATTERNS: Record<AdapterType, string[]> = {
   claude: [],
 
-  gemini: [
-    'Agent powering down. Goodbye!',
-  ],
+  gemini: ['Agent powering down. Goodbye!'],
 
   codex: [],
 
@@ -209,16 +177,7 @@ export const BASELINE_AUTH_PATTERNS: Record<AdapterType, string[]> = {
     'gcloud auth',
   ],
 
-  codex: [
-    'OPENAI_API_KEY',
-    'API key not found',
-    'Unauthorized',
-  ],
+  codex: ['OPENAI_API_KEY', 'API key not found', 'Unauthorized'],
 
-  aider: [
-    'API key',
-    'OPENAI_API_KEY',
-    'ANTHROPIC_API_KEY',
-    'No API key',
-  ],
+  aider: ['API key', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'No API key'],
 };

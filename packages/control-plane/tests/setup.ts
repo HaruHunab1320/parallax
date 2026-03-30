@@ -1,7 +1,7 @@
-import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { PrismaClient } from '@prisma/client';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { afterAll, beforeAll, beforeEach } from 'vitest';
 import './setup-env';
 
 const execAsync = promisify(exec);
@@ -25,7 +25,7 @@ beforeAll(async () => {
     // Create the test database if it doesn't exist (connect to default db first)
     const adminUrl = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/parallax`;
     const adminPrisma = new PrismaClient({
-      datasources: { db: { url: adminUrl } }
+      datasources: { db: { url: adminUrl } },
     });
 
     try {
@@ -49,8 +49,8 @@ beforeAll(async () => {
     // Initialize Prisma client for tests
     prisma = new PrismaClient({
       datasources: {
-        db: { url: TEST_DATABASE_URL }
-      }
+        db: { url: TEST_DATABASE_URL },
+      },
     });
 
     await prisma.$connect();
@@ -88,7 +88,7 @@ beforeEach(async () => {
       await prisma.agent.deleteMany();
     } catch {
       // Retry once after a brief delay (async background work may have created records)
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 100));
       await prisma.threadEventRecord.deleteMany().catch(() => {});
       await prisma.threadRecord.deleteMany().catch(() => {});
       await prisma.sharedDecisionRecord.deleteMany().catch(() => {});
@@ -119,8 +119,8 @@ export async function createTestPattern(overrides?: Partial<any>) {
       version: '1.0.0',
       description: 'Test pattern',
       script: 'pattern test { }',
-      ...overrides
-    }
+      ...overrides,
+    },
   });
 }
 
@@ -132,19 +132,22 @@ export async function createTestAgent(overrides?: Partial<any>) {
       endpoint: 'http://localhost:8080',
       capabilities: ['test', 'analyze'],
       status: 'active',
-      ...overrides
-    }
+      ...overrides,
+    },
   });
 }
 
-export async function createTestExecution(patternId: string, overrides?: Partial<any>) {
+export async function createTestExecution(
+  patternId: string,
+  overrides?: Partial<any>
+) {
   const prisma = getTestPrisma();
   return prisma.execution.create({
     data: {
       patternId,
       input: { test: 'data' },
       status: 'running',
-      ...overrides
-    }
+      ...overrides,
+    },
   });
 }

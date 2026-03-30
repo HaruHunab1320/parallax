@@ -1,6 +1,6 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { TmuxManager } from '../src/tmux-manager.js';
+import { afterEach, describe, expect, it } from 'vitest';
 import { ShellAdapter } from '../src/adapters/shell-adapter.js';
+import { TmuxManager } from '../src/tmux-manager.js';
 
 describe('TmuxManager', () => {
   let manager: TmuxManager;
@@ -107,7 +107,10 @@ describe('TmuxManager', () => {
     const readyId = await Promise.race([
       readyPromise,
       new Promise<string>((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout waiting for session_ready')), 5000)
+        setTimeout(
+          () => reject(new Error('Timeout waiting for session_ready')),
+          5000
+        )
       ),
     ]);
 
@@ -131,7 +134,7 @@ describe('TmuxManager', () => {
     await manager.spawn({ name: 'test', type: 'shell' });
 
     // Wait for ready
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const ready = manager.list({ status: 'ready' });
     const stopped = manager.list({ status: 'stopped' });

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ShellAdapter } from './shell-adapter';
 
 describe('ShellAdapter', () => {
@@ -57,7 +57,10 @@ describe('ShellAdapter', () => {
 
   it('should detect exit', () => {
     const adapter = new ShellAdapter();
-    expect(adapter.detectExit('user typed exit')).toEqual({ exited: true, code: 0 });
+    expect(adapter.detectExit('user typed exit')).toEqual({
+      exited: true,
+      code: 0,
+    });
     expect(adapter.detectExit('normal output')).toEqual({ exited: false });
   });
 

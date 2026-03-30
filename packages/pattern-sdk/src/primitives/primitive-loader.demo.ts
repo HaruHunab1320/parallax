@@ -1,20 +1,20 @@
-import { PrimitiveLoader, loadPrimitives } from './primitive-loader';
+import { loadPrimitives, PrimitiveLoader } from './primitive-loader';
 
 /**
  * Example usage of the PrimitiveLoader
  */
 async function demonstratePrimitiveLoader() {
   console.log('=== Primitive Loader Demo ===\n');
-  
+
   // Create a loader with default options
   const loader = new PrimitiveLoader();
-  
+
   try {
     // Load all primitives
     console.log('Loading all primitives...');
     const primitives = await loader.loadAll();
     console.log(`Loaded ${primitives.size} primitives\n`);
-    
+
     // Show summary by category
     const summary = loader.generateSummary();
     console.log('Primitives by category:');
@@ -23,7 +23,7 @@ async function demonstratePrimitiveLoader() {
       console.log(`    - ${info.primitives.join(', ')}`);
     }
     console.log('');
-    
+
     // Get a specific primitive
     const parallelPrimitive = loader.getPrimitive('parallel');
     if (parallelPrimitive) {
@@ -32,27 +32,33 @@ async function demonstratePrimitiveLoader() {
       console.log(`  Category: ${parallelPrimitive.metadata.category}`);
       console.log(`  Description: ${parallelPrimitive.metadata.description}`);
       console.log(`  Confidence: ${parallelPrimitive.metadata.confidence}`);
-      console.log(`  Exports: ${parallelPrimitive.metadata.exports.join(', ')}`);
-      console.log(`  Variants: ${parallelPrimitive.metadata.variants?.join(', ') || 'none'}`);
+      console.log(
+        `  Exports: ${parallelPrimitive.metadata.exports.join(', ')}`
+      );
+      console.log(
+        `  Variants: ${parallelPrimitive.metadata.variants?.join(', ') || 'none'}`
+      );
       console.log('');
     }
-    
+
     // Search for primitives
     console.log('Searching for "consensus" primitives:');
     const consensusPrimitives = loader.searchPrimitives('consensus');
     for (const primitive of consensusPrimitives) {
-      console.log(`  - ${primitive.metadata.name}: ${primitive.metadata.description}`);
+      console.log(
+        `  - ${primitive.metadata.name}: ${primitive.metadata.description}`
+      );
     }
     console.log('');
-    
+
     // Get primitives by confidence strategy
     console.log('Primitives with "propagates-minimum" confidence:');
-    const minConfidencePrimitives = loader.getPrimitivesByConfidence('propagates-minimum');
+    const minConfidencePrimitives =
+      loader.getPrimitivesByConfidence('propagates-minimum');
     for (const primitive of minConfidencePrimitives) {
       console.log(`  - ${primitive.metadata.name}`);
     }
     console.log('');
-    
   } catch (error) {
     console.error('Error loading primitives:', error);
   }
@@ -63,12 +69,12 @@ async function demonstratePrimitiveLoader() {
  */
 async function demonstrateCustomOptions() {
   console.log('\n=== Custom Options Demo ===\n');
-  
+
   // Load only specific categories
   const loader = new PrimitiveLoader({
-    includeCategories: ['execution', 'aggregation', 'control']
+    includeCategories: ['execution', 'aggregation', 'control'],
   });
-  
+
   const primitives = await loader.loadAll();
   console.log(`Loaded ${primitives.size} primitives from selected categories`);
   console.log('Categories:', loader.getCategories().join(', '));
@@ -79,14 +85,14 @@ async function demonstrateCustomOptions() {
  */
 async function demonstrateConvenienceFunction() {
   console.log('\n=== Convenience Function Demo ===\n');
-  
+
   // Quick load with options
   const primitives = await loadPrimitives({
-    excludeCategories: ['event', 'temporal']
+    excludeCategories: ['event', 'temporal'],
   });
-  
+
   console.log(`Loaded ${primitives.size} primitives`);
-  
+
   // Show first 5 primitives
   console.log('\nFirst 5 primitives:');
   let count = 0;

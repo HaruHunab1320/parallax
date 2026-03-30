@@ -6,13 +6,18 @@
  * (or any machine) and connects to the control plane via the gateway.
  */
 
-import * as grpc from '@grpc/grpc-js';
+import type * as grpc from '@grpc/grpc-js';
+import type {
+  AgentResponse,
+  GatewayThreadInput,
+  GatewayThreadSpawnRequest,
+  GatewayThreadStopRequest,
+} from '@parallaxai/sdk-typescript';
 import { ParallaxAgent } from '@parallaxai/sdk-typescript';
-import type { AgentResponse, GatewayThreadSpawnRequest, GatewayThreadInput, GatewayThreadStopRequest } from '@parallaxai/sdk-typescript';
-import { ThreadExecutor } from './thread-executor';
-import { TerminalRenderer } from './display/terminal-renderer';
-import type { SwarmAgentConfig } from './config';
 import pino from 'pino';
+import type { SwarmAgentConfig } from './config';
+import { TerminalRenderer } from './display/terminal-renderer';
+import { ThreadExecutor } from './thread-executor';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -57,7 +62,8 @@ export class SwarmAgent extends ParallaxAgent {
         task,
       },
       confidence: 0.5,
-      reasoning: 'This agent is optimized for long-running thread-based coding sessions, not one-shot analysis',
+      reasoning:
+        'This agent is optimized for long-running thread-based coding sessions, not one-shot analysis',
     };
   }
 
@@ -73,7 +79,11 @@ export class SwarmAgent extends ParallaxAgent {
     const { thread_id, adapter_type, task } = request;
 
     logger.info(
-      { threadId: thread_id, adapterType: adapter_type, task: task.slice(0, 100) },
+      {
+        threadId: thread_id,
+        adapterType: adapter_type,
+        task: task.slice(0, 100),
+      },
       'Spawning coding thread'
     );
 
@@ -132,7 +142,10 @@ export class SwarmAgent extends ParallaxAgent {
 
       logger.info({ threadId: thread_id }, 'Thread spawned successfully');
     } catch (error: any) {
-      logger.error({ threadId: thread_id, error: error.message }, 'Failed to spawn thread');
+      logger.error(
+        { threadId: thread_id, error: error.message },
+        'Failed to spawn thread'
+      );
 
       stream.write({
         request_id: requestId,
@@ -149,8 +162,17 @@ export class SwarmAgent extends ParallaxAgent {
    * Handle thread input from the control plane.
    * Routes text to the running tmux session.
    */
-  protected async handleGatewayThreadInput(request: GatewayThreadInput): Promise<void> {
-    logger.info({ threadId: request.thread_id, inputType: request.input_type, inputLength: request.input?.length }, 'Thread input received');
+  protected async handleGatewayThreadInput(
+    request: GatewayThreadInput
+  ): Promise<void> {
+    logger.info(
+      {
+        threadId: request.thread_id,
+        inputType: request.input_type,
+        inputLength: request.input?.length,
+      },
+      'Thread input received'
+    );
     this.executor.sendInput(request.thread_id, request.input);
   }
 
@@ -162,7 +184,14 @@ export class SwarmAgent extends ParallaxAgent {
     requestId: string,
     request: GatewayThreadStopRequest
   ): Promise<void> {
-    logger.info({ threadId: request.thread_id, reason: request.reason, force: request.force }, 'Stopping thread');
+    logger.info(
+      {
+        threadId: request.thread_id,
+        reason: request.reason,
+        force: request.force,
+      },
+      'Stopping thread'
+    );
 
     this.unregisterThread(request.thread_id);
     await this.executor.stopThread(request.thread_id, request.force);

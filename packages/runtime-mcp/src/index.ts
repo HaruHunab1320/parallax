@@ -17,131 +17,6 @@
  * ```
  */
 
-// Main server
-export { ParallaxMcpServer, type ParallaxMcpServerOptions } from './mcp-server.js';
-
-// Transports
-export { StdioServerTransport, SSEServerTransport } from './transports/index.js';
-
-// Auth
-export {
-  McpAuthHandler,
-  type McpAuthConfig,
-  type ApiKeyConfig,
-  type AuthContext,
-  type AuthErrorCode,
-  McpAuthError,
-} from './auth/index.js';
-
-// Tool schemas and executors
-export {
-  // Schema shapes (for MCP SDK)
-  SpawnInputShape,
-  StopInputShape,
-  ListInputShape,
-  GetInputShape,
-  SendInputShape,
-  LogsInputShape,
-  MetricsInputShape,
-  HealthInputShape,
-  SpawnThreadInputShape,
-  StopThreadInputShape,
-  ListThreadsInputShape,
-  GetThreadInputShape,
-  SendThreadInputShape,
-
-  // Full Zod schemas (for validation)
-  SpawnInputSchema,
-  StopInputSchema,
-  ListInputSchema,
-  GetInputSchema,
-  SendInputSchema,
-  LogsInputSchema,
-  MetricsInputSchema,
-  HealthInputSchema,
-  SpawnThreadInputSchema,
-  StopThreadInputSchema,
-  ListThreadsInputSchema,
-  GetThreadInputSchema,
-  SendThreadInputSchema,
-  AgentTypeSchema,
-  AgentStatusSchema,
-  ThreadStatusSchema,
-
-  // Types
-  type SpawnInput,
-  type StopInput,
-  type ListInput,
-  type GetInput,
-  type SendInput,
-  type LogsInput,
-  type MetricsInput,
-  type HealthInput,
-  type SpawnThreadInput,
-  type StopThreadInput,
-  type ListThreadsInput,
-  type GetThreadInput,
-  type SendThreadInput,
-
-  // Tool definitions
-  SPAWN_TOOL,
-  STOP_TOOL,
-  LIST_TOOL,
-  GET_TOOL,
-  SEND_TOOL,
-  LOGS_TOOL,
-  METRICS_TOOL,
-  HEALTH_TOOL,
-  SPAWN_THREAD_TOOL,
-  STOP_THREAD_TOOL,
-  LIST_THREADS_TOOL,
-  GET_THREAD_TOOL,
-  SEND_THREAD_INPUT_TOOL,
-  ALL_TOOLS,
-
-  // Executors
-  executeSpawn,
-  executeStop,
-  executeList,
-  executeGet,
-  executeSend,
-  executeLogs,
-  executeMetrics,
-  executeHealth,
-  executeSpawnThread,
-  executeStopThread,
-  executeListThreads,
-  executeGetThread,
-  executeSendThreadInput,
-} from './tools/index.js';
-
-// Resource handlers
-export {
-  AGENT_RESOURCE_TEMPLATE,
-  LOGS_RESOURCE_TEMPLATE,
-  ALL_RESOURCE_TEMPLATES,
-  parseAgentUri,
-  parseLogsUri,
-  listAgentResources,
-  listLogsResources,
-  readAgentResource,
-  readLogsResource,
-  subscribeLogsResource,
-} from './resources/index.js';
-
-// Prompt templates
-export {
-  SPAWN_REVIEW_TEAM_PROMPT,
-  SPAWN_DEV_AGENT_PROMPT,
-  ALL_PROMPTS,
-  generateSpawnReviewTeamPrompt,
-  generateSpawnDevAgentPrompt,
-  type SpawnReviewTeamArgs,
-  type SpawnDevAgentArgs,
-} from './prompts/index.js';
-
-// Re-export useful types from dependencies
-export type { LocalRuntime } from '@parallaxai/runtime-local';
 export type {
   AgentConfig,
   AgentHandle,
@@ -152,3 +27,125 @@ export type {
   ThreadHandle,
   ThreadStatus,
 } from '@parallaxai/runtime-interface';
+// Re-export useful types from dependencies
+export type { LocalRuntime } from '@parallaxai/runtime-local';
+
+// Auth
+export {
+  type ApiKeyConfig,
+  type AuthContext,
+  type AuthErrorCode,
+  type McpAuthConfig,
+  McpAuthError,
+  McpAuthHandler,
+} from './auth/index.js';
+// Main server
+export {
+  ParallaxMcpServer,
+  type ParallaxMcpServerOptions,
+} from './mcp-server.js';
+// Prompt templates
+export {
+  ALL_PROMPTS,
+  generateSpawnDevAgentPrompt,
+  generateSpawnReviewTeamPrompt,
+  SPAWN_DEV_AGENT_PROMPT,
+  SPAWN_REVIEW_TEAM_PROMPT,
+  type SpawnDevAgentArgs,
+  type SpawnReviewTeamArgs,
+} from './prompts/index.js';
+// Resource handlers
+export {
+  AGENT_RESOURCE_TEMPLATE,
+  ALL_RESOURCE_TEMPLATES,
+  LOGS_RESOURCE_TEMPLATE,
+  listAgentResources,
+  listLogsResources,
+  parseAgentUri,
+  parseLogsUri,
+  readAgentResource,
+  readLogsResource,
+  subscribeLogsResource,
+} from './resources/index.js';
+// Tool schemas and executors
+export {
+  AgentStatusSchema,
+  AgentTypeSchema,
+  ALL_TOOLS,
+  executeGet,
+  executeGetThread,
+  executeHealth,
+  executeList,
+  executeListThreads,
+  executeLogs,
+  executeMetrics,
+  executeSend,
+  executeSendThreadInput,
+  // Executors
+  executeSpawn,
+  executeSpawnThread,
+  executeStop,
+  executeStopThread,
+  GET_THREAD_TOOL,
+  GET_TOOL,
+  type GetInput,
+  GetInputSchema,
+  GetInputShape,
+  type GetThreadInput,
+  GetThreadInputSchema,
+  GetThreadInputShape,
+  HEALTH_TOOL,
+  type HealthInput,
+  HealthInputSchema,
+  HealthInputShape,
+  LIST_THREADS_TOOL,
+  LIST_TOOL,
+  type ListInput,
+  ListInputSchema,
+  ListInputShape,
+  type ListThreadsInput,
+  ListThreadsInputSchema,
+  ListThreadsInputShape,
+  LOGS_TOOL,
+  type LogsInput,
+  LogsInputSchema,
+  LogsInputShape,
+  METRICS_TOOL,
+  type MetricsInput,
+  MetricsInputSchema,
+  MetricsInputShape,
+  SEND_THREAD_INPUT_TOOL,
+  SEND_TOOL,
+  type SendInput,
+  SendInputSchema,
+  SendInputShape,
+  type SendThreadInput,
+  SendThreadInputSchema,
+  SendThreadInputShape,
+  SPAWN_THREAD_TOOL,
+  // Tool definitions
+  SPAWN_TOOL,
+  // Types
+  type SpawnInput,
+  // Full Zod schemas (for validation)
+  SpawnInputSchema,
+  // Schema shapes (for MCP SDK)
+  SpawnInputShape,
+  type SpawnThreadInput,
+  SpawnThreadInputSchema,
+  SpawnThreadInputShape,
+  STOP_THREAD_TOOL,
+  STOP_TOOL,
+  type StopInput,
+  StopInputSchema,
+  StopInputShape,
+  type StopThreadInput,
+  StopThreadInputSchema,
+  StopThreadInputShape,
+  ThreadStatusSchema,
+} from './tools/index.js';
+// Transports
+export {
+  SSEServerTransport,
+  StdioServerTransport,
+} from './transports/index.js';

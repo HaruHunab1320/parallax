@@ -15,9 +15,9 @@
  *   TERMINAL_ROWS     — terminal height (default: 28)
  */
 
-import { SwarmAgent } from './swarm-agent';
-import { loadConfig } from './config';
 import pino from 'pino';
+import { loadConfig } from './config';
+import { SwarmAgent } from './swarm-agent';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',

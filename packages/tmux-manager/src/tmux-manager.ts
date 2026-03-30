@@ -5,28 +5,28 @@
  * Mirrors PTYManager's API but uses tmux as the transport layer.
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import type { CLIAdapter } from './adapters/adapter-interface.js';
 import { AdapterRegistry } from './adapters/adapter-registry.js';
+import { consoleLogger } from './logger.js';
 import { TmuxSession } from './tmux-session.js';
 import { TmuxTransport } from './tmux-transport.js';
-import { consoleLogger } from './logger.js';
 import type {
-  SpawnConfig,
-  SessionHandle,
-  SessionMessage,
-  SessionFilter,
-  SessionStatus,
-  BlockingPromptInfo,
   AuthRequiredInfo,
   AutoResponseRule,
-  StallClassification,
-  ToolRunningInfo,
-  StopOptions,
+  BlockingPromptInfo,
+  Logger,
   LogOptions,
+  SessionFilter,
+  SessionHandle,
+  SessionMessage,
+  SessionStatus,
+  SpawnConfig,
+  StallClassification,
+  StopOptions,
   TerminalAttachment,
   TmuxManagerConfig,
-  Logger,
+  ToolRunningInfo,
 } from './types.js';
 
 export interface TmuxManagerEvents {
@@ -34,12 +34,24 @@ export interface TmuxManagerEvents {
   session_ready: (session: SessionHandle) => void;
   session_stopped: (session: SessionHandle, reason: string) => void;
   session_error: (session: SessionHandle, error: string) => void;
-  login_required: (session: SessionHandle, instructions?: string, url?: string) => void;
+  login_required: (
+    session: SessionHandle,
+    instructions?: string,
+    url?: string
+  ) => void;
   auth_required: (session: SessionHandle, info: AuthRequiredInfo) => void;
-  blocking_prompt: (session: SessionHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => void;
+  blocking_prompt: (
+    session: SessionHandle,
+    promptInfo: BlockingPromptInfo,
+    autoResponded: boolean
+  ) => void;
   message: (message: SessionMessage) => void;
   question: (session: SessionHandle, question: string) => void;
-  stall_detected: (session: SessionHandle, recentOutput: string, stallDurationMs: number) => void;
+  stall_detected: (
+    session: SessionHandle,
+    recentOutput: string,
+    stallDurationMs: number
+  ) => void;
   session_status_changed: (session: SessionHandle) => void;
   task_complete: (session: SessionHandle) => void;
   tool_running: (session: SessionHandle, info: ToolRunningInfo) => void;
@@ -114,7 +126,7 @@ export class TmuxManager extends EventEmitter {
       this._stallTimeoutMs,
       this.transport,
       this._sessionPrefix,
-      this._historyLimit,
+      this._historyLimit
     );
 
     this.setupSessionEvents(session);
@@ -156,9 +168,17 @@ export class TmuxManager extends EventEmitter {
       this.emit('auth_required', session.toHandle(), info);
     });
 
-    session.on('blocking_prompt', (promptInfo: BlockingPromptInfo, autoResponded: boolean) => {
-      this.emit('blocking_prompt', session.toHandle(), promptInfo, autoResponded);
-    });
+    session.on(
+      'blocking_prompt',
+      (promptInfo: BlockingPromptInfo, autoResponded: boolean) => {
+        this.emit(
+          'blocking_prompt',
+          session.toHandle(),
+          promptInfo,
+          autoResponded
+        );
+      }
+    );
 
     session.on('message', (message: SessionMessage) => {
       this.emit('message', message);
@@ -189,28 +209,37 @@ export class TmuxManager extends EventEmitter {
       this.emit('tool_running', session.toHandle(), info);
     });
 
-    session.on('stall_detected', (recentOutput: string, stallDurationMs: number) => {
-      const handle = session.toHandle();
-      this.emit('stall_detected', handle, recentOutput, stallDurationMs);
+    session.on(
+      'stall_detected',
+      (recentOutput: string, stallDurationMs: number) => {
+        const handle = session.toHandle();
+        this.emit('stall_detected', handle, recentOutput, stallDurationMs);
 
-      if (this._onStallClassify) {
-        const sanitized = recentOutput
-          .slice(-1500)
-          .replace(/\b(ignore|disregard|forget)\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|rules?)\b/gi, '[REDACTED]')
-          .replace(/\b(you\s+are|act\s+as|pretend\s+to\s+be|you\s+must|system\s*:)\b/gi, '[REDACTED]');
-        this._onStallClassify(session.id, sanitized, stallDurationMs)
-          .then((classification) => {
-            session.handleStallClassification(classification);
-          })
-          .catch((err) => {
-            this.logger.error(
-              { sessionId: session.id, error: err },
-              'Stall classification callback failed'
+        if (this._onStallClassify) {
+          const sanitized = recentOutput
+            .slice(-1500)
+            .replace(
+              /\b(ignore|disregard|forget)\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|rules?)\b/gi,
+              '[REDACTED]'
+            )
+            .replace(
+              /\b(you\s+are|act\s+as|pretend\s+to\s+be|you\s+must|system\s*:)\b/gi,
+              '[REDACTED]'
             );
-            session.handleStallClassification(null);
-          });
+          this._onStallClassify(session.id, sanitized, stallDurationMs)
+            .then((classification) => {
+              session.handleStallClassification(classification);
+            })
+            .catch((err) => {
+              this.logger.error(
+                { sessionId: session.id, error: err },
+                'Stall classification callback failed'
+              );
+              session.handleStallClassification(null);
+            });
+        }
       }
-    });
+    );
   }
 
   /**
@@ -256,7 +285,10 @@ export class TmuxManager extends EventEmitter {
   async stopAll(options?: StopOptions): Promise<void> {
     const stopPromises = Array.from(this.sessions.keys()).map((id) =>
       this.stop(id, options).catch((err) => {
-        this.logger.warn({ sessionId: id, error: err }, 'Error stopping session');
+        this.logger.warn(
+          { sessionId: id, error: err },
+          'Error stopping session'
+        );
       })
     );
 
@@ -282,12 +314,16 @@ export class TmuxManager extends EventEmitter {
 
       if (filter) {
         if (filter.status) {
-          const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+          const statuses = Array.isArray(filter.status)
+            ? filter.status
+            : [filter.status];
           if (!statuses.includes(handle.status)) continue;
         }
 
         if (filter.type) {
-          const types = Array.isArray(filter.type) ? filter.type : [filter.type];
+          const types = Array.isArray(filter.type)
+            ? filter.type
+            : [filter.type];
           if (!types.includes(handle.type)) continue;
         }
       }
@@ -319,9 +355,7 @@ export class TmuxManager extends EventEmitter {
       throw new Error(`Session not found: ${sessionId}`);
     }
 
-    const lines = options?.tail
-      ? logBuffer.slice(-options.tail)
-      : logBuffer;
+    const lines = options?.tail ? logBuffer.slice(-options.tail) : logBuffer;
 
     for (const line of lines) {
       yield line;
@@ -331,7 +365,9 @@ export class TmuxManager extends EventEmitter {
   /**
    * Get metrics for a session
    */
-  metrics(sessionId: string): { uptime?: number; messageCount?: number } | null {
+  metrics(
+    sessionId: string
+  ): { uptime?: number; messageCount?: number } | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
 
@@ -347,7 +383,10 @@ export class TmuxManager extends EventEmitter {
    * Shutdown manager and stop all sessions
    */
   async shutdown(): Promise<void> {
-    this.logger.info({ count: this.sessions.size }, 'Shutting down all tmux sessions');
+    this.logger.info(
+      { count: this.sessions.size },
+      'Shutting down all tmux sessions'
+    );
 
     await this.stopAll({ timeout: 3000 });
 
@@ -421,13 +460,17 @@ export class TmuxManager extends EventEmitter {
    * List orphaned tmux sessions from previous runs.
    * These are tmux sessions with the configured prefix that aren't tracked by this manager.
    */
-  listOrphanedSessions(): Array<{ name: string; created: string; attached: boolean }> {
+  listOrphanedSessions(): Array<{
+    name: string;
+    created: string;
+    attached: boolean;
+  }> {
     const tmuxSessions = TmuxTransport.listSessions(this._sessionPrefix);
     const managedNames = new Set(
-      Array.from(this.sessions.values()).map(s => s.tmuxName)
+      Array.from(this.sessions.values()).map((s) => s.tmuxName)
     );
 
-    return tmuxSessions.filter(s => !managedNames.has(s.name));
+    return tmuxSessions.filter((s) => !managedNames.has(s.name));
   }
 
   /**
@@ -438,9 +481,15 @@ export class TmuxManager extends EventEmitter {
     for (const orphan of orphans) {
       try {
         this.transport.kill(orphan.name);
-        this.logger.info({ tmuxSession: orphan.name }, 'Cleaned up orphaned tmux session');
+        this.logger.info(
+          { tmuxSession: orphan.name },
+          'Cleaned up orphaned tmux session'
+        );
       } catch {
-        this.logger.warn({ tmuxSession: orphan.name }, 'Failed to clean up orphaned tmux session');
+        this.logger.warn(
+          { tmuxSession: orphan.name },
+          'Failed to clean up orphaned tmux session'
+        );
       }
     }
     return orphans.length;
@@ -453,7 +502,11 @@ export class TmuxManager extends EventEmitter {
   configureStallDetection(
     enabled: boolean,
     timeoutMs?: number,
-    classify?: (sessionId: string, recentOutput: string, stallDurationMs: number) => Promise<StallClassification | null>,
+    classify?: (
+      sessionId: string,
+      recentOutput: string,
+      stallDurationMs: number
+    ) => Promise<StallClassification | null>
   ): void {
     this._stallDetectionEnabled = enabled;
     if (timeoutMs !== undefined) {

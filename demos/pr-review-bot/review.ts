@@ -13,8 +13,8 @@
  *   echo "const x = eval(input)" | ./review.ts --stdin
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 const CONTROL_PLANE_URL = process.env.PARALLAX_URL || 'http://localhost:8080';
 
@@ -60,14 +60,16 @@ async function runReview(code: string): Promise<ReviewResult> {
       patternName: 'CodeReviewOrchestrator',
       input: {
         task: 'Review this code for security, style, documentation, and testability issues',
-        data: { code }
-      }
-    })
+        data: { code },
+      },
+    }),
   });
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Failed to create execution: ${response.status} - ${error}`);
+    throw new Error(
+      `Failed to create execution: ${response.status} - ${error}`
+    );
   }
 
   const execution: any = await response.json();
@@ -83,9 +85,13 @@ async function runReview(code: string): Promise<ReviewResult> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < maxWait) {
-    const statusResponse = await fetch(`${CONTROL_PLANE_URL}/api/executions/${executionId}`);
+    const statusResponse = await fetch(
+      `${CONTROL_PLANE_URL}/api/executions/${executionId}`
+    );
     if (!statusResponse.ok) {
-      throw new Error(`Failed to get execution status: ${statusResponse.status}`);
+      throw new Error(
+        `Failed to get execution status: ${statusResponse.status}`
+      );
     }
 
     const status: any = await statusResponse.json();
@@ -99,7 +105,7 @@ async function runReview(code: string): Promise<ReviewResult> {
 
     // Show progress
     process.stdout.write('.');
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
   if (!result) {
@@ -120,7 +126,7 @@ function printReview(review: ReviewResult) {
     blue: '\x1b[34m',
     magenta: '\x1b[35m',
     cyan: '\x1b[36m',
-    gray: '\x1b[90m'
+    gray: '\x1b[90m',
   };
 
   const severityColors: Record<string, string> = {
@@ -128,7 +134,7 @@ function printReview(review: ReviewResult) {
     high: colors.red,
     medium: colors.yellow,
     low: colors.gray,
-    none: colors.green
+    none: colors.green,
   };
 
   const recommendationEmoji: Record<string, string> = {
@@ -136,39 +142,66 @@ function printReview(review: ReviewResult) {
     request_changes: '⚠️',
     discuss: '💬',
     approve_with_comments: '💭',
-    approve: '✅'
+    approve: '✅',
   };
 
-  console.log(`${colors.bright}════════════════════════════════════════════════════════════${colors.reset}`);
-  console.log(`${colors.bright}                    CODE REVIEW RESULTS                      ${colors.reset}`);
-  console.log(`${colors.bright}════════════════════════════════════════════════════════════${colors.reset}\n`);
+  console.log(
+    `${colors.bright}════════════════════════════════════════════════════════════${colors.reset}`
+  );
+  console.log(
+    `${colors.bright}                    CODE REVIEW RESULTS                      ${colors.reset}`
+  );
+  console.log(
+    `${colors.bright}════════════════════════════════════════════════════════════${colors.reset}\n`
+  );
 
   // Summary
   console.log(`${colors.cyan}Summary:${colors.reset} ${review.summary}\n`);
 
   // Recommendation
   const recEmoji = recommendationEmoji[review.recommendation] || '❓';
-  const recColor = review.recommendation === 'approve' ? colors.green :
-                   review.recommendation === 'block' ? colors.red : colors.yellow;
-  console.log(`${colors.cyan}Recommendation:${colors.reset} ${recEmoji} ${recColor}${review.recommendation.toUpperCase()}${colors.reset}`);
-  console.log(`${colors.cyan}Overall Severity:${colors.reset} ${severityColors[review.overallSeverity] || ''}${review.overallSeverity}${colors.reset}`);
-  console.log(`${colors.cyan}Consensus:${colors.reset} ${review.consensus.level} (confidence: ${(review.consensus.confidence * 100).toFixed(0)}%)`);
-  console.log(`${colors.cyan}Agents:${colors.reset} ${review.consensus.agentCount} participated\n`);
+  const recColor =
+    review.recommendation === 'approve'
+      ? colors.green
+      : review.recommendation === 'block'
+        ? colors.red
+        : colors.yellow;
+  console.log(
+    `${colors.cyan}Recommendation:${colors.reset} ${recEmoji} ${recColor}${review.recommendation.toUpperCase()}${colors.reset}`
+  );
+  console.log(
+    `${colors.cyan}Overall Severity:${colors.reset} ${severityColors[review.overallSeverity] || ''}${review.overallSeverity}${colors.reset}`
+  );
+  console.log(
+    `${colors.cyan}Consensus:${colors.reset} ${review.consensus.level} (confidence: ${(review.consensus.confidence * 100).toFixed(0)}%)`
+  );
+  console.log(
+    `${colors.cyan}Agents:${colors.reset} ${review.consensus.agentCount} participated\n`
+  );
 
   // Agent breakdown
   console.log(`${colors.bright}Agent Results:${colors.reset}`);
-  console.log(`${colors.gray}────────────────────────────────────────────────────────────${colors.reset}`);
+  console.log(
+    `${colors.gray}────────────────────────────────────────────────────────────${colors.reset}`
+  );
   for (const agent of review.agentResults || []) {
-    const confColor = agent.confidence > 0.8 ? colors.green : agent.confidence > 0.6 ? colors.yellow : colors.red;
+    const confColor =
+      agent.confidence > 0.8
+        ? colors.green
+        : agent.confidence > 0.6
+          ? colors.yellow
+          : colors.red;
     const findingCount = agent.findingCount ?? agent.findings?.length ?? 0;
     console.log(`  ${colors.blue}${agent.agent}${colors.reset}`);
-    console.log(`    Confidence: ${confColor}${(agent.confidence * 100).toFixed(0)}%${colors.reset}`);
+    console.log(
+      `    Confidence: ${confColor}${(agent.confidence * 100).toFixed(0)}%${colors.reset}`
+    );
     console.log(`    Findings: ${findingCount}`);
     console.log(`    ${colors.gray}${agent.summary}${colors.reset}\n`);
   }
 
   // Flatten findings from agent results if not already flat
-  let allFindings: Finding[] = review.findings || [];
+  const allFindings: Finding[] = review.findings || [];
   if (allFindings.length === 0 && review.agentResults) {
     for (const agent of review.agentResults) {
       if (agent.findings && agent.findings.length > 0) {
@@ -176,7 +209,7 @@ function printReview(review: ReviewResult) {
           allFindings.push({
             ...f,
             agent: agent.agent,
-            confidence: f.confidence ?? agent.confidence
+            confidence: f.confidence ?? agent.confidence,
           });
         }
       }
@@ -185,26 +218,40 @@ function printReview(review: ReviewResult) {
 
   // Findings
   if (allFindings.length > 0) {
-    console.log(`${colors.bright}Findings (${allFindings.length}):${colors.reset}`);
-    console.log(`${colors.gray}────────────────────────────────────────────────────────────${colors.reset}`);
+    console.log(
+      `${colors.bright}Findings (${allFindings.length}):${colors.reset}`
+    );
+    console.log(
+      `${colors.gray}────────────────────────────────────────────────────────────${colors.reset}`
+    );
 
     for (const finding of allFindings) {
       const sevColor = severityColors[finding.severity] || colors.reset;
-      console.log(`\n  ${sevColor}[${finding.severity.toUpperCase()}]${colors.reset} ${finding.issue}`);
+      console.log(
+        `\n  ${sevColor}[${finding.severity.toUpperCase()}]${colors.reset} ${finding.issue}`
+      );
       console.log(`    ${colors.gray}Agent: ${finding.agent}${colors.reset}`);
       if (finding.line_hint) {
-        console.log(`    ${colors.gray}Location: ${finding.line_hint}${colors.reset}`);
+        console.log(
+          `    ${colors.gray}Location: ${finding.line_hint}${colors.reset}`
+        );
       }
-      console.log(`    ${colors.green}Suggestion: ${finding.suggestion}${colors.reset}`);
+      console.log(
+        `    ${colors.green}Suggestion: ${finding.suggestion}${colors.reset}`
+      );
       if (finding.confidence) {
-        console.log(`    ${colors.gray}Confidence: ${(finding.confidence * 100).toFixed(0)}%${colors.reset}`);
+        console.log(
+          `    ${colors.gray}Confidence: ${(finding.confidence * 100).toFixed(0)}%${colors.reset}`
+        );
       }
     }
   } else {
     console.log(`${colors.green}No significant findings!${colors.reset}`);
   }
 
-  console.log(`\n${colors.bright}════════════════════════════════════════════════════════════${colors.reset}\n`);
+  console.log(
+    `\n${colors.bright}════════════════════════════════════════════════════════════${colors.reset}\n`
+  );
 }
 
 async function main() {
@@ -232,14 +279,18 @@ async function main() {
       process.exit(1);
     }
     code = fs.readFileSync(samplePath, 'utf-8');
-    console.log('📄 Reviewing: examples/sample-code.ts (sample with intentional issues)');
+    console.log(
+      '📄 Reviewing: examples/sample-code.ts (sample with intentional issues)'
+    );
   }
 
   try {
     const review = await runReview(code);
     printReview(review);
   } catch (error) {
-    console.error(`\n❌ Review failed: ${error instanceof Error ? error.message : error}`);
+    console.error(
+      `\n❌ Review failed: ${error instanceof Error ? error.message : error}`
+    );
     process.exit(1);
   }
 }

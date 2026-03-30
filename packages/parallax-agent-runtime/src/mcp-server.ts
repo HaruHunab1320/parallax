@@ -9,78 +9,78 @@ import { StdioServerTransport as McpStdioTransport } from '@modelcontextprotocol
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-  ListPromptsRequestSchema,
   GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { Logger } from 'pino';
 
 import { AgentManager } from './agent-manager.js';
 import {
-  McpAuthHandler,
-  McpAuthError,
-  type McpAuthConfig,
   type AuthContext,
+  type McpAuthConfig,
+  McpAuthError,
+  McpAuthHandler,
 } from './auth/index.js';
 import {
-  TOOLS,
-  TOOL_PERMISSIONS,
-  executeSpawn,
-  executeStop,
-  executeList,
-  executeGet,
-  executeSend,
-  executeLogs,
-  executeMetrics,
-  executeHealth,
-  executeProvisionWorkspace,
-  executeFinalizeWorkspace,
-  executeCleanupWorkspace,
-  executeGetWorkspaceFiles,
-  executeWriteWorkspaceFile,
-  executeListPresets,
-  executeGetPresetConfig,
-  executeNotifyHookEvent,
-  executeWriteRaw,
-  executeGetHookConfig,
-  executeAddWorktree,
-  executeListWorktrees,
-  executeRemoveWorktree,
-  type SpawnInput,
-  type StopInput,
-  type ListInput,
-  type GetInput,
-  type SendInput,
-  type LogsInput,
-  type MetricsInput,
-  type ProvisionWorkspaceInput,
-  type FinalizeWorkspaceInput,
-  type CleanupWorkspaceInput,
-  type GetWorkspaceFilesInput,
-  type WriteWorkspaceFileInput,
-  type GetPresetConfigInput,
-  type NotifyHookEventInput,
-  type WriteRawInput,
-  type GetHookConfigInput,
-  type AddWorktreeInput,
-  type ListWorktreesInput,
-  type RemoveWorktreeInput,
-} from './tools/index.js';
+  generateSpawnDevAgentPrompt,
+  generateSpawnReviewTeamPrompt,
+  PROMPTS,
+  type SpawnDevAgentArgs,
+  type SpawnReviewTeamArgs,
+} from './prompts/index.js';
 import {
   listAgentResources,
-  readAgentResource,
   listLogsResources,
+  readAgentResource,
   readLogsResource,
 } from './resources/index.js';
 import {
-  PROMPTS,
-  generateSpawnReviewTeamPrompt,
-  generateSpawnDevAgentPrompt,
-  type SpawnReviewTeamArgs,
-  type SpawnDevAgentArgs,
-} from './prompts/index.js';
+  type AddWorktreeInput,
+  type CleanupWorkspaceInput,
+  executeAddWorktree,
+  executeCleanupWorkspace,
+  executeFinalizeWorkspace,
+  executeGet,
+  executeGetHookConfig,
+  executeGetPresetConfig,
+  executeGetWorkspaceFiles,
+  executeHealth,
+  executeList,
+  executeListPresets,
+  executeListWorktrees,
+  executeLogs,
+  executeMetrics,
+  executeNotifyHookEvent,
+  executeProvisionWorkspace,
+  executeRemoveWorktree,
+  executeSend,
+  executeSpawn,
+  executeStop,
+  executeWriteRaw,
+  executeWriteWorkspaceFile,
+  type FinalizeWorkspaceInput,
+  type GetHookConfigInput,
+  type GetInput,
+  type GetPresetConfigInput,
+  type GetWorkspaceFilesInput,
+  type ListInput,
+  type ListWorktreesInput,
+  type LogsInput,
+  type MetricsInput,
+  type NotifyHookEventInput,
+  type ProvisionWorkspaceInput,
+  type RemoveWorktreeInput,
+  type SendInput,
+  type SpawnInput,
+  type StopInput,
+  TOOL_PERMISSIONS,
+  TOOLS,
+  type WriteRawInput,
+  type WriteWorkspaceFileInput,
+} from './tools/index.js';
 
 export interface ParallaxMcpServerOptions {
   logger: Logger;
@@ -137,14 +137,19 @@ export class ParallaxMcpServer {
 
     const context = await this.authHandler.authenticate(token);
     this.authContext = context;
-    this.logger.info({ userId: context.userId, type: context.type }, 'Authenticated');
+    this.logger.info(
+      { userId: context.userId, type: context.type },
+      'Authenticated'
+    );
     return context;
   }
 
   /**
    * Authenticate from Authorization header
    */
-  async authenticateFromHeader(authHeader: string | undefined): Promise<AuthContext> {
+  async authenticateFromHeader(
+    authHeader: string | undefined
+  ): Promise<AuthContext> {
     if (!this.authHandler) {
       return { type: 'custom', permissions: ['*'] };
     }
@@ -218,19 +223,34 @@ export class ParallaxMcpServer {
             result = await executeHealth(this.manager);
             break;
           case 'provision_workspace':
-            result = await executeProvisionWorkspace(this.manager, args as ProvisionWorkspaceInput);
+            result = await executeProvisionWorkspace(
+              this.manager,
+              args as ProvisionWorkspaceInput
+            );
             break;
           case 'finalize_workspace':
-            result = await executeFinalizeWorkspace(this.manager, args as FinalizeWorkspaceInput);
+            result = await executeFinalizeWorkspace(
+              this.manager,
+              args as FinalizeWorkspaceInput
+            );
             break;
           case 'cleanup_workspace':
-            result = await executeCleanupWorkspace(this.manager, args as CleanupWorkspaceInput);
+            result = await executeCleanupWorkspace(
+              this.manager,
+              args as CleanupWorkspaceInput
+            );
             break;
           case 'get_workspace_files':
-            result = await executeGetWorkspaceFiles(this.manager, args as GetWorkspaceFilesInput);
+            result = await executeGetWorkspaceFiles(
+              this.manager,
+              args as GetWorkspaceFilesInput
+            );
             break;
           case 'write_workspace_file':
-            result = await executeWriteWorkspaceFile(this.manager, args as WriteWorkspaceFileInput);
+            result = await executeWriteWorkspaceFile(
+              this.manager,
+              args as WriteWorkspaceFileInput
+            );
             break;
           case 'list_presets':
             result = executeListPresets();
@@ -239,39 +259,61 @@ export class ParallaxMcpServer {
             result = executeGetPresetConfig(args as GetPresetConfigInput);
             break;
           case 'notify_hook_event':
-            result = executeNotifyHookEvent(this.manager, args as NotifyHookEventInput);
+            result = executeNotifyHookEvent(
+              this.manager,
+              args as NotifyHookEventInput
+            );
             break;
           case 'write_raw':
             result = executeWriteRaw(this.manager, args as WriteRawInput);
             break;
           case 'get_hook_config':
-            result = executeGetHookConfig(this.manager, args as GetHookConfigInput);
+            result = executeGetHookConfig(
+              this.manager,
+              args as GetHookConfigInput
+            );
             break;
           case 'add_worktree':
-            result = await executeAddWorktree(this.manager, args as AddWorktreeInput);
+            result = await executeAddWorktree(
+              this.manager,
+              args as AddWorktreeInput
+            );
             break;
           case 'list_worktrees':
-            result = executeListWorktrees(this.manager, args as ListWorktreesInput);
+            result = executeListWorktrees(
+              this.manager,
+              args as ListWorktreesInput
+            );
             break;
           case 'remove_worktree':
-            result = await executeRemoveWorktree(this.manager, args as RemoveWorktreeInput);
+            result = await executeRemoveWorktree(
+              this.manager,
+              args as RemoveWorktreeInput
+            );
             break;
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
 
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [
+            { type: 'text' as const, text: JSON.stringify(result, null, 2) },
+          ],
         };
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         const errorCode = error instanceof McpAuthError ? error.code : 'ERROR';
 
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify({ success: false, error: errorMessage, code: errorCode }),
+              text: JSON.stringify({
+                success: false,
+                error: errorMessage,
+                code: errorCode,
+              }),
             },
           ],
           isError: true,
@@ -287,27 +329,30 @@ export class ParallaxMcpServer {
     });
 
     // Read resource
-    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-      const { uri } = request.params;
+    this.server.setRequestHandler(
+      ReadResourceRequestSchema,
+      async (request) => {
+        const { uri } = request.params;
 
-      if (uri.startsWith('agents://')) {
-        const result = await readAgentResource(this.manager, uri);
-        if (!result) {
-          throw new Error(`Resource not found: ${uri}`);
+        if (uri.startsWith('agents://')) {
+          const result = await readAgentResource(this.manager, uri);
+          if (!result) {
+            throw new Error(`Resource not found: ${uri}`);
+          }
+          return result;
         }
-        return result;
-      }
 
-      if (uri.startsWith('logs://')) {
-        const result = await readLogsResource(this.manager, uri);
-        if (!result) {
-          throw new Error(`Resource not found: ${uri}`);
+        if (uri.startsWith('logs://')) {
+          const result = await readLogsResource(this.manager, uri);
+          if (!result) {
+            throw new Error(`Resource not found: ${uri}`);
+          }
+          return result;
         }
-        return result;
-      }
 
-      throw new Error(`Unknown resource URI: ${uri}`);
-    });
+        throw new Error(`Unknown resource URI: ${uri}`);
+      }
+    );
 
     // List prompts
     this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
@@ -320,9 +365,13 @@ export class ParallaxMcpServer {
 
       switch (name) {
         case 'spawn_review_team':
-          return generateSpawnReviewTeamPrompt(args as unknown as SpawnReviewTeamArgs);
+          return generateSpawnReviewTeamPrompt(
+            args as unknown as SpawnReviewTeamArgs
+          );
         case 'spawn_dev_agent':
-          return generateSpawnDevAgentPrompt(args as unknown as SpawnDevAgentArgs);
+          return generateSpawnDevAgentPrompt(
+            args as unknown as SpawnDevAgentArgs
+          );
         default:
           throw new Error(`Unknown prompt: ${name}`);
       }

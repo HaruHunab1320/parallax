@@ -6,42 +6,49 @@
  */
 
 export {
-  LeaderElectionService,
-  LeaderElectionConfig,
-  LeaderInfo,
-  createLeaderElection,
-} from './leader-election';
+  ClusterHealth,
+  ClusterHealthConfig,
+  ClusterHealthService,
+  createClusterHealth,
+  NodeInfo,
+} from './cluster-health';
 
 export {
-  DistributedLockService,
+  createDistributedLock,
   DistributedLockConfig,
+  DistributedLockService,
   Lock,
   LockOptions,
   LockResources,
-  createDistributedLock,
 } from './distributed-lock';
-
 export {
-  StateSyncService,
-  StateSyncConfig,
+  createLeaderElection,
+  LeaderElectionConfig,
+  LeaderElectionService,
+  LeaderInfo,
+} from './leader-election';
+export {
+  createStateSync,
   StateChangeEvent,
   StateNamespaces,
-  createStateSync,
+  StateSyncConfig,
+  StateSyncService,
 } from './state-sync';
 
-export {
-  ClusterHealthService,
-  ClusterHealthConfig,
-  ClusterHealth,
-  NodeInfo,
+import type { Logger } from 'pino';
+import {
+  type ClusterHealthService,
   createClusterHealth,
 } from './cluster-health';
-
-import { Logger } from 'pino';
-import { LeaderElectionService, createLeaderElection } from './leader-election';
-import { DistributedLockService, createDistributedLock } from './distributed-lock';
-import { StateSyncService, createStateSync } from './state-sync';
-import { ClusterHealthService, createClusterHealth } from './cluster-health';
+import {
+  createDistributedLock,
+  type DistributedLockService,
+} from './distributed-lock';
+import {
+  createLeaderElection,
+  type LeaderElectionService,
+} from './leader-election';
+import { createStateSync, type StateSyncService } from './state-sync';
 
 export interface HAConfig {
   /** Enable HA features */

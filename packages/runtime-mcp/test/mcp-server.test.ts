@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import pino from 'pino';
-import { ParallaxMcpServer } from '../src/mcp-server.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { McpAuthError } from '../src/auth/index.js';
+import { ParallaxMcpServer } from '../src/mcp-server.js';
 
 // Mock LocalRuntime
 vi.mock('@parallaxai/runtime-local', () => ({
@@ -17,8 +17,20 @@ vi.mock('@parallaxai/runtime-local', () => ({
     }),
     stop: vi.fn().mockResolvedValue(undefined),
     list: vi.fn().mockResolvedValue([
-      { id: 'agent-1', name: 'Agent 1', type: 'claude', status: 'ready', capabilities: [] },
-      { id: 'agent-2', name: 'Agent 2', type: 'codex', status: 'busy', capabilities: [] },
+      {
+        id: 'agent-1',
+        name: 'Agent 1',
+        type: 'claude',
+        status: 'ready',
+        capabilities: [],
+      },
+      {
+        id: 'agent-2',
+        name: 'Agent 2',
+        type: 'codex',
+        status: 'busy',
+        capabilities: [],
+      },
     ]),
     get: vi.fn().mockImplementation((id: string) => {
       if (id === 'agent-1') {
@@ -152,7 +164,9 @@ describe('ParallaxMcpServer', () => {
         },
       });
 
-      await expect(server.authenticate('invalid')).rejects.toThrow(McpAuthError);
+      await expect(server.authenticate('invalid')).rejects.toThrow(
+        McpAuthError
+      );
     });
 
     it('should authenticate from Authorization header', async () => {
@@ -166,7 +180,9 @@ describe('ParallaxMcpServer', () => {
         },
       });
 
-      const context = await server.authenticateFromHeader('Bearer plx_header_key');
+      const context = await server.authenticateFromHeader(
+        'Bearer plx_header_key'
+      );
 
       expect(context.userId).toBe('header-test');
     });
@@ -180,7 +196,9 @@ describe('ParallaxMcpServer', () => {
         },
       });
 
-      await expect(server.authenticateFromHeader(undefined)).rejects.toThrow(McpAuthError);
+      await expect(server.authenticateFromHeader(undefined)).rejects.toThrow(
+        McpAuthError
+      );
     });
   });
 
@@ -327,7 +345,9 @@ describe('Tool Executors', () => {
 
   describe('thread tool executors', () => {
     it('should spawn a managed thread', async () => {
-      const { executeSpawnThread } = await import('../src/tools/spawn-thread-tool.js');
+      const { executeSpawnThread } = await import(
+        '../src/tools/spawn-thread-tool.js'
+      );
       const { LocalRuntime } = await import('@parallaxai/runtime-local');
 
       const runtime = new LocalRuntime(logger, {});
@@ -346,11 +366,15 @@ describe('Tool Executors', () => {
     });
 
     it('should list managed threads', async () => {
-      const { executeListThreads } = await import('../src/tools/list-threads-tool.js');
+      const { executeListThreads } = await import(
+        '../src/tools/list-threads-tool.js'
+      );
       const { LocalRuntime } = await import('@parallaxai/runtime-local');
 
       const runtime = new LocalRuntime(logger, {});
-      const result = await executeListThreads(runtime, { executionId: 'exec-1' });
+      const result = await executeListThreads(runtime, {
+        executionId: 'exec-1',
+      });
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -360,7 +384,9 @@ describe('Tool Executors', () => {
     });
 
     it('should get a managed thread', async () => {
-      const { executeGetThread } = await import('../src/tools/get-thread-tool.js');
+      const { executeGetThread } = await import(
+        '../src/tools/get-thread-tool.js'
+      );
       const { LocalRuntime } = await import('@parallaxai/runtime-local');
 
       const runtime = new LocalRuntime(logger, {});
@@ -373,7 +399,9 @@ describe('Tool Executors', () => {
     });
 
     it('should send input to a managed thread', async () => {
-      const { executeSendThreadInput } = await import('../src/tools/send-thread-input-tool.js');
+      const { executeSendThreadInput } = await import(
+        '../src/tools/send-thread-input-tool.js'
+      );
       const { LocalRuntime } = await import('@parallaxai/runtime-local');
 
       const runtime = new LocalRuntime(logger, {});
@@ -389,7 +417,9 @@ describe('Tool Executors', () => {
     });
 
     it('should stop a managed thread', async () => {
-      const { executeStopThread } = await import('../src/tools/stop-thread-tool.js');
+      const { executeStopThread } = await import(
+        '../src/tools/stop-thread-tool.js'
+      );
       const { LocalRuntime } = await import('@parallaxai/runtime-local');
 
       const runtime = new LocalRuntime(logger, {});

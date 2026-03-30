@@ -1,9 +1,8 @@
-import { join } from 'node:path';
 import { Buffer } from 'node:buffer';
-import { normalizeForMatching } from './normalize';
-import { mergeRules, classifyState } from './state-rules';
-import { VTFrame } from './vt-frame';
+import { join } from 'node:path';
 import { writeJsonLine } from './jsonl-writer';
+import { normalizeForMatching } from './normalize';
+import { classifyState, mergeRules } from './state-rules';
 import type {
   CaptureLifecycleEvent,
   CaptureLifecycleRecord,
@@ -17,6 +16,7 @@ import type {
   StateTransition,
   StreamDirection,
 } from './types';
+import { VTFrame } from './vt-frame';
 
 export class SessionStateCapture {
   private readonly options: Required<
@@ -37,9 +37,11 @@ export class SessionStateCapture {
   private transitionCount = 0;
   private feedQueue: Promise<void> = Promise.resolve();
   private geminiReadySignalCount = 0;
-  private geminiPendingState:
-    | { kind: StateKind; ruleId?: string; count: number }
-    | null = null;
+  private geminiPendingState: {
+    kind: StateKind;
+    ruleId?: string;
+    count: number;
+  } | null = null;
   private lastUnknownChunk = '';
 
   public readonly paths: CapturePaths;
@@ -55,10 +57,19 @@ export class SessionStateCapture {
 
     this.paths = {
       rootDir: config.outputDir,
-      rawEventsPath: join(config.outputDir, `${config.sessionId}.raw-events.jsonl`),
+      rawEventsPath: join(
+        config.outputDir,
+        `${config.sessionId}.raw-events.jsonl`
+      ),
       statesPath: join(config.outputDir, `${config.sessionId}.states.jsonl`),
-      transitionsPath: join(config.outputDir, `${config.sessionId}.transitions.jsonl`),
-      lifecyclePath: join(config.outputDir, `${config.sessionId}.lifecycle.jsonl`),
+      transitionsPath: join(
+        config.outputDir,
+        `${config.sessionId}.transitions.jsonl`
+      ),
+      lifecyclePath: join(
+        config.outputDir,
+        `${config.sessionId}.lifecycle.jsonl`
+      ),
     };
 
     this.frame = new VTFrame({
@@ -77,7 +88,10 @@ export class SessionStateCapture {
     };
   }
 
-  async recordLifecycle(event: CaptureLifecycleEvent, detail?: string): Promise<void> {
+  async recordLifecycle(
+    event: CaptureLifecycleEvent,
+    detail?: string
+  ): Promise<void> {
     if (!this.options.writeLifecycle) return;
 
     const row: CaptureLifecycleRecord = {
@@ -91,22 +105,22 @@ export class SessionStateCapture {
 
   async feed(
     chunk: string,
-    direction: StreamDirection = 'stdout',
+    direction: StreamDirection = 'stdout'
   ): Promise<FeedOutputResult> {
     const run = this.feedQueue.then(
       () => this.feedInternal(chunk, direction),
-      () => this.feedInternal(chunk, direction),
+      () => this.feedInternal(chunk, direction)
     );
     this.feedQueue = run.then(
       () => undefined,
-      () => undefined,
+      () => undefined
     );
     return run;
   }
 
   private async feedInternal(
     chunk: string,
-    direction: StreamDirection = 'stdout',
+    direction: StreamDirection = 'stdout'
   ): Promise<FeedOutputResult> {
     const now = new Date().toISOString();
 
@@ -140,7 +154,11 @@ export class SessionStateCapture {
 
     this.appendNormalized(normalizedChunk);
 
-    const classified = classifyState(this.normalizedBuffer, this.rules, this.config.source);
+    const classified = classifyState(
+      this.normalizedBuffer,
+      this.rules,
+      this.config.source
+    );
     const stabilized = this.applyGeminiReadyHysteresis(classified);
     const debounced = this.applyGeminiTransitionDebounce(stabilized);
     const nextState: ClassifiedState = {
@@ -218,9 +236,11 @@ export class SessionStateCapture {
     this.normalizedBuffer = merged.length > max ? merged.slice(-max) : merged;
   }
 
-  private applyGeminiReadyHysteresis(
-    classified: { kind: StateKind; ruleId?: string; confidence: number },
-  ): { kind: StateKind; ruleId?: string; confidence: number } {
+  private applyGeminiReadyHysteresis(classified: {
+    kind: StateKind;
+    ruleId?: string;
+    confidence: number;
+  }): { kind: StateKind; ruleId?: string; confidence: number } {
     if (this.config.source !== 'gemini') {
       return classified;
     }
@@ -263,9 +283,11 @@ export class SessionStateCapture {
     return classified;
   }
 
-  private applyGeminiTransitionDebounce(
-    classified: { kind: StateKind; ruleId?: string; confidence: number },
-  ): { kind: StateKind; ruleId?: string; confidence: number } {
+  private applyGeminiTransitionDebounce(classified: {
+    kind: StateKind;
+    ruleId?: string;
+    confidence: number;
+  }): { kind: StateKind; ruleId?: string; confidence: number } {
     if (this.config.source !== 'gemini') {
       return classified;
     }

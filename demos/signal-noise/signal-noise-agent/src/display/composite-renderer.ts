@@ -1,7 +1,7 @@
-import { DisplayRenderer, PersonaId } from './types';
-import { TerminalRenderer } from './terminal-renderer';
-import { WebRenderer } from './web-renderer';
 import { createLcdRenderer } from './lcd-renderer';
+import { TerminalRenderer } from './terminal-renderer';
+import type { DisplayRenderer, PersonaId } from './types';
+import { WebRenderer } from './web-renderer';
 
 /**
  * Fans out render calls to multiple backends.

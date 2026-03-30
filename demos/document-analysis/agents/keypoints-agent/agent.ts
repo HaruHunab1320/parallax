@@ -5,8 +5,8 @@
  * Identifies critical information that readers should remember.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'keypoints-agent';
@@ -21,9 +21,9 @@ class KeyPointsAgent extends ParallaxAgent {
       AGENT_NAME,
       ['document', 'analysis', 'keypoints', 'extraction'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Extracts key points and takeaways from documents'
+        description: 'Extracts key points and takeaways from documents',
       }
     );
 
@@ -37,7 +37,10 @@ class KeyPointsAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +49,7 @@ class KeyPointsAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -95,33 +98,40 @@ You MUST respond in this exact JSON format:
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         return {
-          value: { error: 'Could not parse response', analysisType: 'keypoints' },
+          value: {
+            error: 'Could not parse response',
+            analysisType: 'keypoints',
+          },
           confidence: 0.3,
-          reasoning: responseText.substring(0, 200)
+          reasoning: responseText.substring(0, 200),
         };
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      const totalPoints = (parsed.criticalPoints?.length || 0) +
-                         (parsed.supportingPoints?.length || 0);
-      const confidence = Math.max(0, Math.min(1, (parsed.confidence || 80) / 100));
+      const totalPoints =
+        (parsed.criticalPoints?.length || 0) +
+        (parsed.supportingPoints?.length || 0);
+      const confidence = Math.max(
+        0,
+        Math.min(1, (parsed.confidence || 80) / 100)
+      );
 
       return {
         value: {
           ...parsed,
           totalPoints: totalPoints,
           analysisType: 'keypoints',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: confidence,
-        reasoning: `Extracted ${totalPoints} key points from document (${Math.round(confidence * 100)}% confident)`
+        reasoning: `Extracted ${totalPoints} key points from document (${Math.round(confidence * 100)}% confident)`,
       };
     } catch (error) {
       console.error('Key points extraction error:', error);
       return {
         value: { error: String(error), analysisType: 'keypoints' },
         confidence: 0,
-        reasoning: 'Key points extraction failed'
+        reasoning: 'Key points extraction failed',
       };
     }
   }

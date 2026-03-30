@@ -17,8 +17,8 @@
  *   password=<token>
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 /**
  * Credential context stored per-workspace
@@ -35,7 +35,9 @@ export interface CredentialHelperContext {
 /**
  * Create the credential helper script content (Node.js version)
  */
-export function createNodeCredentialHelperScript(contextFilePath: string): string {
+export function createNodeCredentialHelperScript(
+  contextFilePath: string
+): string {
   return `#!/usr/bin/env node
 const fs = require('fs');
 const readline = require('readline');
@@ -82,7 +84,9 @@ main();
 /**
  * Create a shell-based credential helper script (more portable)
  */
-export function createShellCredentialHelperScript(contextFilePath: string): string {
+export function createShellCredentialHelperScript(
+  contextFilePath: string
+): string {
   return `#!/bin/sh
 # Git Credential Helper
 # Reads credentials from: ${contextFilePath}
@@ -145,7 +149,10 @@ export async function configureCredentialHelper(
       // File doesn't exist yet — will be created below
     }
     if (!content.includes(entry)) {
-      const suffix = content.length > 0 && !content.endsWith('\n') ? `\n${entry}\n` : `${entry}\n`;
+      const suffix =
+        content.length > 0 && !content.endsWith('\n')
+          ? `\n${entry}\n`
+          : `${entry}\n`;
       await fs.promises.writeFile(gitignorePath, content + suffix);
     }
   } catch {
@@ -165,7 +172,11 @@ export async function updateCredentials(
   newToken: string,
   newExpiresAt: string
 ): Promise<void> {
-  const contextFilePath = path.join(workspacePath, '.git-workspace', 'credential-context.json');
+  const contextFilePath = path.join(
+    workspacePath,
+    '.git-workspace',
+    'credential-context.json'
+  );
 
   // Read existing context
   const existingContent = await fs.promises.readFile(contextFilePath, 'utf8');
@@ -186,7 +197,9 @@ export async function updateCredentials(
 /**
  * Clean up credential files from a workspace
  */
-export async function cleanupCredentialFiles(workspacePath: string): Promise<void> {
+export async function cleanupCredentialFiles(
+  workspacePath: string
+): Promise<void> {
   const helperDir = path.join(workspacePath, '.git-workspace');
   try {
     await fs.promises.rm(helperDir, { recursive: true, force: true });

@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { validatePattern } from './validator';
+import { describe, expect, it } from 'vitest';
 import type { OrgPattern } from '../types';
+import { validatePattern } from './validator';
 
 describe('validatePattern', () => {
   const validPattern: OrgPattern = {
@@ -30,16 +30,19 @@ describe('validatePattern', () => {
       const pattern = { ...validPattern, name: '' };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.path === 'name')).toBe(true);
+      expect(result.errors.some((e) => e.path === 'name')).toBe(true);
     });
   });
 
   describe('structure validation', () => {
     it('should require structure', () => {
-      const pattern = { name: 'test', workflow: validPattern.workflow } as OrgPattern;
+      const pattern = {
+        name: 'test',
+        workflow: validPattern.workflow,
+      } as OrgPattern;
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.path === 'structure')).toBe(true);
+      expect(result.errors.some((e) => e.path === 'structure')).toBe(true);
     });
 
     it('should require structure name', () => {
@@ -52,7 +55,7 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.path === 'structure.name')).toBe(true);
+      expect(result.errors.some((e) => e.path === 'structure.name')).toBe(true);
     });
 
     it('should require at least one role', () => {
@@ -65,7 +68,9 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.path === 'structure.roles')).toBe(true);
+      expect(result.errors.some((e) => e.path === 'structure.roles')).toBe(
+        true
+      );
     });
   });
 
@@ -82,7 +87,9 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.path.includes('capabilities'))).toBe(true);
+      expect(result.errors.some((e) => e.path.includes('capabilities'))).toBe(
+        true
+      );
     });
 
     it('should warn on empty capabilities', () => {
@@ -96,7 +103,9 @@ describe('validatePattern', () => {
         },
       };
       const result = validatePattern(pattern);
-      expect(result.warnings.some(w => w.path.includes('capabilities'))).toBe(true);
+      expect(result.warnings.some((w) => w.path.includes('capabilities'))).toBe(
+        true
+      );
     });
 
     it('should catch invalid reportsTo reference', () => {
@@ -114,7 +123,9 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.message.includes('nonexistent'))).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('nonexistent'))).toBe(
+        true
+      );
     });
 
     it('should catch circular reporting', () => {
@@ -131,7 +142,9 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.message.includes('Circular'))).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('Circular'))).toBe(
+        true
+      );
     });
 
     it('should catch minInstances > maxInstances', () => {
@@ -150,16 +163,23 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.message.includes('minInstances > maxInstances'))).toBe(true);
+      expect(
+        result.errors.some((e) =>
+          e.message.includes('minInstances > maxInstances')
+        )
+      ).toBe(true);
     });
   });
 
   describe('workflow validation', () => {
     it('should require workflow', () => {
-      const pattern = { name: 'test', structure: validPattern.structure } as OrgPattern;
+      const pattern = {
+        name: 'test',
+        structure: validPattern.structure,
+      } as OrgPattern;
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.path === 'workflow')).toBe(true);
+      expect(result.errors.some((e) => e.path === 'workflow')).toBe(true);
     });
 
     it('should require workflow name', () => {
@@ -169,7 +189,7 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.path === 'workflow.name')).toBe(true);
+      expect(result.errors.some((e) => e.path === 'workflow.name')).toBe(true);
     });
 
     it('should warn on empty steps', () => {
@@ -178,7 +198,9 @@ describe('validatePattern', () => {
         workflow: { name: 'test', steps: [] },
       };
       const result = validatePattern(pattern);
-      expect(result.warnings.some(w => w.message.includes('no steps'))).toBe(true);
+      expect(result.warnings.some((w) => w.message.includes('no steps'))).toBe(
+        true
+      );
     });
   });
 
@@ -193,7 +215,9 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.message.includes('type is required'))).toBe(true);
+      expect(
+        result.errors.some((e) => e.message.includes('type is required'))
+      ).toBe(true);
     });
 
     it('should validate assign step role', () => {
@@ -206,7 +230,9 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.message.includes('Unknown role'))).toBe(true);
+      expect(
+        result.errors.some((e) => e.message.includes('Unknown role'))
+      ).toBe(true);
     });
 
     it('should validate review step reviewer', () => {
@@ -219,7 +245,9 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.message.includes('Unknown reviewer'))).toBe(true);
+      expect(
+        result.errors.some((e) => e.message.includes('Unknown reviewer'))
+      ).toBe(true);
     });
 
     it('should validate aggregate method', () => {
@@ -232,7 +260,11 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.message.includes('Invalid aggregate method'))).toBe(true);
+      expect(
+        result.errors.some((e) =>
+          e.message.includes('Invalid aggregate method')
+        )
+      ).toBe(true);
     });
 
     it('should validate condition step', () => {
@@ -245,8 +277,12 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.message.includes('check expression'))).toBe(true);
-      expect(result.errors.some(e => e.message.includes('then branch'))).toBe(true);
+      expect(
+        result.errors.some((e) => e.message.includes('check expression'))
+      ).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('then branch'))).toBe(
+        true
+      );
     });
 
     it('should validate nested steps in parallel', () => {
@@ -264,7 +300,9 @@ describe('validatePattern', () => {
       };
       const result = validatePattern(pattern);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.message.includes('Unknown role'))).toBe(true);
+      expect(
+        result.errors.some((e) => e.message.includes('Unknown role'))
+      ).toBe(true);
     });
   });
 });

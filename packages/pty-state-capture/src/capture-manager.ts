@@ -1,7 +1,13 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { SessionStateCapture } from './session-capture';
-import type { CaptureLifecycleEvent, FeedOutputResult, SessionCaptureOptions, SessionCaptureSnapshot, StreamDirection } from './types';
+import type {
+  CaptureLifecycleEvent,
+  FeedOutputResult,
+  SessionCaptureOptions,
+  SessionCaptureSnapshot,
+  StreamDirection,
+} from './types';
 
 export interface CaptureManagerOptions {
   outputRootDir: string;
@@ -16,7 +22,10 @@ export class PTYStateCaptureManager {
 
   constructor(private readonly options: CaptureManagerOptions) {}
 
-  async openSession(sessionId: string, overrides: Partial<SessionCaptureOptions> = {}): Promise<SessionStateCapture> {
+  async openSession(
+    sessionId: string,
+    overrides: Partial<SessionCaptureOptions> = {}
+  ): Promise<SessionStateCapture> {
     if (this.captures.has(sessionId)) {
       return this.captures.get(sessionId)!;
     }
@@ -36,7 +45,8 @@ export class PTYStateCaptureManager {
       writeTransitions: overrides.writeTransitions,
       writeLifecycle: overrides.writeLifecycle,
       maxNormalizedBufferChars:
-        overrides.maxNormalizedBufferChars ?? this.options.maxNormalizedBufferChars,
+        overrides.maxNormalizedBufferChars ??
+        this.options.maxNormalizedBufferChars,
     };
 
     const capture = new SessionStateCapture(config);
@@ -45,12 +55,20 @@ export class PTYStateCaptureManager {
     return capture;
   }
 
-  async feed(sessionId: string, chunk: string, direction: StreamDirection = 'stdout'): Promise<FeedOutputResult> {
+  async feed(
+    sessionId: string,
+    chunk: string,
+    direction: StreamDirection = 'stdout'
+  ): Promise<FeedOutputResult> {
     const capture = await this.openSession(sessionId);
     return capture.feed(chunk, direction);
   }
 
-  async lifecycle(sessionId: string, event: CaptureLifecycleEvent, detail?: string): Promise<void> {
+  async lifecycle(
+    sessionId: string,
+    event: CaptureLifecycleEvent,
+    detail?: string
+  ): Promise<void> {
     const capture = await this.openSession(sessionId);
     await capture.recordLifecycle(event, detail);
   }

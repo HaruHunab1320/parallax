@@ -1,6 +1,6 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { TmuxSession, SPECIAL_KEYS } from '../src/tmux-session.js';
+import { afterEach, describe, expect, it } from 'vitest';
 import { ShellAdapter } from '../src/adapters/shell-adapter.js';
+import { SPECIAL_KEYS, TmuxSession } from '../src/tmux-session.js';
 import { TmuxTransport } from '../src/tmux-transport.js';
 
 describe('TmuxSession', () => {
@@ -21,7 +21,7 @@ describe('TmuxSession', () => {
       false,
       8000,
       transport,
-      'test-sess',
+      'test-sess'
     );
     sessions.push(session);
     return session;
@@ -31,7 +31,7 @@ describe('TmuxSession', () => {
     for (const session of sessions) {
       try {
         session.kill('SIGKILL');
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 300));
       } catch {
         // ignore
       }
@@ -57,7 +57,9 @@ describe('TmuxSession', () => {
       // Wait for ready (shell prompt detection)
       await Promise.race([
         readyPromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout waiting for ready')), 5000)),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout waiting for ready')), 5000)
+        ),
       ]);
 
       expect(session.status).toBe('ready');
@@ -66,7 +68,7 @@ describe('TmuxSession', () => {
     it('should have a pid after start', async () => {
       const session = createSession();
       await session.start();
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       expect(session.pid).toBeDefined();
       expect(session.pid).toBeGreaterThan(0);
     });
@@ -83,7 +85,9 @@ describe('TmuxSession', () => {
 
       const code = await Promise.race([
         exitPromise,
-        new Promise<number>((_, reject) => setTimeout(() => reject(new Error('Timeout waiting for exit')), 5000)),
+        new Promise<number>((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout waiting for exit')), 5000)
+        ),
       ]);
 
       expect(typeof code).toBe('number');
@@ -118,7 +122,7 @@ describe('TmuxSession', () => {
       });
 
       await session.start();
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       expect(outputs.length).toBeGreaterThan(0);
     });
@@ -180,7 +184,9 @@ describe('TmuxSession', () => {
 
   describe('normalizeKeyList', () => {
     it('should join bare modifiers with next key', () => {
-      expect(TmuxSession.normalizeKeyList(['control', 'c'])).toEqual(['ctrl+c']);
+      expect(TmuxSession.normalizeKeyList(['control', 'c'])).toEqual([
+        'ctrl+c',
+      ]);
       expect(TmuxSession.normalizeKeyList(['option', 'b'])).toEqual(['alt+b']);
     });
 
@@ -189,13 +195,17 @@ describe('TmuxSession', () => {
     });
 
     it('should pass through normal keys', () => {
-      expect(TmuxSession.normalizeKeyList(['up', 'down', 'enter'])).toEqual(['up', 'down', 'enter']);
+      expect(TmuxSession.normalizeKeyList(['up', 'down', 'enter'])).toEqual([
+        'up',
+        'down',
+        'enter',
+      ]);
     });
   });
 
   describe('SPECIAL_KEYS', () => {
     it('should have enter and ctrl+c', () => {
-      expect(SPECIAL_KEYS['enter']).toBe('\r');
+      expect(SPECIAL_KEYS.enter).toBe('\r');
       expect(SPECIAL_KEYS['ctrl+c']).toBe('\x03');
     });
   });
@@ -204,7 +214,7 @@ describe('TmuxSession', () => {
     it('should merge env correctly', () => {
       const env = TmuxSession.buildSpawnEnv(
         { name: 'test', type: 'shell', env: { FOO: 'bar' } },
-        { PS1: 'test> ' },
+        { PS1: 'test> ' }
       );
       expect(env.FOO).toBe('bar');
       expect(env.PS1).toBe('test> ');
@@ -214,8 +224,13 @@ describe('TmuxSession', () => {
 
     it('should not inherit process env when opted out', () => {
       const env = TmuxSession.buildSpawnEnv(
-        { name: 'test', type: 'shell', inheritProcessEnv: false, env: { PATH: '/usr/bin' } },
-        {},
+        {
+          name: 'test',
+          type: 'shell',
+          inheritProcessEnv: false,
+          env: { PATH: '/usr/bin' },
+        },
+        {}
       );
       expect(env.PATH).toBe('/usr/bin');
       expect(env.TERM).toBe('xterm-256color');

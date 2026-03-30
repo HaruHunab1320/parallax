@@ -10,54 +10,68 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-  ListPromptsRequestSchema,
   GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { LocalRuntime } from '@parallaxai/runtime-local';
 import type { Logger } from 'pino';
 
 // Auth
-import { McpAuthHandler, type McpAuthConfig, type AuthContext, McpAuthError } from './auth/index.js';
-
-// Tool executors
 import {
-  type SpawnInput,
-  type StopInput,
-  type ListInput,
-  type GetInput,
-  type SendInput,
-  type LogsInput,
-  type MetricsInput,
-  type SpawnThreadInput,
-  type StopThreadInput,
-  type ListThreadsInput,
-  type GetThreadInput,
-  type SendThreadInput,
-} from './tools/schemas.js';
-import { executeSpawn } from './tools/spawn-tool.js';
-import { executeStop } from './tools/stop-tool.js';
-import { executeList } from './tools/list-tool.js';
+  type AuthContext,
+  type McpAuthConfig,
+  McpAuthError,
+  McpAuthHandler,
+} from './auth/index.js';
+import {
+  generateSpawnDevAgentPrompt,
+  type SpawnDevAgentArgs,
+} from './prompts/spawn-dev-agent.js';
+// Prompts
+import {
+  generateSpawnReviewTeamPrompt,
+  type SpawnReviewTeamArgs,
+} from './prompts/spawn-review-team.js';
+// Resources
+import {
+  listAgentResources,
+  readAgentResource,
+} from './resources/agent-resource.js';
+import {
+  listLogsResources,
+  readLogsResource,
+} from './resources/logs-resource.js';
+import { executeGetThread } from './tools/get-thread-tool.js';
 import { executeGet } from './tools/get-tool.js';
-import { executeSend } from './tools/send-tool.js';
+import { executeHealth } from './tools/health-tool.js';
+import { executeListThreads } from './tools/list-threads-tool.js';
+import { executeList } from './tools/list-tool.js';
 import { executeLogs } from './tools/logs-tool.js';
 import { executeMetrics } from './tools/metrics-tool.js';
-import { executeHealth } from './tools/health-tool.js';
-import { executeSpawnThread } from './tools/spawn-thread-tool.js';
-import { executeStopThread } from './tools/stop-thread-tool.js';
-import { executeListThreads } from './tools/list-threads-tool.js';
-import { executeGetThread } from './tools/get-thread-tool.js';
+// Tool executors
+import type {
+  GetInput,
+  GetThreadInput,
+  ListInput,
+  ListThreadsInput,
+  LogsInput,
+  MetricsInput,
+  SendInput,
+  SendThreadInput,
+  SpawnInput,
+  SpawnThreadInput,
+  StopInput,
+  StopThreadInput,
+} from './tools/schemas.js';
 import { executeSendThreadInput } from './tools/send-thread-input-tool.js';
-
-// Resources
-import { listAgentResources, readAgentResource } from './resources/agent-resource.js';
-import { listLogsResources, readLogsResource } from './resources/logs-resource.js';
-
-// Prompts
-import { generateSpawnReviewTeamPrompt, type SpawnReviewTeamArgs } from './prompts/spawn-review-team.js';
-import { generateSpawnDevAgentPrompt, type SpawnDevAgentArgs } from './prompts/spawn-dev-agent.js';
+import { executeSend } from './tools/send-tool.js';
+import { executeSpawnThread } from './tools/spawn-thread-tool.js';
+import { executeSpawn } from './tools/spawn-tool.js';
+import { executeStopThread } from './tools/stop-thread-tool.js';
+import { executeStop } from './tools/stop-tool.js';
 
 export interface ParallaxMcpServerOptions {
   logger: Logger;
@@ -94,16 +108,47 @@ const TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        name: { type: 'string', description: 'Human-readable name for the agent' },
-        type: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider', 'custom'], description: 'CLI agent type' },
-        capabilities: { type: 'array', items: { type: 'string' }, description: 'List of capabilities' },
-        role: { type: 'string', description: 'Org role: architect, engineer, qa, etc.' },
-        workdir: { type: 'string', description: 'Working directory for the agent' },
-        waitForReady: { type: 'boolean', description: 'Wait for agent to be ready', default: true },
-        env: { type: 'object', additionalProperties: { type: 'string' }, description: 'Environment variables' },
-        reportsTo: { type: 'string', description: 'Agent ID this one reports to' },
+        name: {
+          type: 'string',
+          description: 'Human-readable name for the agent',
+        },
+        type: {
+          type: 'string',
+          enum: ['claude', 'codex', 'gemini', 'aider', 'custom'],
+          description: 'CLI agent type',
+        },
+        capabilities: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'List of capabilities',
+        },
+        role: {
+          type: 'string',
+          description: 'Org role: architect, engineer, qa, etc.',
+        },
+        workdir: {
+          type: 'string',
+          description: 'Working directory for the agent',
+        },
+        waitForReady: {
+          type: 'boolean',
+          description: 'Wait for agent to be ready',
+          default: true,
+        },
+        env: {
+          type: 'object',
+          additionalProperties: { type: 'string' },
+          description: 'Environment variables',
+        },
+        reportsTo: {
+          type: 'string',
+          description: 'Agent ID this one reports to',
+        },
         autoRestart: { type: 'boolean', description: 'Restart on crash' },
-        idleTimeout: { type: 'number', description: 'Stop after N seconds idle' },
+        idleTimeout: {
+          type: 'number',
+          description: 'Stop after N seconds idle',
+        },
       },
       required: ['name', 'type', 'capabilities'],
     },
@@ -115,8 +160,15 @@ const TOOLS = [
       type: 'object' as const,
       properties: {
         agentId: { type: 'string', description: 'ID of the agent to stop' },
-        force: { type: 'boolean', description: 'Force kill instead of graceful shutdown', default: false },
-        timeout: { type: 'number', description: 'Graceful shutdown timeout in milliseconds' },
+        force: {
+          type: 'boolean',
+          description: 'Force kill instead of graceful shutdown',
+          default: false,
+        },
+        timeout: {
+          type: 'number',
+          description: 'Graceful shutdown timeout in milliseconds',
+        },
       },
       required: ['agentId'],
     },
@@ -127,10 +179,26 @@ const TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        status: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'Filter by status' },
-        type: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'Filter by agent type' },
+        status: {
+          oneOf: [
+            { type: 'string' },
+            { type: 'array', items: { type: 'string' } },
+          ],
+          description: 'Filter by status',
+        },
+        type: {
+          oneOf: [
+            { type: 'string' },
+            { type: 'array', items: { type: 'string' } },
+          ],
+          description: 'Filter by agent type',
+        },
         role: { type: 'string', description: 'Filter by org role' },
-        capabilities: { type: 'array', items: { type: 'string' }, description: 'Filter by required capabilities' },
+        capabilities: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by required capabilities',
+        },
       },
     },
   },
@@ -153,8 +221,15 @@ const TOOLS = [
       properties: {
         agentId: { type: 'string', description: 'ID of the agent to send to' },
         message: { type: 'string', description: 'Message content to send' },
-        expectResponse: { type: 'boolean', description: 'Wait for a response', default: false },
-        timeout: { type: 'number', description: 'Response timeout in milliseconds' },
+        expectResponse: {
+          type: 'boolean',
+          description: 'Wait for a response',
+          default: false,
+        },
+        timeout: {
+          type: 'number',
+          description: 'Response timeout in milliseconds',
+        },
       },
       required: ['agentId', 'message'],
     },
@@ -196,17 +271,52 @@ const TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        executionId: { type: 'string', description: 'Execution ID that owns the thread' },
+        executionId: {
+          type: 'string',
+          description: 'Execution ID that owns the thread',
+        },
         name: { type: 'string', description: 'Human-readable thread name' },
-        agentType: { type: 'string', enum: ['claude', 'codex', 'gemini', 'aider', 'custom'], description: 'CLI agent type' },
-        objective: { type: 'string', description: 'Objective for the thread to pursue' },
-        role: { type: 'string', description: 'Optional orchestration role for the thread' },
-        workspacePath: { type: 'string', description: 'Workspace path for the thread' },
-        workspaceRepo: { type: 'string', description: 'Repository URL or slug for prepared workspace resolution' },
-        workspaceBranch: { type: 'string', description: 'Branch name for the prepared workspace' },
-        approvalPreset: { type: 'string', enum: ['readonly', 'standard', 'permissive', 'autonomous'], description: 'Approval preset controlling tool permissions' },
-        env: { type: 'object', additionalProperties: { type: 'string' }, description: 'Environment variables' },
-        metadata: { type: 'object', additionalProperties: true, description: 'Additional thread metadata' },
+        agentType: {
+          type: 'string',
+          enum: ['claude', 'codex', 'gemini', 'aider', 'custom'],
+          description: 'CLI agent type',
+        },
+        objective: {
+          type: 'string',
+          description: 'Objective for the thread to pursue',
+        },
+        role: {
+          type: 'string',
+          description: 'Optional orchestration role for the thread',
+        },
+        workspacePath: {
+          type: 'string',
+          description: 'Workspace path for the thread',
+        },
+        workspaceRepo: {
+          type: 'string',
+          description:
+            'Repository URL or slug for prepared workspace resolution',
+        },
+        workspaceBranch: {
+          type: 'string',
+          description: 'Branch name for the prepared workspace',
+        },
+        approvalPreset: {
+          type: 'string',
+          enum: ['readonly', 'standard', 'permissive', 'autonomous'],
+          description: 'Approval preset controlling tool permissions',
+        },
+        env: {
+          type: 'object',
+          additionalProperties: { type: 'string' },
+          description: 'Environment variables',
+        },
+        metadata: {
+          type: 'object',
+          additionalProperties: true,
+          description: 'Additional thread metadata',
+        },
       },
       required: ['executionId', 'name', 'agentType', 'objective'],
     },
@@ -218,8 +328,15 @@ const TOOLS = [
       type: 'object' as const,
       properties: {
         threadId: { type: 'string', description: 'ID of the thread to stop' },
-        force: { type: 'boolean', description: 'Force kill instead of graceful shutdown', default: false },
-        timeout: { type: 'number', description: 'Graceful shutdown timeout in milliseconds' },
+        force: {
+          type: 'boolean',
+          description: 'Force kill instead of graceful shutdown',
+          default: false,
+        },
+        timeout: {
+          type: 'number',
+          description: 'Graceful shutdown timeout in milliseconds',
+        },
       },
       required: ['threadId'],
     },
@@ -232,7 +349,13 @@ const TOOLS = [
       properties: {
         executionId: { type: 'string', description: 'Filter by execution ID' },
         role: { type: 'string', description: 'Filter by thread role' },
-        status: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'Filter by thread status' },
+        status: {
+          oneOf: [
+            { type: 'string' },
+            { type: 'array', items: { type: 'string' } },
+          ],
+          description: 'Filter by thread status',
+        },
       },
     },
   },
@@ -242,21 +365,35 @@ const TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        threadId: { type: 'string', description: 'ID of the thread to retrieve' },
+        threadId: {
+          type: 'string',
+          description: 'ID of the thread to retrieve',
+        },
       },
       required: ['threadId'],
     },
   },
   {
     name: 'send_thread_input',
-    description: 'Send message, raw terminal input, or key presses to a managed thread',
+    description:
+      'Send message, raw terminal input, or key presses to a managed thread',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        threadId: { type: 'string', description: 'ID of the thread to send input to' },
+        threadId: {
+          type: 'string',
+          description: 'ID of the thread to send input to',
+        },
         message: { type: 'string', description: 'Message content to send' },
-        raw: { type: 'string', description: 'Raw bytes or terminal input to send' },
-        keys: { type: 'array', items: { type: 'string' }, description: 'Key presses to send to the thread terminal' },
+        raw: {
+          type: 'string',
+          description: 'Raw bytes or terminal input to send',
+        },
+        keys: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Key presses to send to the thread terminal',
+        },
       },
       required: ['threadId'],
     },
@@ -269,8 +406,16 @@ const PROMPTS = [
     name: 'spawn_review_team',
     description: 'Spawn a coordinated code review team',
     arguments: [
-      { name: 'project_dir', description: 'Path to the project directory', required: true },
-      { name: 'review_focus', description: 'Focus area for review', required: false },
+      {
+        name: 'project_dir',
+        description: 'Path to the project directory',
+        required: true,
+      },
+      {
+        name: 'review_focus',
+        description: 'Focus area for review',
+        required: false,
+      },
     ],
   },
   {
@@ -279,7 +424,11 @@ const PROMPTS = [
     arguments: [
       { name: 'task', description: 'Task description', required: true },
       { name: 'project_dir', description: 'Project directory', required: true },
-      { name: 'agent_type', description: 'Agent type (claude, codex, gemini, aider)', required: false },
+      {
+        name: 'agent_type',
+        description: 'Agent type (claude, codex, gemini, aider)',
+        required: false,
+      },
     ],
   },
 ];
@@ -339,14 +488,19 @@ export class ParallaxMcpServer {
 
     const context = await this.authHandler.authenticate(token);
     this.authContext = context;
-    this.logger.info({ userId: context.userId, type: context.type }, 'Connection authenticated');
+    this.logger.info(
+      { userId: context.userId, type: context.type },
+      'Connection authenticated'
+    );
     return context;
   }
 
   /**
    * Authenticate from Authorization header
    */
-  async authenticateFromHeader(authHeader: string | undefined): Promise<AuthContext> {
+  async authenticateFromHeader(
+    authHeader: string | undefined
+  ): Promise<AuthContext> {
     if (!this.authHandler) {
       return { type: 'custom', permissions: ['*'] };
     }
@@ -421,36 +575,58 @@ export class ParallaxMcpServer {
             result = await executeHealth(this.runtime);
             break;
           case 'spawn_thread':
-            result = await executeSpawnThread(this.runtime, args as SpawnThreadInput);
+            result = await executeSpawnThread(
+              this.runtime,
+              args as SpawnThreadInput
+            );
             break;
           case 'stop_thread':
-            result = await executeStopThread(this.runtime, args as StopThreadInput);
+            result = await executeStopThread(
+              this.runtime,
+              args as StopThreadInput
+            );
             break;
           case 'list_threads':
-            result = await executeListThreads(this.runtime, args as ListThreadsInput);
+            result = await executeListThreads(
+              this.runtime,
+              args as ListThreadsInput
+            );
             break;
           case 'get_thread':
-            result = await executeGetThread(this.runtime, args as GetThreadInput);
+            result = await executeGetThread(
+              this.runtime,
+              args as GetThreadInput
+            );
             break;
           case 'send_thread_input':
-            result = await executeSendThreadInput(this.runtime, args as SendThreadInput);
+            result = await executeSendThreadInput(
+              this.runtime,
+              args as SendThreadInput
+            );
             break;
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
 
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [
+            { type: 'text' as const, text: JSON.stringify(result, null, 2) },
+          ],
         };
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         const errorCode = error instanceof McpAuthError ? error.code : 'ERROR';
 
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify({ success: false, error: errorMessage, code: errorCode }),
+              text: JSON.stringify({
+                success: false,
+                error: errorMessage,
+                code: errorCode,
+              }),
             },
           ],
           isError: true,
@@ -466,27 +642,30 @@ export class ParallaxMcpServer {
     });
 
     // Read resource handler
-    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-      const { uri } = request.params;
+    this.server.setRequestHandler(
+      ReadResourceRequestSchema,
+      async (request) => {
+        const { uri } = request.params;
 
-      if (uri.startsWith('agents://')) {
-        const result = await readAgentResource(this.runtime, uri);
-        if (!result) {
-          throw new Error(`Resource not found: ${uri}`);
+        if (uri.startsWith('agents://')) {
+          const result = await readAgentResource(this.runtime, uri);
+          if (!result) {
+            throw new Error(`Resource not found: ${uri}`);
+          }
+          return result;
         }
-        return result;
-      }
 
-      if (uri.startsWith('logs://')) {
-        const result = await readLogsResource(this.runtime, uri);
-        if (!result) {
-          throw new Error(`Resource not found: ${uri}`);
+        if (uri.startsWith('logs://')) {
+          const result = await readLogsResource(this.runtime, uri);
+          if (!result) {
+            throw new Error(`Resource not found: ${uri}`);
+          }
+          return result;
         }
-        return result;
-      }
 
-      throw new Error(`Unknown resource URI scheme: ${uri}`);
-    });
+        throw new Error(`Unknown resource URI scheme: ${uri}`);
+      }
+    );
 
     // List prompts handler
     this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
@@ -499,9 +678,13 @@ export class ParallaxMcpServer {
 
       switch (name) {
         case 'spawn_review_team':
-          return generateSpawnReviewTeamPrompt(args as unknown as SpawnReviewTeamArgs);
+          return generateSpawnReviewTeamPrompt(
+            args as unknown as SpawnReviewTeamArgs
+          );
         case 'spawn_dev_agent':
-          return generateSpawnDevAgentPrompt(args as unknown as SpawnDevAgentArgs);
+          return generateSpawnDevAgentPrompt(
+            args as unknown as SpawnDevAgentArgs
+          );
         default:
           throw new Error(`Unknown prompt: ${name}`);
       }

@@ -7,18 +7,7 @@
  * Drop-in alternative to pty-manager — no native addons required.
  */
 
-// Tmux preflight check
-export { ensureTmux, resetTmuxCheck } from './ensure-tmux.js';
-
-// Core classes
-export { TmuxManager } from './tmux-manager.js';
-export { TmuxSession, SPECIAL_KEYS } from './tmux-session.js';
-export { TmuxTransport, TMUX_KEY_MAP } from './tmux-transport.js';
-export {
-  extractTaskCompletionTraceRecords,
-  buildTaskCompletionTimeline,
-} from './task-completion-trace.js';
-
+export type { CLIAdapter, ShellAdapterOptions } from './adapters/index.js';
 // Adapter system
 export {
   AdapterRegistry,
@@ -26,56 +15,56 @@ export {
   createAdapter,
   ShellAdapter,
 } from './adapters/index.js';
-
-export type { CLIAdapter, ShellAdapterOptions } from './adapters/index.js';
-
-// Types
+// Tmux preflight check
+export { ensureTmux, resetTmuxCheck } from './ensure-tmux.js';
 export type {
-  // Session types
-  SessionStatus,
-  MessageType,
-  SpawnConfig,
-  SessionHandle,
-  SessionMessage,
-  SessionFilter,
-
-  // Adapter types
-  ParsedOutput,
-  LoginDetection,
-  AuthRequiredMethod,
-  AuthRequiredInfo,
-  BlockingPromptType,
-  BlockingPromptDetection,
-  AutoResponseRule,
-  BlockingPromptInfo,
-
-  // Stall detection types
-  StallClassification,
-
-  // Tool running detection
-  ToolRunningInfo,
-
-  // Manager types
-  Logger,
-  StopOptions,
-  LogOptions,
-  TerminalAttachment,
-  TmuxManagerConfig,
-
-  // Factory types
-  AdapterFactoryConfig,
-} from './types.js';
-
+  BuildTimelineOptions,
+  TaskCompletionTimelineResult,
+  TaskCompletionTimelineStep,
+  TaskCompletionTraceRecord,
+  TaskCompletionTurnTimeline,
+} from './task-completion-trace.js';
+export {
+  buildTaskCompletionTimeline,
+  extractTaskCompletionTraceRecords,
+} from './task-completion-trace.js';
 // Event types
 export type { TmuxManagerEvents } from './tmux-manager.js';
+// Core classes
+export { TmuxManager } from './tmux-manager.js';
 export type { TmuxSessionEvents } from './tmux-session.js';
-export type {
-  TaskCompletionTraceRecord,
-  TaskCompletionTimelineStep,
-  TaskCompletionTurnTimeline,
-  TaskCompletionTimelineResult,
-  BuildTimelineOptions,
-} from './task-completion-trace.js';
-
+export { SPECIAL_KEYS, TmuxSession } from './tmux-session.js';
 // Transport types
-export type { TmuxSpawnOptions, TmuxCaptureOptions } from './tmux-transport.js';
+export type { TmuxCaptureOptions, TmuxSpawnOptions } from './tmux-transport.js';
+export { TMUX_KEY_MAP, TmuxTransport } from './tmux-transport.js';
+// Types
+export type {
+  // Factory types
+  AdapterFactoryConfig,
+  AuthRequiredInfo,
+  AuthRequiredMethod,
+  AutoResponseRule,
+  BlockingPromptDetection,
+  BlockingPromptInfo,
+  BlockingPromptType,
+  // Manager types
+  Logger,
+  LoginDetection,
+  LogOptions,
+  MessageType,
+  // Adapter types
+  ParsedOutput,
+  SessionFilter,
+  SessionHandle,
+  SessionMessage,
+  // Session types
+  SessionStatus,
+  SpawnConfig,
+  // Stall detection types
+  StallClassification,
+  StopOptions,
+  TerminalAttachment,
+  TmuxManagerConfig,
+  // Tool running detection
+  ToolRunningInfo,
+} from './types.js';

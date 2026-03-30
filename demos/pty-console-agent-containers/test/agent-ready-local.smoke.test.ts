@@ -1,16 +1,21 @@
-import { PTYManager, type SessionHandle } from '../../../packages/pty-manager/src/index';
-import { PTYConsoleBridge } from '../../../packages/pty-console/src/index';
+import { afterEach, describe, expect, it } from 'vitest';
 import { AiderAdapter } from '../../../packages/coding-agent-adapters/src/aider-adapter';
 import { ClaudeAdapter } from '../../../packages/coding-agent-adapters/src/claude-adapter';
 import { CodexAdapter } from '../../../packages/coding-agent-adapters/src/codex-adapter';
 import { GeminiAdapter } from '../../../packages/coding-agent-adapters/src/gemini-adapter';
-import { afterEach, describe, expect, it } from 'vitest';
+import { PTYConsoleBridge } from '../../../packages/pty-console/src/index';
+import {
+  PTYManager,
+  type SessionHandle,
+} from '../../../packages/pty-manager/src/index';
 
 type StartupResult = 'ready' | 'login_required' | 'blocking_prompt';
 type AgentType = 'claude' | 'codex' | 'gemini' | 'aider';
 
 const AGENTS: AgentType[] = ['claude', 'codex', 'gemini', 'aider'];
-const STARTUP_TIMEOUT_MS = Number(process.env.PTY_CONSOLE_STARTUP_TIMEOUT_MS ?? 45_000);
+const STARTUP_TIMEOUT_MS = Number(
+  process.env.PTY_CONSOLE_STARTUP_TIMEOUT_MS ?? 45_000
+);
 const STRICT_READY = process.env.PTY_CONSOLE_STRICT_READY === '1';
 
 let activeManager: PTYManager | null = null;
@@ -28,78 +33,78 @@ afterEach(async () => {
 });
 
 describe('pty-console local CLI smoke', () => {
-  it(
-    'spawns local coding CLIs and surfaces startup states through pty-console',
-    async () => {
-      const manager = new PTYManager();
-      activeManager = manager;
+  it('spawns local coding CLIs and surfaces startup states through pty-console', async () => {
+    const manager = new PTYManager();
+    activeManager = manager;
 
-      manager.registerAdapter(new ClaudeAdapter());
-      manager.registerAdapter(new CodexAdapter());
-      manager.registerAdapter(new GeminiAdapter());
-      manager.registerAdapter(new AiderAdapter());
+    manager.registerAdapter(new ClaudeAdapter());
+    manager.registerAdapter(new CodexAdapter());
+    manager.registerAdapter(new GeminiAdapter());
+    manager.registerAdapter(new AiderAdapter());
 
-      const bridge = new PTYConsoleBridge(manager, { maxBufferedCharsPerSession: 200_000 });
-      activeBridge = bridge;
+    const bridge = new PTYConsoleBridge(manager, {
+      maxBufferedCharsPerSession: 200_000,
+    });
+    activeBridge = bridge;
 
-      const outputCharsBySession = new Map<string, number>();
-      bridge.on('session_output', (event) => {
-        outputCharsBySession.set(
-          event.sessionId,
-          (outputCharsBySession.get(event.sessionId) ?? 0) + event.data.length,
-        );
-      });
-
-      const handles = await Promise.all(
-        AGENTS.map((type) =>
-          manager.spawn({
-            name: `${type}-local`,
-            type,
-            workdir: process.cwd(),
-            adapterConfig: { interactive: true },
-            env: {
-              ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? '',
-              OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
-              GOOGLE_API_KEY: process.env.GOOGLE_API_KEY ?? '',
-              GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
-            },
-          }),
-        ),
+    const outputCharsBySession = new Map<string, number>();
+    bridge.on('session_output', (event) => {
+      outputCharsBySession.set(
+        event.sessionId,
+        (outputCharsBySession.get(event.sessionId) ?? 0) + event.data.length
       );
+    });
 
-      const startupResults = await Promise.all(
-        handles.map((session) =>
-          waitForStartupState({
-            manager,
-            bridge,
-            session,
-            timeoutMs: STARTUP_TIMEOUT_MS,
-            requireReady: STRICT_READY,
-          }),
-        ),
-      );
+    const handles = await Promise.all(
+      AGENTS.map((type) =>
+        manager.spawn({
+          name: `${type}-local`,
+          type,
+          workdir: process.cwd(),
+          adapterConfig: { interactive: true },
+          env: {
+            ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? '',
+            OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
+            GOOGLE_API_KEY: process.env.GOOGLE_API_KEY ?? '',
+            GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
+          },
+        })
+      )
+    );
 
-      const snapshot = bridge.getSnapshot();
-      expect(snapshot).toHaveLength(AGENTS.length);
+    const startupResults = await Promise.all(
+      handles.map((session) =>
+        waitForStartupState({
+          manager,
+          bridge,
+          session,
+          timeoutMs: STARTUP_TIMEOUT_MS,
+          requireReady: STRICT_READY,
+        })
+      )
+    );
 
-      const totalOutputChars = Array.from(outputCharsBySession.values()).reduce(
-        (sum, count) => sum + count,
-        0,
-      );
-      expect(totalOutputChars).toBeGreaterThan(0);
+    const snapshot = bridge.getSnapshot();
+    expect(snapshot).toHaveLength(AGENTS.length);
 
-      if (STRICT_READY) {
-        for (const result of startupResults) {
-          expect(result.result).toBe('ready');
-        }
-      } else {
-        for (const result of startupResults) {
-          expect(['ready', 'login_required', 'blocking_prompt']).toContain(result.result);
-        }
+    const totalOutputChars = Array.from(outputCharsBySession.values()).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+    expect(totalOutputChars).toBeGreaterThan(0);
+
+    if (STRICT_READY) {
+      for (const result of startupResults) {
+        expect(result.result).toBe('ready');
       }
-    },
-    180_000,
-  );
+    } else {
+      for (const result of startupResults) {
+        expect(['ready', 'login_required', 'blocking_prompt']).toContain(
+          result.result
+        );
+      }
+    }
+  }, 180_000);
 });
 
 async function waitForStartupState(options: {
@@ -128,7 +133,9 @@ async function waitForStartupState(options: {
       if (finished) return;
       finished = true;
       cleanup();
-      reject(new Error(`${session.name} (${session.id}) failed startup: ${reason}`));
+      reject(
+        new Error(`${session.name} (${session.id}) failed startup: ${reason}`)
+      );
     };
 
     const onStatus = (event: {
@@ -204,14 +211,14 @@ function inferStartupStateFromOutput(output: string): StartupResult | null {
   const text = output.toLowerCase();
   if (
     /api key|authentication required|invalid api key|unauthorized|sign in|device code|oauth/.test(
-      text,
+      text
     )
   ) {
     return 'login_required';
   }
   if (
     /trust|permission|allow|confirm|apply this change|continue|select|choose/.test(
-      text,
+      text
     )
   ) {
     return 'blocking_prompt';

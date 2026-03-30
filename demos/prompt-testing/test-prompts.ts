@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+
 /**
  * Prompt Testing CLI - A/B test different prompt styles
  *
@@ -8,11 +9,12 @@
  *   pnpm test-prompts examples/product-description.json
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const CONTROL_PLANE_URL = process.env.CONTROL_PLANE_URL || 'http://localhost:8080';
+const CONTROL_PLANE_URL =
+  process.env.CONTROL_PLANE_URL || 'http://localhost:8080';
 
 interface VariantResult {
   response: string;
@@ -52,7 +54,9 @@ interface TestResult {
   };
 }
 
-async function submitVariantsTest(query: string): Promise<{ executionId: string }> {
+async function submitVariantsTest(
+  query: string
+): Promise<{ executionId: string }> {
   const response = await fetch(`${CONTROL_PLANE_URL}/api/executions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -62,10 +66,10 @@ async function submitVariantsTest(query: string): Promise<{ executionId: string 
         task: 'Test different prompt styles',
         data: {
           query: query,
-          question: query
-        }
-      }
-    })
+          question: query,
+        },
+      },
+    }),
   });
 
   if (!response.ok) {
@@ -77,7 +81,10 @@ async function submitVariantsTest(query: string): Promise<{ executionId: string 
   return { executionId: execution.id };
 }
 
-async function callJudgeDirectly(query: string, responses: any[]): Promise<any> {
+async function callJudgeDirectly(
+  query: string,
+  responses: any[]
+): Promise<any> {
   // Call Gemini directly to judge the responses (same logic as judge-agent)
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -141,12 +148,17 @@ You MUST respond in this exact JSON format:
   return { value: parsed };
 }
 
-async function pollForResult(executionId: string, maxWaitMs = 120000): Promise<TestResult> {
+async function pollForResult(
+  executionId: string,
+  maxWaitMs = 120000
+): Promise<TestResult> {
   const startTime = Date.now();
   const pollInterval = 1000;
 
   while (Date.now() - startTime < maxWaitMs) {
-    const response = await fetch(`${CONTROL_PLANE_URL}/api/executions/${executionId}`);
+    const response = await fetch(
+      `${CONTROL_PLANE_URL}/api/executions/${executionId}`
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to get execution status: ${response.statusText}`);
@@ -162,7 +174,7 @@ async function pollForResult(executionId: string, maxWaitMs = 120000): Promise<T
     }
 
     process.stdout.write('.');
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
   throw new Error('Test timed out');
@@ -201,7 +213,7 @@ function formatResults(result: TestResult): void {
   const styles = ['concise', 'detailed', 'creative'];
   for (const style of styles) {
     const variant = variants[style as keyof typeof variants];
-    const evaluation = evals.find(e => e.variant === style);
+    const evaluation = evals.find((e) => e.variant === style);
 
     if (!variant) continue;
 
@@ -217,7 +229,9 @@ function formatResults(result: TestResult): void {
       console.log(`     Accuracy:       ${evaluation.scores.accuracy}%`);
       console.log(`     Clarity:        ${evaluation.scores.clarity}%`);
       console.log(`     Engagement:     ${evaluation.scores.engagement}%`);
-      console.log(`     Appropriateness: ${evaluation.scores.appropriateness}%`);
+      console.log(
+        `     Appropriateness: ${evaluation.scores.appropriateness}%`
+      );
       console.log(`     OVERALL:        ${evaluation.scores.overall}%`);
     }
 
@@ -237,7 +251,7 @@ function formatResults(result: TestResult): void {
   }
 
   // Full responses
-  console.log('\n' + '-'.repeat(70));
+  console.log(`\n${'-'.repeat(70)}`);
   console.log('  FULL RESPONSES');
   console.log('-'.repeat(70));
 
@@ -249,31 +263,31 @@ function formatResults(result: TestResult): void {
     const prefix = isWinner ? '\uD83C\uDFC6' : '  ';
 
     console.log(`\n${prefix} ${style.toUpperCase()} RESPONSE:`);
-    console.log('   ' + '-'.repeat(60));
+    console.log(`   ${'-'.repeat(60)}`);
     // Word wrap the response
     const words = variant.response.split(' ');
     let line = '   ';
     for (const word of words) {
       if (line.length + word.length > 68) {
         console.log(line);
-        line = '   ' + word + ' ';
+        line = `   ${word} `;
       } else {
-        line += word + ' ';
+        line += `${word} `;
       }
     }
     if (line.trim()) console.log(line);
-    console.log('   ' + '-'.repeat(60));
+    console.log(`   ${'-'.repeat(60)}`);
   }
 
   // Recommendation
   if (result.evaluation?.recommendation) {
-    console.log('\n' + '-'.repeat(70));
+    console.log(`\n${'-'.repeat(70)}`);
     console.log('  RECOMMENDATION');
     console.log('-'.repeat(70));
     console.log(`\n  ${result.evaluation.recommendation}`);
   }
 
-  console.log('\n' + '='.repeat(70));
+  console.log(`\n${'='.repeat(70)}`);
 }
 
 async function main() {
@@ -290,7 +304,9 @@ async function main() {
   }
 
   const filePath = args[0];
-  const fullPath = fs.existsSync(filePath) ? filePath : path.join(__dirname, filePath);
+  const fullPath = fs.existsSync(filePath)
+    ? filePath
+    : path.join(__dirname, filePath);
 
   if (!fs.existsSync(fullPath)) {
     console.error(`File not found: ${filePath}`);
@@ -301,7 +317,9 @@ async function main() {
   const query = data.query || data.question;
 
   console.log('\n\uD83E\uDDEA Testing prompt variants...');
-  console.log(`\n   Query: "${query.substring(0, 60)}${query.length > 60 ? '...' : ''}"`);
+  console.log(
+    `\n   Query: "${query.substring(0, 60)}${query.length > 60 ? '...' : ''}"`
+  );
 
   try {
     // Phase 1: Run variant agents
@@ -318,19 +336,19 @@ async function main() {
     if (variantResult.variants?.concise?.response) {
       responses.push({
         promptStyle: 'concise',
-        response: variantResult.variants.concise.response
+        response: variantResult.variants.concise.response,
       });
     }
     if (variantResult.variants?.detailed?.response) {
       responses.push({
         promptStyle: 'detailed',
-        response: variantResult.variants.detailed.response
+        response: variantResult.variants.detailed.response,
       });
     }
     if (variantResult.variants?.creative?.response) {
       responses.push({
         promptStyle: 'creative',
-        response: variantResult.variants.creative.response
+        response: variantResult.variants.creative.response,
       });
     }
 
@@ -344,7 +362,7 @@ async function main() {
             evaluations: judgeResult.value.evaluations || [],
             winner: judgeResult.value.winner || 'unknown',
             winnerReason: judgeResult.value.winnerReason || '',
-            recommendation: judgeResult.value.recommendation || ''
+            recommendation: judgeResult.value.recommendation || '',
           };
         }
         console.log(' Done!\n');

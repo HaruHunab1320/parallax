@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('ExecutionsResource', () => {
@@ -134,7 +134,13 @@ describe('ExecutionsResource', () => {
   it('should get hourly stats', async () => {
     mockFetch({
       stats: [
-        { hour: '2026-03-14T10:00:00Z', executions: 5, successful: 4, failed: 1, avg_confidence: 0.8 },
+        {
+          hour: '2026-03-14T10:00:00Z',
+          executions: 5,
+          successful: 4,
+          failed: 1,
+          avg_confidence: 0.8,
+        },
       ],
     });
 
@@ -147,7 +153,14 @@ describe('ExecutionsResource', () => {
   it('should get daily stats', async () => {
     mockFetch({
       stats: [
-        { day: '2026-03-14', executions: 50, successful: 45, failed: 5, avg_confidence: 0.83, avg_duration_ms: 2000 },
+        {
+          day: '2026-03-14',
+          executions: 50,
+          successful: 45,
+          failed: 5,
+          avg_confidence: 0.83,
+          avg_duration_ms: 2000,
+        },
       ],
     });
 
@@ -164,11 +177,19 @@ describe('ExecutionsResource', () => {
       return {
         ok: true,
         status: 200,
-        json: async () => ({ id: 'exec-1', status, result: callCount >= 3 ? 'done' : undefined }),
+        json: async () => ({
+          id: 'exec-1',
+          status,
+          result: callCount >= 3 ? 'done' : undefined,
+        }),
       };
     });
 
-    const result = await client.executions.waitForCompletion('exec-1', 10, 5000);
+    const result = await client.executions.waitForCompletion(
+      'exec-1',
+      10,
+      5000
+    );
 
     expect(result.status).toBe('completed');
     expect(callCount).toBe(3);

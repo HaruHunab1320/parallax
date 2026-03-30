@@ -54,7 +54,11 @@ export class TurnExtractor {
     this.maxClean = options.maxCleanOutputPerTurn ?? DEFAULT_MAX_CLEAN_OUTPUT;
   }
 
-  push(result: FeedOutputResult, chunk: string, direction: StreamDirection): Turn | undefined {
+  push(
+    result: FeedOutputResult,
+    chunk: string,
+    direction: StreamDirection
+  ): Turn | undefined {
     const currentStateKind = result.state.state;
     const wasIdle = this.isIdle(this.lastState);
     const nowIdle = this.isIdle(currentStateKind);
@@ -210,7 +214,8 @@ export class TurnExtractor {
   private finalizeTurn(inProgress: InProgressTurn, endTs: string): Turn {
     const startedAt = inProgress.startedAt;
     const endedAt = endTs;
-    const durationMs = new Date(endedAt).getTime() - new Date(startedAt).getTime();
+    const durationMs =
+      new Date(endedAt).getTime() - new Date(startedAt).getTime();
     const timing: TurnTiming = { startedAt, endedAt, durationMs };
 
     return {

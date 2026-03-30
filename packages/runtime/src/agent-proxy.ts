@@ -1,14 +1,14 @@
 import * as grpc from '@grpc/grpc-js';
 import {
+  type AgentRequest,
+  type Capabilities,
   ConfidenceAgentClient,
-  AgentRequest,
-  ConfidenceResult,
-  Capabilities,
-  Health,
-  Health_Status,
+  type ConfidenceResult,
   GoogleEmpty,
+  type Health,
+  Health_Status,
 } from '@parallaxai/sdk-typescript';
-import { Agent, AgentResult } from './types';
+import type { Agent, AgentResult } from './types';
 
 /**
  * Proxy class that represents a remote agent connected via gRPC.
@@ -155,7 +155,8 @@ export class GrpcAgentProxy implements Agent {
       confidence: response.confidence,
       agent: response.agentId || this.name,
       reasoning: response.reasoning,
-      uncertainties: response.uncertainties.length > 0 ? response.uncertainties : undefined,
+      uncertainties:
+        response.uncertainties.length > 0 ? response.uncertainties : undefined,
       timestamp: response.timestamp?.getTime() || Date.now(),
     };
   }
@@ -164,7 +165,10 @@ export class GrpcAgentProxy implements Agent {
    * Stream analysis for long-running tasks
    * Returns an async generator that yields results as they arrive
    */
-  async *streamAnalyze<T>(task: string, data?: any): AsyncGenerator<AgentResult<T>> {
+  async *streamAnalyze<T>(
+    task: string,
+    data?: any
+  ): AsyncGenerator<AgentResult<T>> {
     const request: AgentRequest = {
       taskId: `task-${Date.now()}`,
       taskDescription: task,
@@ -189,7 +193,10 @@ export class GrpcAgentProxy implements Agent {
         confidence: response.confidence,
         agent: response.agentId || this.name,
         reasoning: response.reasoning,
-        uncertainties: response.uncertainties.length > 0 ? response.uncertainties : undefined,
+        uncertainties:
+          response.uncertainties.length > 0
+            ? response.uncertainties
+            : undefined,
         timestamp: response.timestamp?.getTime() || Date.now(),
       };
     }
@@ -213,6 +220,11 @@ export class GrpcAgentProxy implements Agent {
     },
     credentials?: grpc.ChannelCredentials
   ): GrpcAgentProxy {
-    return new GrpcAgentProxy(metadata.id, metadata.name, metadata.endpoint, credentials);
+    return new GrpcAgentProxy(
+      metadata.id,
+      metadata.name,
+      metadata.endpoint,
+      credentials
+    );
   }
 }

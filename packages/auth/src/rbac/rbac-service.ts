@@ -1,6 +1,6 @@
-import { Logger } from 'pino';
-import { Permission, Role, JWTPayload } from '../types';
-import { DefaultRoles, Resources, Actions, Scopes } from './permissions';
+import type { Logger } from 'pino';
+import type { JWTPayload, Permission, Role } from '../types';
+import { Actions, DefaultRoles, Resources, Scopes } from './permissions';
 
 export interface RBACCheck {
   resource: string;
@@ -17,13 +17,13 @@ export class RBACService {
     customRoles?: Role[]
   ) {
     // Load default roles
-    Object.values(DefaultRoles).forEach(role => {
+    Object.values(DefaultRoles).forEach((role) => {
       this.roles.set(role.name, JSON.parse(JSON.stringify(role)) as Role);
     });
 
     // Add custom roles
     if (customRoles) {
-      customRoles.forEach(role => {
+      customRoles.forEach((role) => {
         this.roles.set(role.name, role);
       });
     }
@@ -32,10 +32,7 @@ export class RBACService {
   /**
    * Check if a user has permission to perform an action
    */
-  async hasPermission(
-    user: JWTPayload,
-    check: RBACCheck
-  ): Promise<boolean> {
+  async hasPermission(user: JWTPayload, check: RBACCheck): Promise<boolean> {
     // Admin bypass
     if (user.roles.includes('admin')) {
       return true;
@@ -47,20 +44,26 @@ export class RBACService {
     // Check each permission
     for (const permission of permissions) {
       if (this.matchesPermission(permission, check, user)) {
-        this.logger.debug({
-          userId: user.sub,
-          permission,
-          check,
-        }, 'Permission granted');
+        this.logger.debug(
+          {
+            userId: user.sub,
+            permission,
+            check,
+          },
+          'Permission granted'
+        );
         return true;
       }
     }
 
-    this.logger.warn({
-      userId: user.sub,
-      roles: user.roles,
-      check,
-    }, 'Permission denied');
+    this.logger.warn(
+      {
+        userId: user.sub,
+        roles: user.roles,
+        check,
+      },
+      'Permission denied'
+    );
 
     return false;
   }
@@ -70,7 +73,7 @@ export class RBACService {
    */
   getUserPermissions(roleNames: string[]): Permission[] {
     const permissions: Permission[] = [];
-    
+
     for (const roleName of roleNames) {
       const role = this.roles.get(roleName);
       if (role) {
@@ -95,7 +98,10 @@ export class RBACService {
     }
 
     // Check action match
-    if (permission.action !== check.action && permission.action !== Actions.MANAGE) {
+    if (
+      permission.action !== check.action &&
+      permission.action !== Actions.MANAGE
+    ) {
       return false;
     }
 
@@ -159,7 +165,8 @@ export class RBACService {
       const fullCheck: RBACCheck = {
         ...check,
         resourceId: req.params.id || req.params.resourceId,
-        tenantId: req.params.tenantId || req.query.tenantId || req.user.tenantId,
+        tenantId:
+          req.params.tenantId || req.query.tenantId || req.user.tenantId,
       };
 
       const hasPermission = await this.hasPermission(req.user, fullCheck);

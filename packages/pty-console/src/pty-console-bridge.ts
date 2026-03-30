@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import type {
   AutoResponseRule,
   SessionHandle,
@@ -10,8 +10,8 @@ import type {
 import type {
   PTYConsoleBridgeOptions,
   PTYConsoleSnapshot,
-  PTYManagerLike,
   PTYManagerAsyncLike,
+  PTYManagerLike,
   SessionOutputEvent,
   SessionStatusEvent,
 } from './types.js';
@@ -21,9 +21,12 @@ const DEFAULT_MAX_BUFFERED_CHARS = 50_000;
 type AnySessionHandle = SessionHandle | WorkerSessionHandle;
 
 function isAsyncManager(
-  manager: PTYManagerLike | PTYManagerAsyncLike,
+  manager: PTYManagerLike | PTYManagerAsyncLike
 ): manager is PTYManagerAsyncLike {
-  return 'onSessionData' in manager && typeof (manager as PTYManagerAsyncLike).onSessionData === 'function';
+  return (
+    'onSessionData' in manager &&
+    typeof (manager as PTYManagerAsyncLike).onSessionData === 'function'
+  );
 }
 
 /**
@@ -40,15 +43,22 @@ export class PTYConsoleBridge extends EventEmitter {
   private readonly maxBufferedChars: number;
   private readonly bufferedOutput = new Map<string, string>();
   private readonly terminalUnsubscribers = new Map<string, () => void>();
-  private readonly managerListeners = new Map<string, (...args: unknown[]) => void>();
+  private readonly managerListeners = new Map<
+    string,
+    (...args: unknown[]) => void
+  >();
   /** For async managers: cache sessions locally from events */
   private readonly asyncSessions = new Map<string, AnySessionHandle>();
 
-  constructor(manager: PTYManagerLike | PTYManagerAsyncLike, options: PTYConsoleBridgeOptions = {}) {
+  constructor(
+    manager: PTYManagerLike | PTYManagerAsyncLike,
+    options: PTYConsoleBridgeOptions = {}
+  ) {
     super();
     this.manager = manager;
     this.isAsync = isAsyncManager(manager);
-    this.maxBufferedChars = options.maxBufferedCharsPerSession ?? DEFAULT_MAX_BUFFERED_CHARS;
+    this.maxBufferedChars =
+      options.maxBufferedCharsPerSession ?? DEFAULT_MAX_BUFFERED_CHARS;
     this.bindManagerEvents();
     this.attachToExistingSessions();
   }
@@ -75,7 +85,7 @@ export class PTYConsoleBridge extends EventEmitter {
     }));
   }
 
-  sendMessage(sessionId: string, message: string): SessionMessage | void {
+  sendMessage(sessionId: string, message: string): SessionMessage | undefined {
     if (this.isAsync) {
       (this.manager as PTYManagerAsyncLike).send(sessionId, message);
       return;
@@ -103,7 +113,11 @@ export class PTYConsoleBridge extends EventEmitter {
 
   resize(sessionId: string, cols: number, rows: number): void | Promise<void> {
     if (this.isAsync) {
-      return (this.manager as PTYManagerAsyncLike).resize(sessionId, cols, rows);
+      return (this.manager as PTYManagerAsyncLike).resize(
+        sessionId,
+        cols,
+        rows
+      );
     }
     const session = (this.manager as PTYManagerLike).getSession(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
@@ -118,9 +132,15 @@ export class PTYConsoleBridge extends EventEmitter {
     await (this.manager as PTYManagerLike).stop(sessionId, options);
   }
 
-  addAutoResponseRule(sessionId: string, rule: AutoResponseRule): void | Promise<void> {
+  addAutoResponseRule(
+    sessionId: string,
+    rule: AutoResponseRule
+  ): void | Promise<void> {
     if (this.isAsync) {
-      return (this.manager as PTYManagerAsyncLike).addAutoResponseRule(sessionId, rule);
+      return (this.manager as PTYManagerAsyncLike).addAutoResponseRule(
+        sessionId,
+        rule
+      );
     }
     const session = (this.manager as PTYManagerLike).getSession(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
@@ -129,7 +149,9 @@ export class PTYConsoleBridge extends EventEmitter {
 
   clearAutoResponseRules(sessionId: string): void | Promise<void> {
     if (this.isAsync) {
-      return (this.manager as PTYManagerAsyncLike).clearAutoResponseRules(sessionId);
+      return (this.manager as PTYManagerAsyncLike).clearAutoResponseRules(
+        sessionId
+      );
     }
     const session = (this.manager as PTYManagerLike).getSession(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
@@ -181,57 +203,113 @@ export class PTYConsoleBridge extends EventEmitter {
       this.emitStatus({ kind: 'ready', session: session as SessionHandle });
     });
 
-    this.listen('session_stopped', (session: AnySessionHandle, reason: string) => {
-      this.detachTerminal(session.id);
-      if (this.isAsync) {
-        this.asyncSessions.delete(session.id);
+    this.listen(
+      'session_stopped',
+      (session: AnySessionHandle, reason: string) => {
+        this.detachTerminal(session.id);
+        if (this.isAsync) {
+          this.asyncSessions.delete(session.id);
+        }
+        this.emitStatus({
+          kind: 'stopped',
+          session: session as SessionHandle,
+          reason,
+        });
       }
-      this.emitStatus({ kind: 'stopped', session: session as SessionHandle, reason });
-    });
+    );
 
     this.listen('session_error', (session: AnySessionHandle, error: string) => {
-      this.emitStatus({ kind: 'error', session: session as SessionHandle, error });
+      this.emitStatus({
+        kind: 'error',
+        session: session as SessionHandle,
+        error,
+      });
     });
 
     this.listen('session_status_changed', (session: AnySessionHandle) => {
       if (this.isAsync) {
         this.asyncSessions.set(session.id, session);
       }
-      this.emitStatus({ kind: 'status_changed', session: session as SessionHandle });
+      this.emitStatus({
+        kind: 'status_changed',
+        session: session as SessionHandle,
+      });
     });
 
     this.listen('task_complete', (session: AnySessionHandle) => {
-      this.emitStatus({ kind: 'task_complete', session: session as SessionHandle });
-    });
-
-    this.listen('login_required', (session: AnySessionHandle, instructions?: string, url?: string) => {
-      this.emitStatus({ kind: 'login_required', session: session as SessionHandle, instructions, url });
-    });
-
-    this.listen('auth_required', (session: AnySessionHandle, auth: SessionStatusEvent['auth']) => {
-      this.emitStatus({ kind: 'auth_required', session: session as SessionHandle, auth });
+      this.emitStatus({
+        kind: 'task_complete',
+        session: session as SessionHandle,
+      });
     });
 
     this.listen(
+      'login_required',
+      (session: AnySessionHandle, instructions?: string, url?: string) => {
+        this.emitStatus({
+          kind: 'login_required',
+          session: session as SessionHandle,
+          instructions,
+          url,
+        });
+      }
+    );
+
+    this.listen(
+      'auth_required',
+      (session: AnySessionHandle, auth: SessionStatusEvent['auth']) => {
+        this.emitStatus({
+          kind: 'auth_required',
+          session: session as SessionHandle,
+          auth,
+        });
+      }
+    );
+
+    this.listen(
       'blocking_prompt',
-      (session: AnySessionHandle, promptInfo: SessionStatusEvent['promptInfo'], autoResponded: boolean) => {
-        this.emitStatus({ kind: 'blocking_prompt', session: session as SessionHandle, promptInfo, autoResponded });
+      (
+        session: AnySessionHandle,
+        promptInfo: SessionStatusEvent['promptInfo'],
+        autoResponded: boolean
+      ) => {
+        this.emitStatus({
+          kind: 'blocking_prompt',
+          session: session as SessionHandle,
+          promptInfo,
+          autoResponded,
+        });
       }
     );
 
     this.listen('question', (session: AnySessionHandle, question: string) => {
-      this.emitStatus({ kind: 'question', session: session as SessionHandle, question });
+      this.emitStatus({
+        kind: 'question',
+        session: session as SessionHandle,
+        question,
+      });
     });
 
     this.listen('message', (message: SessionMessage) => {
       const session = this.manager.get(message.sessionId);
       if (!session) return;
-      this.emitStatus({ kind: 'message', session: session as SessionHandle, message });
+      this.emitStatus({
+        kind: 'message',
+        session: session as SessionHandle,
+        message,
+      });
     });
 
-    this.listen('tool_running', (session: AnySessionHandle, toolInfo: ToolRunningInfo) => {
-      this.emitStatus({ kind: 'tool_running', session: session as SessionHandle, toolInfo });
-    });
+    this.listen(
+      'tool_running',
+      (session: AnySessionHandle, toolInfo: ToolRunningInfo) => {
+        this.emitStatus({
+          kind: 'tool_running',
+          session: session as SessionHandle,
+          toolInfo,
+        });
+      }
+    );
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

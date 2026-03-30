@@ -230,8 +230,8 @@ export interface Logger {
  * Events emitted by the confidence tracker
  */
 export interface ConfidenceTrackerEvents {
-  'recorded': ConfidenceDataPoint;
-  'anomaly': ConfidenceAnomalyAlert;
+  recorded: ConfidenceDataPoint;
+  anomaly: ConfidenceAnomalyAlert;
   'anomaly:resolved': { alertId: string; entityId: string };
   'metrics:updated': { entityId: string; metrics: ConfidenceMetrics };
 }

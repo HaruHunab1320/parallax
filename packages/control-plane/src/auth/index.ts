@@ -4,32 +4,38 @@
  * Exports all authentication-related functionality.
  */
 
-export { AuthService, AuthError, AuthConfig, TokenPayload, AuthTokens } from './auth-service';
 export {
-  createAuthMiddleware,
-  requireAuth,
-  optionalAuth,
   AuthMiddlewareOptions,
+  createAuthMiddleware,
+  optionalAuth,
+  requireAuth,
 } from './auth-middleware';
 export {
-  // Constants
-  ROLES,
-  RESOURCES,
+  AuthConfig,
+  AuthError,
+  AuthService,
+  AuthTokens,
+  TokenPayload,
+} from './auth-service';
+export {
   ACTIONS,
-  // Types
-  Role,
-  Resource,
   Action,
-  RBACMiddlewareOptions,
-  // Functions
-  hasPermission,
-  hasAnyPermission,
-  hasAllPermissions,
-  getRolePermissions,
-  checkApiKeyPermission,
   canAccessUser,
+  checkApiKeyPermission,
   // Middleware
   createRBACMiddleware,
-  requireRole,
+  getRolePermissions,
+  hasAllPermissions,
+  hasAnyPermission,
+  // Functions
+  hasPermission,
+  RBACMiddlewareOptions,
+  RESOURCES,
+  Resource,
+  // Constants
+  ROLES,
+  // Types
+  Role,
   requireAdmin,
+  requireRole,
 } from './rbac';

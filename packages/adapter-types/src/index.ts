@@ -5,32 +5,27 @@
  * for pty-manager, tmux-manager, and coding-agent-adapters.
  */
 
+export { createAdapter } from './adapter-factory.js';
 // Adapter interface and classes
 export type { CLIAdapter } from './adapter-interface.js';
-export { BaseCLIAdapter } from './base-adapter.js';
 export { AdapterRegistry } from './adapter-registry.js';
-export { createAdapter } from './adapter-factory.js';
+export { BaseCLIAdapter } from './base-adapter.js';
 
 // Types
 export type {
-  // Message types
-  MessageType,
-
-  // Spawn configuration
-  SpawnConfig,
-
-  // Adapter output types
-  ParsedOutput,
-  LoginDetection,
-
-  // Blocking prompt types
-  BlockingPromptType,
-  BlockingPromptDetection,
-  AutoResponseRule,
-
-  // Tool running detection
-  ToolRunningInfo,
-
   // Factory types
   AdapterFactoryConfig,
+  AutoResponseRule,
+  BlockingPromptDetection,
+  // Blocking prompt types
+  BlockingPromptType,
+  LoginDetection,
+  // Message types
+  MessageType,
+  // Adapter output types
+  ParsedOutput,
+  // Spawn configuration
+  SpawnConfig,
+  // Tool running detection
+  ToolRunningInfo,
 } from './types.js';

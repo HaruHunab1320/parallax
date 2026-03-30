@@ -1,9 +1,8 @@
-import { ParallaxAgent } from '@parallaxai/sdk-typescript';
-import { AgentResponse } from '@parallaxai/sdk-typescript';
-import { PersonaConfig } from './persona-loader';
-import { generateResponse } from './llm-client';
+import { type AgentResponse, ParallaxAgent } from '@parallaxai/sdk-typescript';
 import { TamagotchiDisplay } from './display/tamagotchi';
 import { TamagotchiState } from './display/types';
+import { generateResponse } from './llm-client';
+import type { PersonaConfig } from './persona-loader';
 
 /**
  * A persona-driven agent for the Signal//Noise ARG.

@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import pino from 'pino';
-import { StartupRecoveryService } from '@/resilience/startup-recovery';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExecutionRepository } from '@/db/repositories/execution.repository';
+import { StartupRecoveryService } from '@/resilience/startup-recovery';
 
 const logger = pino({ level: 'silent' });
 

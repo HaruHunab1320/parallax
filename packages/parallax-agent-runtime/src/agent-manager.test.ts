@@ -1,6 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgentManager } from './agent-manager.js';
-import type { AgentConfig } from './types.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mocks
@@ -49,10 +48,34 @@ vi.mock('pty-manager', () => ({
 
 // Mock coding-agent-adapters
 const mockCheckAdapters = vi.fn().mockResolvedValue([
-  { adapter: 'Claude Code', installed: true, version: '2.1.0', installCommand: 'npm i -g @anthropic-ai/claude-code', docsUrl: '' },
-  { adapter: 'Gemini CLI', installed: false, error: 'not found', installCommand: 'npm i -g @google/gemini-cli', docsUrl: '' },
-  { adapter: 'Codex', installed: true, version: '1.0.0', installCommand: 'npm i -g codex', docsUrl: '' },
-  { adapter: 'Aider', installed: false, error: 'not found', installCommand: 'pip install aider', docsUrl: '' },
+  {
+    adapter: 'Claude Code',
+    installed: true,
+    version: '2.1.0',
+    installCommand: 'npm i -g @anthropic-ai/claude-code',
+    docsUrl: '',
+  },
+  {
+    adapter: 'Gemini CLI',
+    installed: false,
+    error: 'not found',
+    installCommand: 'npm i -g @google/gemini-cli',
+    docsUrl: '',
+  },
+  {
+    adapter: 'Codex',
+    installed: true,
+    version: '1.0.0',
+    installCommand: 'npm i -g codex',
+    docsUrl: '',
+  },
+  {
+    adapter: 'Aider',
+    installed: false,
+    error: 'not found',
+    installCommand: 'pip install aider',
+    docsUrl: '',
+  },
 ]);
 
 const mockGetWorkspaceFiles = vi.fn();
@@ -82,7 +105,8 @@ vi.mock('coding-agent-adapters', () => ({
   HermesAdapter: vi.fn(),
   checkAdapters: (...args: unknown[]) => mockCheckAdapters(...args),
   createAdapter: (...args: unknown[]) => mockCreateAdapter(...args),
-  generateApprovalConfig: (...args: unknown[]) => mockGenerateApprovalConfig(...args),
+  generateApprovalConfig: (...args: unknown[]) =>
+    mockGenerateApprovalConfig(...args),
 }));
 
 // Mock git-workspace-service
@@ -287,7 +311,10 @@ describe('AgentManager', () => {
         approvalPreset: 'standard',
       });
 
-      expect(mockGenerateApprovalConfig).toHaveBeenCalledWith('claude', 'standard');
+      expect(mockGenerateApprovalConfig).toHaveBeenCalledWith(
+        'claude',
+        'standard'
+      );
     });
 
     it('does not write approval config files when no preset is set', async () => {
@@ -331,8 +358,14 @@ describe('AgentManager', () => {
 
     it('returns AgentHandle with role and capabilities from config', async () => {
       const manager = new AgentManager(logger);
-      mockSpawn.mockImplementation((cfg: { id: string; name: string; type: string }) =>
-        Promise.resolve({ id: cfg.id, name: cfg.name, type: cfg.type, status: 'starting' })
+      mockSpawn.mockImplementation(
+        (cfg: { id: string; name: string; type: string }) =>
+          Promise.resolve({
+            id: cfg.id,
+            name: cfg.name,
+            type: cfg.type,
+            status: 'starting',
+          })
       );
 
       const handle = await manager.spawn({
@@ -364,13 +397,21 @@ describe('AgentManager', () => {
       const manager = new AgentManager(logger);
       const pattern = /test/;
       manager.removeAutoResponseRule('agent-1', pattern);
-      expect(mockRemoveAutoResponseRule).toHaveBeenCalledWith('agent-1', pattern);
+      expect(mockRemoveAutoResponseRule).toHaveBeenCalledWith(
+        'agent-1',
+        pattern
+      );
     });
 
     it('delegates setAutoResponseRules to pty-manager', () => {
       const manager = new AgentManager(logger);
       const rules = [
-        { pattern: /a/, type: 'config' as const, response: 'y', description: 'rule a' },
+        {
+          pattern: /a/,
+          type: 'config' as const,
+          response: 'y',
+          description: 'rule a',
+        },
       ];
       manager.setAutoResponseRules('agent-1', rules);
       expect(mockSetAutoResponseRules).toHaveBeenCalledWith('agent-1', rules);
@@ -393,7 +434,9 @@ describe('AgentManager', () => {
     it('delegates to session.handleStallClassification', () => {
       const manager = new AgentManager(logger);
       const mockHandleStall = vi.fn();
-      mockGetSession.mockReturnValue({ handleStallClassification: mockHandleStall });
+      mockGetSession.mockReturnValue({
+        handleStallClassification: mockHandleStall,
+      });
 
       const classification = { state: 'task_complete' as const };
       manager.handleStallClassification('agent-1', classification);
@@ -435,17 +478,17 @@ describe('AgentManager', () => {
     it('throws when workspace service not configured', async () => {
       const manager = new AgentManager(logger);
 
-      await expect(
-        manager.provisionWorkspace({} as never)
-      ).rejects.toThrow('Workspace service not configured');
+      await expect(manager.provisionWorkspace({} as never)).rejects.toThrow(
+        'Workspace service not configured'
+      );
 
       await expect(
         manager.finalizeWorkspace('ws-1', {} as never)
       ).rejects.toThrow('Workspace service not configured');
 
-      await expect(
-        manager.cleanupWorkspace('ws-1')
-      ).rejects.toThrow('Workspace service not configured');
+      await expect(manager.cleanupWorkspace('ws-1')).rejects.toThrow(
+        'Workspace service not configured'
+      );
     });
 
     it('delegates provisionWorkspace to workspace service', async () => {
@@ -481,10 +524,18 @@ describe('AgentManager', () => {
         workspace: { baseDir: '/tmp' } as never,
       });
 
-      const mockPr = { number: 42, url: 'https://github.com/test/repo/pull/42' };
+      const mockPr = {
+        number: 42,
+        url: 'https://github.com/test/repo/pull/42',
+      };
       mockFinalize.mockResolvedValue(mockPr);
 
-      const options = { push: true, createPr: true, cleanup: false, pr: { title: 'test', body: 'body', targetBranch: 'main' } };
+      const options = {
+        push: true,
+        createPr: true,
+        cleanup: false,
+        pr: { title: 'test', body: 'body', targetBranch: 'main' },
+      };
       const result = await manager.finalizeWorkspace('ws-1', options);
 
       expect(mockFinalize).toHaveBeenCalledWith('ws-1', options);
@@ -509,7 +560,13 @@ describe('AgentManager', () => {
 
       const health = await manager.getHealth();
 
-      expect(mockCheckAdapters).toHaveBeenCalledWith(['claude', 'gemini', 'codex', 'aider', 'hermes']);
+      expect(mockCheckAdapters).toHaveBeenCalledWith([
+        'claude',
+        'gemini',
+        'codex',
+        'aider',
+        'hermes',
+      ]);
       expect(health.adapters).toHaveLength(4); // mock returns 4 results
       expect(health.adapters[0]).toEqual({
         type: 'Claude Code',
@@ -559,14 +616,26 @@ describe('AgentManager', () => {
 
       const emitSpy = vi.spyOn(manager, 'emit');
       authHandler(
-        { id: 'agent-1', name: 'test', type: 'claude', status: 'authenticating' },
-        { method: 'oauth_browser', url: 'https://claude.ai/oauth/authorize', instructions: 'Open URL' }
+        {
+          id: 'agent-1',
+          name: 'test',
+          type: 'claude',
+          status: 'authenticating',
+        },
+        {
+          method: 'oauth_browser',
+          url: 'https://claude.ai/oauth/authorize',
+          instructions: 'Open URL',
+        }
       );
 
       expect(emitSpy).toHaveBeenCalledWith(
         'auth_required',
         expect.objectContaining({ id: 'agent-1' }),
-        expect.objectContaining({ method: 'oauth_browser', url: 'https://claude.ai/oauth/authorize' })
+        expect.objectContaining({
+          method: 'oauth_browser',
+          url: 'https://claude.ai/oauth/authorize',
+        })
       );
     });
 
@@ -599,7 +668,13 @@ describe('AgentManager', () => {
     it('returns file descriptors for claude', () => {
       const manager = new AgentManager(logger);
       const claudeFiles = [
-        { relativePath: 'CLAUDE.md', description: 'Claude memory file', autoLoaded: true, type: 'memory', format: 'markdown' },
+        {
+          relativePath: 'CLAUDE.md',
+          description: 'Claude memory file',
+          autoLoaded: true,
+          type: 'memory',
+          format: 'markdown',
+        },
       ];
       mockGetWorkspaceFiles.mockReturnValue(claudeFiles);
 
@@ -612,7 +687,13 @@ describe('AgentManager', () => {
     it('returns file descriptors for aider', () => {
       const manager = new AgentManager(logger);
       const aiderFiles = [
-        { relativePath: '.aider.conventions.md', description: 'Aider conventions', autoLoaded: true, type: 'memory', format: 'markdown' },
+        {
+          relativePath: '.aider.conventions.md',
+          description: 'Aider conventions',
+          autoLoaded: true,
+          type: 'memory',
+          format: 'markdown',
+        },
       ];
       mockGetWorkspaceFiles.mockReturnValue(aiderFiles);
 
@@ -637,10 +718,18 @@ describe('AgentManager', () => {
       const manager = new AgentManager(logger);
       mockWriteMemoryFile.mockResolvedValue('/tmp/workspace/CLAUDE.md');
 
-      const path = await manager.writeWorkspaceFile('claude', '/tmp/workspace', '# Instructions');
+      const path = await manager.writeWorkspaceFile(
+        'claude',
+        '/tmp/workspace',
+        '# Instructions'
+      );
 
       expect(mockCreateAdapter).toHaveBeenCalledWith('claude');
-      expect(mockWriteMemoryFile).toHaveBeenCalledWith('/tmp/workspace', '# Instructions', undefined);
+      expect(mockWriteMemoryFile).toHaveBeenCalledWith(
+        '/tmp/workspace',
+        '# Instructions',
+        undefined
+      );
       expect(path).toBe('/tmp/workspace/CLAUDE.md');
     });
 
@@ -653,10 +742,14 @@ describe('AgentManager', () => {
         append: true,
       });
 
-      expect(mockWriteMemoryFile).toHaveBeenCalledWith('/tmp/workspace', 'content', {
-        fileName: 'custom.md',
-        append: true,
-      });
+      expect(mockWriteMemoryFile).toHaveBeenCalledWith(
+        '/tmp/workspace',
+        'content',
+        {
+          fileName: 'custom.md',
+          append: true,
+        }
+      );
     });
 
     it('throws for custom agent type', async () => {
@@ -673,12 +766,28 @@ describe('AgentManager', () => {
       const manager = new AgentManager(logger);
 
       // Mock spawn to echo back the id from the config
-      mockSpawn.mockImplementation((cfg: { id: string; name: string; type: string }) =>
-        Promise.resolve({ id: cfg.id, name: cfg.name, type: cfg.type, status: 'ready' })
+      mockSpawn.mockImplementation(
+        (cfg: { id: string; name: string; type: string }) =>
+          Promise.resolve({
+            id: cfg.id,
+            name: cfg.name,
+            type: cfg.type,
+            status: 'ready',
+          })
       );
 
-      await manager.spawn({ name: 'arch', type: 'claude', capabilities: [], role: 'architect' });
-      await manager.spawn({ name: 'eng', type: 'claude', capabilities: [], role: 'engineer' });
+      await manager.spawn({
+        name: 'arch',
+        type: 'claude',
+        capabilities: [],
+        role: 'architect',
+      });
+      await manager.spawn({
+        name: 'eng',
+        type: 'claude',
+        capabilities: [],
+        role: 'engineer',
+      });
 
       // Get the generated IDs from the spawn calls
       const id1 = mockSpawn.mock.calls[0][0].id;
@@ -697,12 +806,26 @@ describe('AgentManager', () => {
     it('filters by capabilities', async () => {
       const manager = new AgentManager(logger);
 
-      mockSpawn.mockImplementation((cfg: { id: string; name: string; type: string }) =>
-        Promise.resolve({ id: cfg.id, name: cfg.name, type: cfg.type, status: 'ready' })
+      mockSpawn.mockImplementation(
+        (cfg: { id: string; name: string; type: string }) =>
+          Promise.resolve({
+            id: cfg.id,
+            name: cfg.name,
+            type: cfg.type,
+            status: 'ready',
+          })
       );
 
-      await manager.spawn({ name: 'full', type: 'claude', capabilities: ['code', 'review', 'test'] });
-      await manager.spawn({ name: 'review', type: 'claude', capabilities: ['review'] });
+      await manager.spawn({
+        name: 'full',
+        type: 'claude',
+        capabilities: ['code', 'review', 'test'],
+      });
+      await manager.spawn({
+        name: 'review',
+        type: 'claude',
+        capabilities: ['review'],
+      });
 
       const id1 = mockSpawn.mock.calls[0][0].id;
       const id2 = mockSpawn.mock.calls[1][0].id;
@@ -712,7 +835,9 @@ describe('AgentManager', () => {
         { id: id2, name: 'review', type: 'claude', status: 'ready' },
       ]);
 
-      const codeAndReview = await manager.list({ capabilities: ['code', 'review'] });
+      const codeAndReview = await manager.list({
+        capabilities: ['code', 'review'],
+      });
       expect(codeAndReview).toHaveLength(1);
       expect(codeAndReview[0].name).toBe('full');
     });

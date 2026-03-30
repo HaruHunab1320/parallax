@@ -5,51 +5,45 @@
  */
 
 // Main compiler
-export { OrgChartCompiler, createTarget } from './compiler';
-
-// Validation
-export { validatePattern } from './validation/validator';
-
+export { createTarget, OrgChartCompiler } from './compiler';
 // Targets
 export {
-  prismTarget,
-  jsonTarget,
-  mermaidTarget,
   buildJsonPlan,
   getTarget,
+  jsonTarget,
   listTargets,
+  mermaidTarget,
+  prismTarget,
 } from './targets';
-
 // Types
 export type {
-  // Pattern types
-  OrgPattern,
-  OrgStructure,
-  OrgRole,
-  OrgWorkflow,
-  RoutingRule,
-  EscalationConfig,
-
-  // Workflow step types
-  WorkflowStep,
-  AssignStep,
-  ParallelStep,
-  SequentialStep,
-  SelectStep,
-  ReviewStep,
-  ApproveStep,
   AggregateStep,
-  ConditionStep,
-  WaitStep,
-
+  ApproveStep,
+  AssignStep,
+  CompileContext,
   // Compilation types
   CompileOptions,
   CompileResult,
   CompileTarget,
-  CompileContext,
+  ConditionStep,
+  EscalationConfig,
+  // Pattern types
+  OrgPattern,
+  OrgRole,
+  OrgStructure,
+  OrgWorkflow,
+  ParallelStep,
   PatternMetadata,
-
+  ReviewStep,
+  RoutingRule,
+  SelectStep,
+  SequentialStep,
+  ValidationError,
   // Validation types
   ValidationResult,
-  ValidationError,
+  WaitStep,
+  // Workflow step types
+  WorkflowStep,
 } from './types';
+// Validation
+export { validatePattern } from './validation/validator';

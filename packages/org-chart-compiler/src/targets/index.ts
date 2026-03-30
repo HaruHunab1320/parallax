@@ -2,14 +2,14 @@
  * Target Exports
  */
 
-export { prismTarget } from './prism.target';
-export { jsonTarget, buildJsonPlan } from './json.target';
+export { buildJsonPlan, jsonTarget } from './json.target';
 export { mermaidTarget } from './mermaid.target';
+export { prismTarget } from './prism.target';
 
 import type { CompileTarget } from '../types';
-import { prismTarget } from './prism.target';
 import { jsonTarget } from './json.target';
 import { mermaidTarget } from './mermaid.target';
+import { prismTarget } from './prism.target';
 
 /**
  * Built-in target registry

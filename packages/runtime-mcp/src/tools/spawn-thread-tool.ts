@@ -2,24 +2,27 @@
  * Spawn Thread Tool - Creates a new managed thread
  */
 
-import type { LocalRuntime } from '@parallaxai/runtime-local';
 import type {
-  ThreadHandle,
   SpawnThreadInput as RuntimeSpawnThreadInput,
+  ThreadHandle,
   ThreadRuntimeProvider,
 } from '@parallaxai/runtime-interface';
-import { SpawnThreadInputSchema, type SpawnThreadInput } from './schemas.js';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import { type SpawnThreadInput, SpawnThreadInputSchema } from './schemas.js';
 
 export const SPAWN_THREAD_TOOL = {
   name: 'spawn_thread',
-  description: 'Create and start a new managed thread. Returns the thread handle with ID and status.',
+  description:
+    'Create and start a new managed thread. Returns the thread handle with ID and status.',
   inputSchema: SpawnThreadInputSchema,
 };
 
 export async function executeSpawnThread(
   runtime: LocalRuntime,
   input: SpawnThreadInput
-): Promise<{ success: true; thread: ThreadHandle } | { success: false; error: string }> {
+): Promise<
+  { success: true; thread: ThreadHandle } | { success: false; error: string }
+> {
   try {
     const threadRuntime = runtime as LocalRuntime & ThreadRuntimeProvider;
     const spawnInput: RuntimeSpawnThreadInput = {

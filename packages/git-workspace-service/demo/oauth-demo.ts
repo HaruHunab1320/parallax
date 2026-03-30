@@ -16,18 +16,18 @@
  * 4. Demonstrate using the token for git credentials
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import {
+  type AuthPrompt,
+  type AuthPromptEmitter,
+  type AuthResult,
   CredentialService,
-  OAuthDeviceFlow,
+  DEFAULT_AGENT_PERMISSIONS,
   FileTokenStore,
   MemoryTokenStore,
-  DEFAULT_AGENT_PERMISSIONS,
-  type AuthPromptEmitter,
-  type AuthPrompt,
-  type AuthResult,
+  OAuthDeviceFlow,
 } from '../src';
 
 // Custom prompt emitter that provides nice CLI output
@@ -38,11 +38,17 @@ const cliPromptEmitter: AuthPromptEmitter = {
     console.log('│          GitHub Authorization Required                  │');
     console.log('├─────────────────────────────────────────────────────────┤');
     console.log(`│  1. Open your browser and go to:                        │`);
-    console.log(`│     \x1b[36m${prompt.verificationUri}\x1b[0m${' '.repeat(Math.max(0, 36 - prompt.verificationUri.length))}│`);
+    console.log(
+      `│     \x1b[36m${prompt.verificationUri}\x1b[0m${' '.repeat(Math.max(0, 36 - prompt.verificationUri.length))}│`
+    );
     console.log('│                                                         │');
-    console.log(`│  2. Enter this code: \x1b[1;33m${prompt.userCode}\x1b[0m${' '.repeat(Math.max(0, 28 - prompt.userCode.length))}│`);
+    console.log(
+      `│  2. Enter this code: \x1b[1;33m${prompt.userCode}\x1b[0m${' '.repeat(Math.max(0, 28 - prompt.userCode.length))}│`
+    );
     console.log('├─────────────────────────────────────────────────────────┤');
-    console.log(`│  Waiting for authorization... (expires in ${prompt.expiresIn}s)${' '.repeat(Math.max(0, 10 - String(prompt.expiresIn).length))}│`);
+    console.log(
+      `│  Waiting for authorization... (expires in ${prompt.expiresIn}s)${' '.repeat(Math.max(0, 10 - String(prompt.expiresIn).length))}│`
+    );
     console.log('└─────────────────────────────────────────────────────────┘');
     console.log('\n');
   },
@@ -56,7 +62,9 @@ const cliPromptEmitter: AuthPromptEmitter = {
   },
 
   onAuthPending(secondsRemaining: number): void {
-    process.stdout.write(`\r  Waiting for authorization... ${secondsRemaining}s remaining  `);
+    process.stdout.write(
+      `\r  Waiting for authorization... ${secondsRemaining}s remaining  `
+    );
   },
 };
 
@@ -66,8 +74,12 @@ async function demoDirectDeviceFlow() {
   const clientId = process.env.GITHUB_CLIENT_ID;
 
   if (!clientId) {
-    console.log('\x1b[33mSkipping direct device flow demo - GITHUB_CLIENT_ID not set\x1b[0m\n');
-    console.log('Set GITHUB_CLIENT_ID environment variable to test this demo.\n');
+    console.log(
+      '\x1b[33mSkipping direct device flow demo - GITHUB_CLIENT_ID not set\x1b[0m\n'
+    );
+    console.log(
+      'Set GITHUB_CLIENT_ID environment variable to test this demo.\n'
+    );
     return null;
   }
 
@@ -100,7 +112,9 @@ async function demoCredentialServiceWithOAuth() {
   const clientId = process.env.GITHUB_CLIENT_ID;
 
   if (!clientId) {
-    console.log('\x1b[33mSkipping credential service demo - GITHUB_CLIENT_ID not set\x1b[0m\n');
+    console.log(
+      '\x1b[33mSkipping credential service demo - GITHUB_CLIENT_ID not set\x1b[0m\n'
+    );
     return;
   }
 
@@ -113,14 +127,18 @@ async function demoCredentialServiceWithOAuth() {
       })
     : new MemoryTokenStore();
 
-  console.log(`Using ${useFileStore ? 'FileTokenStore (persistent)' : 'MemoryTokenStore (ephemeral)'}`);
+  console.log(
+    `Using ${useFileStore ? 'FileTokenStore (persistent)' : 'MemoryTokenStore (ephemeral)'}`
+  );
 
   // Check for cached token first
   const cachedToken = await tokenStore.get('github');
   if (cachedToken && !tokenStore.isExpired(cachedToken)) {
     console.log('\n\x1b[32mFound valid cached OAuth token!\x1b[0m');
     console.log(`  Created: ${cachedToken.createdAt.toISOString()}`);
-    console.log(`  Expires: ${cachedToken.expiresAt?.toISOString() || 'never'}`);
+    console.log(
+      `  Expires: ${cachedToken.expiresAt?.toISOString() || 'never'}`
+    );
     console.log('  Will use cached token instead of starting device flow.\n');
   }
 
@@ -168,9 +186,13 @@ async function demoCredentialServiceWithOAuth() {
 
     if (response.ok) {
       const user = await response.json();
-      console.log(`\x1b[32m✓ Token is valid!\x1b[0m Authenticated as: ${user.login}`);
+      console.log(
+        `\x1b[32m✓ Token is valid!\x1b[0m Authenticated as: ${user.login}`
+      );
     } else {
-      console.log(`\x1b[31m✗ Token verification failed: ${response.status}\x1b[0m`);
+      console.log(
+        `\x1b[31m✗ Token verification failed: ${response.status}\x1b[0m`
+      );
     }
   } catch (error) {
     console.error('Failed to get credentials:', error);
@@ -200,7 +222,9 @@ async function demoTokenCaching() {
   const retrieved = await tokenStore.get('github');
 
   if (retrieved) {
-    console.log(`  Token retrieved: ${retrieved.accessToken.substring(0, 10)}...`);
+    console.log(
+      `  Token retrieved: ${retrieved.accessToken.substring(0, 10)}...`
+    );
     console.log(`  Is expired: ${tokenStore.isExpired(retrieved)}`);
     console.log(`  Needs refresh: ${tokenStore.needsRefresh(retrieved)}`);
   }
@@ -212,7 +236,9 @@ async function demoTokenCaching() {
   console.log('\nClearing tokens...');
   await tokenStore.clear();
   const afterClear = await tokenStore.list();
-  console.log(`  Providers after clear: ${afterClear.length === 0 ? '(empty)' : afterClear.join(', ')}`);
+  console.log(
+    `  Providers after clear: ${afterClear.length === 0 ? '(empty)' : afterClear.join(', ')}`
+  );
 }
 
 async function demoFileTokenStore() {
@@ -263,14 +289,22 @@ async function demoFileTokenStore() {
 async function main() {
   console.log('╔═══════════════════════════════════════════════════════════╗');
   console.log('║     OAuth Device Flow Demo - Git Workspace Service        ║');
-  console.log('╚═══════════════════════════════════════════════════════════╝\n');
+  console.log(
+    '╚═══════════════════════════════════════════════════════════╝\n'
+  );
 
   console.log('This demo showcases the OAuth Device Code Flow for GitHub.\n');
   console.log('Environment variables:');
-  console.log(`  GITHUB_CLIENT_ID: ${process.env.GITHUB_CLIENT_ID ? 'set' : '\x1b[33mnot set\x1b[0m'}`);
+  console.log(
+    `  GITHUB_CLIENT_ID: ${process.env.GITHUB_CLIENT_ID ? 'set' : '\x1b[33mnot set\x1b[0m'}`
+  );
   console.log('\nCommand line options:');
-  console.log('  --persist    Use FileTokenStore to persist tokens across runs');
-  console.log('  --full       Run full interactive OAuth flow (requires GITHUB_CLIENT_ID)\n');
+  console.log(
+    '  --persist    Use FileTokenStore to persist tokens across runs'
+  );
+  console.log(
+    '  --full       Run full interactive OAuth flow (requires GITHUB_CLIENT_ID)\n'
+  );
 
   // Demo 3 & 4: Non-interactive demos (always run)
   await demoTokenCaching();
@@ -281,7 +315,9 @@ async function main() {
     await demoDirectDeviceFlow();
     await demoCredentialServiceWithOAuth();
   } else {
-    console.log('\n\x1b[36mRun with --full flag to test interactive OAuth flow\x1b[0m\n');
+    console.log(
+      '\n\x1b[36mRun with --full flag to test interactive OAuth flow\x1b[0m\n'
+    );
   }
 
   console.log('\n\x1b[32mDemo complete!\x1b[0m\n');

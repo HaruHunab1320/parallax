@@ -5,8 +5,8 @@
  * Extracts who needs to do what by when.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'actions-agent';
@@ -21,9 +21,9 @@ class ActionsAgent extends ParallaxAgent {
       AGENT_NAME,
       ['document', 'analysis', 'actions', 'tasks', 'todos'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Extracts action items and tasks from documents'
+        description: 'Extracts action items and tasks from documents',
       }
     );
 
@@ -37,7 +37,10 @@ class ActionsAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +49,7 @@ class ActionsAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -103,30 +106,33 @@ If no action items are found, return empty arrays.`;
         return {
           value: { error: 'Could not parse response', analysisType: 'actions' },
           confidence: 0.3,
-          reasoning: responseText.substring(0, 200)
+          reasoning: responseText.substring(0, 200),
         };
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
       const totalActions = parsed.actionItems?.length || 0;
-      const confidence = Math.max(0, Math.min(1, (parsed.confidence || 80) / 100));
+      const confidence = Math.max(
+        0,
+        Math.min(1, (parsed.confidence || 80) / 100)
+      );
 
       return {
         value: {
           ...parsed,
           totalActions: totalActions,
           analysisType: 'actions',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: confidence,
-        reasoning: `Found ${totalActions} action items in document (${Math.round(confidence * 100)}% confident)`
+        reasoning: `Found ${totalActions} action items in document (${Math.round(confidence * 100)}% confident)`,
       };
     } catch (error) {
       console.error('Action extraction error:', error);
       return {
         value: { error: String(error), analysisType: 'actions' },
         confidence: 0,
-        reasoning: 'Action extraction failed'
+        reasoning: 'Action extraction failed',
       };
     }
   }

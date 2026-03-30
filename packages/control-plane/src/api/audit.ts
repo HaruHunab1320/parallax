@@ -5,12 +5,12 @@
  */
 
 import { Router } from 'express';
-import { Logger } from 'pino';
-import { AuditService } from '../audit/audit-service';
-import { LicenseEnforcer } from '../licensing/license-enforcer';
-import { AuthService } from '../auth/auth-service';
+import type { Logger } from 'pino';
+import type { AuditService } from '../audit/audit-service';
 import { createAuthMiddleware } from '../auth/auth-middleware';
-import { createRBACMiddleware, RESOURCES, ACTIONS } from '../auth/rbac';
+import type { AuthService } from '../auth/auth-service';
+import { ACTIONS, createRBACMiddleware, RESOURCES } from '../auth/rbac';
+import type { LicenseEnforcer } from '../licensing/license-enforcer';
 
 export function createAuditRouter(
   auditService: AuditService,
@@ -117,71 +117,94 @@ export function createAuditRouter(
    * GET /audit/user/:userId
    * Get audit logs for a specific user
    */
-  router.get('/user/:userId', requireAuditAccess, async (req: any, res: any) => {
-    try {
-      const { userId } = req.params;
-      const limit = req.query.limit ? parseInt(req.query.limit, 10) : 50;
+  router.get(
+    '/user/:userId',
+    requireAuditAccess,
+    async (req: any, res: any) => {
+      try {
+        const { userId } = req.params;
+        const limit = req.query.limit ? parseInt(req.query.limit, 10) : 50;
 
-      const logs = await auditService.getUserActivity(userId, limit);
+        const logs = await auditService.getUserActivity(userId, limit);
 
-      res.json({ logs, userId });
-    } catch (error) {
-      log.error({ error, userId: req.params.userId }, 'Failed to get user audit logs');
-      res.status(500).json({
-        error: 'Failed to get user audit logs',
-        code: 'AUDIT_USER_ERROR',
-      });
+        res.json({ logs, userId });
+      } catch (error) {
+        log.error(
+          { error, userId: req.params.userId },
+          'Failed to get user audit logs'
+        );
+        res.status(500).json({
+          error: 'Failed to get user audit logs',
+          code: 'AUDIT_USER_ERROR',
+        });
+      }
     }
-  });
+  );
 
   /**
    * GET /audit/resource/:resource/:resourceId
    * Get audit logs for a specific resource
    */
-  router.get('/resource/:resource/:resourceId', requireAuditAccess, async (req: any, res: any) => {
-    try {
-      const { resource, resourceId } = req.params;
-      const limit = req.query.limit ? parseInt(req.query.limit, 10) : 50;
+  router.get(
+    '/resource/:resource/:resourceId',
+    requireAuditAccess,
+    async (req: any, res: any) => {
+      try {
+        const { resource, resourceId } = req.params;
+        const limit = req.query.limit ? parseInt(req.query.limit, 10) : 50;
 
-      const logs = await auditService.getResourceHistory(resource, resourceId, limit);
+        const logs = await auditService.getResourceHistory(
+          resource,
+          resourceId,
+          limit
+        );
 
-      res.json({ logs, resource, resourceId });
-    } catch (error) {
-      log.error(
-        { error, resource: req.params.resource, resourceId: req.params.resourceId },
-        'Failed to get resource audit logs'
-      );
-      res.status(500).json({
-        error: 'Failed to get resource audit logs',
-        code: 'AUDIT_RESOURCE_ERROR',
-      });
+        res.json({ logs, resource, resourceId });
+      } catch (error) {
+        log.error(
+          {
+            error,
+            resource: req.params.resource,
+            resourceId: req.params.resourceId,
+          },
+          'Failed to get resource audit logs'
+        );
+        res.status(500).json({
+          error: 'Failed to get resource audit logs',
+          code: 'AUDIT_RESOURCE_ERROR',
+        });
+      }
     }
-  });
+  );
 
   /**
    * GET /audit/failed-logins
    * Get recent failed login attempts
    */
-  router.get('/failed-logins', requireAuditAccess, async (req: any, res: any) => {
-    try {
-      const email = req.query.email;
-      const hours = req.query.hours ? parseInt(req.query.hours, 10) : 24;
+  router.get(
+    '/failed-logins',
+    requireAuditAccess,
+    async (req: any, res: any) => {
+      try {
+        const email = req.query.email;
+        const hours = req.query.hours ? parseInt(req.query.hours, 10) : 24;
 
-      const result = await auditService.getFailedLogins(email, hours);
+        const result = await auditService.getFailedLogins(email, hours);
 
-      res.json({
-        ...result,
-        period: `${hours} hours`,
-        email: email || 'all',
-      });
-    } catch (error) {
-      log.error({ error }, 'Failed to get failed logins');
-      res.status(500).json({
-        error: 'Failed to get failed login attempts',
-        code: 'AUDIT_LOGINS_ERROR',
-      });
+        res.json({
+          ...result,
+          period: `${hours} hours`,
+          email: email || 'all',
+        });
+      } catch (error) {
+        log.error({ error }, 'Failed to get failed logins');
+        res.status(500).json({
+          error: 'Failed to get failed login attempts',
+          code: 'AUDIT_LOGINS_ERROR',
+        });
+      }
     }
-  });
+  );
 
   /**
    * POST /audit/cleanup
@@ -202,10 +225,17 @@ export function createAuditRouter(
       const deletedCount = await auditService.cleanup(retentionDays);
 
       // Log the cleanup action itself
-      await auditService.logFromRequest(req, 'delete', 'settings', 'audit_logs', 'success', {
-        retentionDays,
-        deletedCount,
-      });
+      await auditService.logFromRequest(
+        req,
+        'delete',
+        'settings',
+        'audit_logs',
+        'success',
+        {
+          retentionDays,
+          deletedCount,
+        }
+      );
 
       res.json({
         message: 'Audit log cleanup completed',

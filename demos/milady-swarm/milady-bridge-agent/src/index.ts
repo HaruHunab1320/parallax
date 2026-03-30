@@ -14,10 +14,10 @@
  *   LOG_LEVEL          — pino log level (default: "info")
  */
 
+import pino from 'pino';
 import { MiladyBridgeAgent } from './milady-bridge-agent';
 import { MiladyClient } from './milady-client';
 import type { BridgeAgentConfig } from './types';
-import pino from 'pino';
 
 function loadConfig(): BridgeAgentConfig {
   const id = process.env.AGENT_ID;
@@ -38,8 +38,7 @@ function loadConfig(): BridgeAgentConfig {
     role,
     miladyUrl,
     miladyToken,
-    gatewayEndpoint:
-      process.env.PARALLAX_GATEWAY || '34.58.31.212:8081',
+    gatewayEndpoint: process.env.PARALLAX_GATEWAY || '34.58.31.212:8081',
     logLevel: process.env.LOG_LEVEL || 'info',
   };
 }

@@ -10,7 +10,13 @@ import { z } from 'zod';
 /**
  * Agent types supported by the runtime
  */
-export const AgentTypeSchema = z.enum(['claude', 'codex', 'gemini', 'aider', 'custom']);
+export const AgentTypeSchema = z.enum([
+  'claude',
+  'codex',
+  'gemini',
+  'aider',
+  'custom',
+]);
 
 /**
  * Agent status values
@@ -46,10 +52,19 @@ export const ThreadStatusSchema = z.enum([
 export const SpawnInputShape = {
   name: z.string().describe('Human-readable name for the agent'),
   type: AgentTypeSchema.describe('CLI agent type'),
-  capabilities: z.array(z.string()).describe('List of capabilities this agent has'),
-  role: z.string().optional().describe('Org role: architect, engineer, qa, etc.'),
+  capabilities: z
+    .array(z.string())
+    .describe('List of capabilities this agent has'),
+  role: z
+    .string()
+    .optional()
+    .describe('Org role: architect, engineer, qa, etc.'),
   workdir: z.string().optional().describe('Working directory for the agent'),
-  waitForReady: z.boolean().optional().default(true).describe('Wait for agent to be ready before returning'),
+  waitForReady: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe('Wait for agent to be ready before returning'),
   env: z.record(z.string()).optional().describe('Environment variables'),
   reportsTo: z.string().optional().describe('Agent ID this one reports to'),
   autoRestart: z.boolean().optional().describe('Restart on crash'),
@@ -64,8 +79,15 @@ export type SpawnInput = z.infer<typeof SpawnInputSchema>;
  */
 export const StopInputShape = {
   agentId: z.string().describe('ID of the agent to stop'),
-  force: z.boolean().optional().default(false).describe('Force kill instead of graceful shutdown'),
-  timeout: z.number().optional().describe('Graceful shutdown timeout in milliseconds'),
+  force: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('Force kill instead of graceful shutdown'),
+  timeout: z
+    .number()
+    .optional()
+    .describe('Graceful shutdown timeout in milliseconds'),
 };
 
 export const StopInputSchema = z.object(StopInputShape);
@@ -84,7 +106,10 @@ export const ListInputShape = {
     .optional()
     .describe('Filter by agent type'),
   role: z.string().optional().describe('Filter by org role'),
-  capabilities: z.array(z.string()).optional().describe('Filter by required capabilities'),
+  capabilities: z
+    .array(z.string())
+    .optional()
+    .describe('Filter by required capabilities'),
 };
 
 export const ListInputSchema = z.object(ListInputShape);
@@ -106,7 +131,11 @@ export type GetInput = z.infer<typeof GetInputSchema>;
 export const SendInputShape = {
   agentId: z.string().describe('ID of the agent to send to'),
   message: z.string().describe('Message content to send'),
-  expectResponse: z.boolean().optional().default(false).describe('Wait for a response'),
+  expectResponse: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('Wait for a response'),
   timeout: z.number().optional().describe('Response timeout in milliseconds'),
 };
 
@@ -147,16 +176,31 @@ export const SpawnThreadInputShape = {
   name: z.string().describe('Human-readable thread name'),
   agentType: AgentTypeSchema.describe('CLI agent type backing the thread'),
   objective: z.string().describe('Objective for the thread to pursue'),
-  role: z.string().optional().describe('Optional orchestration role for the thread'),
-  workspacePath: z.string().optional().describe('Workspace path for the thread'),
-  workspaceRepo: z.string().optional().describe('Repository URL or slug for prepared workspace resolution'),
-  workspaceBranch: z.string().optional().describe('Branch name for the prepared workspace'),
+  role: z
+    .string()
+    .optional()
+    .describe('Optional orchestration role for the thread'),
+  workspacePath: z
+    .string()
+    .optional()
+    .describe('Workspace path for the thread'),
+  workspaceRepo: z
+    .string()
+    .optional()
+    .describe('Repository URL or slug for prepared workspace resolution'),
+  workspaceBranch: z
+    .string()
+    .optional()
+    .describe('Branch name for the prepared workspace'),
   approvalPreset: z
     .enum(['readonly', 'standard', 'permissive', 'autonomous'])
     .optional()
     .describe('Approval preset controlling tool permissions'),
   env: z.record(z.string()).optional().describe('Environment variables'),
-  metadata: z.record(z.unknown()).optional().describe('Additional thread metadata'),
+  metadata: z
+    .record(z.unknown())
+    .optional()
+    .describe('Additional thread metadata'),
 };
 
 export const SpawnThreadInputSchema = z.object(SpawnThreadInputShape);
@@ -164,8 +208,15 @@ export type SpawnThreadInput = z.infer<typeof SpawnThreadInputSchema>;
 
 export const StopThreadInputShape = {
   threadId: z.string().describe('ID of the thread to stop'),
-  force: z.boolean().optional().default(false).describe('Force kill instead of graceful shutdown'),
-  timeout: z.number().optional().describe('Graceful shutdown timeout in milliseconds'),
+  force: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('Force kill instead of graceful shutdown'),
+  timeout: z
+    .number()
+    .optional()
+    .describe('Graceful shutdown timeout in milliseconds'),
 };
 
 export const StopThreadInputSchema = z.object(StopThreadInputShape);
@@ -194,7 +245,10 @@ export const SendThreadInputShape = {
   threadId: z.string().describe('ID of the thread to send input to'),
   message: z.string().optional().describe('Message content to send'),
   raw: z.string().optional().describe('Raw bytes or terminal input to send'),
-  keys: z.array(z.string()).optional().describe('Key presses to send to the thread terminal'),
+  keys: z
+    .array(z.string())
+    .optional()
+    .describe('Key presses to send to the thread terminal'),
 };
 
 export const SendThreadInputSchema = z.object(SendThreadInputShape);

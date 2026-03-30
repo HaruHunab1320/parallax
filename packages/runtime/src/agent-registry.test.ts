@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgentRegistry } from './agent-registry';
-import { Agent, AgentResult } from './types';
+import type { Agent, AgentResult } from './types';
 
 function createMockAgent(overrides: Partial<Agent> = {}): Agent {
   return {
@@ -35,7 +35,9 @@ describe('AgentRegistry', () => {
     it('should throw on duplicate agent id', () => {
       const agent = createMockAgent();
       registry.register(agent);
-      expect(() => registry.register(agent)).toThrow('Agent with id agent-1 already registered');
+      expect(() => registry.register(agent)).toThrow(
+        'Agent with id agent-1 already registered'
+      );
     });
   });
 
@@ -68,8 +70,14 @@ describe('AgentRegistry', () => {
 
   describe('getAvailableAgents', () => {
     it('should return only available agents', async () => {
-      const available = createMockAgent({ id: 'a1', isAvailable: vi.fn().mockResolvedValue(true) });
-      const unavailable = createMockAgent({ id: 'a2', isAvailable: vi.fn().mockResolvedValue(false) });
+      const available = createMockAgent({
+        id: 'a1',
+        isAvailable: vi.fn().mockResolvedValue(true),
+      });
+      const unavailable = createMockAgent({
+        id: 'a2',
+        isAvailable: vi.fn().mockResolvedValue(false),
+      });
       registry.register(available);
       registry.register(unavailable);
 
@@ -79,7 +87,9 @@ describe('AgentRegistry', () => {
     });
 
     it('should return empty array when no agents available', async () => {
-      const agent = createMockAgent({ isAvailable: vi.fn().mockResolvedValue(false) });
+      const agent = createMockAgent({
+        isAvailable: vi.fn().mockResolvedValue(false),
+      });
       registry.register(agent);
       expect(await registry.getAvailableAgents()).toEqual([]);
     });
@@ -87,8 +97,14 @@ describe('AgentRegistry', () => {
 
   describe('getAgentsByCapability', () => {
     it('should filter agents by capability', () => {
-      const coder = createMockAgent({ id: 'a1', capabilities: ['code', 'review'] });
-      const analyst = createMockAgent({ id: 'a2', capabilities: ['analyze', 'review'] });
+      const coder = createMockAgent({
+        id: 'a1',
+        capabilities: ['code', 'review'],
+      });
+      const analyst = createMockAgent({
+        id: 'a2',
+        capabilities: ['analyze', 'review'],
+      });
       registry.register(coder);
       registry.register(analyst);
 

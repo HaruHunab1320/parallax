@@ -2,7 +2,7 @@
  * Node type definitions for the Pattern Builder
  */
 
-import { Node } from '@xyflow/react';
+import type { Node } from '@xyflow/react';
 
 // All available node types
 export type PatternNodeType =
@@ -164,7 +164,7 @@ export interface NodeDefinition {
   category: NodeCategory;
   icon: string;
   defaultData: Partial<PatternNodeData>;
-  inputs: number;  // Number of input handles
+  inputs: number; // Number of input handles
   outputs: number; // Number of output handles
 }
 
@@ -283,7 +283,12 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
     description: 'Retry on failure',
     category: 'control',
     icon: '↻',
-    defaultData: { label: 'Retry', maxRetries: 3, backoffMs: 1000, backoffMultiplier: 2 },
+    defaultData: {
+      label: 'Retry',
+      maxRetries: 3,
+      backoffMs: 1000,
+      backoffMultiplier: 2,
+    },
     inputs: 1,
     outputs: 1,
   },
@@ -322,11 +327,13 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
 ];
 
 // Helper to get node definition by type
-export function getNodeDefinition(type: PatternNodeType): NodeDefinition | undefined {
-  return NODE_DEFINITIONS.find(def => def.type === type);
+export function getNodeDefinition(
+  type: PatternNodeType
+): NodeDefinition | undefined {
+  return NODE_DEFINITIONS.find((def) => def.type === type);
 }
 
 // Helper to get nodes by category
 export function getNodesByCategory(category: NodeCategory): NodeDefinition[] {
-  return NODE_DEFINITIONS.filter(def => def.category === category);
+  return NODE_DEFINITIONS.filter((def) => def.category === category);
 }

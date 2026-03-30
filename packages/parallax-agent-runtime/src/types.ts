@@ -9,7 +9,13 @@ import type { ApprovalPreset } from 'coding-agent-adapters';
 /**
  * Supported AI agent types
  */
-export type AgentType = 'claude' | 'codex' | 'gemini' | 'aider' | 'hermes' | 'custom';
+export type AgentType =
+  | 'claude'
+  | 'codex'
+  | 'gemini'
+  | 'aider'
+  | 'hermes'
+  | 'custom';
 
 /**
  * Agent lifecycle states
@@ -175,12 +181,27 @@ export type RuntimeEvent =
   | { type: 'agent_ready'; agent: AgentHandle }
   | { type: 'agent_stopped'; agent: AgentHandle; reason: string }
   | { type: 'agent_error'; agent: AgentHandle; error: string }
-  | { type: 'login_required'; agent: AgentHandle; loginUrl?: string; loginInstructions?: string }
+  | {
+      type: 'login_required';
+      agent: AgentHandle;
+      loginUrl?: string;
+      loginInstructions?: string;
+    }
   | { type: 'auth_required'; agent: AgentHandle; auth: AuthRequiredInfo }
-  | { type: 'blocking_prompt'; agent: AgentHandle; prompt: BlockingPromptInfo; autoResponded: boolean }
+  | {
+      type: 'blocking_prompt';
+      agent: AgentHandle;
+      prompt: BlockingPromptInfo;
+      autoResponded: boolean;
+    }
   | { type: 'message'; message: AgentMessage }
   | { type: 'question'; agent: AgentHandle; question: string }
-  | { type: 'stall_detected'; agent: AgentHandle; recentOutput: string; stallDurationMs: number }
+  | {
+      type: 'stall_detected';
+      agent: AgentHandle;
+      recentOutput: string;
+      stallDurationMs: number;
+    }
   | { type: 'task_complete'; agent: AgentHandle }
   | { type: 'tool_running'; agent: AgentHandle; tool: ToolRunningInfo };
 
@@ -195,7 +216,10 @@ export interface ToolRunningInfo {
 /**
  * Hook event types that can be forwarded into a PTY session.
  */
-export type HookEventType = 'tool_running' | 'task_complete' | 'permission_approved';
+export type HookEventType =
+  | 'tool_running'
+  | 'task_complete'
+  | 'permission_approved';
 
 /**
  * Stall classification result (passed through from pty-manager)

@@ -4,15 +4,11 @@
  * Validates tokens and API keys for MCP server authentication.
  */
 
-import * as jwt from 'jsonwebtoken';
-import { createHash, timingSafeEqual } from 'crypto';
-import type { Logger } from 'pino';
+import { createHash } from 'node:crypto';
 import type { JWTPayload } from '@parallaxai/auth';
-import {
-  type McpAuthConfig,
-  type AuthContext,
-  McpAuthError,
-} from './types.js';
+import * as jwt from 'jsonwebtoken';
+import type { Logger } from 'pino';
+import { type AuthContext, type McpAuthConfig, McpAuthError } from './types.js';
 
 export class McpAuthHandler {
   private config: McpAuthConfig;
@@ -118,7 +114,10 @@ export class McpAuthHandler {
    */
   private validateApiKey(apiKey: string): AuthContext {
     if (!this.config.apiKeys) {
-      throw new McpAuthError('API key authentication not configured', 'INVALID_TOKEN');
+      throw new McpAuthError(
+        'API key authentication not configured',
+        'INVALID_TOKEN'
+      );
     }
 
     // Hash the incoming key for comparison
@@ -158,13 +157,17 @@ export class McpAuthHandler {
    */
   private async validateJwt(token: string): Promise<AuthContext> {
     if (!this.config.jwt) {
-      throw new McpAuthError('JWT authentication not configured', 'INVALID_TOKEN');
+      throw new McpAuthError(
+        'JWT authentication not configured',
+        'INVALID_TOKEN'
+      );
     }
 
     try {
-      const secret = this.config.jwt.algorithm === 'RS256'
-        ? this.config.jwt.publicKey!
-        : this.config.jwt.secret;
+      const secret =
+        this.config.jwt.algorithm === 'RS256'
+          ? this.config.jwt.publicKey!
+          : this.config.jwt.secret;
 
       const options: jwt.VerifyOptions = {
         algorithms: [this.config.jwt.algorithm || 'HS256'],
@@ -229,7 +232,12 @@ export class McpAuthHandler {
           permissions.push('agents:*', 'executions:*');
           break;
         case 'developer':
-          permissions.push('agents:spawn', 'agents:list', 'agents:get', 'agents:send');
+          permissions.push(
+            'agents:spawn',
+            'agents:list',
+            'agents:get',
+            'agents:send'
+          );
           break;
         case 'viewer':
           permissions.push('agents:list', 'agents:get', 'health:check');

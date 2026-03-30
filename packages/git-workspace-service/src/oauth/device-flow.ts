@@ -12,13 +12,13 @@
  */
 
 import type {
-  GitProvider,
   AgentPermissions,
-  OAuthToken,
-  DeviceCodeResponse,
   AuthPrompt,
-  AuthResult,
   AuthPromptEmitter,
+  AuthResult,
+  DeviceCodeResponse,
+  GitProvider,
+  OAuthToken,
 } from '../types';
 
 // Response types for GitHub OAuth API
@@ -199,7 +199,9 @@ export class OAuthDeviceFlow {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Failed to request device code: ${response.status} ${text}`);
+      throw new Error(
+        `Failed to request device code: ${response.status} ${text}`
+      );
     }
 
     const data = (await response.json()) as DeviceCodeApiResponse;
@@ -245,7 +247,11 @@ export class OAuthDeviceFlow {
           switch (error.code) {
             case ERROR_AUTHORIZATION_PENDING:
               // Still waiting for user, continue polling
-              this.log('debug', {}, 'Authorization pending, continuing to poll');
+              this.log(
+                'debug',
+                {},
+                'Authorization pending, continuing to poll'
+              );
               continue;
 
             case ERROR_SLOW_DOWN:
@@ -351,7 +357,9 @@ export class OAuthDeviceFlow {
     const data = (await response.json()) as TokenApiResponse;
 
     if (data.error) {
-      throw new Error(`Token refresh failed: ${data.error_description || data.error}`);
+      throw new Error(
+        `Token refresh failed: ${data.error_description || data.error}`
+      );
     }
 
     const scopes = (data.scope || '').split(/[,\s]+/).filter(Boolean);
@@ -411,7 +419,9 @@ export class OAuthDeviceFlow {
     console.log(`│  2. Enter code: ${prompt.userCode.padEnd(29)}│`);
     console.log('├────────────────────────────────────────────────┤');
     console.log(`│  ⏳ Waiting for authorization...               │`);
-    console.log(`│  Code expires in ${prompt.expiresIn} seconds${' '.repeat(18)}│`);
+    console.log(
+      `│  Code expires in ${prompt.expiresIn} seconds${' '.repeat(18)}│`
+    );
     console.log('└────────────────────────────────────────────────┘\n');
   }
 

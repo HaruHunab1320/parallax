@@ -6,15 +6,18 @@
  * and local git operations for workspace provisioning.
  */
 
-import { TmuxManager } from 'tmux-manager';
+import { execSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import type {
+  GatewayThreadEvent,
+  GatewayThreadStatusUpdate,
+} from '@parallaxai/sdk-typescript';
 import { createAdapter } from 'coding-agent-adapters';
-import type { GatewayThreadEvent, GatewayThreadStatusUpdate } from '@parallaxai/sdk-typescript';
 import type { Logger } from 'pino';
-import { ManagedThread, type ManagedThreadInfo } from './managed-thread';
-import { execSync } from 'child_process';
-import { mkdirSync, writeFileSync } from 'fs';
-import path from 'path';
+import { TmuxManager } from 'tmux-manager';
 import type { AdapterType } from './config';
+import { ManagedThread, type ManagedThreadInfo } from './managed-thread';
 
 export interface ThreadSpawnParams {
   threadId: string;
@@ -60,25 +63,44 @@ export class ThreadExecutor {
     this.manager = new TmuxManager({
       sessionPrefix: config?.tmuxPrefix || 'swarm',
       logger: {
-        info: (...args: any[]) => typeof args[0] === 'string' ? logger.info(args[0]) : logger.info(args[0], args[1]),
-        warn: (...args: any[]) => typeof args[0] === 'string' ? logger.warn(args[0]) : logger.warn(args[0], args[1]),
-        error: (...args: any[]) => typeof args[0] === 'string' ? logger.error(args[0]) : logger.error(args[0], args[1]),
-        debug: (...args: any[]) => typeof args[0] === 'string' ? logger.debug(args[0]) : logger.debug(args[0], args[1]),
+        info: (...args: any[]) =>
+          typeof args[0] === 'string'
+            ? logger.info(args[0])
+            : logger.info(args[0], args[1]),
+        warn: (...args: any[]) =>
+          typeof args[0] === 'string'
+            ? logger.warn(args[0])
+            : logger.warn(args[0], args[1]),
+        error: (...args: any[]) =>
+          typeof args[0] === 'string'
+            ? logger.error(args[0])
+            : logger.error(args[0], args[1]),
+        debug: (...args: any[]) =>
+          typeof args[0] === 'string'
+            ? logger.debug(args[0])
+            : logger.debug(args[0], args[1]),
       } as any,
       stallDetectionEnabled: true,
       stallTimeoutMs: 120000, // 2 min stall timeout for coding agents
     });
 
-    this.workspacesDir = config?.workspacesDir
-      || process.env.PARALLAX_WORKSPACES_DIR
-      || path.join(process.env.HOME || '/tmp', '.parallax-swarm-workspaces');
+    this.workspacesDir =
+      config?.workspacesDir ||
+      process.env.PARALLAX_WORKSPACES_DIR ||
+      path.join(process.env.HOME || '/tmp', '.parallax-swarm-workspaces');
 
     // Register adapters
     this.registerAdapters();
   }
 
   private registerAdapters(): void {
-    const types: AdapterType[] = ['claude', 'codex', 'gemini', 'aider', 'hermes'];
+    const types: AdapterType[] = [
+      'claude',
+      'codex',
+      'gemini',
+      'aider',
+      'hermes',
+    ];
     for (const type of types) {
       try {
         const adapter = createAdapter(type);
@@ -120,7 +142,10 @@ export class ThreadExecutor {
     const approvalPreset = policy.approvalPreset || 'autonomous';
     try {
       const { generateApprovalConfig } = require('coding-agent-adapters');
-      const approvalConfig = generateApprovalConfig(adapterType, approvalPreset);
+      const approvalConfig = generateApprovalConfig(
+        adapterType,
+        approvalPreset
+      );
       if (approvalConfig?.workspaceFiles) {
         for (const file of approvalConfig.workspaceFiles) {
           const filePath = path.join(workspaceDir, file.relativePath);
@@ -130,7 +155,10 @@ export class ThreadExecutor {
         }
       }
     } catch (err: any) {
-      this.logger.warn({ error: err.message }, 'Could not write approval config files');
+      this.logger.warn(
+        { error: err.message },
+        'Could not write approval config files'
+      );
     }
 
     // Write swarm coordination MCP config and initial state
@@ -144,10 +172,17 @@ export class ThreadExecutor {
         sharedDecisions: [],
         siblings: [],
       };
-      writeFileSync(path.join(swarmDir, 'state.json'), JSON.stringify(swarmState, null, 2));
+      writeFileSync(
+        path.join(swarmDir, 'state.json'),
+        JSON.stringify(swarmState, null, 2)
+      );
 
       // Write MCP config for Claude Code
-      const mcpEntrypoint = path.join(__dirname, 'mcp', 'swarm-mcp-entrypoint.js');
+      const mcpEntrypoint = path.join(
+        __dirname,
+        'mcp',
+        'swarm-mcp-entrypoint.js'
+      );
       const claudeDir = path.join(workspaceDir, '.claude');
       mkdirSync(claudeDir, { recursive: true });
 
@@ -172,7 +207,10 @@ export class ThreadExecutor {
 
       this.logger.info({ workspaceDir }, 'Wrote swarm MCP config');
     } catch (err: any) {
-      this.logger.warn({ error: err.message }, 'Could not write swarm MCP config');
+      this.logger.warn(
+        { error: err.message },
+        'Could not write swarm MCP config'
+      );
     }
 
     // Build environment
@@ -202,7 +240,13 @@ export class ThreadExecutor {
       startedAt: new Date(),
     };
 
-    const thread = new ManagedThread(info, this.manager, onEvent, onStatusUpdate, this.logger);
+    const thread = new ManagedThread(
+      info,
+      this.manager,
+      onEvent,
+      onStatusUpdate,
+      this.logger
+    );
     this.threads.set(threadId, thread);
 
     this.logger.info(
@@ -212,7 +256,7 @@ export class ThreadExecutor {
 
     // Send the initial task once this specific session is ready
     // (skip if task is empty — workflow executor will send the task later)
-    if (task && task.trim()) {
+    if (task?.trim()) {
       const onReady = (readySession: any) => {
         if (readySession.id === session.id) {
           this.logger.info({ threadId }, 'Sending initial task to thread');
@@ -222,7 +266,10 @@ export class ThreadExecutor {
       };
       this.manager.on('session_ready', onReady);
     } else {
-      this.logger.info({ threadId }, 'No initial task — waiting for workflow to send task');
+      this.logger.info(
+        { threadId },
+        'No initial task — waiting for workflow to send task'
+      );
     }
 
     return thread;
@@ -242,7 +289,10 @@ export class ThreadExecutor {
 
     const session = this.manager.get(thread.info.sessionId);
     if (!session) {
-      this.logger.warn({ threadId, sessionId: thread.info.sessionId }, 'Session not found for input');
+      this.logger.warn(
+        { threadId, sessionId: thread.info.sessionId },
+        'Session not found for input'
+      );
       return;
     }
 
@@ -257,14 +307,20 @@ export class ThreadExecutor {
     const settleMs = POST_READY_DELAY[thread.info.adapterType] || 500;
 
     const deliverTask = () => {
-      this.logger.info({ threadId, settleMs, adapterType: thread.info.adapterType }, 'Delivering task after settle delay');
+      this.logger.info(
+        { threadId, settleMs, adapterType: thread.info.adapterType },
+        'Delivering task after settle delay'
+      );
       setTimeout(() => {
         thread.sendInput(input);
         // Retry: check after 5s if agent accepted (output grew)
         setTimeout(() => {
           const currentSession = this.manager.get(thread.info.sessionId);
           if (currentSession && currentSession.status === 'ready') {
-            this.logger.info({ threadId }, 'Agent may not have accepted task — retrying');
+            this.logger.info(
+              { threadId },
+              'Agent may not have accepted task — retrying'
+            );
             thread.sendInput(input);
           }
         }, 5000);
@@ -274,7 +330,10 @@ export class ThreadExecutor {
     if (session.status === 'ready') {
       deliverTask();
     } else {
-      this.logger.info({ threadId, sessionStatus: session.status }, 'Session not ready — deferring task delivery');
+      this.logger.info(
+        { threadId, sessionStatus: session.status },
+        'Session not ready — deferring task delivery'
+      );
       const onReady = (readySession: any) => {
         if (readySession.id === thread.info.sessionId) {
           this.manager.removeListener('session_ready', onReady);
@@ -286,7 +345,10 @@ export class ThreadExecutor {
       // Timeout: force delivery after 30s even if not ready
       setTimeout(() => {
         this.manager.removeListener('session_ready', onReady);
-        this.logger.warn({ threadId }, 'Session ready timeout — force delivering task');
+        this.logger.warn(
+          { threadId },
+          'Session ready timeout — force delivering task'
+        );
         thread.sendInput(input);
       }, 30000);
     }
@@ -317,7 +379,10 @@ export class ThreadExecutor {
   /**
    * Provision a local git workspace for the thread.
    */
-  private async provisionWorkspace(threadId: string, preparation: Preparation): Promise<string> {
+  private async provisionWorkspace(
+    threadId: string,
+    preparation: Preparation
+  ): Promise<string> {
     const ws = preparation.workspace;
 
     // If no repo specified, create a plain directory
@@ -346,7 +411,10 @@ export class ThreadExecutor {
 
     try {
       execSync(`git checkout -b ${featureBranch}`, { cwd: dir, stdio: 'pipe' });
-      this.logger.info({ threadId, featureBranch, baseBranch }, 'Created feature branch');
+      this.logger.info(
+        { threadId, featureBranch, baseBranch },
+        'Created feature branch'
+      );
     } catch {
       // Branch might already exist
       execSync(`git checkout ${featureBranch}`, { cwd: dir, stdio: 'pipe' });

@@ -1,18 +1,22 @@
 export { ParallaxClient } from './client.js';
 export { ParallaxClientConfig } from './config.js';
-export { ParallaxError, ParallaxTimeoutError, ParallaxNetworkError } from './error.js';
-export * from './types/index.js';
 export {
-  PatternsResource,
+  ParallaxError,
+  ParallaxNetworkError,
+  ParallaxTimeoutError,
+} from './error.js';
+export {
   AgentsResource,
+  AuditResource,
+  AuthResource,
+  BackupResource,
   ExecutionsResource,
-  SchedulesResource,
   LicenseResource,
   ManagedAgentsResource,
   ManagedThreadsResource,
+  PatternsResource,
+  SchedulesResource,
   TriggersResource,
-  AuthResource,
   UsersResource,
-  AuditResource,
-  BackupResource,
 } from './resources/index.js';
+export * from './types/index.js';

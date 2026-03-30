@@ -2,13 +2,13 @@
  * gRPC client proxy for calling agents
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
-import path from 'path';
-import { Logger } from 'pino';
+import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs';
-import type { GatewayService, GatewayDispatchResult } from './services/gateway-service';
+import type { GatewayService } from './services/gateway-service';
 
 const PROTO_DIR = path.join(__dirname, '../../../../proto');
 
@@ -48,7 +48,9 @@ export class AgentProxy {
       return { nullValue: 0 };
     }
     if (Array.isArray(value)) {
-      return { listValue: { values: value.map((item) => this.toStructValue(item)) } };
+      return {
+        listValue: { values: value.map((item) => this.toStructValue(item)) },
+      };
     }
     if (typeof value === 'object') {
       const fields: Record<string, any> = {};
@@ -77,10 +79,12 @@ export class AgentProxy {
       enums: String,
       defaults: true,
       oneofs: true,
-      includeDirs: [PROTO_DIR]
+      includeDirs: [PROTO_DIR],
     });
-    
-    const protoDescriptor = grpc.loadPackageDefinition(packageDefinition) as any;
+
+    const protoDescriptor = grpc.loadPackageDefinition(
+      packageDefinition
+    ) as any;
     this.confidenceProto = protoDescriptor.parallax.confidence;
   }
 
@@ -108,7 +112,9 @@ export class AgentProxy {
 
     try {
       if (!caPath) {
-        this.logger.warn('PARALLAX_AGENT_MTLS_CA not set; falling back to insecure agent credentials');
+        this.logger.warn(
+          'PARALLAX_AGENT_MTLS_CA not set; falling back to insecure agent credentials'
+        );
         return grpc.credentials.createInsecure();
       }
 
@@ -121,7 +127,10 @@ export class AgentProxy {
       }
       return grpc.credentials.createSsl(ca);
     } catch (error) {
-      this.logger.warn({ error }, 'Failed to load agent mTLS credentials; falling back to insecure');
+      this.logger.warn(
+        { error },
+        'Failed to load agent mTLS credentials; falling back to insecure'
+      );
       return grpc.credentials.createInsecure();
     }
   }
@@ -140,7 +149,7 @@ export class AgentProxy {
     }
 
     const client = this.getClient(agentAddress);
-    
+
     return new Promise((resolve) => {
       const deadline = new Date();
       deadline.setSeconds(deadline.getSeconds() + Math.floor(timeout / 1000));
@@ -150,30 +159,38 @@ export class AgentProxy {
         task_description: task.description,
         data: this.toStruct(task.data || {}),
         context: task.metadata || {},
-        timeout_ms: timeout
+        timeout_ms: timeout,
       };
 
       this.logger.debug({ agentAddress, task }, 'Executing task on agent');
 
       client.analyze(request, { deadline }, (error: any, response: any) => {
         if (error) {
-          this.logger.error({ error, agentAddress }, 'Failed to execute task on agent');
+          this.logger.error(
+            { error, agentAddress },
+            'Failed to execute task on agent'
+          );
           resolve({
             confidence: 0,
-            error: error.message
+            error: error.message,
           });
           return;
         }
 
         const result: AgentResult = {
-          value: response.value_json ? JSON.parse(response.value_json) : undefined,
+          value: response.value_json
+            ? JSON.parse(response.value_json)
+            : undefined,
           confidence: response.confidence || 0,
           reasoning: response.reasoning,
           metadata: response.metadata || {},
-          error: response.error
+          error: response.error,
         };
 
-        this.logger.debug({ agentAddress, result }, 'Received result from agent');
+        this.logger.debug(
+          { agentAddress, result },
+          'Received result from agent'
+        );
         resolve(result);
       });
     });
@@ -196,7 +213,7 @@ export class AgentProxy {
     }
 
     const client = this.getClient(agentAddress);
-    
+
     return new Promise((resolve, reject) => {
       const deadline = new Date();
       deadline.setSeconds(deadline.getSeconds() + Math.floor(timeout / 1000));
@@ -206,20 +223,22 @@ export class AgentProxy {
         task_description: task.description,
         data: task.data || {},
         context: task.metadata || {},
-        timeout_ms: timeout
+        timeout_ms: timeout,
       };
 
       const stream = client.streamAnalyze(request, { deadline });
 
       stream.on('data', (response: any) => {
         const result: AgentResult = {
-          value: response.value_json ? JSON.parse(response.value_json) : undefined,
+          value: response.value_json
+            ? JSON.parse(response.value_json)
+            : undefined,
           confidence: response.confidence || 0,
           reasoning: response.reasoning,
           metadata: response.metadata || {},
-          error: response.error
+          error: response.error,
         };
-        
+
         onResult(result);
       });
 
@@ -238,7 +257,10 @@ export class AgentProxy {
   /**
    * Get capabilities from an agent
    */
-  async getCapabilities(agentAddress: string, timeout: number = 5000): Promise<string[]> {
+  async getCapabilities(
+    agentAddress: string,
+    timeout: number = 5000
+  ): Promise<string[]> {
     // Gateway agents: return capabilities from session
     if (agentAddress.startsWith('gateway://') && this.gatewayService) {
       const agentId = agentAddress.replace('gateway://', '');
@@ -246,14 +268,17 @@ export class AgentProxy {
     }
 
     const client = this.getClient(agentAddress);
-    
+
     return new Promise((resolve) => {
       const deadline = new Date();
       deadline.setSeconds(deadline.getSeconds() + Math.floor(timeout / 1000));
 
       client.getCapabilities({}, { deadline }, (error: any, response: any) => {
         if (error) {
-          this.logger.error({ error, agentAddress }, 'Failed to get capabilities');
+          this.logger.error(
+            { error, agentAddress },
+            'Failed to get capabilities'
+          );
           resolve([]); // Return empty capabilities on error
           return;
         }
@@ -266,7 +291,10 @@ export class AgentProxy {
   /**
    * Health check an agent
    */
-  async healthCheck(agentAddress: string, timeout: number = 5000): Promise<boolean> {
+  async healthCheck(
+    agentAddress: string,
+    timeout: number = 5000
+  ): Promise<boolean> {
     // Gateway agents: check session status
     if (agentAddress.startsWith('gateway://') && this.gatewayService) {
       const agentId = agentAddress.replace('gateway://', '');
@@ -274,7 +302,7 @@ export class AgentProxy {
     }
 
     const client = this.getClient(agentAddress);
-    
+
     return new Promise((resolve) => {
       const deadline = new Date();
       deadline.setSeconds(deadline.getSeconds() + Math.floor(timeout / 1000));
@@ -347,7 +375,9 @@ export class AgentProxy {
     timeout: number = 60000
   ): Promise<any> {
     if (!agentAddress.startsWith('gateway://')) {
-      throw new Error(`Thread spawning only supported for gateway agents, got: ${agentAddress}`);
+      throw new Error(
+        `Thread spawning only supported for gateway agents, got: ${agentAddress}`
+      );
     }
     if (!this.gatewayService) {
       throw new Error('Gateway service not available');
@@ -367,14 +397,21 @@ export class AgentProxy {
     inputType: string = 'text'
   ): Promise<void> {
     if (!agentAddress.startsWith('gateway://')) {
-      throw new Error(`Thread input only supported for gateway agents, got: ${agentAddress}`);
+      throw new Error(
+        `Thread input only supported for gateway agents, got: ${agentAddress}`
+      );
     }
     if (!this.gatewayService) {
       throw new Error('Gateway service not available');
     }
 
     const agentId = agentAddress.replace('gateway://', '');
-    this.gatewayService.dispatchThreadInput(agentId, threadId, input, inputType);
+    this.gatewayService.dispatchThreadInput(
+      agentId,
+      threadId,
+      input,
+      inputType
+    );
   }
 
   /**
@@ -386,7 +423,9 @@ export class AgentProxy {
     options?: { reason?: string; force?: boolean }
   ): Promise<void> {
     if (!agentAddress.startsWith('gateway://')) {
-      throw new Error(`Thread stop only supported for gateway agents, got: ${agentAddress}`);
+      throw new Error(
+        `Thread stop only supported for gateway agents, got: ${agentAddress}`
+      );
     }
     if (!this.gatewayService) {
       throw new Error('Gateway service not available');

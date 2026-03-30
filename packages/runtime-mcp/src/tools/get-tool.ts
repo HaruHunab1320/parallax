@@ -2,9 +2,9 @@
  * Get Tool - Get agent details
  */
 
-import type { LocalRuntime } from '@parallaxai/runtime-local';
 import type { AgentHandle } from '@parallaxai/runtime-interface';
-import { GetInputSchema, type GetInput } from './schemas.js';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import { type GetInput, GetInputSchema } from './schemas.js';
 
 export const GET_TOOL = {
   name: 'get',
@@ -15,7 +15,9 @@ export const GET_TOOL = {
 export async function executeGet(
   runtime: LocalRuntime,
   input: GetInput
-): Promise<{ success: true; agent: AgentHandle } | { success: false; error: string }> {
+): Promise<
+  { success: true; agent: AgentHandle } | { success: false; error: string }
+> {
   try {
     const agent = await runtime.get(input.agentId);
 

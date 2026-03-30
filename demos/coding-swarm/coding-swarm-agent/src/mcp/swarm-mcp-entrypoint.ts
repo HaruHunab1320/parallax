@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+
 /**
  * Swarm MCP Entrypoint
  *
@@ -13,14 +14,14 @@
  *   PARALLAX_WORKSPACE_DIR   — workspace directory (contains .parallax-swarm/)
  */
 
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import path from 'path';
 
 const THREAD_ID = process.env.PARALLAX_THREAD_ID || 'unknown';
 const EXECUTION_ID = process.env.PARALLAX_EXECUTION_ID || 'unknown';
@@ -71,7 +72,7 @@ function appendOutbox(message: {
   data: any;
 }): void {
   mkdirSync(SWARM_DIR, { recursive: true });
-  const line = JSON.stringify({ ...message, timestamp: Date.now() }) + '\n';
+  const line = `${JSON.stringify({ ...message, timestamp: Date.now() })}\n`;
   writeFileSync(OUTBOX_FILE, line, { flag: 'a' });
 }
 
@@ -84,8 +85,14 @@ const TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        question: { type: 'string', description: 'Your question for the architect' },
-        context: { type: 'string', description: 'Context about what you are working on' },
+        question: {
+          type: 'string',
+          description: 'Your question for the architect',
+        },
+        context: {
+          type: 'string',
+          description: 'Context about what you are working on',
+        },
       },
       required: ['question'],
     },
@@ -101,7 +108,14 @@ const TOOLS = [
         decision: { type: 'string', description: 'The decision and rationale' },
         category: {
           type: 'string',
-          enum: ['architecture', 'naming', 'library', 'api_design', 'testing', 'other'],
+          enum: [
+            'architecture',
+            'naming',
+            'library',
+            'api_design',
+            'testing',
+            'other',
+          ],
         },
       },
       required: ['decision'],
@@ -126,7 +140,9 @@ async function main() {
     { capabilities: { tools: {} } }
   );
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: TOOLS,
+  }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
     const { name, arguments: args = {} } = request.params;
@@ -146,7 +162,8 @@ async function main() {
         // For now, return acknowledgment — async response pattern
         result = {
           status: 'question_sent',
-          message: 'Question sent to architect. Check shared context for the response.',
+          message:
+            'Question sent to architect. Check shared context for the response.',
           question: args.question,
         };
         break;
@@ -157,7 +174,7 @@ async function main() {
         const decision = {
           from: ROLE,
           decision: args.decision as string,
-          category: args.category as string || 'other',
+          category: (args.category as string) || 'other',
           timestamp: Date.now(),
         };
         state.sharedDecisions.push(decision);
@@ -202,7 +219,9 @@ async function main() {
     }
 
     return {
-      content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+      content: [
+        { type: 'text' as const, text: JSON.stringify(result, null, 2) },
+      ],
     };
   });
 

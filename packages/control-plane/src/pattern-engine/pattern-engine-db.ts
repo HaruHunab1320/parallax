@@ -1,5 +1,5 @@
-import { PatternExecution } from './types';
-import { DatabaseService } from '../db/database.service';
+import type { DatabaseService } from '../db/database.service';
+import type { PatternExecution } from './types';
 
 /**
  * Extension methods for PatternEngine to support database persistence
@@ -29,7 +29,7 @@ export async function createExecutionInDb(
   // Create execution record with resilience fields
   const createData: any = {
     pattern: {
-      connect: { id: pattern.id }
+      connect: { id: pattern.id },
     },
     input: input,
     status: 'running',
@@ -83,8 +83,12 @@ export async function updateExecutionInDb(
   // Add event for status change
   if (updates.status) {
     await database.executions.addEvent(executionId, {
-      type: updates.status === 'completed' ? 'completed' : 
-            updates.status === 'failed' ? 'failed' : 'status_changed',
+      type:
+        updates.status === 'completed'
+          ? 'completed'
+          : updates.status === 'failed'
+            ? 'failed'
+            : 'status_changed',
       data: updates,
     });
   }
@@ -111,21 +115,22 @@ export async function convertExecutionFromDb(
     id: dbExecution.id,
     patternName: dbExecution.pattern?.name || 'unknown',
     startTime: dbExecution.time,
-    endTime: dbExecution.status === 'completed' || dbExecution.status === 'failed' 
-      ? new Date(dbExecution.time.getTime() + (dbExecution.durationMs || 0))
-      : undefined,
+    endTime:
+      dbExecution.status === 'completed' || dbExecution.status === 'failed'
+        ? new Date(dbExecution.time.getTime() + (dbExecution.durationMs || 0))
+        : undefined,
     status: dbExecution.status as any,
     result: dbExecution.result,
     error: dbExecution.error || undefined,
     metrics: {
       confidence: dbExecution.confidence || 0,
-      warnings: dbExecution.warnings ? dbExecution.warnings as string[] : [],
+      warnings: dbExecution.warnings ? (dbExecution.warnings as string[]) : [],
       duration: dbExecution.durationMs || 0,
       pattern: dbExecution.pattern?.name || 'unknown',
       patternName: dbExecution.pattern?.name || 'unknown',
       agentCount: dbExecution.agentCount || 0,
       timestamp: dbExecution.time.toISOString(),
-      success: dbExecution.status === 'completed'
+      success: dbExecution.status === 'completed',
     },
   };
 }

@@ -6,9 +6,9 @@
  * cleanup tasks, and other singleton operations.
  */
 
-import { Etcd3, Election, Campaign } from 'etcd3';
-import { EventEmitter } from 'events';
-import { Logger } from 'pino';
+import { EventEmitter } from 'node:events';
+import { type Campaign, type Election, Etcd3 } from 'etcd3';
+import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface LeaderElectionConfig {
@@ -31,15 +31,21 @@ export interface LeaderInfo {
 }
 
 export interface LeaderElectionEvents {
-  'elected': (info: LeaderInfo) => void;
-  'demoted': () => void;
+  elected: (info: LeaderInfo) => void;
+  demoted: () => void;
   'leader-changed': (leaderId: string | null) => void;
-  'error': (error: Error) => void;
+  error: (error: Error) => void;
 }
 
 export declare interface LeaderElectionService {
-  on<E extends keyof LeaderElectionEvents>(event: E, listener: LeaderElectionEvents[E]): this;
-  emit<E extends keyof LeaderElectionEvents>(event: E, ...args: Parameters<LeaderElectionEvents[E]>): boolean;
+  on<E extends keyof LeaderElectionEvents>(
+    event: E,
+    listener: LeaderElectionEvents[E]
+  ): this;
+  emit<E extends keyof LeaderElectionEvents>(
+    event: E,
+    ...args: Parameters<LeaderElectionEvents[E]>
+  ): boolean;
 }
 
 export class LeaderElectionService extends EventEmitter {
@@ -50,7 +56,6 @@ export class LeaderElectionService extends EventEmitter {
   private instanceId: string;
   private metadata: Record<string, any>;
   private electionName: string;
-  private _leaseTTL: number;
   private isRunning = false;
   private _isLeader = false;
   private currentLeaderId: string | null = null;
@@ -63,7 +68,10 @@ export class LeaderElectionService extends EventEmitter {
     this._leaseTTL = config.leaseTTL || 10; // 10 second lease
     this.instanceId = config.instanceId || `cp-${uuidv4().slice(0, 8)}`;
     this.metadata = config.metadata || {};
-    this.logger = logger.child({ component: 'LeaderElection', instanceId: this.instanceId });
+    this.logger = logger.child({
+      component: 'LeaderElection',
+      instanceId: this.instanceId,
+    });
 
     this.election = this.client.election(this.electionName);
   }
@@ -217,7 +225,10 @@ export class LeaderElectionService extends EventEmitter {
         try {
           const leaderData = JSON.parse(leader);
           this.currentLeaderId = leaderData.instanceId;
-          this.logger.info({ leaderId: this.currentLeaderId }, 'Current leader detected');
+          this.logger.info(
+            { leaderId: this.currentLeaderId },
+            'Current leader detected'
+          );
         } catch {
           this.currentLeaderId = leader;
         }
@@ -254,7 +265,6 @@ export class LeaderElectionService extends EventEmitter {
           setTimeout(() => this.watchLeader(), 1000);
         }
       });
-
     } catch (error) {
       this.logger.error({ error }, 'Failed to watch leader');
       throw error;

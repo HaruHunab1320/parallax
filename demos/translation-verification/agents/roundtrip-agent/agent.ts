@@ -11,8 +11,8 @@
  * Low similarity (<85%) = potential meaning loss, flag for review
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'roundtrip-verifier';
@@ -27,9 +27,9 @@ class RoundTripAgent extends ParallaxAgent {
       AGENT_NAME,
       ['translation', 'verification', 'roundtrip', 'quality'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Verifies translation quality via round-trip translation'
+        description: 'Verifies translation quality via round-trip translation',
       }
     );
 
@@ -43,7 +43,10 @@ class RoundTripAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -52,7 +55,7 @@ class RoundTripAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -75,7 +78,7 @@ ${text}`;
       return {
         value: { error: 'Forward translation failed', checkType: 'roundtrip' },
         confidence: 0,
-        reasoning: 'Round-trip verification failed at forward step'
+        reasoning: 'Round-trip verification failed at forward step',
       };
     }
 
@@ -94,7 +97,7 @@ ${forwardTranslation}`;
       return {
         value: { error: 'Back translation failed', checkType: 'roundtrip' },
         confidence: 0,
-        reasoning: 'Round-trip verification failed at back-translation step'
+        reasoning: 'Round-trip verification failed at back-translation step',
       };
     }
 
@@ -127,16 +130,20 @@ You MUST respond in this exact JSON format:
 }`;
 
     try {
-      const comparisonResult = await this.model.generateContent(comparisonPrompt);
+      const comparisonResult =
+        await this.model.generateContent(comparisonPrompt);
       const comparisonText = comparisonResult.response.text();
 
       // Extract JSON from response
       const jsonMatch = comparisonText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         return {
-          value: { error: 'Could not parse comparison', checkType: 'roundtrip' },
+          value: {
+            error: 'Could not parse comparison',
+            checkType: 'roundtrip',
+          },
           confidence: 0.3,
-          reasoning: comparisonText.substring(0, 200)
+          reasoning: comparisonText.substring(0, 200),
         };
       }
 
@@ -154,17 +161,19 @@ You MUST respond in this exact JSON format:
           differences: parsed.differences || [],
           lostNuances: parsed.lostNuances || [],
           checkType: 'roundtrip',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: similarity,
-        reasoning: parsed.reasoning || `Round-trip similarity: ${Math.round(similarity * 100)}%`
+        reasoning:
+          parsed.reasoning ||
+          `Round-trip similarity: ${Math.round(similarity * 100)}%`,
       };
     } catch (error) {
       console.error('Comparison error:', error);
       return {
         value: { error: String(error), checkType: 'roundtrip' },
         confidence: 0,
-        reasoning: 'Comparison failed'
+        reasoning: 'Comparison failed',
       };
     }
   }

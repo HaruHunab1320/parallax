@@ -1,15 +1,15 @@
-import { EventEmitter } from 'events';
-import { describe, expect, it, vi } from 'vitest';
+import { EventEmitter } from 'node:events';
 import type {
+  AutoResponseRule,
   SessionHandle,
   SessionMessage,
   StopOptions,
   TerminalAttachment,
-  AutoResponseRule,
   WorkerSessionHandle,
 } from 'pty-manager';
+import { describe, expect, it, vi } from 'vitest';
 import { PTYConsoleBridge } from './pty-console-bridge';
-import type { PTYManagerLike, PTYManagerAsyncLike } from './types';
+import type { PTYManagerAsyncLike, PTYManagerLike } from './types';
 
 class FakeTerminal {
   private listeners = new Set<(data: string) => void>();
@@ -35,15 +35,19 @@ class FakeTerminal {
 class FakeManager extends EventEmitter implements PTYManagerLike {
   readonly handles = new Map<string, SessionHandle>();
   readonly terminals = new Map<string, FakeTerminal>();
-  readonly send = vi.fn<(sessionId: string, message: string) => SessionMessage>((sessionId, message) => ({
-    id: 'm1',
-    sessionId,
-    direction: 'inbound',
-    type: 'task',
-    content: message,
-    timestamp: new Date(),
-  }));
-  readonly stop = vi.fn<(sessionId: string, options?: StopOptions) => Promise<void>>(async () => {});
+  readonly send = vi.fn<(sessionId: string, message: string) => SessionMessage>(
+    (sessionId, message) => ({
+      id: 'm1',
+      sessionId,
+      direction: 'inbound',
+      type: 'task',
+      content: message,
+      timestamp: new Date(),
+    })
+  );
+  readonly stop = vi.fn<
+    (sessionId: string, options?: StopOptions) => Promise<void>
+  >(async () => {});
 
   list(): SessionHandle[] {
     return [...this.handles.values()];
@@ -57,13 +61,15 @@ class FakeManager extends EventEmitter implements PTYManagerLike {
     return this.terminals.get(sessionId)?.asAttachment() ?? null;
   }
 
-  getSession(_sessionId: string): {
-    sendKeys: (keys: string[] | string) => void;
-    resize: (cols: number, rows: number) => void;
-    writeRaw: (data: string) => void;
-    addAutoResponseRule: () => void;
-    clearAutoResponseRules: () => void;
-  } | undefined {
+  getSession(_sessionId: string):
+    | {
+        sendKeys: (keys: string[] | string) => void;
+        resize: (cols: number, rows: number) => void;
+        writeRaw: (data: string) => void;
+        addAutoResponseRule: () => void;
+        clearAutoResponseRules: () => void;
+      }
+    | undefined {
     return {
       sendKeys: () => {},
       resize: () => {},
@@ -76,15 +82,32 @@ class FakeManager extends EventEmitter implements PTYManagerLike {
 
 class FakeAsyncManager extends EventEmitter implements PTYManagerAsyncLike {
   readonly sessions = new Map<string, WorkerSessionHandle>();
-  private readonly dataCallbacks = new Map<string, Set<(data: string) => void>>();
+  private readonly dataCallbacks = new Map<
+    string,
+    Set<(data: string) => void>
+  >();
 
-  readonly send = vi.fn<(sessionId: string, data: string) => Promise<void>>(async () => {});
-  readonly sendKeys = vi.fn<(sessionId: string, keys: string[] | string) => Promise<void>>(async () => {});
-  readonly writeRaw = vi.fn<(sessionId: string, data: string) => Promise<void>>(async () => {});
-  readonly resize = vi.fn<(sessionId: string, cols: number, rows: number) => Promise<void>>(async () => {});
-  readonly kill = vi.fn<(sessionId: string, signal?: string) => Promise<void>>(async () => {});
-  readonly addAutoResponseRule = vi.fn<(sessionId: string, rule: AutoResponseRule) => Promise<void>>(async () => {});
-  readonly clearAutoResponseRules = vi.fn<(sessionId: string) => Promise<void>>(async () => {});
+  readonly send = vi.fn<(sessionId: string, data: string) => Promise<void>>(
+    async () => {}
+  );
+  readonly sendKeys = vi.fn<
+    (sessionId: string, keys: string[] | string) => Promise<void>
+  >(async () => {});
+  readonly writeRaw = vi.fn<(sessionId: string, data: string) => Promise<void>>(
+    async () => {}
+  );
+  readonly resize = vi.fn<
+    (sessionId: string, cols: number, rows: number) => Promise<void>
+  >(async () => {});
+  readonly kill = vi.fn<(sessionId: string, signal?: string) => Promise<void>>(
+    async () => {}
+  );
+  readonly addAutoResponseRule = vi.fn<
+    (sessionId: string, rule: AutoResponseRule) => Promise<void>
+  >(async () => {});
+  readonly clearAutoResponseRules = vi.fn<(sessionId: string) => Promise<void>>(
+    async () => {}
+  );
 
   async list(): Promise<WorkerSessionHandle[]> {
     return [...this.sessions.values()];
@@ -94,7 +117,10 @@ class FakeAsyncManager extends EventEmitter implements PTYManagerAsyncLike {
     return this.sessions.get(sessionId);
   }
 
-  onSessionData(sessionId: string, callback: (data: string) => void): () => void {
+  onSessionData(
+    sessionId: string,
+    callback: (data: string) => void
+  ): () => void {
     if (!this.dataCallbacks.has(sessionId)) {
       this.dataCallbacks.set(sessionId, new Set());
     }
@@ -127,7 +153,9 @@ describe('PTYConsoleBridge', () => {
     });
     manager.terminals.set('s1', terminal);
 
-    const bridge = new PTYConsoleBridge(manager, { maxBufferedCharsPerSession: 10 });
+    const bridge = new PTYConsoleBridge(manager, {
+      maxBufferedCharsPerSession: 10,
+    });
     const outputListener = vi.fn();
     bridge.on('session_output', outputListener);
 
@@ -145,13 +173,20 @@ describe('PTYConsoleBridge', () => {
     const statusListener = vi.fn();
     bridge.on('session_status', statusListener);
 
-    const handle: SessionHandle = { id: 's2', name: 'agent2', type: 'codex', status: 'ready' };
+    const handle: SessionHandle = {
+      id: 's2',
+      name: 'agent2',
+      type: 'codex',
+      status: 'ready',
+    };
     manager.emit('session_ready', handle);
 
-    expect(statusListener).toHaveBeenCalledWith(expect.objectContaining({
-      kind: 'ready',
-      session: handle,
-    }));
+    expect(statusListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'ready',
+        session: handle,
+      })
+    );
     bridge.close();
   });
 
@@ -185,14 +220,16 @@ describe('PTYConsoleBridge', () => {
       instructions: 'Open the URL to sign in',
     });
 
-    expect(statusListener).toHaveBeenCalledWith(expect.objectContaining({
-      kind: 'auth_required',
-      session: handle,
-      auth: expect.objectContaining({
-        method: 'oauth_browser',
-        url: 'https://claude.ai/oauth/authorize',
-      }),
-    }));
+    expect(statusListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'auth_required',
+        session: handle,
+        auth: expect.objectContaining({
+          method: 'oauth_browser',
+          url: 'https://claude.ai/oauth/authorize',
+        }),
+      })
+    );
     bridge.close();
   });
 });
@@ -211,7 +248,9 @@ describe('PTYConsoleBridge (async manager)', () => {
     };
     manager.sessions.set('a1', handle);
 
-    const bridge = new PTYConsoleBridge(manager, { maxBufferedCharsPerSession: 20 });
+    const bridge = new PTYConsoleBridge(manager, {
+      maxBufferedCharsPerSession: 20,
+    });
 
     // Wait for async attachToExistingSessions to complete
     await new Promise((r) => setTimeout(r, 10));
@@ -249,10 +288,13 @@ describe('PTYConsoleBridge (async manager)', () => {
     expect(manager.sendKeys).toHaveBeenCalledWith('a2', ['Enter']);
     expect(manager.resize).toHaveBeenCalledWith('a2', 200, 50);
     expect(manager.kill).toHaveBeenCalledWith('a2');
-    expect(manager.addAutoResponseRule).toHaveBeenCalledWith('a2', expect.objectContaining({
-      type: 'confirmation',
-      response: 'y',
-    }));
+    expect(manager.addAutoResponseRule).toHaveBeenCalledWith(
+      'a2',
+      expect.objectContaining({
+        type: 'confirmation',
+        response: 'y',
+      })
+    );
     expect(manager.clearAutoResponseRules).toHaveBeenCalledWith('a2');
     bridge.close();
   });
@@ -275,10 +317,12 @@ describe('PTYConsoleBridge (async manager)', () => {
 
     // session_started should add to cache and attach
     manager.emit('session_started', handle);
-    expect(statusListener).toHaveBeenCalledWith(expect.objectContaining({
-      kind: 'started',
-      session: handle,
-    }));
+    expect(statusListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'started',
+        session: handle,
+      })
+    );
     expect(bridge.listSessions()).toHaveLength(1);
 
     // Push data through onSessionData
@@ -289,11 +333,13 @@ describe('PTYConsoleBridge (async manager)', () => {
 
     // session_stopped should remove from cache
     manager.emit('session_stopped', handle, 'exited');
-    expect(statusListener).toHaveBeenCalledWith(expect.objectContaining({
-      kind: 'stopped',
-      session: handle,
-      reason: 'exited',
-    }));
+    expect(statusListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'stopped',
+        session: handle,
+        reason: 'exited',
+      })
+    );
     expect(bridge.listSessions()).toHaveLength(0);
 
     bridge.close();

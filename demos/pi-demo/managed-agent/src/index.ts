@@ -1,6 +1,6 @@
-import { ParallaxAgent, AgentResponse } from '@parallaxai/sdk-typescript';
+import os from 'node:os';
+import { type AgentResponse, ParallaxAgent } from '@parallaxai/sdk-typescript';
 import express from 'express';
-import os from 'os';
 
 /**
  * Managed Cloud Agent
@@ -76,7 +76,9 @@ class ManagedCloudAgent extends ParallaxAgent {
           memory: {
             total_mb: Math.round(os.totalmem() / 1024 / 1024),
             free_mb: Math.round(os.freemem() / 1024 / 1024),
-            used_percent: Math.round(((os.totalmem() - os.freemem()) / os.totalmem()) * 100),
+            used_percent: Math.round(
+              ((os.totalmem() - os.freemem()) / os.totalmem()) * 100
+            ),
           },
           environment: 'kubernetes',
         },

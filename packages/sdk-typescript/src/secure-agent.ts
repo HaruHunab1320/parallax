@@ -1,6 +1,6 @@
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import * as grpc from '@grpc/grpc-js';
-import { promises as fs } from 'fs';
-import path from 'path';
 import { ParallaxAgent } from './agent-base';
 
 // Temporarily define types here until packages are fixed
@@ -31,10 +31,16 @@ export class MTLSCredentialsProvider {
   private clientCert?: Buffer;
   private clientKey?: Buffer;
 
-  constructor(private config: MTLSConfig, private logger: Logger) {}
+  constructor(
+    private config: MTLSConfig,
+    private logger: Logger
+  ) {}
 
   private resolvePath(file?: string, fallback?: string): string | undefined {
-    if (file) return path.isAbsolute(file) ? file : path.join(this.config.certsDir, file);
+    if (file)
+      return path.isAbsolute(file)
+        ? file
+        : path.join(this.config.certsDir, file);
     if (fallback) return path.join(this.config.certsDir, fallback);
     return undefined;
   }
@@ -43,8 +49,14 @@ export class MTLSCredentialsProvider {
     const caPath = this.resolvePath(this.config.caFile, 'ca.pem');
     const certPath = this.resolvePath(this.config.certFile, 'server.pem');
     const keyPath = this.resolvePath(this.config.keyFile, 'server-key.pem');
-    const clientCertPath = this.resolvePath(this.config.clientCertFile, this.config.certFile || 'client.pem');
-    const clientKeyPath = this.resolvePath(this.config.clientKeyFile, this.config.keyFile || 'client-key.pem');
+    const clientCertPath = this.resolvePath(
+      this.config.clientCertFile,
+      this.config.certFile || 'client.pem'
+    );
+    const clientKeyPath = this.resolvePath(
+      this.config.clientKeyFile,
+      this.config.keyFile || 'client-key.pem'
+    );
 
     if (caPath) {
       this.ca = await fs.readFile(caPath);
@@ -62,12 +74,17 @@ export class MTLSCredentialsProvider {
       this.clientKey = await fs.readFile(clientKeyPath);
     }
   }
-  
-  async getServerCredentials(serviceName: string): Promise<grpc.ServerCredentials> {
+
+  async getServerCredentials(
+    serviceName: string
+  ): Promise<grpc.ServerCredentials> {
     await this.loadMaterial();
     if (!this.ca || !this.serverCert || !this.serverKey) {
       if (this.config.allowInsecure) {
-        this.logger.warn({ serviceName }, 'mTLS files missing; falling back to insecure server credentials');
+        this.logger.warn(
+          { serviceName },
+          'mTLS files missing; falling back to insecure server credentials'
+        );
         return grpc.ServerCredentials.createInsecure();
       }
       throw new Error('mTLS server credentials missing (ca, cert, or key)');
@@ -89,28 +106,36 @@ export class MTLSCredentialsProvider {
     await this.loadMaterial();
     if (!this.ca) {
       if (this.config.allowInsecure) {
-        this.logger.warn('mTLS CA missing; falling back to insecure client credentials');
+        this.logger.warn(
+          'mTLS CA missing; falling back to insecure client credentials'
+        );
         return grpc.credentials.createInsecure();
       }
       throw new Error('mTLS client credentials missing CA');
     }
 
     if (this.clientCert && this.clientKey) {
-      return grpc.credentials.createSsl(this.ca, this.clientKey, this.clientCert);
+      return grpc.credentials.createSsl(
+        this.ca,
+        this.clientKey,
+        this.clientCert
+      );
     }
 
     return grpc.credentials.createSsl(this.ca);
   }
-  
+
   createVerificationInterceptor(): any {
     return null;
   }
-  
-  async verifyClientCertificate(_call: grpc.ServerUnaryCall<any, any>): Promise<{ verified: boolean; clientId?: string; error?: string }> {
+
+  async verifyClientCertificate(
+    _call: grpc.ServerUnaryCall<any, any>
+  ): Promise<{ verified: boolean; clientId?: string; error?: string }> {
     // TLS verification is handled by grpc-js when checkClientCertificate is true.
     return { verified: true };
   }
-  
+
   async rotateCertificates(_serviceName: string): Promise<void> {
     await this.loadMaterial();
   }
@@ -123,7 +148,7 @@ export abstract class SecureParallaxAgent extends ParallaxAgent {
   protected mtlsConfig?: MTLSConfig;
   protected logger?: Logger;
   protected credentialsProvider?: MTLSCredentialsProvider;
-  
+
   constructor(
     id: string,
     name: string,
@@ -135,59 +160,75 @@ export abstract class SecureParallaxAgent extends ParallaxAgent {
     super(id, name, capabilities, metadata);
     this.mtlsConfig = mtlsConfig;
     this.logger = logger || console;
-    
+
     if (mtlsConfig?.enabled) {
-      this.credentialsProvider = new MTLSCredentialsProvider(mtlsConfig, this.logger!);
+      this.credentialsProvider = new MTLSCredentialsProvider(
+        mtlsConfig,
+        this.logger!
+      );
     }
   }
-  
+
   /**
    * Start the agent server with mTLS
    */
-  async serveSecure(port: number = 0, registryEndpoint?: string): Promise<number> {
+  async serveSecure(
+    port: number = 0,
+    registryEndpoint?: string
+  ): Promise<number> {
     // Get credentials
     let credentials: grpc.ServerCredentials;
-    
+
     if (this.mtlsConfig?.enabled && this.credentialsProvider) {
       this.logger?.info('Starting agent with mTLS enabled');
-      credentials = await this.credentialsProvider.getServerCredentials(this.id);
+      credentials = await this.credentialsProvider.getServerCredentials(
+        this.id
+      );
     } else {
       this.logger?.warn('Starting agent with insecure credentials');
       credentials = grpc.ServerCredentials.createInsecure();
     }
-    
+
     return this.serve(port, {
       serverCredentials: credentials,
       registryEndpoint: registryEndpoint || process.env.PARALLAX_REGISTRY,
-      registryCredentials: this.mtlsConfig?.enabled && this.credentialsProvider
-        ? await this.credentialsProvider.getClientCredentials()
-        : undefined,
+      registryCredentials:
+        this.mtlsConfig?.enabled && this.credentialsProvider
+          ? await this.credentialsProvider.getClientCredentials()
+          : undefined,
       verifyRequest: this.verifyRequest.bind(this),
     });
   }
-  
+
   /**
    * Register with the control plane using secure connection
    */
-  async registerSecure(registryEndpoint: string, agentAddress: string): Promise<void> {
-    this.logger?.info({ 
-      agentId: this.id, 
-      registry: registryEndpoint 
-    }, 'Registering agent with control plane');
-    
+  async registerSecure(
+    registryEndpoint: string,
+    agentAddress: string
+  ): Promise<void> {
+    this.logger?.info(
+      {
+        agentId: this.id,
+        registry: registryEndpoint,
+      },
+      'Registering agent with control plane'
+    );
+
     // In a real implementation, this would:
     // 1. Connect to the registry with mTLS
     // 2. Register the agent with its certificate
     // 3. Periodically renew registration
-    
+
     // For now, we'll use environment variables or service discovery
-    const credentials = this.mtlsConfig?.enabled && this.credentialsProvider
-      ? await this.credentialsProvider.getClientCredentials()
-      : undefined;
+    const credentials =
+      this.mtlsConfig?.enabled && this.credentialsProvider
+        ? await this.credentialsProvider.getClientCredentials()
+        : undefined;
     await this.register(agentAddress, registryEndpoint, credentials);
     this.logger?.info('Agent registered successfully');
   }
-  
+
   /**
    * Verify incoming request
    */
@@ -197,17 +238,18 @@ export abstract class SecureParallaxAgent extends ParallaxAgent {
     if (!this.mtlsConfig?.checkClientCertificate) {
       return { verified: true };
     }
-    
+
     // Extract and verify client information from metadata
     const metadata = call.metadata;
-    const clientId = metadata.get('verified-client-id')?.[0]?.toString()
-      || metadata.get('x-parallax-client-id')?.[0]?.toString();
-    
+    const clientId =
+      metadata.get('verified-client-id')?.[0]?.toString() ||
+      metadata.get('x-parallax-client-id')?.[0]?.toString();
+
     if (!clientId) {
       if (this.mtlsConfig?.allowedClientIds?.length) {
         return {
           verified: false,
-          error: 'No verified client ID'
+          error: 'No verified client ID',
         };
       }
       return { verified: true };
@@ -218,15 +260,15 @@ export abstract class SecureParallaxAgent extends ParallaxAgent {
         return { verified: false, error: 'Client not allowed' };
       }
     }
-    
+
     // Additional verification logic could go here
     // - Check if client is authorized
     // - Verify against allowlist
     // - Check rate limits
-    
+
     return { verified: true };
   }
-  
+
   /**
    * Secure analyze method for gRPC calls
    */
@@ -249,7 +291,7 @@ export abstract class SecureParallaxAgent extends ParallaxAgent {
       callback(error as any);
     }
   }
-  
+
   /**
    * Rotate agent certificates
    */
@@ -257,11 +299,11 @@ export abstract class SecureParallaxAgent extends ParallaxAgent {
     if (!this.credentialsProvider || !this.mtlsConfig?.enabled) {
       throw new Error('mTLS not enabled');
     }
-    
+
     this.logger?.info({ agentId: this.id }, 'Rotating agent certificates');
-    
+
     await this.credentialsProvider.rotateCertificates(this.id);
-    
+
     // In production, you would gracefully restart the server
     // with the new certificates
   }

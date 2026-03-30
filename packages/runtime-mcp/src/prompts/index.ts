@@ -5,19 +5,18 @@
  */
 
 export {
-  SPAWN_REVIEW_TEAM_PROMPT,
+  generateSpawnDevAgentPrompt,
+  SPAWN_DEV_AGENT_PROMPT,
+  type SpawnDevAgentArgs,
+} from './spawn-dev-agent.js';
+export {
   generateSpawnReviewTeamPrompt,
+  SPAWN_REVIEW_TEAM_PROMPT,
   type SpawnReviewTeamArgs,
 } from './spawn-review-team.js';
 
-export {
-  SPAWN_DEV_AGENT_PROMPT,
-  generateSpawnDevAgentPrompt,
-  type SpawnDevAgentArgs,
-} from './spawn-dev-agent.js';
-
-import { SPAWN_REVIEW_TEAM_PROMPT } from './spawn-review-team.js';
 import { SPAWN_DEV_AGENT_PROMPT } from './spawn-dev-agent.js';
+import { SPAWN_REVIEW_TEAM_PROMPT } from './spawn-review-team.js';
 
 /**
  * All available prompts

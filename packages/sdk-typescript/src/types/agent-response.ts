@@ -95,14 +95,16 @@ export interface GenerationResponse extends AgentResponse {
 /**
  * Helper to ensure response has confidence
  */
-export function ensureConfidence<T>(response: Partial<AgentResponse<T>>): AgentResponse<T> {
+export function ensureConfidence<T>(
+  response: Partial<AgentResponse<T>>
+): AgentResponse<T> {
   return {
     ...response,
     confidence: response.confidence ?? 0.5,
     agent: response.agent ?? 'unknown',
     metadata: {
       ...response.metadata,
-      timestamp: response.metadata?.timestamp ?? Date.now()
-    }
+      timestamp: response.metadata?.timestamp ?? Date.now(),
+    },
   } as AgentResponse<T>;
 }

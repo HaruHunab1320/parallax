@@ -8,7 +8,7 @@ total = reduce(nums, (sum, n) => {
   return sum + n
 }, 0)
 count = 3
-avg = total / count`
+avg = total / count`,
   },
   {
     name: 'Extract number first',
@@ -19,7 +19,7 @@ totalConfidence = reduce(results, (sum, r) => {
 // Extract to new variable
 total = totalConfidence
 count = 2
-avgConfidence = total / count`
+avgConfidence = total / count`,
   },
   {
     name: 'Add zero to ensure number',
@@ -29,17 +29,17 @@ totalConfidence = reduce(results, (sum, r) => {
 }, 0)
 totalNum = totalConfidence + 0
 count = 1
-avgConfidence = totalNum / count`
-  }
+avgConfidence = totalNum / count`,
+  },
 ];
 
 const validator = createValidator();
 
-tests.forEach(test => {
+tests.forEach((test) => {
   const result = validator.validateAll(test.code);
   console.log(`\n${test.name}: ${result.valid ? '✅' : '❌'}`);
   if (!result.valid && result.formattedErrors) {
-    result.formattedErrors.forEach(err => {
+    result.formattedErrors.forEach((err) => {
       console.log(`  → Line ${err.line}: ${err.message}`);
     });
   }

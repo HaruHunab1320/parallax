@@ -33,19 +33,54 @@ async function main() {
   });
 
   // Listen for recorded events
-  tracker.on('recorded', (point) => {
+  tracker.on('recorded', (_point) => {
     // Silent - we'll print manually
   });
 
   // Simulate agent responses for a code review task
   const agentResponses = [
-    { agentId: 'reviewer-1', category: 'code-review', task: 'pr-123', confidence: 0.85 },
-    { agentId: 'reviewer-2', category: 'code-review', task: 'pr-123', confidence: 0.72 },
-    { agentId: 'reviewer-3', category: 'code-review', task: 'pr-123', confidence: 0.91 },
-    { agentId: 'security-scanner', category: 'security', task: 'pr-123', confidence: 0.95 },
-    { agentId: 'reviewer-1', category: 'code-review', task: 'pr-124', confidence: 0.88 },
-    { agentId: 'reviewer-1', category: 'code-review', task: 'pr-125', confidence: 0.82 },
-    { agentId: 'reviewer-2', category: 'code-review', task: 'pr-125', confidence: 0.68 },
+    {
+      agentId: 'reviewer-1',
+      category: 'code-review',
+      task: 'pr-123',
+      confidence: 0.85,
+    },
+    {
+      agentId: 'reviewer-2',
+      category: 'code-review',
+      task: 'pr-123',
+      confidence: 0.72,
+    },
+    {
+      agentId: 'reviewer-3',
+      category: 'code-review',
+      task: 'pr-123',
+      confidence: 0.91,
+    },
+    {
+      agentId: 'security-scanner',
+      category: 'security',
+      task: 'pr-123',
+      confidence: 0.95,
+    },
+    {
+      agentId: 'reviewer-1',
+      category: 'code-review',
+      task: 'pr-124',
+      confidence: 0.88,
+    },
+    {
+      agentId: 'reviewer-1',
+      category: 'code-review',
+      task: 'pr-125',
+      confidence: 0.82,
+    },
+    {
+      agentId: 'reviewer-2',
+      category: 'code-review',
+      task: 'pr-125',
+      confidence: 0.68,
+    },
   ];
 
   console.log('Recording agent confidence scores:\n');
@@ -64,13 +99,22 @@ async function main() {
   // Get metrics for each agent
   console.log('\n--- Agent Metrics (Last 24h) ---\n');
 
-  for (const agentId of ['reviewer-1', 'reviewer-2', 'reviewer-3', 'security-scanner']) {
+  for (const agentId of [
+    'reviewer-1',
+    'reviewer-2',
+    'reviewer-3',
+    'security-scanner',
+  ]) {
     const metrics = await tracker.getMetrics(agentId);
     if (metrics.dataPoints > 0) {
       console.log(`${agentId}:`);
       console.log(`  Data Points: ${metrics.dataPoints}`);
-      console.log(`  Average: ${(metrics.averageConfidence * 100).toFixed(1)}%`);
-      console.log(`  Range: ${(metrics.minConfidence * 100).toFixed(0)}% - ${(metrics.maxConfidence * 100).toFixed(0)}%`);
+      console.log(
+        `  Average: ${(metrics.averageConfidence * 100).toFixed(1)}%`
+      );
+      console.log(
+        `  Range: ${(metrics.minConfidence * 100).toFixed(0)}% - ${(metrics.maxConfidence * 100).toFixed(0)}%`
+      );
       console.log(`  Trend: ${metrics.confidenceTrend}`);
       console.log();
     }
@@ -103,14 +147,20 @@ async function main() {
   console.log('\n--- Final Metrics for reviewer-2 ---\n');
   const finalMetrics = await tracker.getMetrics('reviewer-2');
   console.log(`  Data Points: ${finalMetrics.dataPoints}`);
-  console.log(`  Average: ${(finalMetrics.averageConfidence * 100).toFixed(1)}%`);
-  console.log(`  Range: ${(finalMetrics.minConfidence * 100).toFixed(0)}% - ${(finalMetrics.maxConfidence * 100).toFixed(0)}%`);
+  console.log(
+    `  Average: ${(finalMetrics.averageConfidence * 100).toFixed(1)}%`
+  );
+  console.log(
+    `  Range: ${(finalMetrics.minConfidence * 100).toFixed(0)}% - ${(finalMetrics.maxConfidence * 100).toFixed(0)}%`
+  );
 
   // Cleanup
   await tracker.shutdown();
 
   console.log('\n=== Demo Complete ===');
-  console.log('Successfully tracked confidence scores and detected anomalies.\n');
+  console.log(
+    'Successfully tracked confidence scores and detected anomalies.\n'
+  );
 }
 
 main().catch(console.error);

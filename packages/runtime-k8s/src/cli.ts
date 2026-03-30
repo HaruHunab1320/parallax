@@ -8,8 +8,8 @@
 
 import * as k8s from '@kubernetes/client-node';
 import pino from 'pino';
-import { K8sRuntime } from './k8s-runtime';
 import { AgentController } from './controllers/agent-controller';
+import { K8sRuntime } from './k8s-runtime';
 import { RuntimeServer } from './server';
 
 const logger = pino({

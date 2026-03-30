@@ -8,10 +8,11 @@
  *   pnpm analyze examples/project-proposal.txt
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
-const CONTROL_PLANE_URL = process.env.CONTROL_PLANE_URL || 'http://localhost:8080';
+const CONTROL_PLANE_URL =
+  process.env.CONTROL_PLANE_URL || 'http://localhost:8080';
 
 interface AnalysisResult {
   document: {
@@ -46,7 +47,11 @@ interface AnalysisResult {
     overall: string;
     score: number;
     tone: { primary: string; secondary: string[] };
-    emotionalIndicators: Array<{ emotion: string; intensity: string; context: string }>;
+    emotionalIndicators: Array<{
+      emotion: string;
+      intensity: string;
+      context: string;
+    }>;
     concerns: string[];
     professionalism: { score: number; notes: string };
   };
@@ -62,7 +67,10 @@ interface AnalysisResult {
   };
 }
 
-async function submitAnalysis(document: string, title: string): Promise<{ executionId: string }> {
+async function submitAnalysis(
+  document: string,
+  title: string
+): Promise<{ executionId: string }> {
   const response = await fetch(`${CONTROL_PLANE_URL}/api/executions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -73,10 +81,10 @@ async function submitAnalysis(document: string, title: string): Promise<{ execut
         data: {
           document: document,
           title: title,
-          text: document
-        }
-      }
-    })
+          text: document,
+        },
+      },
+    }),
   });
 
   if (!response.ok) {
@@ -88,12 +96,17 @@ async function submitAnalysis(document: string, title: string): Promise<{ execut
   return { executionId: execution.id };
 }
 
-async function pollForResult(executionId: string, maxWaitMs = 90000): Promise<AnalysisResult> {
+async function pollForResult(
+  executionId: string,
+  maxWaitMs = 90000
+): Promise<AnalysisResult> {
   const startTime = Date.now();
   const pollInterval = 1000;
 
   while (Date.now() - startTime < maxWaitMs) {
-    const response = await fetch(`${CONTROL_PLANE_URL}/api/executions/${executionId}`);
+    const response = await fetch(
+      `${CONTROL_PLANE_URL}/api/executions/${executionId}`
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to get execution status: ${response.statusText}`);
@@ -109,7 +122,7 @@ async function pollForResult(executionId: string, maxWaitMs = 90000): Promise<An
     }
 
     process.stdout.write('.');
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
   throw new Error('Analysis timed out');
@@ -125,9 +138,15 @@ function formatResults(result: AnalysisResult): void {
   // Document info
   const doc = result.document || {};
   console.log(`Document: ${doc.title || 'Unknown'}`);
-  console.log(`Type: ${doc.type || 'Unknown'} | Words: ~${doc.wordCount || 'N/A'}`);
-  console.log(`Analyses: ${result.metadata?.analysesCompleted || 0}/4 completed`);
-  console.log(`Confidence: ${Math.round((result.metadata?.averageConfidence || 0) * 100)}%`);
+  console.log(
+    `Type: ${doc.type || 'Unknown'} | Words: ~${doc.wordCount || 'N/A'}`
+  );
+  console.log(
+    `Analyses: ${result.metadata?.analysesCompleted || 0}/4 completed`
+  );
+  console.log(
+    `Confidence: ${Math.round((result.metadata?.averageConfidence || 0) * 100)}%`
+  );
   console.log();
 
   // Summary
@@ -146,7 +165,7 @@ function formatResults(result: AnalysisResult): void {
   }
 
   // Key Points
-  console.log('\n' + '-'.repeat(70));
+  console.log(`\n${'-'.repeat(70)}`);
   console.log('  KEY POINTS');
   console.log('-'.repeat(70));
   const keyPoints = result.keyPoints || {};
@@ -176,7 +195,7 @@ function formatResults(result: AnalysisResult): void {
   }
 
   // Action Items
-  console.log('\n' + '-'.repeat(70));
+  console.log(`\n${'-'.repeat(70)}`);
   console.log('  ACTION ITEMS');
   console.log('-'.repeat(70));
   const actions = result.actionItems || {};
@@ -188,7 +207,12 @@ function formatResults(result: AnalysisResult): void {
   if (actions.items && actions.items.length > 0) {
     console.log(`\n  Tasks (${actions.items.length} found):`);
     for (const item of actions.items.slice(0, 5)) {
-      const priority = item.priority === 'high' ? '\u{1F534}' : item.priority === 'medium' ? '\u{1F7E1}' : '\u{1F7E2}';
+      const priority =
+        item.priority === 'high'
+          ? '\u{1F534}'
+          : item.priority === 'medium'
+            ? '\u{1F7E1}'
+            : '\u{1F7E2}';
       console.log(`    ${priority} ${item.action}`);
       console.log(`       Owner: ${item.owner} | Due: ${item.deadline}`);
     }
@@ -211,21 +235,34 @@ function formatResults(result: AnalysisResult): void {
   }
 
   // Sentiment
-  console.log('\n' + '-'.repeat(70));
+  console.log(`\n${'-'.repeat(70)}`);
   console.log('  SENTIMENT ANALYSIS');
   console.log('-'.repeat(70));
   const sentiment = result.sentiment || {};
 
-  const sentimentEmoji = sentiment.overall === 'positive' ? '\u{1F60A}' :
-                         sentiment.overall === 'negative' ? '\u{1F61F}' :
-                         sentiment.overall === 'mixed' ? '\u{1F914}' : '\u{1F610}';
+  const sentimentEmoji =
+    sentiment.overall === 'positive'
+      ? '\u{1F60A}'
+      : sentiment.overall === 'negative'
+        ? '\u{1F61F}'
+        : sentiment.overall === 'mixed'
+          ? '\u{1F914}'
+          : '\u{1F610}';
 
-  console.log(`\n  Overall: ${sentimentEmoji} ${(sentiment.overall || 'Unknown').toUpperCase()}`);
+  console.log(
+    `\n  Overall: ${sentimentEmoji} ${(sentiment.overall || 'Unknown').toUpperCase()}`
+  );
 
   if (sentiment.score !== undefined) {
-    const scoreBar = sentiment.score > 0 ? '+'.repeat(Math.round(sentiment.score * 5)) :
-                     sentiment.score < 0 ? '-'.repeat(Math.round(Math.abs(sentiment.score) * 5)) : '=';
-    console.log(`  Score: ${sentiment.score > 0 ? '+' : ''}${sentiment.score.toFixed(2)} [${scoreBar}]`);
+    const scoreBar =
+      sentiment.score > 0
+        ? '+'.repeat(Math.round(sentiment.score * 5))
+        : sentiment.score < 0
+          ? '-'.repeat(Math.round(Math.abs(sentiment.score) * 5))
+          : '=';
+    console.log(
+      `  Score: ${sentiment.score > 0 ? '+' : ''}${sentiment.score.toFixed(2)} [${scoreBar}]`
+    );
   }
 
   if (sentiment.tone) {
@@ -236,7 +273,9 @@ function formatResults(result: AnalysisResult): void {
   }
 
   if (sentiment.professionalism) {
-    console.log(`\n  Professionalism: ${Math.round((sentiment.professionalism.score || 0) * 100)}%`);
+    console.log(
+      `\n  Professionalism: ${Math.round((sentiment.professionalism.score || 0) * 100)}%`
+    );
     if (sentiment.professionalism.notes) {
       console.log(`    ${sentiment.professionalism.notes}`);
     }
@@ -251,7 +290,7 @@ function formatResults(result: AnalysisResult): void {
 
   // Agent details
   if (result.metadata?.details && result.metadata.details.length > 0) {
-    console.log('\n' + '-'.repeat(70));
+    console.log(`\n${'-'.repeat(70)}`);
     console.log('  AGENT ANALYSIS DETAILS');
     console.log('-'.repeat(70));
     for (const detail of result.metadata.details) {
@@ -259,12 +298,14 @@ function formatResults(result: AnalysisResult): void {
       console.log(`     Confidence: ${Math.round(detail.confidence * 100)}%`);
       if (detail.reasoning) {
         const shortReasoning = detail.reasoning.substring(0, 80);
-        console.log(`     ${shortReasoning}${detail.reasoning.length > 80 ? '...' : ''}`);
+        console.log(
+          `     ${shortReasoning}${detail.reasoning.length > 80 ? '...' : ''}`
+        );
       }
     }
   }
 
-  console.log('\n' + '='.repeat(70));
+  console.log(`\n${'='.repeat(70)}`);
 }
 
 async function main() {
@@ -281,7 +322,9 @@ async function main() {
   }
 
   const filePath = args[0];
-  const fullPath = fs.existsSync(filePath) ? filePath : path.join(__dirname, filePath);
+  const fullPath = fs.existsSync(filePath)
+    ? filePath
+    : path.join(__dirname, filePath);
 
   if (!fs.existsSync(fullPath)) {
     console.error(`File not found: ${filePath}`);
@@ -298,7 +341,9 @@ async function main() {
   try {
     const { executionId } = await submitAnalysis(document, title);
     console.log(`\n\uD83D\uDCCB Execution started: ${executionId}`);
-    console.log('\u23F3 Running 4 parallel analyses (summary, key points, actions, sentiment)...\n');
+    console.log(
+      '\u23F3 Running 4 parallel analyses (summary, key points, actions, sentiment)...\n'
+    );
 
     const result = await pollForResult(executionId);
     formatResults(result);

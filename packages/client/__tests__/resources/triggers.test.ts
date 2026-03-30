@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('TriggersResource', () => {
@@ -7,7 +7,10 @@ describe('TriggersResource', () => {
 
   beforeEach(() => {
     originalFetch = globalThis.fetch;
-    client = new ParallaxClient({ baseUrl: 'http://localhost:8081', apiKey: 'plx_test' });
+    client = new ParallaxClient({
+      baseUrl: 'http://localhost:8081',
+      apiKey: 'plx_test',
+    });
   });
 
   afterEach(() => {
@@ -24,7 +27,14 @@ describe('TriggersResource', () => {
 
   it('should list triggers', async () => {
     mockFetch({
-      triggers: [{ id: 'trig-1', name: 'deploy-hook', type: 'webhook', status: 'active' }],
+      triggers: [
+        {
+          id: 'trig-1',
+          name: 'deploy-hook',
+          type: 'webhook',
+          status: 'active',
+        },
+      ],
       count: 1,
     });
 
@@ -35,7 +45,8 @@ describe('TriggersResource', () => {
 
   it('should list triggers with filters', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      ok: true, status: 200,
+      ok: true,
+      status: 200,
       json: async () => ({ triggers: [], count: 0 }),
     });
     globalThis.fetch = fetchMock;
@@ -48,12 +59,15 @@ describe('TriggersResource', () => {
   });
 
   it('should create a webhook trigger', async () => {
-    mockFetch({
-      id: 'trig-new',
-      name: 'deploy-hook',
-      type: 'webhook',
-      webhookUrl: 'http://localhost:8081/api/triggers/webhook/abc123',
-    }, 201);
+    mockFetch(
+      {
+        id: 'trig-new',
+        name: 'deploy-hook',
+        type: 'webhook',
+        webhookUrl: 'http://localhost:8081/api/triggers/webhook/abc123',
+      },
+      201
+    );
 
     const result = await client.triggers.createWebhook({
       name: 'deploy-hook',
@@ -65,12 +79,15 @@ describe('TriggersResource', () => {
   });
 
   it('should create an event trigger', async () => {
-    mockFetch({
-      id: 'trig-evt',
-      name: 'on-commit',
-      type: 'event',
-      eventType: 'git.push',
-    }, 201);
+    mockFetch(
+      {
+        id: 'trig-evt',
+        name: 'on-commit',
+        type: 'event',
+        eventType: 'git.push',
+      },
+      201
+    );
 
     const result = await client.triggers.createEvent({
       name: 'on-commit',
@@ -117,7 +134,9 @@ describe('TriggersResource', () => {
   it('should send a webhook payload', async () => {
     mockFetch({ triggered: true, executionId: 'exec-123' });
 
-    const result = await client.triggers.sendWebhook('abc123', { event: 'deploy' });
+    const result = await client.triggers.sendWebhook('abc123', {
+      event: 'deploy',
+    });
     expect(result.triggered).toBe(true);
     expect(result.executionId).toBe('exec-123');
   });

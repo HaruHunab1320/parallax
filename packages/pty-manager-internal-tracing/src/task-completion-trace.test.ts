@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  extractTaskCompletionTraceRecords,
   buildTaskCompletionTimeline,
+  extractTaskCompletionTraceRecords,
 } from './task-completion-trace';
 
 describe('task completion trace utilities', () => {
@@ -25,18 +25,43 @@ describe('task completion trace utilities', () => {
   });
 
   it('builds a completed turn timeline from claude trace events', () => {
-    const result = buildTaskCompletionTimeline([
-      { event: 'busy_signal', adapterType: 'claude', detectTaskComplete: false, detectReady: true },
-      { event: 'debounce_schedule', adapterType: 'claude', detectTaskComplete: false, detectReady: true },
-      { event: 'debounce_fire', adapterType: 'claude', detectTaskComplete: true, detectReady: true, signal: true },
-      { event: 'transition_ready', adapterType: 'claude', detectTaskComplete: true, detectReady: true, signal: true },
-    ], { adapterType: 'claude' });
+    const result = buildTaskCompletionTimeline(
+      [
+        {
+          event: 'busy_signal',
+          adapterType: 'claude',
+          detectTaskComplete: false,
+          detectReady: true,
+        },
+        {
+          event: 'debounce_schedule',
+          adapterType: 'claude',
+          detectTaskComplete: false,
+          detectReady: true,
+        },
+        {
+          event: 'debounce_fire',
+          adapterType: 'claude',
+          detectTaskComplete: true,
+          detectReady: true,
+          signal: true,
+        },
+        {
+          event: 'transition_ready',
+          adapterType: 'claude',
+          detectTaskComplete: true,
+          detectReady: true,
+          signal: true,
+        },
+      ],
+      { adapterType: 'claude' }
+    );
 
     expect(result.totalRecords).toBe(4);
     expect(result.turns).toHaveLength(1);
     expect(result.turns[0].completed).toBe(true);
     expect(result.turns[0].finalConfidence).toBe(100);
-    expect(result.turns[0].events.map(e => e.status)).toEqual([
+    expect(result.turns[0].events.map((e) => e.status)).toEqual([
       'active',
       'active',
       'likely_complete',
@@ -45,11 +70,30 @@ describe('task completion trace utilities', () => {
   });
 
   it('splits turns when a new busy signal occurs after completion', () => {
-    const result = buildTaskCompletionTimeline([
-      { event: 'busy_signal', adapterType: 'claude', detectTaskComplete: false, detectReady: true },
-      { event: 'transition_ready', adapterType: 'claude', detectTaskComplete: true, detectReady: true, signal: true },
-      { event: 'busy_signal', adapterType: 'claude', detectTaskComplete: false, detectReady: false },
-    ], { adapterType: 'claude' });
+    const result = buildTaskCompletionTimeline(
+      [
+        {
+          event: 'busy_signal',
+          adapterType: 'claude',
+          detectTaskComplete: false,
+          detectReady: true,
+        },
+        {
+          event: 'transition_ready',
+          adapterType: 'claude',
+          detectTaskComplete: true,
+          detectReady: true,
+          signal: true,
+        },
+        {
+          event: 'busy_signal',
+          adapterType: 'claude',
+          detectTaskComplete: false,
+          detectReady: false,
+        },
+      ],
+      { adapterType: 'claude' }
+    );
 
     expect(result.turns).toHaveLength(2);
     expect(result.turns[0].completed).toBe(true);
@@ -58,14 +102,29 @@ describe('task completion trace utilities', () => {
   });
 
   it('marks reject paths correctly', () => {
-    const result = buildTaskCompletionTimeline([
-      { event: 'busy_signal', adapterType: 'claude', detectTaskComplete: false, detectReady: true },
-      { event: 'debounce_reject_signal', adapterType: 'claude', detectTaskComplete: false, detectReady: true, signal: false },
-    ], { adapterType: 'claude' });
+    const result = buildTaskCompletionTimeline(
+      [
+        {
+          event: 'busy_signal',
+          adapterType: 'claude',
+          detectTaskComplete: false,
+          detectReady: true,
+        },
+        {
+          event: 'debounce_reject_signal',
+          adapterType: 'claude',
+          detectTaskComplete: false,
+          detectReady: true,
+          signal: false,
+        },
+      ],
+      { adapterType: 'claude' }
+    );
 
     expect(result.turns[0].completed).toBe(false);
     expect(result.turns[0].events[1].status).toBe('rejected');
-    expect(result.turns[0].events[1].confidence).toBeLessThan(result.turns[0].events[0].confidence);
+    expect(result.turns[0].events[1].confidence).toBeLessThan(
+      result.turns[0].events[0].confidence
+    );
   });
 });
-

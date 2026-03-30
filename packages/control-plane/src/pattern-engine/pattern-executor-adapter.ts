@@ -1,9 +1,9 @@
-import {
+import type {
+  PatternExecutionResult,
   PatternExecutor,
   PatternExecutorOptions,
-  PatternExecutionResult,
 } from '@parallaxai/data-plane';
-import { PatternEngine } from './pattern-engine';
+import type { PatternEngine } from './pattern-engine';
 
 /**
  * Adapter that implements the data-plane's PatternExecutor interface
@@ -23,10 +23,14 @@ export class PatternExecutorAdapter implements PatternExecutor {
     const startTime = Date.now();
 
     try {
-      const execution = await this.patternEngine.executePattern(patternName, input, {
-        timeout: options?.timeout,
-        executionId: options?.executionId,
-      });
+      const execution = await this.patternEngine.executePattern(
+        patternName,
+        input,
+        {
+          timeout: options?.timeout,
+          executionId: options?.executionId,
+        }
+      );
 
       return {
         id: execution.id,

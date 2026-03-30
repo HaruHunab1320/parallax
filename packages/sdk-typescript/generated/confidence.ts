@@ -6,26 +6,26 @@
 // source: confidence.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf";
+import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf';
 import {
   type CallOptions,
   type ChannelCredentials,
-  Client,
+  type Client,
   type ClientOptions,
   type ClientReadableStream,
   type ClientUnaryCall,
   type handleServerStreamingCall,
   type handleUnaryCall,
-  makeGenericClientConstructor,
   type Metadata,
+  makeGenericClientConstructor,
   type ServiceError,
   type UntypedServiceImplementation,
-} from "@grpc/grpc-js";
-import { Empty as Empty1 } from "./google/protobuf/empty";
-import { Struct } from "./google/protobuf/struct";
-import { Timestamp } from "./google/protobuf/timestamp";
+} from '@grpc/grpc-js';
+import { Empty as Empty1 } from './google/protobuf/empty';
+import { Struct } from './google/protobuf/struct';
+import { Timestamp } from './google/protobuf/timestamp';
 
-export const protobufPackage = "parallax.confidence";
+export const protobufPackage = 'parallax.confidence';
 
 /** Core confidence result message */
 export interface ConfidenceResult {
@@ -36,9 +36,7 @@ export interface ConfidenceResult {
   /** ID of the agent that produced this result */
   agentId: string;
   /** When the result was produced */
-  timestamp:
-    | Date
-    | undefined;
+  timestamp: Date | undefined;
   /** List of uncertainties/caveats */
   uncertainties: string[];
   /** Explanation of the result */
@@ -88,19 +86,17 @@ export enum Health_Status {
 export function health_StatusFromJSON(object: any): Health_Status {
   switch (object) {
     case 0:
-    case "UNKNOWN":
+    case 'UNKNOWN':
       return Health_Status.UNKNOWN;
     case 1:
-    case "HEALTHY":
+    case 'HEALTHY':
       return Health_Status.HEALTHY;
     case 2:
-    case "UNHEALTHY":
+    case 'UNHEALTHY':
       return Health_Status.UNHEALTHY;
     case 3:
-    case "DEGRADED":
+    case 'DEGRADED':
       return Health_Status.DEGRADED;
-    case -1:
-    case "UNRECOGNIZED":
     default:
       return Health_Status.UNRECOGNIZED;
   }
@@ -109,16 +105,15 @@ export function health_StatusFromJSON(object: any): Health_Status {
 export function health_StatusToJSON(object: Health_Status): string {
   switch (object) {
     case Health_Status.UNKNOWN:
-      return "UNKNOWN";
+      return 'UNKNOWN';
     case Health_Status.HEALTHY:
-      return "HEALTHY";
+      return 'HEALTHY';
     case Health_Status.UNHEALTHY:
-      return "UNHEALTHY";
+      return 'UNHEALTHY';
     case Health_Status.DEGRADED:
-      return "DEGRADED";
-    case Health_Status.UNRECOGNIZED:
+      return 'DEGRADED';
     default:
-      return "UNRECOGNIZED";
+      return 'UNRECOGNIZED';
   }
 }
 
@@ -134,9 +129,7 @@ export interface AgentRequest {
   /** What to analyze */
   taskDescription: string;
   /** Input data as JSON */
-  data:
-    | { [key: string]: any }
-    | undefined;
+  data: { [key: string]: any } | undefined;
   /** Additional context */
   context: { [key: string]: string };
   /** Timeout in milliseconds */
@@ -151,49 +144,58 @@ export interface AgentRequest_ContextEntry {
 }
 
 /** Empty message for methods that don't need parameters */
-export interface Empty {
-}
+export type Empty = {};
 
 function createBaseConfidenceResult(): ConfidenceResult {
   return {
-    valueJson: "",
+    valueJson: '',
     confidence: 0,
-    agentId: "",
+    agentId: '',
     timestamp: undefined,
     uncertainties: [],
-    reasoning: "",
+    reasoning: '',
     metadata: {},
   };
 }
 
 export const ConfidenceResult: MessageFns<ConfidenceResult> = {
-  encode(message: ConfidenceResult, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.valueJson !== "") {
+  encode(
+    message: ConfidenceResult,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.valueJson !== '') {
       writer.uint32(10).string(message.valueJson);
     }
     if (message.confidence !== 0) {
       writer.uint32(17).double(message.confidence);
     }
-    if (message.agentId !== "") {
+    if (message.agentId !== '') {
       writer.uint32(26).string(message.agentId);
     }
     if (message.timestamp !== undefined) {
-      Timestamp.encode(toTimestamp(message.timestamp), writer.uint32(34).fork()).join();
+      Timestamp.encode(
+        toTimestamp(message.timestamp),
+        writer.uint32(34).fork()
+      ).join();
     }
     for (const v of message.uncertainties) {
       writer.uint32(42).string(v!);
     }
-    if (message.reasoning !== "") {
+    if (message.reasoning !== '') {
       writer.uint32(50).string(message.reasoning);
     }
     Object.entries(message.metadata).forEach(([key, value]) => {
-      ConfidenceResult_MetadataEntry.encode({ key: key as any, value }, writer.uint32(58).fork()).join();
+      ConfidenceResult_MetadataEntry.encode(
+        { key: key as any, value },
+        writer.uint32(58).fork()
+      ).join();
     });
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): ConfidenceResult {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseConfidenceResult();
     while (reader.pos < end) {
@@ -228,7 +230,9 @@ export const ConfidenceResult: MessageFns<ConfidenceResult> = {
             break;
           }
 
-          message.timestamp = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          message.timestamp = fromTimestamp(
+            Timestamp.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 5: {
@@ -252,7 +256,10 @@ export const ConfidenceResult: MessageFns<ConfidenceResult> = {
             break;
           }
 
-          const entry7 = ConfidenceResult_MetadataEntry.decode(reader, reader.uint32());
+          const entry7 = ConfidenceResult_MetadataEntry.decode(
+            reader,
+            reader.uint32()
+          );
           if (entry7.value !== undefined) {
             message.metadata[entry7.key] = entry7.value;
           }
@@ -269,32 +276,43 @@ export const ConfidenceResult: MessageFns<ConfidenceResult> = {
 
   fromJSON(object: any): ConfidenceResult {
     return {
-      valueJson: isSet(object.valueJson) ? globalThis.String(object.valueJson) : "",
-      confidence: isSet(object.confidence) ? globalThis.Number(object.confidence) : 0,
-      agentId: isSet(object.agentId) ? globalThis.String(object.agentId) : "",
-      timestamp: isSet(object.timestamp) ? fromJsonTimestamp(object.timestamp) : undefined,
+      valueJson: isSet(object.valueJson)
+        ? globalThis.String(object.valueJson)
+        : '',
+      confidence: isSet(object.confidence)
+        ? globalThis.Number(object.confidence)
+        : 0,
+      agentId: isSet(object.agentId) ? globalThis.String(object.agentId) : '',
+      timestamp: isSet(object.timestamp)
+        ? fromJsonTimestamp(object.timestamp)
+        : undefined,
       uncertainties: globalThis.Array.isArray(object?.uncertainties)
         ? object.uncertainties.map((e: any) => globalThis.String(e))
         : [],
-      reasoning: isSet(object.reasoning) ? globalThis.String(object.reasoning) : "",
+      reasoning: isSet(object.reasoning)
+        ? globalThis.String(object.reasoning)
+        : '',
       metadata: isObject(object.metadata)
-        ? Object.entries(object.metadata).reduce<{ [key: string]: string }>((acc, [key, value]) => {
-          acc[key] = String(value);
-          return acc;
-        }, {})
+        ? Object.entries(object.metadata).reduce<{ [key: string]: string }>(
+            (acc, [key, value]) => {
+              acc[key] = String(value);
+              return acc;
+            },
+            {}
+          )
         : {},
     };
   },
 
   toJSON(message: ConfidenceResult): unknown {
     const obj: any = {};
-    if (message.valueJson !== "") {
+    if (message.valueJson !== '') {
       obj.valueJson = message.valueJson;
     }
     if (message.confidence !== 0) {
       obj.confidence = message.confidence;
     }
-    if (message.agentId !== "") {
+    if (message.agentId !== '') {
       obj.agentId = message.agentId;
     }
     if (message.timestamp !== undefined) {
@@ -303,7 +321,7 @@ export const ConfidenceResult: MessageFns<ConfidenceResult> = {
     if (message.uncertainties?.length) {
       obj.uncertainties = message.uncertainties;
     }
-    if (message.reasoning !== "") {
+    if (message.reasoning !== '') {
       obj.reasoning = message.reasoning;
     }
     if (message.metadata) {
@@ -318,18 +336,24 @@ export const ConfidenceResult: MessageFns<ConfidenceResult> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ConfidenceResult>, I>>(base?: I): ConfidenceResult {
+  create<I extends Exact<DeepPartial<ConfidenceResult>, I>>(
+    base?: I
+  ): ConfidenceResult {
     return ConfidenceResult.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<ConfidenceResult>, I>>(object: I): ConfidenceResult {
+  fromPartial<I extends Exact<DeepPartial<ConfidenceResult>, I>>(
+    object: I
+  ): ConfidenceResult {
     const message = createBaseConfidenceResult();
-    message.valueJson = object.valueJson ?? "";
+    message.valueJson = object.valueJson ?? '';
     message.confidence = object.confidence ?? 0;
-    message.agentId = object.agentId ?? "";
+    message.agentId = object.agentId ?? '';
     message.timestamp = object.timestamp ?? undefined;
     message.uncertainties = object.uncertainties?.map((e) => e) || [];
-    message.reasoning = object.reasoning ?? "";
-    message.metadata = Object.entries(object.metadata ?? {}).reduce<{ [key: string]: string }>((acc, [key, value]) => {
+    message.reasoning = object.reasoning ?? '';
+    message.metadata = Object.entries(object.metadata ?? {}).reduce<{
+      [key: string]: string;
+    }>((acc, [key, value]) => {
       if (value !== undefined) {
         acc[key] = globalThis.String(value);
       }
@@ -340,93 +364,112 @@ export const ConfidenceResult: MessageFns<ConfidenceResult> = {
 };
 
 function createBaseConfidenceResult_MetadataEntry(): ConfidenceResult_MetadataEntry {
-  return { key: "", value: "" };
+  return { key: '', value: '' };
 }
 
-export const ConfidenceResult_MetadataEntry: MessageFns<ConfidenceResult_MetadataEntry> = {
-  encode(message: ConfidenceResult_MetadataEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.key !== "") {
-      writer.uint32(10).string(message.key);
-    }
-    if (message.value !== "") {
-      writer.uint32(18).string(message.value);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): ConfidenceResult_MetadataEntry {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseConfidenceResult_MetadataEntry();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.key = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.value = reader.string();
-          continue;
-        }
+export const ConfidenceResult_MetadataEntry: MessageFns<ConfidenceResult_MetadataEntry> =
+  {
+    encode(
+      message: ConfidenceResult_MetadataEntry,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.key !== '') {
+        writer.uint32(10).string(message.key);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.value !== '') {
+        writer.uint32(18).string(message.value);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      return writer;
+    },
 
-  fromJSON(object: any): ConfidenceResult_MetadataEntry {
-    return {
-      key: isSet(object.key) ? globalThis.String(object.key) : "",
-      value: isSet(object.value) ? globalThis.String(object.value) : "",
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): ConfidenceResult_MetadataEntry {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseConfidenceResult_MetadataEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: ConfidenceResult_MetadataEntry): unknown {
-    const obj: any = {};
-    if (message.key !== "") {
-      obj.key = message.key;
-    }
-    if (message.value !== "") {
-      obj.value = message.value;
-    }
-    return obj;
-  },
+            message.key = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<ConfidenceResult_MetadataEntry>, I>>(base?: I): ConfidenceResult_MetadataEntry {
-    return ConfidenceResult_MetadataEntry.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<ConfidenceResult_MetadataEntry>, I>>(
-    object: I,
-  ): ConfidenceResult_MetadataEntry {
-    const message = createBaseConfidenceResult_MetadataEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
-  },
-};
+            message.value = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): ConfidenceResult_MetadataEntry {
+      return {
+        key: isSet(object.key) ? globalThis.String(object.key) : '',
+        value: isSet(object.value) ? globalThis.String(object.value) : '',
+      };
+    },
+
+    toJSON(message: ConfidenceResult_MetadataEntry): unknown {
+      const obj: any = {};
+      if (message.key !== '') {
+        obj.key = message.key;
+      }
+      if (message.value !== '') {
+        obj.value = message.value;
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<ConfidenceResult_MetadataEntry>, I>>(
+      base?: I
+    ): ConfidenceResult_MetadataEntry {
+      return ConfidenceResult_MetadataEntry.fromPartial(base ?? ({} as any));
+    },
+    fromPartial<
+      I extends Exact<DeepPartial<ConfidenceResult_MetadataEntry>, I>,
+    >(object: I): ConfidenceResult_MetadataEntry {
+      const message = createBaseConfidenceResult_MetadataEntry();
+      message.key = object.key ?? '';
+      message.value = object.value ?? '';
+      return message;
+    },
+  };
 
 function createBaseCapabilities(): Capabilities {
-  return { agentId: "", name: "", capabilities: [], expertiseLevel: 0, capabilityScores: {} };
+  return {
+    agentId: '',
+    name: '',
+    capabilities: [],
+    expertiseLevel: 0,
+    capabilityScores: {},
+  };
 }
 
 export const Capabilities: MessageFns<Capabilities> = {
-  encode(message: Capabilities, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.agentId !== "") {
+  encode(
+    message: Capabilities,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.agentId !== '') {
       writer.uint32(10).string(message.agentId);
     }
-    if (message.name !== "") {
+    if (message.name !== '') {
       writer.uint32(18).string(message.name);
     }
     for (const v of message.capabilities) {
@@ -436,13 +479,17 @@ export const Capabilities: MessageFns<Capabilities> = {
       writer.uint32(33).double(message.expertiseLevel);
     }
     Object.entries(message.capabilityScores).forEach(([key, value]) => {
-      Capabilities_CapabilityScoresEntry.encode({ key: key as any, value }, writer.uint32(42).fork()).join();
+      Capabilities_CapabilityScoresEntry.encode(
+        { key: key as any, value },
+        writer.uint32(42).fork()
+      ).join();
     });
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): Capabilities {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseCapabilities();
     while (reader.pos < end) {
@@ -485,7 +532,10 @@ export const Capabilities: MessageFns<Capabilities> = {
             break;
           }
 
-          const entry5 = Capabilities_CapabilityScoresEntry.decode(reader, reader.uint32());
+          const entry5 = Capabilities_CapabilityScoresEntry.decode(
+            reader,
+            reader.uint32()
+          );
           if (entry5.value !== undefined) {
             message.capabilityScores[entry5.key] = entry5.value;
           }
@@ -502,27 +552,31 @@ export const Capabilities: MessageFns<Capabilities> = {
 
   fromJSON(object: any): Capabilities {
     return {
-      agentId: isSet(object.agentId) ? globalThis.String(object.agentId) : "",
-      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      agentId: isSet(object.agentId) ? globalThis.String(object.agentId) : '',
+      name: isSet(object.name) ? globalThis.String(object.name) : '',
       capabilities: globalThis.Array.isArray(object?.capabilities)
         ? object.capabilities.map((e: any) => globalThis.String(e))
         : [],
-      expertiseLevel: isSet(object.expertiseLevel) ? globalThis.Number(object.expertiseLevel) : 0,
+      expertiseLevel: isSet(object.expertiseLevel)
+        ? globalThis.Number(object.expertiseLevel)
+        : 0,
       capabilityScores: isObject(object.capabilityScores)
-        ? Object.entries(object.capabilityScores).reduce<{ [key: string]: number }>((acc, [key, value]) => {
-          acc[key] = Number(value);
-          return acc;
-        }, {})
+        ? Object.entries(object.capabilityScores).reduce<{
+            [key: string]: number;
+          }>((acc, [key, value]) => {
+            acc[key] = Number(value);
+            return acc;
+          }, {})
         : {},
     };
   },
 
   toJSON(message: Capabilities): unknown {
     const obj: any = {};
-    if (message.agentId !== "") {
+    if (message.agentId !== '') {
       obj.agentId = message.agentId;
     }
-    if (message.name !== "") {
+    if (message.name !== '') {
       obj.name = message.name;
     }
     if (message.capabilities?.length) {
@@ -543,131 +597,154 @@ export const Capabilities: MessageFns<Capabilities> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<Capabilities>, I>>(base?: I): Capabilities {
+  create<I extends Exact<DeepPartial<Capabilities>, I>>(
+    base?: I
+  ): Capabilities {
     return Capabilities.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<Capabilities>, I>>(object: I): Capabilities {
+  fromPartial<I extends Exact<DeepPartial<Capabilities>, I>>(
+    object: I
+  ): Capabilities {
     const message = createBaseCapabilities();
-    message.agentId = object.agentId ?? "";
-    message.name = object.name ?? "";
+    message.agentId = object.agentId ?? '';
+    message.name = object.name ?? '';
     message.capabilities = object.capabilities?.map((e) => e) || [];
     message.expertiseLevel = object.expertiseLevel ?? 0;
-    message.capabilityScores = Object.entries(object.capabilityScores ?? {}).reduce<{ [key: string]: number }>(
-      (acc, [key, value]) => {
-        if (value !== undefined) {
-          acc[key] = globalThis.Number(value);
-        }
-        return acc;
-      },
-      {},
-    );
+    message.capabilityScores = Object.entries(
+      object.capabilityScores ?? {}
+    ).reduce<{ [key: string]: number }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = globalThis.Number(value);
+      }
+      return acc;
+    }, {});
     return message;
   },
 };
 
 function createBaseCapabilities_CapabilityScoresEntry(): Capabilities_CapabilityScoresEntry {
-  return { key: "", value: 0 };
+  return { key: '', value: 0 };
 }
 
-export const Capabilities_CapabilityScoresEntry: MessageFns<Capabilities_CapabilityScoresEntry> = {
-  encode(message: Capabilities_CapabilityScoresEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.key !== "") {
-      writer.uint32(10).string(message.key);
-    }
-    if (message.value !== 0) {
-      writer.uint32(17).double(message.value);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): Capabilities_CapabilityScoresEntry {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCapabilities_CapabilityScoresEntry();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.key = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 17) {
-            break;
-          }
-
-          message.value = reader.double();
-          continue;
-        }
+export const Capabilities_CapabilityScoresEntry: MessageFns<Capabilities_CapabilityScoresEntry> =
+  {
+    encode(
+      message: Capabilities_CapabilityScoresEntry,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.key !== '') {
+        writer.uint32(10).string(message.key);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.value !== 0) {
+        writer.uint32(17).double(message.value);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      return writer;
+    },
 
-  fromJSON(object: any): Capabilities_CapabilityScoresEntry {
-    return {
-      key: isSet(object.key) ? globalThis.String(object.key) : "",
-      value: isSet(object.value) ? globalThis.Number(object.value) : 0,
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): Capabilities_CapabilityScoresEntry {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCapabilities_CapabilityScoresEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: Capabilities_CapabilityScoresEntry): unknown {
-    const obj: any = {};
-    if (message.key !== "") {
-      obj.key = message.key;
-    }
-    if (message.value !== 0) {
-      obj.value = message.value;
-    }
-    return obj;
-  },
+            message.key = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 17) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<Capabilities_CapabilityScoresEntry>, I>>(
-    base?: I,
-  ): Capabilities_CapabilityScoresEntry {
-    return Capabilities_CapabilityScoresEntry.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<Capabilities_CapabilityScoresEntry>, I>>(
-    object: I,
-  ): Capabilities_CapabilityScoresEntry {
-    const message = createBaseCapabilities_CapabilityScoresEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? 0;
-    return message;
-  },
-};
+            message.value = reader.double();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): Capabilities_CapabilityScoresEntry {
+      return {
+        key: isSet(object.key) ? globalThis.String(object.key) : '',
+        value: isSet(object.value) ? globalThis.Number(object.value) : 0,
+      };
+    },
+
+    toJSON(message: Capabilities_CapabilityScoresEntry): unknown {
+      const obj: any = {};
+      if (message.key !== '') {
+        obj.key = message.key;
+      }
+      if (message.value !== 0) {
+        obj.value = message.value;
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<Capabilities_CapabilityScoresEntry>, I>>(
+      base?: I
+    ): Capabilities_CapabilityScoresEntry {
+      return Capabilities_CapabilityScoresEntry.fromPartial(
+        base ?? ({} as any)
+      );
+    },
+    fromPartial<
+      I extends Exact<DeepPartial<Capabilities_CapabilityScoresEntry>, I>,
+    >(object: I): Capabilities_CapabilityScoresEntry {
+      const message = createBaseCapabilities_CapabilityScoresEntry();
+      message.key = object.key ?? '';
+      message.value = object.value ?? 0;
+      return message;
+    },
+  };
 
 function createBaseHealth(): Health {
-  return { status: 0, message: "", lastCheck: undefined, details: {} };
+  return { status: 0, message: '', lastCheck: undefined, details: {} };
 }
 
 export const Health: MessageFns<Health> = {
-  encode(message: Health, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: Health,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.status !== 0) {
       writer.uint32(8).int32(message.status);
     }
-    if (message.message !== "") {
+    if (message.message !== '') {
       writer.uint32(18).string(message.message);
     }
     if (message.lastCheck !== undefined) {
-      Timestamp.encode(toTimestamp(message.lastCheck), writer.uint32(26).fork()).join();
+      Timestamp.encode(
+        toTimestamp(message.lastCheck),
+        writer.uint32(26).fork()
+      ).join();
     }
     Object.entries(message.details).forEach(([key, value]) => {
-      Health_DetailsEntry.encode({ key: key as any, value }, writer.uint32(34).fork()).join();
+      Health_DetailsEntry.encode(
+        { key: key as any, value },
+        writer.uint32(34).fork()
+      ).join();
     });
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): Health {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseHealth();
     while (reader.pos < end) {
@@ -694,7 +771,9 @@ export const Health: MessageFns<Health> = {
             break;
           }
 
-          message.lastCheck = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          message.lastCheck = fromTimestamp(
+            Timestamp.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 4: {
@@ -720,13 +799,18 @@ export const Health: MessageFns<Health> = {
   fromJSON(object: any): Health {
     return {
       status: isSet(object.status) ? health_StatusFromJSON(object.status) : 0,
-      message: isSet(object.message) ? globalThis.String(object.message) : "",
-      lastCheck: isSet(object.lastCheck) ? fromJsonTimestamp(object.lastCheck) : undefined,
+      message: isSet(object.message) ? globalThis.String(object.message) : '',
+      lastCheck: isSet(object.lastCheck)
+        ? fromJsonTimestamp(object.lastCheck)
+        : undefined,
       details: isObject(object.details)
-        ? Object.entries(object.details).reduce<{ [key: string]: string }>((acc, [key, value]) => {
-          acc[key] = String(value);
-          return acc;
-        }, {})
+        ? Object.entries(object.details).reduce<{ [key: string]: string }>(
+            (acc, [key, value]) => {
+              acc[key] = String(value);
+              return acc;
+            },
+            {}
+          )
         : {},
     };
   },
@@ -736,7 +820,7 @@ export const Health: MessageFns<Health> = {
     if (message.status !== 0) {
       obj.status = health_StatusToJSON(message.status);
     }
-    if (message.message !== "") {
+    if (message.message !== '') {
       obj.message = message.message;
     }
     if (message.lastCheck !== undefined) {
@@ -760,9 +844,11 @@ export const Health: MessageFns<Health> = {
   fromPartial<I extends Exact<DeepPartial<Health>, I>>(object: I): Health {
     const message = createBaseHealth();
     message.status = object.status ?? 0;
-    message.message = object.message ?? "";
+    message.message = object.message ?? '';
     message.lastCheck = object.lastCheck ?? undefined;
-    message.details = Object.entries(object.details ?? {}).reduce<{ [key: string]: string }>((acc, [key, value]) => {
+    message.details = Object.entries(object.details ?? {}).reduce<{
+      [key: string]: string;
+    }>((acc, [key, value]) => {
       if (value !== undefined) {
         acc[key] = globalThis.String(value);
       }
@@ -773,22 +859,29 @@ export const Health: MessageFns<Health> = {
 };
 
 function createBaseHealth_DetailsEntry(): Health_DetailsEntry {
-  return { key: "", value: "" };
+  return { key: '', value: '' };
 }
 
 export const Health_DetailsEntry: MessageFns<Health_DetailsEntry> = {
-  encode(message: Health_DetailsEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.key !== "") {
+  encode(
+    message: Health_DetailsEntry,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.key !== '') {
       writer.uint32(10).string(message.key);
     }
-    if (message.value !== "") {
+    if (message.value !== '') {
       writer.uint32(18).string(message.value);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): Health_DetailsEntry {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): Health_DetailsEntry {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseHealth_DetailsEntry();
     while (reader.pos < end) {
@@ -821,62 +914,80 @@ export const Health_DetailsEntry: MessageFns<Health_DetailsEntry> = {
 
   fromJSON(object: any): Health_DetailsEntry {
     return {
-      key: isSet(object.key) ? globalThis.String(object.key) : "",
-      value: isSet(object.value) ? globalThis.String(object.value) : "",
+      key: isSet(object.key) ? globalThis.String(object.key) : '',
+      value: isSet(object.value) ? globalThis.String(object.value) : '',
     };
   },
 
   toJSON(message: Health_DetailsEntry): unknown {
     const obj: any = {};
-    if (message.key !== "") {
+    if (message.key !== '') {
       obj.key = message.key;
     }
-    if (message.value !== "") {
+    if (message.value !== '') {
       obj.value = message.value;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<Health_DetailsEntry>, I>>(base?: I): Health_DetailsEntry {
+  create<I extends Exact<DeepPartial<Health_DetailsEntry>, I>>(
+    base?: I
+  ): Health_DetailsEntry {
     return Health_DetailsEntry.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<Health_DetailsEntry>, I>>(object: I): Health_DetailsEntry {
+  fromPartial<I extends Exact<DeepPartial<Health_DetailsEntry>, I>>(
+    object: I
+  ): Health_DetailsEntry {
     const message = createBaseHealth_DetailsEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
+    message.key = object.key ?? '';
+    message.value = object.value ?? '';
     return message;
   },
 };
 
 function createBaseAgentRequest(): AgentRequest {
-  return { taskId: "", taskDescription: "", data: undefined, context: {}, timeoutMs: 0, patternName: "" };
+  return {
+    taskId: '',
+    taskDescription: '',
+    data: undefined,
+    context: {},
+    timeoutMs: 0,
+    patternName: '',
+  };
 }
 
 export const AgentRequest: MessageFns<AgentRequest> = {
-  encode(message: AgentRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.taskId !== "") {
+  encode(
+    message: AgentRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.taskId !== '') {
       writer.uint32(10).string(message.taskId);
     }
-    if (message.taskDescription !== "") {
+    if (message.taskDescription !== '') {
       writer.uint32(18).string(message.taskDescription);
     }
     if (message.data !== undefined) {
       Struct.encode(Struct.wrap(message.data), writer.uint32(26).fork()).join();
     }
     Object.entries(message.context).forEach(([key, value]) => {
-      AgentRequest_ContextEntry.encode({ key: key as any, value }, writer.uint32(34).fork()).join();
+      AgentRequest_ContextEntry.encode(
+        { key: key as any, value },
+        writer.uint32(34).fork()
+      ).join();
     });
     if (message.timeoutMs !== 0) {
       writer.uint32(40).int32(message.timeoutMs);
     }
-    if (message.patternName !== "") {
+    if (message.patternName !== '') {
       writer.uint32(50).string(message.patternName);
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): AgentRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseAgentRequest();
     while (reader.pos < end) {
@@ -911,7 +1022,10 @@ export const AgentRequest: MessageFns<AgentRequest> = {
             break;
           }
 
-          const entry4 = AgentRequest_ContextEntry.decode(reader, reader.uint32());
+          const entry4 = AgentRequest_ContextEntry.decode(
+            reader,
+            reader.uint32()
+          );
           if (entry4.value !== undefined) {
             message.context[entry4.key] = entry4.value;
           }
@@ -944,26 +1058,35 @@ export const AgentRequest: MessageFns<AgentRequest> = {
 
   fromJSON(object: any): AgentRequest {
     return {
-      taskId: isSet(object.taskId) ? globalThis.String(object.taskId) : "",
-      taskDescription: isSet(object.taskDescription) ? globalThis.String(object.taskDescription) : "",
+      taskId: isSet(object.taskId) ? globalThis.String(object.taskId) : '',
+      taskDescription: isSet(object.taskDescription)
+        ? globalThis.String(object.taskDescription)
+        : '',
       data: isObject(object.data) ? object.data : undefined,
       context: isObject(object.context)
-        ? Object.entries(object.context).reduce<{ [key: string]: string }>((acc, [key, value]) => {
-          acc[key] = String(value);
-          return acc;
-        }, {})
+        ? Object.entries(object.context).reduce<{ [key: string]: string }>(
+            (acc, [key, value]) => {
+              acc[key] = String(value);
+              return acc;
+            },
+            {}
+          )
         : {},
-      timeoutMs: isSet(object.timeoutMs) ? globalThis.Number(object.timeoutMs) : 0,
-      patternName: isSet(object.patternName) ? globalThis.String(object.patternName) : "",
+      timeoutMs: isSet(object.timeoutMs)
+        ? globalThis.Number(object.timeoutMs)
+        : 0,
+      patternName: isSet(object.patternName)
+        ? globalThis.String(object.patternName)
+        : '',
     };
   },
 
   toJSON(message: AgentRequest): unknown {
     const obj: any = {};
-    if (message.taskId !== "") {
+    if (message.taskId !== '') {
       obj.taskId = message.taskId;
     }
-    if (message.taskDescription !== "") {
+    if (message.taskDescription !== '') {
       obj.taskDescription = message.taskDescription;
     }
     if (message.data !== undefined) {
@@ -981,107 +1104,125 @@ export const AgentRequest: MessageFns<AgentRequest> = {
     if (message.timeoutMs !== 0) {
       obj.timeoutMs = Math.round(message.timeoutMs);
     }
-    if (message.patternName !== "") {
+    if (message.patternName !== '') {
       obj.patternName = message.patternName;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<AgentRequest>, I>>(base?: I): AgentRequest {
+  create<I extends Exact<DeepPartial<AgentRequest>, I>>(
+    base?: I
+  ): AgentRequest {
     return AgentRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<AgentRequest>, I>>(object: I): AgentRequest {
+  fromPartial<I extends Exact<DeepPartial<AgentRequest>, I>>(
+    object: I
+  ): AgentRequest {
     const message = createBaseAgentRequest();
-    message.taskId = object.taskId ?? "";
-    message.taskDescription = object.taskDescription ?? "";
+    message.taskId = object.taskId ?? '';
+    message.taskDescription = object.taskDescription ?? '';
     message.data = object.data ?? undefined;
-    message.context = Object.entries(object.context ?? {}).reduce<{ [key: string]: string }>((acc, [key, value]) => {
+    message.context = Object.entries(object.context ?? {}).reduce<{
+      [key: string]: string;
+    }>((acc, [key, value]) => {
       if (value !== undefined) {
         acc[key] = globalThis.String(value);
       }
       return acc;
     }, {});
     message.timeoutMs = object.timeoutMs ?? 0;
-    message.patternName = object.patternName ?? "";
+    message.patternName = object.patternName ?? '';
     return message;
   },
 };
 
 function createBaseAgentRequest_ContextEntry(): AgentRequest_ContextEntry {
-  return { key: "", value: "" };
+  return { key: '', value: '' };
 }
 
-export const AgentRequest_ContextEntry: MessageFns<AgentRequest_ContextEntry> = {
-  encode(message: AgentRequest_ContextEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.key !== "") {
-      writer.uint32(10).string(message.key);
-    }
-    if (message.value !== "") {
-      writer.uint32(18).string(message.value);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): AgentRequest_ContextEntry {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseAgentRequest_ContextEntry();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.key = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.value = reader.string();
-          continue;
-        }
+export const AgentRequest_ContextEntry: MessageFns<AgentRequest_ContextEntry> =
+  {
+    encode(
+      message: AgentRequest_ContextEntry,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.key !== '') {
+        writer.uint32(10).string(message.key);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.value !== '') {
+        writer.uint32(18).string(message.value);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      return writer;
+    },
 
-  fromJSON(object: any): AgentRequest_ContextEntry {
-    return {
-      key: isSet(object.key) ? globalThis.String(object.key) : "",
-      value: isSet(object.value) ? globalThis.String(object.value) : "",
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): AgentRequest_ContextEntry {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseAgentRequest_ContextEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: AgentRequest_ContextEntry): unknown {
-    const obj: any = {};
-    if (message.key !== "") {
-      obj.key = message.key;
-    }
-    if (message.value !== "") {
-      obj.value = message.value;
-    }
-    return obj;
-  },
+            message.key = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<AgentRequest_ContextEntry>, I>>(base?: I): AgentRequest_ContextEntry {
-    return AgentRequest_ContextEntry.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<AgentRequest_ContextEntry>, I>>(object: I): AgentRequest_ContextEntry {
-    const message = createBaseAgentRequest_ContextEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
-  },
-};
+            message.value = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): AgentRequest_ContextEntry {
+      return {
+        key: isSet(object.key) ? globalThis.String(object.key) : '',
+        value: isSet(object.value) ? globalThis.String(object.value) : '',
+      };
+    },
+
+    toJSON(message: AgentRequest_ContextEntry): unknown {
+      const obj: any = {};
+      if (message.key !== '') {
+        obj.key = message.key;
+      }
+      if (message.value !== '') {
+        obj.value = message.value;
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<AgentRequest_ContextEntry>, I>>(
+      base?: I
+    ): AgentRequest_ContextEntry {
+      return AgentRequest_ContextEntry.fromPartial(base ?? ({} as any));
+    },
+    fromPartial<I extends Exact<DeepPartial<AgentRequest_ContextEntry>, I>>(
+      object: I
+    ): AgentRequest_ContextEntry {
+      const message = createBaseAgentRequest_ContextEntry();
+      message.key = object.key ?? '';
+      message.value = object.value ?? '';
+      return message;
+    },
+  };
 
 function createBaseEmpty(): Empty {
   return {};
@@ -1093,7 +1234,8 @@ export const Empty: MessageFns<Empty> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): Empty {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseEmpty();
     while (reader.pos < end) {
@@ -1131,43 +1273,56 @@ export type ConfidenceAgentService = typeof ConfidenceAgentService;
 export const ConfidenceAgentService = {
   /** Analyze a task and return result with confidence */
   analyze: {
-    path: "/parallax.confidence.ConfidenceAgent/Analyze",
+    path: '/parallax.confidence.ConfidenceAgent/Analyze',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: AgentRequest): Buffer => Buffer.from(AgentRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): AgentRequest => AgentRequest.decode(value),
-    responseSerialize: (value: ConfidenceResult): Buffer => Buffer.from(ConfidenceResult.encode(value).finish()),
-    responseDeserialize: (value: Buffer): ConfidenceResult => ConfidenceResult.decode(value),
+    requestSerialize: (value: AgentRequest): Buffer =>
+      Buffer.from(AgentRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): AgentRequest =>
+      AgentRequest.decode(value),
+    responseSerialize: (value: ConfidenceResult): Buffer =>
+      Buffer.from(ConfidenceResult.encode(value).finish()),
+    responseDeserialize: (value: Buffer): ConfidenceResult =>
+      ConfidenceResult.decode(value),
   },
   /** Get agent capabilities */
   getCapabilities: {
-    path: "/parallax.confidence.ConfidenceAgent/GetCapabilities",
+    path: '/parallax.confidence.ConfidenceAgent/GetCapabilities',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: Empty1): Buffer => Buffer.from(Empty1.encode(value).finish()),
+    requestSerialize: (value: Empty1): Buffer =>
+      Buffer.from(Empty1.encode(value).finish()),
     requestDeserialize: (value: Buffer): Empty1 => Empty1.decode(value),
-    responseSerialize: (value: Capabilities): Buffer => Buffer.from(Capabilities.encode(value).finish()),
-    responseDeserialize: (value: Buffer): Capabilities => Capabilities.decode(value),
+    responseSerialize: (value: Capabilities): Buffer =>
+      Buffer.from(Capabilities.encode(value).finish()),
+    responseDeserialize: (value: Buffer): Capabilities =>
+      Capabilities.decode(value),
   },
   /** Health check */
   healthCheck: {
-    path: "/parallax.confidence.ConfidenceAgent/HealthCheck",
+    path: '/parallax.confidence.ConfidenceAgent/HealthCheck',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: Empty1): Buffer => Buffer.from(Empty1.encode(value).finish()),
+    requestSerialize: (value: Empty1): Buffer =>
+      Buffer.from(Empty1.encode(value).finish()),
     requestDeserialize: (value: Buffer): Empty1 => Empty1.decode(value),
-    responseSerialize: (value: Health): Buffer => Buffer.from(Health.encode(value).finish()),
+    responseSerialize: (value: Health): Buffer =>
+      Buffer.from(Health.encode(value).finish()),
     responseDeserialize: (value: Buffer): Health => Health.decode(value),
   },
   /** Stream analysis for long-running tasks */
   streamAnalyze: {
-    path: "/parallax.confidence.ConfidenceAgent/StreamAnalyze",
+    path: '/parallax.confidence.ConfidenceAgent/StreamAnalyze',
     requestStream: false,
     responseStream: true,
-    requestSerialize: (value: AgentRequest): Buffer => Buffer.from(AgentRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): AgentRequest => AgentRequest.decode(value),
-    responseSerialize: (value: ConfidenceResult): Buffer => Buffer.from(ConfidenceResult.encode(value).finish()),
-    responseDeserialize: (value: Buffer): ConfidenceResult => ConfidenceResult.decode(value),
+    requestSerialize: (value: AgentRequest): Buffer =>
+      Buffer.from(AgentRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): AgentRequest =>
+      AgentRequest.decode(value),
+    responseSerialize: (value: ConfidenceResult): Buffer =>
+      Buffer.from(ConfidenceResult.encode(value).finish()),
+    responseDeserialize: (value: Buffer): ConfidenceResult =>
+      ConfidenceResult.decode(value),
   },
 } as const;
 
@@ -1186,77 +1341,101 @@ export interface ConfidenceAgentClient extends Client {
   /** Analyze a task and return result with confidence */
   analyze(
     request: AgentRequest,
-    callback: (error: ServiceError | null, response: ConfidenceResult) => void,
+    callback: (error: ServiceError | null, response: ConfidenceResult) => void
   ): ClientUnaryCall;
   analyze(
     request: AgentRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: ConfidenceResult) => void,
+    callback: (error: ServiceError | null, response: ConfidenceResult) => void
   ): ClientUnaryCall;
   analyze(
     request: AgentRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: ConfidenceResult) => void,
+    callback: (error: ServiceError | null, response: ConfidenceResult) => void
   ): ClientUnaryCall;
   /** Get agent capabilities */
   getCapabilities(
     request: Empty1,
-    callback: (error: ServiceError | null, response: Capabilities) => void,
+    callback: (error: ServiceError | null, response: Capabilities) => void
   ): ClientUnaryCall;
   getCapabilities(
     request: Empty1,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Capabilities) => void,
+    callback: (error: ServiceError | null, response: Capabilities) => void
   ): ClientUnaryCall;
   getCapabilities(
     request: Empty1,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Capabilities) => void,
+    callback: (error: ServiceError | null, response: Capabilities) => void
   ): ClientUnaryCall;
   /** Health check */
-  healthCheck(request: Empty1, callback: (error: ServiceError | null, response: Health) => void): ClientUnaryCall;
+  healthCheck(
+    request: Empty1,
+    callback: (error: ServiceError | null, response: Health) => void
+  ): ClientUnaryCall;
   healthCheck(
     request: Empty1,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Health) => void,
+    callback: (error: ServiceError | null, response: Health) => void
   ): ClientUnaryCall;
   healthCheck(
     request: Empty1,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Health) => void,
+    callback: (error: ServiceError | null, response: Health) => void
   ): ClientUnaryCall;
   /** Stream analysis for long-running tasks */
-  streamAnalyze(request: AgentRequest, options?: Partial<CallOptions>): ClientReadableStream<ConfidenceResult>;
+  streamAnalyze(
+    request: AgentRequest,
+    options?: Partial<CallOptions>
+  ): ClientReadableStream<ConfidenceResult>;
   streamAnalyze(
     request: AgentRequest,
     metadata?: Metadata,
-    options?: Partial<CallOptions>,
+    options?: Partial<CallOptions>
   ): ClientReadableStream<ConfidenceResult>;
 }
 
 export const ConfidenceAgentClient = makeGenericClientConstructor(
   ConfidenceAgentService,
-  "parallax.confidence.ConfidenceAgent",
+  'parallax.confidence.ConfidenceAgent'
 ) as unknown as {
-  new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): ConfidenceAgentClient;
+  new (
+    address: string,
+    credentials: ChannelCredentials,
+    options?: Partial<ClientOptions>
+  ): ConfidenceAgentClient;
   service: typeof ConfidenceAgentService;
   serviceName: string;
 };
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : Partial<T>;
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends globalThis.Array<infer U>
+    ? globalThis.Array<DeepPartial<U>>
+    : T extends ReadonlyArray<infer U>
+      ? ReadonlyArray<DeepPartial<U>>
+      : T extends {}
+        ? { [K in keyof T]?: DeepPartial<T[K]> }
+        : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+      [K in Exclude<keyof I, KeysOfUnion<P>>]: never;
+    };
 
 function toTimestamp(date: Date): Timestamp {
   const seconds = Math.trunc(date.getTime() / 1_000);
@@ -1273,7 +1452,7 @@ function fromTimestamp(t: Timestamp): Date {
 function fromJsonTimestamp(o: any): Date {
   if (o instanceof globalThis.Date) {
     return o;
-  } else if (typeof o === "string") {
+  } else if (typeof o === 'string') {
     return new globalThis.Date(o);
   } else {
     return fromTimestamp(Timestamp.fromJSON(o));
@@ -1281,7 +1460,7 @@ function fromJsonTimestamp(o: any): Date {
 }
 
 function isObject(value: any): boolean {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function isSet(value: any): boolean {

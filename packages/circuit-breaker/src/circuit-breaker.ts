@@ -1,9 +1,9 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import {
-  CircuitState,
-  CircuitBreakerOptions,
-  CircuitBreakerMetrics,
+  type CircuitBreakerMetrics,
+  type CircuitBreakerOptions,
   CircuitOpenError,
+  CircuitState,
 } from './types';
 
 /**
@@ -34,7 +34,6 @@ export class CircuitBreaker extends EventEmitter {
   private state: CircuitState = CircuitState.CLOSED;
   private failureCount: number = 0;
   private successCount: number = 0;
-  private halfOpenAttempts: number = 0;
   private lastFailureTime?: Date;
   private lastSuccessTime?: Date;
   private nextAttemptTime?: Date;
@@ -46,8 +45,15 @@ export class CircuitBreaker extends EventEmitter {
   private totalRejections: number = 0;
 
   private readonly options: Required<
-    Pick<CircuitBreakerOptions, 'failureThreshold' | 'resetTimeout' | 'successThreshold' | 'halfOpenMaxAttempts'>
-  > & CircuitBreakerOptions;
+    Pick<
+      CircuitBreakerOptions,
+      | 'failureThreshold'
+      | 'resetTimeout'
+      | 'successThreshold'
+      | 'halfOpenMaxAttempts'
+    >
+  > &
+    CircuitBreakerOptions;
 
   constructor(options: CircuitBreakerOptions) {
     super();

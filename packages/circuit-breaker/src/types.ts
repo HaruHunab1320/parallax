@@ -81,9 +81,9 @@ export interface CircuitBreakerMetrics {
  */
 export interface CircuitBreakerEvents {
   'state-change': { from: CircuitState; to: CircuitState };
-  'success': { duration: number };
-  'failure': { error: unknown; duration: number };
-  'rejected': { state: CircuitState };
+  success: { duration: number };
+  failure: { error: unknown; duration: number };
+  rejected: { state: CircuitState };
 }
 
 /**

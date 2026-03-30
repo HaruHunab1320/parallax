@@ -8,17 +8,17 @@
  *   GITHUB_APP_ID, GITHUB_PRIVATE_KEY
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import {
-  WorkspaceService,
   CredentialService,
-  generateBranchName,
-  parseBranchName,
   createBranchInfo,
+  generateBranchName,
   generateSlug,
   isManagedBranch,
+  parseBranchName,
+  WorkspaceService,
 } from '../src';
 
 async function demoBranchNaming() {
@@ -58,13 +58,21 @@ async function demoBranchNaming() {
 
   // Check if managed
   console.log('\nManaged branch detection:');
-  console.log(`  'parallax/exec-123/eng' is managed: ${isManagedBranch('parallax/exec-123/eng')}`);
-  console.log(`  'feature/my-feature' is managed: ${isManagedBranch('feature/my-feature')}`);
+  console.log(
+    `  'parallax/exec-123/eng' is managed: ${isManagedBranch('parallax/exec-123/eng')}`
+  );
+  console.log(
+    `  'feature/my-feature' is managed: ${isManagedBranch('feature/my-feature')}`
+  );
 
   // Generate slugs
   console.log('\nSlug generation:');
-  console.log(`  'Implement user authentication' -> '${generateSlug('Implement user authentication')}'`);
-  console.log(`  'Fix bug #123 in login flow' -> '${generateSlug('Fix bug #123 in login flow')}'`);
+  console.log(
+    `  'Implement user authentication' -> '${generateSlug('Implement user authentication')}'`
+  );
+  console.log(
+    `  'Fix bug #123 in login flow' -> '${generateSlug('Fix bug #123 in login flow')}'`
+  );
 }
 
 async function demoCredentialService() {
@@ -115,8 +123,9 @@ async function demoCredentialService() {
     // Revoke
     console.log('\nRevoking credential...');
     await credentialService.revokeCredential(credential.id);
-    console.log(`  Valid after revoke: ${credentialService.isValid(credential.id)}`);
-
+    console.log(
+      `  Valid after revoke: ${credentialService.isValid(credential.id)}`
+    );
   } catch (error) {
     console.log(`Error: ${(error as Error).message}`);
   }
@@ -140,9 +149,9 @@ async function demoWorkspaceService() {
     },
     credentialService,
     logger: {
-      info: (data, msg) => console.log(`  [INFO] ${msg}`),
-      warn: (data, msg) => console.log(`  [WARN] ${msg}`),
-      error: (data, msg) => console.log(`  [ERROR] ${msg}`),
+      info: (_data, msg) => console.log(`  [INFO] ${msg}`),
+      warn: (_data, msg) => console.log(`  [WARN] ${msg}`),
+      error: (_data, msg) => console.log(`  [ERROR] ${msg}`),
       debug: () => {},
     },
   });
@@ -179,22 +188,30 @@ async function demoWorkspaceService() {
   console.log('Would provision workspace with:');
   console.log(`  Repo: ${config.repo}`);
   console.log(`  Base branch: ${config.baseBranch}`);
-  console.log(`  Branch: ${generateBranchName({
-    executionId: config.execution.id,
-    role: config.task.role,
-    slug: config.task.slug,
-    baseBranch: config.baseBranch,
-  }, { prefix: 'demo' })}`);
+  console.log(
+    `  Branch: ${generateBranchName(
+      {
+        executionId: config.execution.id,
+        role: config.task.role,
+        slug: config.task.slug,
+        baseBranch: config.baseBranch,
+      },
+      { prefix: 'demo' }
+    )}`
+  );
   console.log(`  Execution: ${config.execution.id}`);
   console.log(`  Pattern: ${config.execution.patternName}`);
 
   // Create branch info to show what would be created
-  const branchInfo = createBranchInfo({
-    executionId: config.execution.id,
-    role: config.task.role,
-    slug: config.task.slug,
-    baseBranch: config.baseBranch,
-  }, { prefix: 'demo' });
+  const branchInfo = createBranchInfo(
+    {
+      executionId: config.execution.id,
+      role: config.task.role,
+      slug: config.task.slug,
+      baseBranch: config.baseBranch,
+    },
+    { prefix: 'demo' }
+  );
 
   console.log('\nBranch info that would be created:');
   console.log(JSON.stringify(branchInfo, null, 2));
@@ -212,11 +229,17 @@ async function main() {
   await demoWorkspaceService();
 
   console.log('\n=== Demo Complete ===');
-  console.log('Demonstrated branch naming, credential management, and workspace setup.\n');
+  console.log(
+    'Demonstrated branch naming, credential management, and workspace setup.\n'
+  );
 
   // Note about full demo
-  console.log('Note: To demo actual git operations (clone, push, PR creation),');
-  console.log('set GITHUB_APP_ID and GITHUB_PRIVATE_KEY environment variables.\n');
+  console.log(
+    'Note: To demo actual git operations (clone, push, PR creation),'
+  );
+  console.log(
+    'set GITHUB_APP_ID and GITHUB_PRIVATE_KEY environment variables.\n'
+  );
 }
 
 main().catch(console.error);

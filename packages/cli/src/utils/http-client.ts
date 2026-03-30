@@ -2,7 +2,7 @@
  * HTTP client for Parallax Control Plane API
  */
 
-import axios, { AxiosInstance } from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 import WebSocket from 'ws';
 
 export interface ParallaxHttpConfig {
@@ -49,21 +49,22 @@ export class ParallaxHttpClient {
   private baseURL: string;
 
   constructor(config: ParallaxHttpConfig = {}) {
-    this.baseURL = config.baseURL || process.env.PARALLAX_API_URL || 'http://localhost:3000';
-    
+    this.baseURL =
+      config.baseURL || process.env.PARALLAX_API_URL || 'http://localhost:3000';
+
     this.client = axios.create({
       baseURL: this.baseURL,
       timeout: config.timeout || 30000,
       headers: {
         'Content-Type': 'application/json',
-        ...(config.apiKey ? { 'X-API-Key': config.apiKey } : {})
-      }
+        ...(config.apiKey ? { 'X-API-Key': config.apiKey } : {}),
+      },
     });
 
     // Add request/response interceptors for error handling
     this.client.interceptors.response.use(
-      response => response,
-      error => {
+      (response) => response,
+      (error) => {
         if (error.response) {
           const message = error.response.data?.error || error.message;
           throw new Error(`API Error (${error.response.status}): ${message}`);
@@ -91,17 +92,24 @@ export class ParallaxHttpClient {
   }
 
   async validatePattern(name: string, input: any) {
-    const response = await this.client.post(`/api/patterns/${name}/validate`, input);
+    const response = await this.client.post(
+      `/api/patterns/${name}/validate`,
+      input
+    );
     return response.data;
   }
 
-  async executePattern(name: string, input: any, options?: { timeout?: number }) {
+  async executePattern(
+    name: string,
+    input: any,
+    options?: { timeout?: number }
+  ) {
     const response = await this.client.post(
       `/api/patterns/${name}/execute`,
       { input, options },
       {
         params: options,
-        timeout: options?.timeout || 60000 // Default 60s for execution
+        timeout: options?.timeout || 60000, // Default 60s for execution
       }
     );
     return response.data.execution;
@@ -124,18 +132,29 @@ export class ParallaxHttpClient {
   }
 
   async testAgent(id: string, task: string = 'test', data: any = {}) {
-    const response = await this.client.post(`/api/agents/${id}/test`, { task, data });
+    const response = await this.client.post(`/api/agents/${id}/test`, {
+      task,
+      data,
+    });
     return response.data;
   }
 
   async getAgentsByCapability(capability: string): Promise<Agent[]> {
-    const response = await this.client.get(`/api/agents/capability/${capability}`);
+    const response = await this.client.get(
+      `/api/agents/capability/${capability}`
+    );
     return response.data.agents;
   }
 
   // Execution methods
-  async listExecutions(options?: { limit?: number; offset?: number; status?: string }) {
-    const response = await this.client.get('/api/executions', { params: options });
+  async listExecutions(options?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+  }) {
+    const response = await this.client.get('/api/executions', {
+      params: options,
+    });
     return response.data;
   }
 
@@ -144,11 +163,15 @@ export class ParallaxHttpClient {
     return response.data;
   }
 
-  async createExecution(patternName: string, input: any, options?: { timeout?: number; stream?: boolean }) {
+  async createExecution(
+    patternName: string,
+    input: any,
+    options?: { timeout?: number; stream?: boolean }
+  ) {
     const response = await this.client.post('/api/executions', {
       patternName,
       input,
-      options
+      options,
     });
     return response.data;
   }
@@ -164,19 +187,24 @@ export class ParallaxHttpClient {
   }
 
   // WebSocket streaming
-  streamExecution(executionId: string, handlers: {
-    onMessage?: (data: any) => void;
-    onError?: (error: Error) => void;
-    onClose?: () => void;
-  }): WebSocket {
+  streamExecution(
+    executionId: string,
+    handlers: {
+      onMessage?: (data: any) => void;
+      onError?: (error: Error) => void;
+      onClose?: () => void;
+    }
+  ): WebSocket {
     const wsUrl = this.baseURL.replace(/^http/, 'ws');
-    const ws = new WebSocket(`${wsUrl}/api/executions/stream?executionId=${executionId}`);
+    const ws = new WebSocket(
+      `${wsUrl}/api/executions/stream?executionId=${executionId}`
+    );
 
     ws.on('message', (data) => {
       try {
         const message = JSON.parse(data.toString());
         handlers.onMessage?.(message);
-      } catch (error) {
+      } catch (_error) {
         handlers.onError?.(new Error('Failed to parse WebSocket message'));
       }
     });
@@ -193,16 +221,34 @@ export class ParallaxHttpClient {
   }
 
   // Pattern upload methods
-  async uploadPattern(filename: string, content: string, overwrite?: boolean): Promise<Pattern> {
-    const response = await this.client.post('/api/patterns/upload', { filename, content, overwrite });
+  async uploadPattern(
+    filename: string,
+    content: string,
+    overwrite?: boolean
+  ): Promise<Pattern> {
+    const response = await this.client.post('/api/patterns/upload', {
+      filename,
+      content,
+      overwrite,
+    });
     return response.data.pattern;
   }
 
   async uploadPatterns(
     files: Array<{ filename: string; content: string }>,
     overwrite?: boolean
-  ): Promise<{ results: Array<{ filename: string; success: boolean; pattern?: Pattern; error?: string }> }> {
-    const response = await this.client.post('/api/patterns/upload/batch', { files, overwrite });
+  ): Promise<{
+    results: Array<{
+      filename: string;
+      success: boolean;
+      pattern?: Pattern;
+      error?: string;
+    }>;
+  }> {
+    const response = await this.client.post('/api/patterns/upload/batch', {
+      files,
+      overwrite,
+    });
     return response.data;
   }
 

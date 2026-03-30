@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { TmuxTransport, TMUX_KEY_MAP } from '../src/tmux-transport.js';
+import { afterEach, describe, expect, it } from 'vitest';
+import { TMUX_KEY_MAP, TmuxTransport } from '../src/tmux-transport.js';
 
 describe('TmuxTransport', () => {
   const transport = new TmuxTransport();
@@ -74,14 +74,14 @@ describe('TmuxTransport', () => {
       });
 
       // Wait for shell to start
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Send a command
       transport.sendText(name, 'echo hello-tmux-test');
       transport.sendKey(name, 'enter');
 
       // Wait for output
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       const output = transport.capturePane(name);
       expect(output).toContain('hello-tmux-test');
@@ -99,14 +99,14 @@ describe('TmuxTransport', () => {
         historyLimit: 1000,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       // Type something then Ctrl+C
       transport.sendText(name, 'sleep 100');
       transport.sendKey(name, 'enter');
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
       transport.sendKey(name, 'ctrl+c');
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       // Should still be alive (shell didn't exit)
       expect(transport.isAlive(name)).toBe(true);
@@ -183,18 +183,18 @@ describe('TmuxTransport', () => {
 
       const sessions = TmuxTransport.listSessions('test-tmux-');
       expect(sessions.length).toBeGreaterThanOrEqual(1);
-      expect(sessions.some(s => s.name === name)).toBe(true);
+      expect(sessions.some((s) => s.name === name)).toBe(true);
     });
   });
 
   describe('TMUX_KEY_MAP', () => {
     it('should map common keys', () => {
-      expect(TMUX_KEY_MAP['enter']).toBe('Enter');
+      expect(TMUX_KEY_MAP.enter).toBe('Enter');
       expect(TMUX_KEY_MAP['ctrl+c']).toBe('C-c');
-      expect(TMUX_KEY_MAP['up']).toBe('Up');
-      expect(TMUX_KEY_MAP['tab']).toBe('Tab');
-      expect(TMUX_KEY_MAP['escape']).toBe('Escape');
-      expect(TMUX_KEY_MAP['backspace']).toBe('BSpace');
+      expect(TMUX_KEY_MAP.up).toBe('Up');
+      expect(TMUX_KEY_MAP.tab).toBe('Tab');
+      expect(TMUX_KEY_MAP.escape).toBe('Escape');
+      expect(TMUX_KEY_MAP.backspace).toBe('BSpace');
     });
   });
 });

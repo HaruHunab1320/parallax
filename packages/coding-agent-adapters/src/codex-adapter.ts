@@ -5,13 +5,19 @@
  */
 
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from 'adapter-types';
-import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
+import {
+  type AgentCredentials,
+  type AgentFileDescriptor,
+  BaseCodingAdapter,
+  type InstallationInfo,
+  type ModelRecommendations,
+} from './base-coding-adapter';
 
 export class CodexAdapter extends BaseCodingAdapter {
   readonly adapterType = 'codex';
@@ -20,9 +26,7 @@ export class CodexAdapter extends BaseCodingAdapter {
 
   readonly installation: InstallationInfo = {
     command: 'npm install -g @openai/codex',
-    alternatives: [
-      'pip install openai (Python SDK)',
-    ],
+    alternatives: ['pip install openai (Python SDK)'],
     docsUrl: 'https://github.com/openai/codex',
   };
 
@@ -42,7 +46,8 @@ export class CodexAdapter extends BaseCodingAdapter {
       safe: true,
     },
     {
-      pattern: /do.?you.?trust.?the.?contents|trust.?this.?directory|yes,?.?continue|prompt.?injection/i,
+      pattern:
+        /do.?you.?trust.?the.?contents|trust.?this.?directory|yes,?.?continue|prompt.?injection/i,
       type: 'permission',
       response: '',
       responseType: 'keys',
@@ -52,7 +57,8 @@ export class CodexAdapter extends BaseCodingAdapter {
       once: true,
     },
     {
-      pattern: /choose.?how.?you.?d.?like.?codex.?to.?proceed|try.?new.?model|use.?existing.?model/i,
+      pattern:
+        /choose.?how.?you.?d.?like.?codex.?to.?proceed|try.?new.?model|use.?existing.?model/i,
       type: 'config',
       response: '',
       responseType: 'keys',
@@ -187,25 +193,32 @@ export class CodexAdapter extends BaseCodingAdapter {
       return {
         required: true,
         type: 'api_key',
-        instructions: 'Set OPENAI_API_KEY environment variable or provide credentials in adapterConfig',
+        instructions:
+          'Set OPENAI_API_KEY environment variable or provide credentials in adapterConfig',
       };
     }
 
     // Onboarding auth menu (auth.rs:313)
-    if (/sign.?in.?with.?chatgpt/i.test(stripped) ||
-        (/sign.?in.?with.?device.?code/i.test(stripped) && !/open.?this.?link/i.test(stripped)) ||
-        /provide.?your.?own.?api.?key/i.test(stripped)) {
+    if (
+      /sign.?in.?with.?chatgpt/i.test(stripped) ||
+      (/sign.?in.?with.?device.?code/i.test(stripped) &&
+        !/open.?this.?link/i.test(stripped)) ||
+      /provide.?your.?own.?api.?key/i.test(stripped)
+    ) {
       return {
         required: true,
         type: 'oauth',
-        instructions: 'Codex authentication required — select a sign-in method or provide an API key',
+        instructions:
+          'Codex authentication required — select a sign-in method or provide an API key',
       };
     }
 
     // Device code login flow (headless_chatgpt_login.rs:140)
-    if (/preparing.?device.?code.?login/i.test(stripped) ||
-        /open.?this.?link.?in.?your.?browser/i.test(stripped) ||
-        /enter.?this.?one-time.?code/i.test(stripped)) {
+    if (
+      /preparing.?device.?code.?login/i.test(stripped) ||
+      /open.?this.?link.?in.?your.?browser/i.test(stripped) ||
+      /enter.?this.?one-time.?code/i.test(stripped)
+    ) {
       const codeMatch = stripped.match(/code[:\s]+([A-Z0-9-]+)/i);
       const deviceCode = codeMatch ? codeMatch[1] : undefined;
       const urlMatch = stripped.match(/https?:\/\/[^\s]+/);
@@ -221,7 +234,10 @@ export class CodexAdapter extends BaseCodingAdapter {
     }
 
     // Legacy device code detection
-    if (stripped.includes('device code') || stripped.includes('Enter the code')) {
+    if (
+      stripped.includes('device code') ||
+      stripped.includes('Enter the code')
+    ) {
       const codeMatch = stripped.match(/code[:\s]+([A-Z0-9-]+)/i);
       const deviceCode = codeMatch ? codeMatch[1] : undefined;
       const urlMatch = stripped.match(/https?:\/\/[^\s]+/);
@@ -249,17 +265,21 @@ export class CodexAdapter extends BaseCodingAdapter {
     // Tool approval prompts (approval_overlay.rs:122)
     // Check BEFORE login — permission prompts may coexist with auth-related banner text.
     // TUI arrow-key menu — use keys:enter to select default ("Yes, proceed")
-    if (/would.?you.?like.?to.?run.?the.?following.?command/i.test(stripped) ||
-        /do.?you.?want.?to.?approve.?access/i.test(stripped) ||
-        /would.?you.?like.?to.?make.?the.?following.?edits/i.test(stripped) ||
-        (/press.?enter.?to.?confirm/i.test(stripped) && /esc.?to.?cancel/i.test(stripped))) {
+    if (
+      /would.?you.?like.?to.?run.?the.?following.?command/i.test(stripped) ||
+      /do.?you.?want.?to.?approve.?access/i.test(stripped) ||
+      /would.?you.?like.?to.?make.?the.?following.?edits/i.test(stripped) ||
+      (/press.?enter.?to.?confirm/i.test(stripped) &&
+        /esc.?to.?cancel/i.test(stripped))
+    ) {
       return {
         detected: true,
         type: 'permission',
         prompt: 'Codex tool approval',
         suggestedResponse: 'keys:enter',
         canAutoRespond: true,
-        instructions: 'Codex is asking permission to execute a command, approve access, or apply edits',
+        instructions:
+          'Codex is asking permission to execute a command, approve access, or apply edits',
       };
     }
 
@@ -277,8 +297,10 @@ export class CodexAdapter extends BaseCodingAdapter {
     }
 
     // Windows sandbox setup (chatwidget.rs:5818)
-    if (/set.?up.?default.?sandbox/i.test(stripped) ||
-        /use.?non-admin.?sandbox/i.test(stripped)) {
+    if (
+      /set.?up.?default.?sandbox/i.test(stripped) ||
+      /use.?non-admin.?sandbox/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'config',
@@ -289,19 +311,25 @@ export class CodexAdapter extends BaseCodingAdapter {
     }
 
     // Multi-step user input from model (request_user_input/mod.rs:41)
-    if (/type.?your.?answer/i.test(stripped) && /select.?an.?option/i.test(stripped)) {
+    if (
+      /type.?your.?answer/i.test(stripped) &&
+      /select.?an.?option/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'unknown',
         prompt: 'Codex requesting structured user input',
         canAutoRespond: false,
-        instructions: 'Codex model is asking multi-step questions that require user input',
+        instructions:
+          'Codex model is asking multi-step questions that require user input',
       };
     }
 
     // Model selection
-    if (/select.*model|choose.*model|gpt-4|gpt-3\.5/i.test(stripped) &&
-        /\d+\)/i.test(stripped)) {
+    if (
+      /select.*model|choose.*model|gpt-4|gpt-3\.5/i.test(stripped) &&
+      /\d+\)/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'model_select',
@@ -312,7 +340,9 @@ export class CodexAdapter extends BaseCodingAdapter {
     }
 
     // Organization selection
-    if (/select.*organization|choose.*org|multiple organizations/i.test(stripped)) {
+    if (
+      /select.*organization|choose.*org|multiple organizations/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'config',
@@ -323,8 +353,10 @@ export class CodexAdapter extends BaseCodingAdapter {
     }
 
     // Rate limit warning
-    if (/rate limit|too many requests/i.test(stripped) &&
-        /retry|wait/i.test(stripped)) {
+    if (
+      /rate limit|too many requests/i.test(stripped) &&
+      /retry|wait/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'unknown',
@@ -387,7 +419,8 @@ export class CodexAdapter extends BaseCodingAdapter {
     // PTY session level.
 
     // "Worked for <duration>" separator — high-confidence completion indicator
-    const hasWorkedFor = /Worked\s+for\s+\d+(?:h\s+\d{2}m\s+\d{2}s|m\s+\d{2}s|s)/.test(stripped);
+    const hasWorkedFor =
+      /Worked\s+for\s+\d+(?:h\s+\d{2}m\s+\d{2}s|m\s+\d{2}s|s)/.test(stripped);
 
     // Composer-ready prompt: "› Ask Codex to do anything" OR any non-menu composer row.
     // Excludes menu selections like "› 1. Yes, proceed".
@@ -423,13 +456,11 @@ export class CodexAdapter extends BaseCodingAdapter {
     const rawTail = output.slice(-2000);
     const hasRawComposerSignals =
       /OpenAI\s+Codex/i.test(rawTail) &&
-      (
-        /Explain\s+this\s+codebase/i.test(rawTail) ||
+      (/Explain\s+this\s+codebase/i.test(rawTail) ||
         /Summarize\s+recent\s+commits/i.test(rawTail) ||
         /Ask\s+Codex\s+to\s+do\s+anything/i.test(rawTail) ||
         /\?\s+for\s+shortcuts/i.test(rawTail) ||
-        /context\s+left/i.test(rawTail)
-      );
+        /context\s+left/i.test(rawTail));
     if (hasRawComposerSignals) {
       return true;
     }
@@ -456,33 +487,41 @@ export class CodexAdapter extends BaseCodingAdapter {
       /Explain\s+this\s+codebase/i.test(tail) ||
       /Ask\s+Codex\s+to\s+do\s+anything/i.test(tail);
     const hasCodexHeader =
-      /OpenAI\s+Codex/i.test(tail) &&
-      /directory:\s+~?\/?.+/i.test(tail);
+      /OpenAI\s+Codex/i.test(tail) && /directory:\s+~?\/?.+/i.test(tail);
     const hasInteractiveStatusBar =
-      /gpt-[\w.-]+\s+(?:high|medium|low)/i.test(tail) &&
-      /left\b/i.test(tail);
+      /gpt-[\w.-]+\s+(?:high|medium|low)/i.test(tail) && /left\b/i.test(tail);
 
-    if (hasComposerPrompt || hasComposerFooter || hasStartupComposerHints || (hasCodexHeader && hasInteractiveStatusBar)) {
+    if (
+      hasComposerPrompt ||
+      hasComposerFooter ||
+      hasStartupComposerHints ||
+      (hasCodexHeader && hasInteractiveStatusBar)
+    ) {
       return true;
     }
 
     // Guard: if output contains trust, auth, or update prompts, we're NOT ready
-    if (/do.?you.?trust.?the.?contents/i.test(stripped) ||
-        /sign.?in.?with.?chatgpt/i.test(stripped) ||
-        /update.?available/i.test(stripped) ||
-        /enable.?full.?access/i.test(stripped) ||
-        /choose.?working.?directory/i.test(stripped)) {
+    if (
+      /do.?you.?trust.?the.?contents/i.test(stripped) ||
+      /sign.?in.?with.?chatgpt/i.test(stripped) ||
+      /update.?available/i.test(stripped) ||
+      /enable.?full.?access/i.test(stripped) ||
+      /choose.?working.?directory/i.test(stripped)
+    ) {
       return false;
     }
 
     // Placeholder suggestions indicate the composer is active (chatwidget.rs:7228)
-    if (/explain this codebase|summarize recent commits|find and fix a bug/i.test(stripped)) {
+    if (
+      /explain this codebase|summarize recent commits|find and fix a bug/i.test(
+        stripped
+      )
+    ) {
       return true;
     }
 
     return (
-      stripped.includes('How can I help') ||
-      /(?:codex|>)\s*$/i.test(stripped)
+      stripped.includes('How can I help') || /(?:codex|>)\s*$/i.test(stripped)
     );
   }
 
@@ -513,7 +552,11 @@ export class CodexAdapter extends BaseCodingAdapter {
    * Detect exit conditions specific to Codex CLI.
    * Source: main.rs:404, main.rs:414, main.rs:461
    */
-  override detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  override detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     const stripped = this.stripAnsi(output);
 
     // Session ended — provides resume command (main.rs:404)

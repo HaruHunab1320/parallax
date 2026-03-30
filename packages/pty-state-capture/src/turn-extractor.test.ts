@@ -83,8 +83,14 @@ describe('TurnExtractor', () => {
     ext.push(r2, '• Working (2s • esc to interrupt)', 'stdout');
 
     // Approval prompt (matches awaiting_approval_codex pattern)
-    const r3 = await capture.feed('Would you like to run the following command?');
-    const turn = ext.push(r3, 'Would you like to run the following command?', 'stdout');
+    const r3 = await capture.feed(
+      'Would you like to run the following command?'
+    );
+    const turn = ext.push(
+      r3,
+      'Would you like to run the following command?',
+      'stdout'
+    );
 
     expect(turn).toBeDefined();
     expect(turn!.finalState).toBe('awaiting_approval');
@@ -159,7 +165,10 @@ describe('TurnExtractor', () => {
 
   it('truncates output from front when exceeding limits', async () => {
     const capture = await makeCapture('codex');
-    const ext = new TurnExtractor({ maxRawOutputPerTurn: 50, maxCleanOutputPerTurn: 30 });
+    const ext = new TurnExtractor({
+      maxRawOutputPerTurn: 50,
+      maxCleanOutputPerTurn: 30,
+    });
 
     // Bootstrap: busy → ready
     const b1 = await capture.feed('• Working (0s • esc to interrupt)');

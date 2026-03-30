@@ -4,9 +4,9 @@
  * Monitors and reports the health of all control plane nodes in the cluster.
  */
 
-import { Logger } from 'pino';
-import { LeaderElectionService } from './leader-election';
-import { StateSyncService, StateNamespaces } from './state-sync';
+import type { Logger } from 'pino';
+import type { LeaderElectionService } from './leader-election';
+import { StateNamespaces, type StateSyncService } from './state-sync';
 
 export interface NodeInfo {
   instanceId: string;
@@ -138,7 +138,8 @@ export class ClusterHealthService {
         }
 
         // Update leader status
-        nodeInfo.isLeader = nodeInfo.instanceId === this.leaderElection.getLeaderId();
+        nodeInfo.isLeader =
+          nodeInfo.instanceId === this.leaderElection.getLeaderId();
         nodes.push(nodeInfo);
       }
     }

@@ -25,7 +25,7 @@ export interface CoordinationPattern {
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
 export interface ConfidenceThresholds {
-  high: number;    // >= 0.8
-  medium: number;  // >= 0.5
-  low: number;     // < 0.5
+  high: number; // >= 0.8
+  medium: number; // >= 0.5
+  low: number; // < 0.5
 }

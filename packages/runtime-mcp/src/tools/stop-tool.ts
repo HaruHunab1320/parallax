@@ -3,7 +3,7 @@
  */
 
 import type { LocalRuntime } from '@parallaxai/runtime-local';
-import { StopInputSchema, type StopInput } from './schemas.js';
+import { type StopInput, StopInputSchema } from './schemas.js';
 
 export const STOP_TOOL = {
   name: 'stop',
@@ -14,7 +14,9 @@ export const STOP_TOOL = {
 export async function executeStop(
   runtime: LocalRuntime,
   input: StopInput
-): Promise<{ success: true; agentId: string } | { success: false; error: string }> {
+): Promise<
+  { success: true; agentId: string } | { success: false; error: string }
+> {
   try {
     // Check if agent exists
     const agent = await runtime.get(input.agentId);

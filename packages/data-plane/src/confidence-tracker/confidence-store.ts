@@ -1,5 +1,10 @@
-import { ConfidenceDataPoint, ConfidenceQuery, ConfidenceStore, AggregationInterval } from './types';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
+import type {
+  AggregationInterval,
+  ConfidenceDataPoint,
+  ConfidenceQuery,
+  ConfidenceStore,
+} from './types';
 
 export interface ConfidenceStoreConfig {
   maxDataPoints: number;
@@ -11,7 +16,10 @@ export interface ConfidenceStoreConfig {
   };
 }
 
-export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceStore {
+export class InMemoryConfidenceStore
+  extends EventEmitter
+  implements ConfidenceStore
+{
   private dataPoints: ConfidenceDataPoint[] = [];
   private aggregatedData: Map<string, Map<string, number[]>> = new Map();
 
@@ -22,55 +30,55 @@ export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceS
 
   async addDataPoint(dataPoint: ConfidenceDataPoint): Promise<void> {
     this.dataPoints.push(dataPoint);
-    
+
     // Clean up old data
     this.pruneOldData();
-    
+
     // Emit event for real-time monitoring
     this.emit('confidence:recorded', dataPoint);
-    
+
     // Trigger aggregation
     this.updateAggregations(dataPoint);
   }
 
   async query(query: ConfidenceQuery): Promise<ConfidenceDataPoint[]> {
     let results = [...this.dataPoints];
-    
+
     // Apply filters
     if (query.agentIds?.length) {
-      results = results.filter(dp => query.agentIds!.includes(dp.agentId));
+      results = results.filter((dp) => query.agentIds!.includes(dp.agentId));
     }
-    
+
     if (query.patternNames?.length) {
-      results = results.filter(dp => 
-        dp.patternName && query.patternNames!.includes(dp.patternName)
+      results = results.filter(
+        (dp) => dp.patternName && query.patternNames!.includes(dp.patternName)
       );
     }
-    
+
     if (query.startTime) {
-      results = results.filter(dp => dp.timestamp >= query.startTime!);
+      results = results.filter((dp) => dp.timestamp >= query.startTime!);
     }
-    
+
     if (query.endTime) {
-      results = results.filter(dp => dp.timestamp <= query.endTime!);
+      results = results.filter((dp) => dp.timestamp <= query.endTime!);
     }
-    
+
     if (query.minConfidence !== undefined) {
-      results = results.filter(dp => dp.confidence >= query.minConfidence!);
+      results = results.filter((dp) => dp.confidence >= query.minConfidence!);
     }
-    
+
     if (query.maxConfidence !== undefined) {
-      results = results.filter(dp => dp.confidence <= query.maxConfidence!);
+      results = results.filter((dp) => dp.confidence <= query.maxConfidence!);
     }
-    
+
     // Sort by timestamp descending
     results.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-    
+
     // Apply limit
     if (query.limit) {
       results = results.slice(0, query.limit);
     }
-    
+
     return results;
   }
 
@@ -80,12 +88,13 @@ export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceS
     endTime: Date
   ): Promise<ConfidenceDataPoint[]> {
     return this.dataPoints.filter(
-      dp => dp.agentId === agentId &&
-            dp.timestamp >= startTime &&
-            dp.timestamp <= endTime
+      (dp) =>
+        dp.agentId === agentId &&
+        dp.timestamp >= startTime &&
+        dp.timestamp <= endTime
     );
   }
-  
+
   async getAggregatedData(
     agentId: string,
     interval: AggregationInterval,
@@ -94,42 +103,45 @@ export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceS
   ): Promise<Array<{ time: Date; avgConfidence: number; count: number }>> {
     const agentData = this.aggregatedData.get(agentId);
     if (!agentData) return [];
-    
+
     const intervalData = agentData.get(interval);
     if (!intervalData) return [];
-    
+
     // Convert to structured format
-    const results: Array<{ time: Date; avgConfidence: number; count: number }> = [];
-    
+    const results: Array<{ time: Date; avgConfidence: number; count: number }> =
+      [];
+
     // This is a simplified implementation
     // In production, would use proper time-series aggregation
     const intervalMs = this.getIntervalMs(interval);
     const dataByBucket = new Map<number, number[]>();
-    
+
     this.dataPoints
-      .filter(dp => dp.agentId === agentId)
-      .filter(dp => !startTime || dp.timestamp >= startTime)
-      .filter(dp => !endTime || dp.timestamp <= endTime)
-      .forEach(dp => {
-        const bucket = Math.floor(dp.timestamp.getTime() / intervalMs) * intervalMs;
+      .filter((dp) => dp.agentId === agentId)
+      .filter((dp) => !startTime || dp.timestamp >= startTime)
+      .filter((dp) => !endTime || dp.timestamp <= endTime)
+      .forEach((dp) => {
+        const bucket =
+          Math.floor(dp.timestamp.getTime() / intervalMs) * intervalMs;
         if (!dataByBucket.has(bucket)) {
           dataByBucket.set(bucket, []);
         }
         dataByBucket.get(bucket)!.push(dp.confidence);
       });
-    
+
     for (const [bucket, confidences] of dataByBucket) {
-      const average = confidences.reduce((a, b) => a + b, 0) / confidences.length;
+      const average =
+        confidences.reduce((a, b) => a + b, 0) / confidences.length;
       results.push({
         time: new Date(bucket),
         avgConfidence: average,
         count: confidences.length,
       });
     }
-    
+
     return results.sort((a, b) => a.time.getTime() - b.time.getTime());
   }
-  
+
   async getPatternStats(
     pattern: string,
     startTime: Date,
@@ -141,11 +153,12 @@ export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceS
     agentBreakdown: Map<string, number>;
   }> {
     const patternData = this.dataPoints.filter(
-      dp => dp.pattern === pattern &&
-            dp.timestamp >= startTime &&
-            dp.timestamp <= endTime
+      (dp) =>
+        dp.pattern === pattern &&
+        dp.timestamp >= startTime &&
+        dp.timestamp <= endTime
     );
-    
+
     if (patternData.length === 0) {
       return {
         avgConfidence: 0,
@@ -154,15 +167,17 @@ export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceS
         agentBreakdown: new Map(),
       };
     }
-    
-    const avgConfidence = patternData.reduce((sum, dp) => sum + dp.confidence, 0) / patternData.length;
-    const successCount = patternData.filter(dp => dp.confidence > 0.7).length;
+
+    const avgConfidence =
+      patternData.reduce((sum, dp) => sum + dp.confidence, 0) /
+      patternData.length;
+    const successCount = patternData.filter((dp) => dp.confidence > 0.7).length;
     const agentBreakdown = new Map<string, number>();
-    
-    patternData.forEach(dp => {
+
+    patternData.forEach((dp) => {
       agentBreakdown.set(dp.agentId, (agentBreakdown.get(dp.agentId) || 0) + 1);
     });
-    
+
     return {
       avgConfidence,
       totalExecutions: patternData.length,
@@ -170,27 +185,31 @@ export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceS
       agentBreakdown,
     };
   }
-  
+
   async detectAnomalies(
     agentId: string,
     threshold: number = 2
   ): Promise<Array<{ time: Date; confidence: number; zscore: number }>> {
-    const agentData = this.dataPoints.filter(dp => dp.agentId === agentId);
-    
+    const agentData = this.dataPoints.filter((dp) => dp.agentId === agentId);
+
     if (agentData.length < 10) {
       return [];
     }
-    
+
     // Calculate mean and standard deviation
-    const confidences = agentData.map(dp => dp.confidence);
-    const mean = confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
-    const variance = confidences.reduce((sum, c) => sum + Math.pow(c - mean, 2), 0) / confidences.length;
+    const confidences = agentData.map((dp) => dp.confidence);
+    const mean =
+      confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
+    const variance =
+      confidences.reduce((sum, c) => sum + (c - mean) ** 2, 0) /
+      confidences.length;
     const stdDev = Math.sqrt(variance);
-    
+
     // Find anomalies
-    const anomalies: Array<{ time: Date; confidence: number; zscore: number }> = [];
-    
-    agentData.forEach(dp => {
+    const anomalies: Array<{ time: Date; confidence: number; zscore: number }> =
+      [];
+
+    agentData.forEach((dp) => {
       const zscore = Math.abs((dp.confidence - mean) / stdDev);
       if (zscore > threshold) {
         anomalies.push({
@@ -200,28 +219,30 @@ export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceS
         });
       }
     });
-    
+
     return anomalies;
   }
-  
+
   async cleanup(retentionPeriod: number): Promise<void> {
     const cutoffTime = new Date();
     cutoffTime.setDate(cutoffTime.getDate() - retentionPeriod);
-    
-    this.dataPoints = this.dataPoints.filter(dp => dp.timestamp > cutoffTime);
+
+    this.dataPoints = this.dataPoints.filter((dp) => dp.timestamp > cutoffTime);
   }
 
   private pruneOldData(): void {
     const cutoffTime = new Date();
     cutoffTime.setDate(cutoffTime.getDate() - this.config.retentionPeriodDays);
-    
+
     const beforeCount = this.dataPoints.length;
-    this.dataPoints = this.dataPoints.filter(dp => dp.timestamp > cutoffTime);
-    
+    this.dataPoints = this.dataPoints.filter((dp) => dp.timestamp > cutoffTime);
+
     if (beforeCount > this.dataPoints.length) {
-      this.emit('data:pruned', { removed: beforeCount - this.dataPoints.length });
+      this.emit('data:pruned', {
+        removed: beforeCount - this.dataPoints.length,
+      });
     }
-    
+
     // Also enforce max data points
     if (this.dataPoints.length > this.config.maxDataPoints) {
       this.dataPoints = this.dataPoints.slice(-this.config.maxDataPoints);
@@ -232,11 +253,11 @@ export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceS
     if (!this.aggregatedData.has(dataPoint.agentId)) {
       this.aggregatedData.set(dataPoint.agentId, new Map());
     }
-    
+
     const agentData = this.aggregatedData.get(dataPoint.agentId)!;
-    
+
     // Update each aggregation interval
-    ['minute', 'hour', 'day'].forEach(interval => {
+    ['minute', 'hour', 'day'].forEach((interval) => {
       if (!agentData.has(interval)) {
         agentData.set(interval, []);
       }
@@ -246,16 +267,22 @@ export class InMemoryConfidenceStore extends EventEmitter implements ConfidenceS
 
   private startAggregation(): void {
     // Periodic cleanup and aggregation
-    setInterval(() => {
-      this.pruneOldData();
-    }, 60 * 60 * 1000); // Every hour
+    setInterval(
+      () => {
+        this.pruneOldData();
+      },
+      60 * 60 * 1000
+    ); // Every hour
   }
 
   private getIntervalMs(interval: AggregationInterval): number {
     switch (interval) {
-      case 'minute': return 60 * 1000;
-      case 'hour': return 60 * 60 * 1000;
-      case 'day': return 24 * 60 * 60 * 1000;
+      case 'minute':
+        return 60 * 1000;
+      case 'hour':
+        return 60 * 60 * 1000;
+      case 'day':
+        return 24 * 60 * 60 * 1000;
     }
   }
 

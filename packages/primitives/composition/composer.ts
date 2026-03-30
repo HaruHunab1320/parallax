@@ -1,16 +1,16 @@
 /**
  * Pattern Composition Engine
- * 
+ *
  * Takes orchestration requirements and composes primitives into patterns
  */
 
-import { 
-  OrchestrationRequirements, 
-  RequirementsAnalysis,
-  Primitive,
+import type {
   ComposedPattern,
   Composition,
-  Connection
+  Connection,
+  OrchestrationRequirements,
+  Primitive,
+  RequirementsAnalysis,
 } from '../types';
 
 export class PatternComposer {
@@ -30,16 +30,16 @@ export class PatternComposer {
       description: 'Execute multiple operations concurrently',
       inputs: ['tasks: Task[]', 'maxConcurrency?: number'],
       outputs: ['results: Result[]'],
-      confidence: 'propagates-minimum'
+      confidence: 'propagates-minimum',
     });
 
     primitives.set('sequential', {
       name: 'sequential',
-      type: 'execution', 
+      type: 'execution',
       description: 'Execute operations in sequence',
       inputs: ['tasks: Task[]'],
       outputs: ['results: Result[]'],
-      confidence: 'propagates-chain'
+      confidence: 'propagates-chain',
     });
 
     primitives.set('race', {
@@ -48,7 +48,7 @@ export class PatternComposer {
       description: 'Return first completed result',
       inputs: ['tasks: Task[]'],
       outputs: ['result: Result'],
-      confidence: 'from-winner'
+      confidence: 'from-winner',
     });
 
     // Aggregation primitives
@@ -58,7 +58,7 @@ export class PatternComposer {
       description: 'Build consensus from multiple results',
       inputs: ['results: Result[]', 'threshold: number'],
       outputs: ['consensus: Result'],
-      confidence: 'calculated-from-agreement'
+      confidence: 'calculated-from-agreement',
     });
 
     primitives.set('voting', {
@@ -67,7 +67,7 @@ export class PatternComposer {
       description: 'Aggregate through voting',
       inputs: ['results: Result[]', 'strategy: string'],
       outputs: ['winner: Result'],
-      confidence: 'from-vote-weight'
+      confidence: 'from-vote-weight',
     });
 
     primitives.set('merge', {
@@ -76,7 +76,7 @@ export class PatternComposer {
       description: 'Merge multiple results',
       inputs: ['results: Result[]', 'strategy: string'],
       outputs: ['merged: Result'],
-      confidence: 'average'
+      confidence: 'average',
     });
 
     // Confidence primitives
@@ -86,7 +86,7 @@ export class PatternComposer {
       description: 'Filter by confidence threshold',
       inputs: ['input: Result', 'threshold: number'],
       outputs: ['output: Result?'],
-      confidence: 'pass-through-or-null'
+      confidence: 'pass-through-or-null',
     });
 
     primitives.set('transform', {
@@ -95,7 +95,7 @@ export class PatternComposer {
       description: 'Transform confidence values',
       inputs: ['input: Result', 'transformation: string'],
       outputs: ['output: Result'],
-      confidence: 'transformed'
+      confidence: 'transformed',
     });
 
     // Control primitives
@@ -105,7 +105,7 @@ export class PatternComposer {
       description: 'Retry failed operations',
       inputs: ['operation: Task', 'maxRetries: number', 'strategy: string'],
       outputs: ['result: Result'],
-      confidence: 'from-successful-attempt'
+      confidence: 'from-successful-attempt',
     });
 
     primitives.set('fallback', {
@@ -114,7 +114,7 @@ export class PatternComposer {
       description: 'Fallback to alternative',
       inputs: ['primary: Task', 'fallback: Task'],
       outputs: ['result: Result'],
-      confidence: 'from-used-path'
+      confidence: 'from-used-path',
     });
 
     primitives.set('escalate', {
@@ -123,7 +123,7 @@ export class PatternComposer {
       description: 'Escalate to higher authority',
       inputs: ['input: Result', 'escalationPath: string'],
       outputs: ['resolved: Result'],
-      confidence: 'from-escalation-handler'
+      confidence: 'from-escalation-handler',
     });
 
     primitives.set('circuit', {
@@ -132,35 +132,39 @@ export class PatternComposer {
       description: 'Circuit breaker pattern',
       inputs: ['operation: Task', 'threshold: number'],
       outputs: ['result: Result'],
-      confidence: 'based-on-circuit-state'
+      confidence: 'based-on-circuit-state',
     });
 
     return primitives;
   }
 
-  async composePattern(requirements: OrchestrationRequirements): Promise<ComposedPattern> {
+  async composePattern(
+    requirements: OrchestrationRequirements
+  ): Promise<ComposedPattern> {
     // 1. Analyze requirements
     const analysis = await this.analyzeRequirements(requirements);
-    
+
     // 2. Select appropriate primitives
     const selectedPrimitives = this.selectPrimitives(analysis);
-    
+
     // 3. Design composition structure
     const structure = this.designComposition(selectedPrimitives, requirements);
-    
+
     // 4. Generate connections between primitives
     const connections = this.generateConnections(structure);
-    
+
     // 5. Assemble into pattern
     return this.assemblePattern({
       primitives: selectedPrimitives,
       structure,
       connections,
-      metadata: this.generateMetadata(requirements)
+      metadata: this.generateMetadata(requirements),
     });
   }
 
-  private async analyzeRequirements(requirements: OrchestrationRequirements): Promise<RequirementsAnalysis> {
+  private async analyzeRequirements(
+    requirements: OrchestrationRequirements
+  ): Promise<RequirementsAnalysis> {
     const analysis: RequirementsAnalysis = {
       needsParallelism: false,
       needsSequencing: false,
@@ -173,19 +177,25 @@ export class PatternComposer {
       needsEscalation: false,
       confidenceRequirement: requirements.minConfidence || 0.5,
       taskCount: 1,
-      complexityScore: 0
+      complexityScore: 0,
     };
 
     // Analyze goal keywords
     const goalLower = requirements.goal.toLowerCase();
-    
+
     // Execution patterns
-    if (goalLower.includes('parallel') || goalLower.includes('concurrent') || 
-        goalLower.includes('simultaneously')) {
+    if (
+      goalLower.includes('parallel') ||
+      goalLower.includes('concurrent') ||
+      goalLower.includes('simultaneously')
+    ) {
       analysis.needsParallelism = true;
     }
-    if (goalLower.includes('sequential') || goalLower.includes('ordered') || 
-        goalLower.includes('step')) {
+    if (
+      goalLower.includes('sequential') ||
+      goalLower.includes('ordered') ||
+      goalLower.includes('step')
+    ) {
       analysis.needsSequencing = true;
     }
 
@@ -217,7 +227,10 @@ export class PatternComposer {
     // Strategy analysis
     if (requirements.strategy) {
       const strategyLower = requirements.strategy.toLowerCase();
-      if (strategyLower.includes('multi') || strategyLower.includes('multiple')) {
+      if (
+        strategyLower.includes('multi') ||
+        strategyLower.includes('multiple')
+      ) {
         analysis.taskCount = 3; // Default for multi-agent
         analysis.needsAggregation = true;
       }
@@ -269,60 +282,66 @@ export class PatternComposer {
   }
 
   private designComposition(
-    primitives: Primitive[], 
-    requirements: OrchestrationRequirements
+    primitives: Primitive[],
+    _requirements: OrchestrationRequirements
   ): CompositionStructure {
     // Determine the flow order of primitives
     const structure: CompositionStructure = {
       layers: [],
-      flow: 'linear' // or 'branching', 'conditional'
+      flow: 'linear', // or 'branching', 'conditional'
     };
 
     // Layer 1: Execution (if needed)
-    const executionPrimitives = primitives.filter(p => p.type === 'execution');
+    const executionPrimitives = primitives.filter(
+      (p) => p.type === 'execution'
+    );
     if (executionPrimitives.length > 0) {
       structure.layers.push({
         type: 'execution',
         primitives: executionPrimitives,
-        parallel: false
+        parallel: false,
       });
     }
 
     // Layer 2: Aggregation (if needed)
-    const aggregationPrimitives = primitives.filter(p => p.type === 'aggregation');
+    const aggregationPrimitives = primitives.filter(
+      (p) => p.type === 'aggregation'
+    );
     if (aggregationPrimitives.length > 0) {
       structure.layers.push({
         type: 'aggregation',
         primitives: aggregationPrimitives,
-        parallel: false
+        parallel: false,
       });
     }
 
     // Layer 3: Confidence handling
-    const confidencePrimitives = primitives.filter(p => p.type === 'confidence');
+    const confidencePrimitives = primitives.filter(
+      (p) => p.type === 'confidence'
+    );
     if (confidencePrimitives.length > 0) {
       structure.layers.push({
         type: 'confidence',
         primitives: confidencePrimitives,
-        parallel: false
+        parallel: false,
       });
     }
 
     // Layer 4: Control/reliability
-    const controlPrimitives = primitives.filter(p => p.type === 'control');
+    const controlPrimitives = primitives.filter((p) => p.type === 'control');
     if (controlPrimitives.length > 0) {
       // Retry wraps around everything
-      const retry = controlPrimitives.find(p => p.name === 'retry');
-      const others = controlPrimitives.filter(p => p.name !== 'retry');
-      
+      const retry = controlPrimitives.find((p) => p.name === 'retry');
+      const others = controlPrimitives.filter((p) => p.name !== 'retry');
+
       if (others.length > 0) {
         structure.layers.push({
           type: 'control',
           primitives: others,
-          parallel: false
+          parallel: false,
         });
       }
-      
+
       // Retry wraps the entire composition
       if (retry) {
         structure.wrappers = [retry];
@@ -346,7 +365,7 @@ export class PatternComposer {
           connections.push({
             from: currentPrimitive.name,
             to: nextPrimitive.name,
-            type: 'data-flow'
+            type: 'data-flow',
           });
         }
       }
@@ -360,27 +379,31 @@ export class PatternComposer {
       id: this.generateId(),
       name: this.generateName(composition),
       description: this.generateDescription(composition),
-      primitives: composition.primitives.map(p => p.name),
+      primitives: composition.primitives.map((p) => p.name),
       structure: composition.structure,
       connections: composition.connections,
       metadata: composition.metadata,
       estimatedConfidence: this.estimateConfidence(composition),
-      complexity: this.calculateComplexity(composition)
+      complexity: this.calculateComplexity(composition),
     };
   }
 
-  private generateMetadata(requirements: OrchestrationRequirements): Record<string, any> {
+  private generateMetadata(
+    requirements: OrchestrationRequirements
+  ): Record<string, any> {
     return {
       goal: requirements.goal,
       strategy: requirements.strategy,
       minConfidence: requirements.minConfidence,
       fallback: requirements.fallback,
       generatedAt: new Date().toISOString(),
-      version: '1.0.0'
+      version: '1.0.0',
     };
   }
 
-  private calculateComplexity(analysis: RequirementsAnalysis | Composition): number {
+  private calculateComplexity(
+    analysis: RequirementsAnalysis | Composition
+  ): number {
     if ('needsParallelism' in analysis) {
       // From requirements analysis
       let score = 0;
@@ -399,7 +422,7 @@ export class PatternComposer {
   private estimateConfidence(composition: Composition): number {
     // Estimate based on primitive confidence propagation
     let confidence = 1.0;
-    
+
     for (const primitive of composition.primitives) {
       switch (primitive.confidence) {
         case 'propagates-minimum':
@@ -425,12 +448,12 @@ export class PatternComposer {
   }
 
   private generateName(composition: Composition): string {
-    const primitiveNames = composition.primitives.map(p => p.name);
+    const primitiveNames = composition.primitives.map((p) => p.name);
     return primitiveNames.join('-');
   }
 
   private generateDescription(composition: Composition): string {
-    const flow = composition.primitives.map(p => p.description).join(' → ');
+    const flow = composition.primitives.map((p) => p.description).join(' → ');
     return `Composed pattern: ${flow}`;
   }
 }

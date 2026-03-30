@@ -1,5 +1,5 @@
-import { Agent } from './types';
 import { GrpcAgentProxy } from './agent-proxy';
+import type { Agent } from './types';
 
 export class AgentRegistry {
   private agents: Map<string, Agent> = new Map();
@@ -31,7 +31,7 @@ export class AgentRegistry {
         available: await agent.isAvailable(),
       }))
     );
-    
+
     return availability
       .filter(({ available }) => available)
       .map(({ agent }) => agent);
@@ -58,11 +58,13 @@ export class AgentRegistry {
   /**
    * Register multiple remote agents
    */
-  registerRemoteAgents(agents: Array<{
-    id: string;
-    name: string;
-    endpoint: string;
-  }>): void {
-    agents.forEach(metadata => this.registerRemote(metadata));
+  registerRemoteAgents(
+    agents: Array<{
+      id: string;
+      name: string;
+      endpoint: string;
+    }>
+  ): void {
+    agents.forEach((metadata) => this.registerRemote(metadata));
   }
 }

@@ -1,18 +1,18 @@
-import { HttpClient } from '../http.js';
-import {
+import type { HttpClient } from '../http.js';
+import type {
+  DailyStat,
   Execution,
-  ExecutionListResponse,
-  ExecutionListParams,
+  ExecutionCancelResponse,
   ExecutionCreateInput,
   ExecutionCreateResponse,
   ExecutionEventsResponse,
-  ExecutionCancelResponse,
+  ExecutionListParams,
+  ExecutionListResponse,
   ExecutionRetryResponse,
   ExecutionStatsSummary,
   ExecutionStreamEvent,
   ExecutionStreamHandlers,
   HourlyStat,
-  DailyStat,
 } from '../types/executions.js';
 
 export class ExecutionsResource {
@@ -29,7 +29,9 @@ export class ExecutionsResource {
 
   /** Get execution details by ID */
   async get(id: string): Promise<Execution> {
-    return this.http.get<Execution>(`/api/executions/${encodeURIComponent(id)}`);
+    return this.http.get<Execution>(
+      `/api/executions/${encodeURIComponent(id)}`
+    );
   }
 
   /** Create a new async execution (returns 202 with execution ID) */
@@ -60,17 +62,25 @@ export class ExecutionsResource {
 
   /** Get execution statistics summary */
   async stats(): Promise<ExecutionStatsSummary> {
-    return this.http.get<ExecutionStatsSummary>('/api/executions/stats/summary');
+    return this.http.get<ExecutionStatsSummary>(
+      '/api/executions/stats/summary'
+    );
   }
 
   /** Get hourly execution statistics */
   async hourlyStats(hours = 24): Promise<{ stats: HourlyStat[] }> {
-    return this.http.get<{ stats: HourlyStat[] }>('/api/executions/stats/hourly', { hours });
+    return this.http.get<{ stats: HourlyStat[] }>(
+      '/api/executions/stats/hourly',
+      { hours }
+    );
   }
 
   /** Get daily execution statistics */
   async dailyStats(days = 7): Promise<{ stats: DailyStat[] }> {
-    return this.http.get<{ stats: DailyStat[] }>('/api/executions/stats/daily', { days });
+    return this.http.get<{ stats: DailyStat[] }>(
+      '/api/executions/stats/daily',
+      { days }
+    );
   }
 
   /**
@@ -94,7 +104,7 @@ export class ExecutionsResource {
         return execution;
       }
 
-      await new Promise(resolve => setTimeout(resolve, intervalMs));
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
 
     throw new Error(`Execution ${id} did not complete within ${timeoutMs}ms`);
@@ -114,10 +124,7 @@ export class ExecutionsResource {
    * });
    * ```
    */
-  stream(
-    id: string,
-    handlers: ExecutionStreamHandlers = {}
-  ): () => void {
+  stream(id: string, handlers: ExecutionStreamHandlers = {}): () => void {
     const controller = new AbortController();
     const url = this.http.buildStreamUrl(
       `/api/executions/${encodeURIComponent(id)}/events/stream`
@@ -132,7 +139,9 @@ export class ExecutionsResource {
 
         if (!response.ok) {
           const body = await response.text().catch(() => '');
-          handlers.onError?.(new Error(`Stream failed: ${response.status} ${body}`));
+          handlers.onError?.(
+            new Error(`Stream failed: ${response.status} ${body}`)
+          );
           return;
         }
 
@@ -193,7 +202,9 @@ export class ExecutionsResource {
         }
       } catch (error) {
         if (controller.signal.aborted) return;
-        handlers.onError?.(error instanceof Error ? error : new Error(String(error)));
+        handlers.onError?.(
+          error instanceof Error ? error : new Error(String(error))
+        );
       } finally {
         handlers.onEnd?.();
       }
@@ -223,7 +234,10 @@ export class ExecutionsResource {
     input: ExecutionCreateInput,
     handlers: ExecutionStreamHandlers = {}
   ): Promise<{ execution: ExecutionCreateResponse; abort: () => void }> {
-    const execution = await this.create({ ...input, options: { ...input.options, stream: true } });
+    const execution = await this.create({
+      ...input,
+      options: { ...input.options, stream: true },
+    });
     const abort = this.stream(execution.id, handlers);
     return { execution, abort };
   }

@@ -3,7 +3,7 @@
  * Run with: npx tsx test-integration.ts
  */
 
-import { CircuitBreaker, CircuitState, CircuitOpenError } from './src/index';
+import { CircuitBreaker, CircuitOpenError, CircuitState } from './src/index';
 
 async function main() {
   console.log('Testing @parallaxai/circuit-breaker integration...\n');
@@ -16,7 +16,10 @@ async function main() {
   });
 
   console.log('1. Initial state:', breaker.getState());
-  console.assert(breaker.getState() === CircuitState.CLOSED, 'Should start CLOSED');
+  console.assert(
+    breaker.getState() === CircuitState.CLOSED,
+    'Should start CLOSED'
+  );
 
   // Test successful execution
   const result = await breaker.execute(async () => 'Hello, World!');
@@ -24,26 +27,35 @@ async function main() {
   console.assert(result === 'Hello, World!', 'Should return result');
 
   // Test failure counting
-  let failCount = 0;
+  let _failCount = 0;
   for (let i = 0; i < 3; i++) {
     try {
       await breaker.execute(async () => {
         throw new Error('Simulated failure');
       });
-    } catch (e) {
-      failCount++;
+    } catch (_e) {
+      _failCount++;
     }
   }
   console.log('3. After 3 failures, state:', breaker.getState());
-  console.assert(breaker.getState() === CircuitState.OPEN, 'Should be OPEN after threshold');
+  console.assert(
+    breaker.getState() === CircuitState.OPEN,
+    'Should be OPEN after threshold'
+  );
 
   // Test rejection when open
   try {
     await breaker.execute(async () => 'Should not run');
     console.assert(false, 'Should have thrown');
   } catch (e) {
-    console.log('4. Correctly rejected with:', e instanceof CircuitOpenError ? 'CircuitOpenError' : 'Other error');
-    console.assert(e instanceof CircuitOpenError, 'Should throw CircuitOpenError');
+    console.log(
+      '4. Correctly rejected with:',
+      e instanceof CircuitOpenError ? 'CircuitOpenError' : 'Other error'
+    );
+    console.assert(
+      e instanceof CircuitOpenError,
+      'Should throw CircuitOpenError'
+    );
   }
 
   // Test metrics
@@ -63,7 +75,10 @@ async function main() {
   // Test reset
   breaker.reset();
   console.log('6. After reset, state:', breaker.getState());
-  console.assert(breaker.getState() === CircuitState.CLOSED, 'Should be CLOSED after reset');
+  console.assert(
+    breaker.getState() === CircuitState.CLOSED,
+    'Should be CLOSED after reset'
+  );
 
   // Test event emission
   let stateChangeEvent = false;

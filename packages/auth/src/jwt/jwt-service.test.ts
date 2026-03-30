@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { JWTService } from './jwt-service';
-import { AuthConfig, User } from '../types';
 import pino from 'pino';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { AuthConfig, User } from '../types';
+import { JWTService } from './jwt-service';
 
 const logger = pino({ level: 'silent' });
 
@@ -87,9 +87,9 @@ describe('JWTService', () => {
     it('should reject an access token used as refresh', async () => {
       const tokens = await service.generateTokens(testUser);
       // Access tokens don't have type: 'refresh'
-      await expect(service.refreshAccessToken(tokens.accessToken)).rejects.toThrow(
-        'Invalid refresh token'
-      );
+      await expect(
+        service.refreshAccessToken(tokens.accessToken)
+      ).rejects.toThrow('Invalid refresh token');
     });
   });
 });

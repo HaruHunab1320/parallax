@@ -1,27 +1,31 @@
-import { HttpClient } from '../http.js';
-import {
+import type { HttpClient } from '../http.js';
+import type {
+  EpisodicExperienceListParams,
+  EpisodicExperienceListResponse,
   ManagedThread,
-  ManagedThreadListResponse,
   ManagedThreadListParams,
+  ManagedThreadListResponse,
+  SharedDecision,
+  SharedDecisionCreateInput,
+  SharedDecisionListResponse,
   SpawnThreadInput,
   ThreadInput,
   ThreadPrepareResponse,
-  SharedDecision,
-  SharedDecisionListResponse,
-  SharedDecisionCreateInput,
-  EpisodicExperienceListResponse,
-  EpisodicExperienceListParams,
 } from '../types/managed-threads.js';
 
 export class ManagedThreadsResource {
   constructor(private http: HttpClient) {}
 
   /** List all threads */
-  async list(params?: ManagedThreadListParams): Promise<ManagedThreadListResponse> {
+  async list(
+    params?: ManagedThreadListParams
+  ): Promise<ManagedThreadListResponse> {
     const query: Record<string, string | undefined> = {};
 
     if (params?.status) {
-      query.status = Array.isArray(params.status) ? params.status.join(',') : params.status;
+      query.status = Array.isArray(params.status)
+        ? params.status.join(',')
+        : params.status;
     }
     if (params?.executionId) {
       query.executionId = params.executionId;
@@ -30,11 +34,17 @@ export class ManagedThreadsResource {
       query.role = params.role;
     }
 
-    return this.http.get<ManagedThreadListResponse>('/api/managed-threads', query);
+    return this.http.get<ManagedThreadListResponse>(
+      '/api/managed-threads',
+      query
+    );
   }
 
   /** Spawn a new thread */
-  async spawn(input: SpawnThreadInput, runtime?: string): Promise<ManagedThread> {
+  async spawn(
+    input: SpawnThreadInput,
+    runtime?: string
+  ): Promise<ManagedThread> {
     const query = runtime ? { runtime } : undefined;
     return this.http.request<ManagedThread>({
       method: 'POST',
@@ -46,7 +56,10 @@ export class ManagedThreadsResource {
 
   /** Prepare a thread spawn input (dry-run) */
   async prepare(input: SpawnThreadInput): Promise<ThreadPrepareResponse> {
-    return this.http.post<ThreadPrepareResponse>('/api/managed-threads/prepare', input);
+    return this.http.post<ThreadPrepareResponse>(
+      '/api/managed-threads/prepare',
+      input
+    );
   }
 
   /** Get threads for a specific execution */
@@ -68,7 +81,9 @@ export class ManagedThreadsResource {
   }
 
   /** Get episodic experiences */
-  async experiences(params?: EpisodicExperienceListParams): Promise<EpisodicExperienceListResponse> {
+  async experiences(
+    params?: EpisodicExperienceListParams
+  ): Promise<EpisodicExperienceListResponse> {
     return this.http.get<EpisodicExperienceListResponse>(
       '/api/managed-threads/experiences',
       params as Record<string, string | number | boolean | undefined>
@@ -83,14 +98,14 @@ export class ManagedThreadsResource {
   }
 
   /** Stop a thread */
-  async stop(id: string, options?: { force?: boolean; timeout?: number }): Promise<void> {
-    await this.http.delete(
-      `/api/managed-threads/${encodeURIComponent(id)}`,
-      {
-        force: options?.force,
-        timeout: options?.timeout,
-      }
-    );
+  async stop(
+    id: string,
+    options?: { force?: boolean; timeout?: number }
+  ): Promise<void> {
+    await this.http.delete(`/api/managed-threads/${encodeURIComponent(id)}`, {
+      force: options?.force,
+      timeout: options?.timeout,
+    });
   }
 
   /** Send input to a thread */

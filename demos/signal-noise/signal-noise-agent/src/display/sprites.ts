@@ -1,4 +1,9 @@
-import { TamagotchiState, SpriteFrame, AnimationFrames, PersonaId } from './types';
+import {
+  type AnimationFrames,
+  type PersonaId,
+  type SpriteFrame,
+  TamagotchiState,
+} from './types';
 
 /**
  * Convert ASCII art to a SpriteFrame. '#' = on, anything else = off.
@@ -3325,16 +3330,25 @@ function buildAnimations(sprites: {
 }): Record<TamagotchiState, AnimationFrames> {
   return {
     [TamagotchiState.IDLE]: { frames: sprites.idle, frameDuration: 5 },
-    [TamagotchiState.RECEIVING]: { frames: sprites.receiving, frameDuration: 2 },
+    [TamagotchiState.RECEIVING]: {
+      frames: sprites.receiving,
+      frameDuration: 2,
+    },
     [TamagotchiState.THINKING]: { frames: sprites.thinking, frameDuration: 4 },
     [TamagotchiState.WORKING]: { frames: sprites.working, frameDuration: 3 },
-    [TamagotchiState.RESPONDING]: { frames: sprites.responding, frameDuration: 3 },
+    [TamagotchiState.RESPONDING]: {
+      frames: sprites.responding,
+      frameDuration: 3,
+    },
     [TamagotchiState.SLEEPING]: { frames: sprites.sleeping, frameDuration: 6 },
     [TamagotchiState.ERROR]: { frames: sprites.error, frameDuration: 3 },
   };
 }
 
-export const PERSONA_SPRITES: Record<PersonaId, Record<TamagotchiState, AnimationFrames>> = {
+export const PERSONA_SPRITES: Record<
+  PersonaId,
+  Record<TamagotchiState, AnimationFrames>
+> = {
   vero: buildAnimations({
     idle: [VERO_IDLE_1, VERO_IDLE_2],
     receiving: [VERO_RECEIVING_1, VERO_RECEIVING_2, VERO_RECEIVING_3],
@@ -3348,7 +3362,12 @@ export const PERSONA_SPRITES: Record<PersonaId, Record<TamagotchiState, Animatio
     idle: [SILAS_IDLE_1, SILAS_IDLE_2],
     receiving: [SILAS_RECEIVING_1, SILAS_RECEIVING_2, SILAS_RECEIVING_3],
     thinking: [SILAS_THINKING_1, SILAS_THINKING_2, SILAS_THINKING_3],
-    working: [SILAS_WORKING_1, SILAS_WORKING_2, SILAS_WORKING_3, SILAS_WORKING_4],
+    working: [
+      SILAS_WORKING_1,
+      SILAS_WORKING_2,
+      SILAS_WORKING_3,
+      SILAS_WORKING_4,
+    ],
     responding: [SILAS_RESPONDING_1, SILAS_RESPONDING_2],
     sleeping: [SILAS_SLEEPING_1, SILAS_SLEEPING_2, SILAS_SLEEPING_3],
     error: [SILAS_ERROR_1, SILAS_ERROR_2],
@@ -3357,7 +3376,12 @@ export const PERSONA_SPRITES: Record<PersonaId, Record<TamagotchiState, Animatio
     idle: [SABLE_IDLE_1, SABLE_IDLE_2],
     receiving: [SABLE_RECEIVING_1, SABLE_RECEIVING_2, SABLE_RECEIVING_3],
     thinking: [SABLE_THINKING_1, SABLE_THINKING_2, SABLE_THINKING_3],
-    working: [SABLE_WORKING_1, SABLE_WORKING_2, SABLE_WORKING_3, SABLE_WORKING_4],
+    working: [
+      SABLE_WORKING_1,
+      SABLE_WORKING_2,
+      SABLE_WORKING_3,
+      SABLE_WORKING_4,
+    ],
     responding: [SABLE_RESPONDING_1, SABLE_RESPONDING_2],
     sleeping: [SABLE_SLEEPING_1, SABLE_SLEEPING_2, SABLE_SLEEPING_3],
     error: [SABLE_ERROR_1, SABLE_ERROR_2],

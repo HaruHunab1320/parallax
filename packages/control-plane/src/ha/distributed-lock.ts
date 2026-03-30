@@ -6,7 +6,7 @@
  */
 
 import { Redis } from 'ioredis';
-import { Logger } from 'pino';
+import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface DistributedLockConfig {
@@ -64,7 +64,10 @@ export class DistributedLockService {
   /**
    * Acquire a distributed lock
    */
-  async acquire(resource: string, options: LockOptions = {}): Promise<Lock | null> {
+  async acquire(
+    resource: string,
+    options: LockOptions = {}
+  ): Promise<Lock | null> {
     const ttl = options.ttl || this.defaultTTL;
     const key = this.keyPrefix + resource;
     const token = uuidv4();
@@ -105,7 +108,10 @@ export class DistributedLockService {
       }
     }
 
-    this.logger.debug({ resource, retries, elapsed: Date.now() - startTime }, 'Failed to acquire lock after waiting');
+    this.logger.debug(
+      { resource, retries, elapsed: Date.now() - startTime },
+      'Failed to acquire lock after waiting'
+    );
     return null;
   }
 
@@ -131,12 +137,18 @@ export class DistributedLockService {
         this.activeLocks.delete(lock.key);
         this.logger.debug({ resource: lock.key }, 'Lock released');
       } else {
-        this.logger.warn({ resource: lock.key }, 'Lock was not released (already expired or not owned)');
+        this.logger.warn(
+          { resource: lock.key },
+          'Lock was not released (already expired or not owned)'
+        );
       }
 
       return released;
     } catch (error) {
-      this.logger.error({ error, resource: lock.key }, 'Failed to release lock');
+      this.logger.error(
+        { error, resource: lock.key },
+        'Failed to release lock'
+      );
       return false;
     }
   }
@@ -157,7 +169,13 @@ export class DistributedLockService {
     `;
 
     try {
-      const result = await this.redis.eval(script, 1, lock.key, lock.token, ttl);
+      const result = await this.redis.eval(
+        script,
+        1,
+        lock.key,
+        lock.token,
+        ttl
+      );
       const extended = result === 1;
 
       if (extended) {

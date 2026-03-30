@@ -2,20 +2,23 @@
  * Spawn Tool - Creates a new agent
  */
 
-import type { LocalRuntime } from '@parallaxai/runtime-local';
 import type { AgentConfig, AgentHandle } from '@parallaxai/runtime-interface';
-import { SpawnInputSchema, type SpawnInput } from './schemas.js';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import { type SpawnInput, SpawnInputSchema } from './schemas.js';
 
 export const SPAWN_TOOL = {
   name: 'spawn',
-  description: 'Create and start a new AI agent. Returns the agent handle with ID and status.',
+  description:
+    'Create and start a new AI agent. Returns the agent handle with ID and status.',
   inputSchema: SpawnInputSchema,
 };
 
 export async function executeSpawn(
   runtime: LocalRuntime,
   input: SpawnInput
-): Promise<{ success: true; agent: AgentHandle } | { success: false; error: string }> {
+): Promise<
+  { success: true; agent: AgentHandle } | { success: false; error: string }
+> {
   try {
     const config: AgentConfig = {
       name: input.name,
@@ -64,7 +67,9 @@ async function waitForReady(
     }
 
     if (agent.status === 'error' || agent.status === 'stopped') {
-      throw new Error(`Agent ${agentId} failed to start: ${agent.error || agent.status}`);
+      throw new Error(
+        `Agent ${agentId} failed to start: ${agent.error || agent.status}`
+      );
     }
 
     // Poll every 500ms

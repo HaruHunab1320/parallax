@@ -1,5 +1,5 @@
-import { DisplayRenderer, PersonaId } from './types';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
+import type { DisplayRenderer, PersonaId } from './types';
 
 /**
  * Waveshare 2" ST7789V LCD renderer (240×320, SPI, RGB565).
@@ -24,11 +24,11 @@ const SRC_HEIGHT = 64;
 
 // 2× integer scale
 const SCALE = 2;
-const SCALED_WIDTH = SRC_WIDTH * SCALE;   // 256
+const SCALED_WIDTH = SRC_WIDTH * SCALE; // 256
 const SCALED_HEIGHT = SRC_HEIGHT * SCALE; // 128
 
 // Center offset on 320×240
-const OFFSET_X = Math.floor((LCD_WIDTH - SCALED_WIDTH) / 2);   // 32
+const OFFSET_X = Math.floor((LCD_WIDTH - SCALED_WIDTH) / 2); // 32
 const OFFSET_Y = Math.floor((LCD_HEIGHT - SCALED_HEIGHT) / 2); // 56
 
 // GPIO pins
@@ -38,10 +38,10 @@ const GPIO_BL = 18;
 
 // Persona colors as RGB565 (16-bit: RRRRR GGGGGG BBBBB)
 const PERSONA_RGB565: Record<PersonaId, number> = {
-  vero: rgb565(0, 255, 255),     // cyan
-  silas: rgb565(255, 170, 0),    // amber
-  sable: rgb565(0, 255, 0),      // green
-  echo: rgb565(224, 224, 255),   // soft white
+  vero: rgb565(0, 255, 255), // cyan
+  silas: rgb565(255, 170, 0), // amber
+  sable: rgb565(0, 255, 0), // green
+  echo: rgb565(224, 224, 255), // soft white
 };
 
 function rgb565(r: number, g: number, b: number): number {
@@ -104,7 +104,9 @@ class GpioPin {
     if (this.fast) {
       rpioLib.write(this.pin, value ? rpioLib.HIGH : rpioLib.LOW);
     } else {
-      execSync(`pinctrl set ${this.pin} ${value ? 'dh' : 'dl'}`, { stdio: 'ignore' });
+      execSync(`pinctrl set ${this.pin} ${value ? 'dh' : 'dl'}`, {
+        stdio: 'ignore',
+      });
     }
   }
 }
@@ -186,7 +188,9 @@ export function createLcdRenderer(personaId: PersonaId): LcdRenderer | null {
 
   function sleep(ms: number): void {
     const end = Date.now() + ms;
-    while (Date.now() < end) { /* busy wait */ }
+    while (Date.now() < end) {
+      /* busy wait */
+    }
   }
 
   // --- Hardware reset (generous delays for Pi Zero compatibility) ---
@@ -227,10 +231,22 @@ export function createLcdRenderer(personaId: PersonaId): LcdRenderer | null {
   blPin.write(1);
 
   // Set window to full screen
-  sendCommand(CMD.CASET, [0x00, 0x00, (LCD_WIDTH - 1) >> 8, (LCD_WIDTH - 1) & 0xff]);
-  sendCommand(CMD.RASET, [0x00, 0x00, (LCD_HEIGHT - 1) >> 8, (LCD_HEIGHT - 1) & 0xff]);
+  sendCommand(CMD.CASET, [
+    0x00,
+    0x00,
+    (LCD_WIDTH - 1) >> 8,
+    (LCD_WIDTH - 1) & 0xff,
+  ]);
+  sendCommand(CMD.RASET, [
+    0x00,
+    0x00,
+    (LCD_HEIGHT - 1) >> 8,
+    (LCD_HEIGHT - 1) & 0xff,
+  ]);
 
-  console.log(`ST7789V LCD initialized (${personaId} — ${LCD_WIDTH}×${LCD_HEIGHT} landscape)`);
+  console.log(
+    `ST7789V LCD initialized (${personaId} — ${LCD_WIDTH}×${LCD_HEIGHT} landscape)`
+  );
 
   return {
     render(buffer: Uint8Array): void {

@@ -1,10 +1,13 @@
+import { Buffer } from 'node:buffer';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Buffer } from 'node:buffer';
 import { describe, expect, it } from 'vitest';
 import { SessionStateCapture } from './session-capture';
-import { TranscriptBuilder, buildTranscriptFromJsonl } from './transcript-builder';
+import {
+  buildTranscriptFromJsonl,
+  TranscriptBuilder,
+} from './transcript-builder';
 
 function makeEvent(direction: string, text: string) {
   return JSON.stringify({
@@ -81,9 +84,9 @@ describe('TranscriptBuilder', () => {
     const dir = await mkdtemp(join(tmpdir(), 'pty-tb-'));
     const jsonlPath = join(dir, 'test.raw-events.jsonl');
 
-    const events = [
-      makeEvent('stdout', '› Ask Codex to do anything'),
-    ].join('\n');
+    const events = [makeEvent('stdout', '› Ask Codex to do anything')].join(
+      '\n'
+    );
 
     await writeFile(jsonlPath, events, 'utf8');
 

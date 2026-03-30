@@ -9,10 +9,11 @@
  *   pnpm translate examples/marketing.json
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
-const CONTROL_PLANE_URL = process.env.CONTROL_PLANE_URL || 'http://localhost:8080';
+const CONTROL_PLANE_URL =
+  process.env.CONTROL_PLANE_URL || 'http://localhost:8080';
 
 interface TranslationResult {
   status: 'approved' | 'needs_review' | 'rejected';
@@ -76,7 +77,9 @@ interface TranslationRequest {
   targetLanguage: string;
 }
 
-async function submitTranslation(request: TranslationRequest): Promise<{ executionId: string }> {
+async function submitTranslation(
+  request: TranslationRequest
+): Promise<{ executionId: string }> {
   const response = await fetch(`${CONTROL_PLANE_URL}/api/executions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -87,10 +90,10 @@ async function submitTranslation(request: TranslationRequest): Promise<{ executi
         data: {
           text: request.text,
           sourceLanguage: request.sourceLanguage || 'English',
-          targetLanguage: request.targetLanguage
-        }
-      }
-    })
+          targetLanguage: request.targetLanguage,
+        },
+      },
+    }),
   });
 
   if (!response.ok) {
@@ -102,12 +105,17 @@ async function submitTranslation(request: TranslationRequest): Promise<{ executi
   return { executionId: execution.id };
 }
 
-async function pollForResult(executionId: string, maxWaitMs = 90000): Promise<TranslationResult> {
+async function pollForResult(
+  executionId: string,
+  maxWaitMs = 90000
+): Promise<TranslationResult> {
   const startTime = Date.now();
   const pollInterval = 1000;
 
   while (Date.now() - startTime < maxWaitMs) {
-    const response = await fetch(`${CONTROL_PLANE_URL}/api/executions/${executionId}`);
+    const response = await fetch(
+      `${CONTROL_PLANE_URL}/api/executions/${executionId}`
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to get execution status: ${response.statusText}`);
@@ -120,17 +128,22 @@ async function pollForResult(executionId: string, maxWaitMs = 90000): Promise<Tr
       const result = execution.result?.value || execution.result;
       return result;
     } else if (execution.status === 'failed') {
-      throw new Error(`Translation failed: ${execution.error || 'Unknown error'}`);
+      throw new Error(
+        `Translation failed: ${execution.error || 'Unknown error'}`
+      );
     }
 
     process.stdout.write('.');
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
   throw new Error('Translation timed out');
 }
 
-function formatResults(result: TranslationResult, request: TranslationRequest): void {
+function formatResults(
+  result: TranslationResult,
+  request: TranslationRequest
+): void {
   console.log('\n');
   console.log('='.repeat(70));
   console.log('                    TRANSLATION RESULTS');
@@ -138,16 +151,28 @@ function formatResults(result: TranslationResult, request: TranslationRequest): 
   console.log();
 
   // Original text preview
-  const textPreview = request.text.substring(0, 60) + (request.text.length > 60 ? '...' : '');
+  const textPreview =
+    request.text.substring(0, 60) + (request.text.length > 60 ? '...' : '');
   console.log(`Original: "${textPreview}"`);
-  console.log(`Direction: ${result.sourceLanguage} -> ${result.targetLanguage}`);
+  console.log(
+    `Direction: ${result.sourceLanguage} -> ${result.targetLanguage}`
+  );
   console.log();
 
   // Overall status
-  const statusEmoji = result.status === 'approved' ? '\u2705' : result.status === 'needs_review' ? '\u26A0\uFE0F' : '\u274C';
+  const statusEmoji =
+    result.status === 'approved'
+      ? '\u2705'
+      : result.status === 'needs_review'
+        ? '\u26A0\uFE0F'
+        : '\u274C';
   console.log(`Status: ${statusEmoji} ${result.status.toUpperCase()}`);
-  console.log(`Overall Score: ${Math.round((result.scores?.overall || 0) * 100)}%`);
-  console.log(`Checks: ${result.checks?.passed || 0}/${result.checks?.total || 0} passed`);
+  console.log(
+    `Overall Score: ${Math.round((result.scores?.overall || 0) * 100)}%`
+  );
+  console.log(
+    `Checks: ${result.checks?.passed || 0}/${result.checks?.total || 0} passed`
+  );
   console.log();
   console.log(result.summary || 'No summary available');
   console.log();
@@ -168,18 +193,24 @@ function formatResults(result: TranslationResult, request: TranslationRequest): 
   }
 
   // Round-trip verification
-  console.log('\n' + '-'.repeat(70));
+  console.log(`\n${'-'.repeat(70)}`);
   console.log('  ROUND-TRIP VERIFICATION');
   console.log('-'.repeat(70));
 
   const rtCheck = result.verification?.roundtrip;
   if (rtCheck) {
     const rtEmoji = rtCheck.passed ? '\u2705' : '\u274C';
-    console.log(`\n  ${rtEmoji} SIMILARITY: ${Math.round((rtCheck.similarity || 0) * 100)}%`);
-    console.log('     Does the translation preserve meaning when translated back?');
+    console.log(
+      `\n  ${rtEmoji} SIMILARITY: ${Math.round((rtCheck.similarity || 0) * 100)}%`
+    );
+    console.log(
+      '     Does the translation preserve meaning when translated back?'
+    );
 
     if (rtCheck.backTranslation) {
-      console.log(`\n     Back-translation: "${rtCheck.backTranslation.substring(0, 80)}${rtCheck.backTranslation.length > 80 ? '...' : ''}"`);
+      console.log(
+        `\n     Back-translation: "${rtCheck.backTranslation.substring(0, 80)}${rtCheck.backTranslation.length > 80 ? '...' : ''}"`
+      );
     }
 
     if (!rtCheck.meaningPreserved) {
@@ -200,37 +231,59 @@ function formatResults(result: TranslationResult, request: TranslationRequest): 
       }
     }
 
-    if (rtCheck.passed && (!rtCheck.differences || rtCheck.differences.length === 0)) {
+    if (
+      rtCheck.passed &&
+      (!rtCheck.differences || rtCheck.differences.length === 0)
+    ) {
       console.log('     Meaning fully preserved through round-trip');
     }
   }
 
   // Quality check
-  console.log('\n' + '-'.repeat(70));
+  console.log(`\n${'-'.repeat(70)}`);
   console.log('  QUALITY CHECK');
   console.log('-'.repeat(70));
 
   const qCheck = result.verification?.quality;
   if (qCheck) {
     const qEmoji = qCheck.passed ? '\u2705' : '\u274C';
-    console.log(`\n  ${qEmoji} QUALITY SCORE: ${Math.round((qCheck.score || 0) * 100)}%`);
+    console.log(
+      `\n  ${qEmoji} QUALITY SCORE: ${Math.round((qCheck.score || 0) * 100)}%`
+    );
     console.log('     Is the translation fluent and natural?');
 
     // Quality breakdown
     const breakdown = result.scores?.qualityBreakdown;
     if (breakdown) {
       console.log('\n     Breakdown:');
-      if (breakdown.fluency !== undefined) console.log(`       Fluency:     ${Math.round(breakdown.fluency * 100)}%`);
-      if (breakdown.grammar !== undefined) console.log(`       Grammar:     ${Math.round(breakdown.grammar * 100)}%`);
-      if (breakdown.style !== undefined) console.log(`       Style:       ${Math.round(breakdown.style * 100)}%`);
-      if (breakdown.completeness !== undefined) console.log(`       Completeness: ${Math.round(breakdown.completeness * 100)}%`);
-      if (breakdown.culturalFit !== undefined) console.log(`       Cultural Fit: ${Math.round(breakdown.culturalFit * 100)}%`);
+      if (breakdown.fluency !== undefined)
+        console.log(
+          `       Fluency:     ${Math.round(breakdown.fluency * 100)}%`
+        );
+      if (breakdown.grammar !== undefined)
+        console.log(
+          `       Grammar:     ${Math.round(breakdown.grammar * 100)}%`
+        );
+      if (breakdown.style !== undefined)
+        console.log(
+          `       Style:       ${Math.round(breakdown.style * 100)}%`
+        );
+      if (breakdown.completeness !== undefined)
+        console.log(
+          `       Completeness: ${Math.round(breakdown.completeness * 100)}%`
+        );
+      if (breakdown.culturalFit !== undefined)
+        console.log(
+          `       Cultural Fit: ${Math.round(breakdown.culturalFit * 100)}%`
+        );
     }
 
     if (qCheck.issues && qCheck.issues.length > 0) {
       console.log('\n     Issues found:');
       for (const issue of qCheck.issues.slice(0, 3)) {
-        console.log(`       - [${issue.severity}] ${issue.type}: ${issue.description}`);
+        console.log(
+          `       - [${issue.severity}] ${issue.type}: ${issue.description}`
+        );
         if (issue.suggestion) {
           console.log(`         Suggestion: ${issue.suggestion}`);
         }
@@ -250,14 +303,14 @@ function formatResults(result: TranslationResult, request: TranslationRequest): 
   }
 
   // Recommendation
-  console.log('\n' + '-'.repeat(70));
+  console.log(`\n${'-'.repeat(70)}`);
   console.log('  RECOMMENDATION');
   console.log('-'.repeat(70));
   console.log(`  ${result.recommendation || 'No recommendation available'}`);
 
   // Agent details
   if (result.details && result.details.length > 0) {
-    console.log('\n' + '-'.repeat(70));
+    console.log(`\n${'-'.repeat(70)}`);
     console.log('  AGENT REASONING');
     console.log('-'.repeat(70));
     for (const detail of result.details) {
@@ -265,12 +318,14 @@ function formatResults(result: TranslationResult, request: TranslationRequest): 
       console.log(`\n  ${emoji} ${detail.agent} (${detail.checkType})`);
       if (detail.reasoning) {
         const shortReasoning = detail.reasoning.substring(0, 100);
-        console.log(`     ${shortReasoning}${detail.reasoning.length > 100 ? '...' : ''}`);
+        console.log(
+          `     ${shortReasoning}${detail.reasoning.length > 100 ? '...' : ''}`
+        );
       }
     }
   }
 
-  console.log('\n' + '='.repeat(70));
+  console.log(`\n${'='.repeat(70)}`);
 }
 
 async function main() {
@@ -291,7 +346,9 @@ async function main() {
 
   // Load from file
   const filePath = args[0];
-  const fullPath = fs.existsSync(filePath) ? filePath : path.join(__dirname, filePath);
+  const fullPath = fs.existsSync(filePath)
+    ? filePath
+    : path.join(__dirname, filePath);
 
   if (!fs.existsSync(fullPath)) {
     console.error(`File not found: ${filePath}`);
@@ -301,14 +358,18 @@ async function main() {
   request = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
 
   console.log('\n\uD83C\uDF0D Translating and verifying...');
-  console.log(`\n   Text: "${request.text.substring(0, 70)}${request.text.length > 70 ? '...' : ''}"`);
+  console.log(
+    `\n   Text: "${request.text.substring(0, 70)}${request.text.length > 70 ? '...' : ''}"`
+  );
   console.log(`   From: ${request.sourceLanguage || 'English'}`);
   console.log(`   To: ${request.targetLanguage}`);
 
   try {
     const { executionId } = await submitTranslation(request);
     console.log(`\n\uD83D\uDCCB Execution started: ${executionId}`);
-    console.log('\u23F3 Running translation and verification (this may take a moment)...\n');
+    console.log(
+      '\u23F3 Running translation and verification (this may take a moment)...\n'
+    );
 
     const result = await pollForResult(executionId);
     formatResults(result, request);

@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import pino from 'pino';
 import jwt from 'jsonwebtoken';
+import pino from 'pino';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { McpAuthHandler } from '../src/auth/auth-handler.js';
-import { McpAuthError, type McpAuthConfig } from '../src/auth/types.js';
+import { type McpAuthConfig, McpAuthError } from '../src/auth/types.js';
 
 describe('McpAuthHandler', () => {
   const logger = pino({ level: 'silent' });
@@ -64,7 +64,9 @@ describe('McpAuthHandler', () => {
         }
       );
 
-      await expect(authHandler.authenticate(token)).rejects.toThrow(McpAuthError);
+      await expect(authHandler.authenticate(token)).rejects.toThrow(
+        McpAuthError
+      );
       await expect(authHandler.authenticate(token)).rejects.toMatchObject({
         code: 'TOKEN_EXPIRED',
       });
@@ -73,7 +75,9 @@ describe('McpAuthHandler', () => {
     it('should reject invalid JWT token', async () => {
       const token = 'invalid.jwt.token';
 
-      await expect(authHandler.authenticate(token)).rejects.toThrow(McpAuthError);
+      await expect(authHandler.authenticate(token)).rejects.toThrow(
+        McpAuthError
+      );
       await expect(authHandler.authenticate(token)).rejects.toMatchObject({
         code: 'INVALID_TOKEN',
       });
@@ -86,7 +90,9 @@ describe('McpAuthHandler', () => {
         { issuer: 'wrong-issuer', audience: 'test-audience' }
       );
 
-      await expect(authHandler.authenticate(token)).rejects.toThrow(McpAuthError);
+      await expect(authHandler.authenticate(token)).rejects.toThrow(
+        McpAuthError
+      );
     });
 
     it('should reject refresh tokens', async () => {
@@ -102,7 +108,9 @@ describe('McpAuthHandler', () => {
         { issuer: 'test-issuer', audience: 'test-audience' }
       );
 
-      await expect(authHandler.authenticate(token)).rejects.toThrow(McpAuthError);
+      await expect(authHandler.authenticate(token)).rejects.toThrow(
+        McpAuthError
+      );
       await expect(authHandler.authenticate(token)).rejects.toMatchObject({
         code: 'INVALID_TOKEN',
       });
@@ -110,7 +118,12 @@ describe('McpAuthHandler', () => {
 
     it('should map admin role to wildcard permissions', async () => {
       const token = jwt.sign(
-        { sub: 'admin-1', email: 'admin@example.com', name: 'Admin', roles: ['admin'] },
+        {
+          sub: 'admin-1',
+          email: 'admin@example.com',
+          name: 'Admin',
+          roles: ['admin'],
+        },
         jwtSecret,
         { issuer: 'test-issuer', audience: 'test-audience' }
       );
@@ -122,7 +135,12 @@ describe('McpAuthHandler', () => {
 
     it('should map developer role to limited permissions', async () => {
       const token = jwt.sign(
-        { sub: 'dev-1', email: 'dev@example.com', name: 'Dev', roles: ['developer'] },
+        {
+          sub: 'dev-1',
+          email: 'dev@example.com',
+          name: 'Dev',
+          roles: ['developer'],
+        },
         jwtSecret,
         { issuer: 'test-issuer', audience: 'test-audience' }
       );
@@ -143,10 +161,13 @@ describe('McpAuthHandler', () => {
       const config: McpAuthConfig = {
         enabled: true,
         apiKeys: new Map([
-          [testApiKey, {
-            name: 'test-key',
-            permissions: ['agents:spawn', 'agents:list'],
-          }],
+          [
+            testApiKey,
+            {
+              name: 'test-key',
+              permissions: ['agents:spawn', 'agents:list'],
+            },
+          ],
         ]),
       };
       authHandler = new McpAuthHandler(config, logger);
@@ -162,8 +183,12 @@ describe('McpAuthHandler', () => {
     });
 
     it('should reject invalid API key', async () => {
-      await expect(authHandler.authenticate('plx_invalid_key')).rejects.toThrow(McpAuthError);
-      await expect(authHandler.authenticate('plx_invalid_key')).rejects.toMatchObject({
+      await expect(authHandler.authenticate('plx_invalid_key')).rejects.toThrow(
+        McpAuthError
+      );
+      await expect(
+        authHandler.authenticate('plx_invalid_key')
+      ).rejects.toMatchObject({
         code: 'INVALID_TOKEN',
       });
     });
@@ -172,17 +197,24 @@ describe('McpAuthHandler', () => {
       const expiredConfig: McpAuthConfig = {
         enabled: true,
         apiKeys: new Map([
-          ['plx_expired_key', {
-            name: 'expired-key',
-            permissions: ['*'],
-            expiresAt: new Date(Date.now() - 86400000), // Expired yesterday
-          }],
+          [
+            'plx_expired_key',
+            {
+              name: 'expired-key',
+              permissions: ['*'],
+              expiresAt: new Date(Date.now() - 86400000), // Expired yesterday
+            },
+          ],
         ]),
       };
       const handler = new McpAuthHandler(expiredConfig, logger);
 
-      await expect(handler.authenticate('plx_expired_key')).rejects.toThrow(McpAuthError);
-      await expect(handler.authenticate('plx_expired_key')).rejects.toMatchObject({
+      await expect(handler.authenticate('plx_expired_key')).rejects.toThrow(
+        McpAuthError
+      );
+      await expect(
+        handler.authenticate('plx_expired_key')
+      ).rejects.toMatchObject({
         code: 'API_KEY_EXPIRED',
       });
     });
@@ -195,7 +227,10 @@ describe('McpAuthHandler', () => {
       const config: McpAuthConfig = {
         enabled: true,
         apiKeys: new Map([
-          ['plx_limited', { name: 'limited', permissions: ['agents:list', 'agents:get'] }],
+          [
+            'plx_limited',
+            { name: 'limited', permissions: ['agents:list', 'agents:get'] },
+          ],
           ['plx_wildcard', { name: 'wildcard', permissions: ['agents:*'] }],
           ['plx_admin', { name: 'admin', permissions: ['*'] }],
         ]),
@@ -309,7 +344,9 @@ describe('McpAuthHandler', () => {
       };
       const authHandler = new McpAuthHandler(config, logger);
 
-      await expect(authHandler.authenticate('invalid')).rejects.toThrow(McpAuthError);
+      await expect(authHandler.authenticate('invalid')).rejects.toThrow(
+        McpAuthError
+      );
     });
   });
 });

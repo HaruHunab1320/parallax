@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { AgentRepository } from '@/db/repositories/agent.repository';
-import { getTestPrisma, createTestAgent } from '../../../setup';
 import pino from 'pino';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { AgentRepository } from '@/db/repositories/agent.repository';
+import { createTestAgent, getTestPrisma } from '../../../setup';
 
 describe('AgentRepository', () => {
   let repository: AgentRepository;
@@ -20,7 +20,7 @@ describe('AgentRepository', () => {
         endpoint: 'http://localhost:8080',
         capabilities: ['test', 'analyze'],
         status: 'active',
-        metadata: { version: '1.0.0' }
+        metadata: { version: '1.0.0' },
       });
 
       expect(agent).toBeDefined();
@@ -63,8 +63,14 @@ describe('AgentRepository', () => {
     });
 
     it('should return first match if multiple agents have same name', async () => {
-      const agent1 = await createTestAgent({ name: 'duplicate-name', endpoint: 'http://agent1' });
-      const agent2 = await createTestAgent({ name: 'duplicate-name', endpoint: 'http://agent2' });
+      const agent1 = await createTestAgent({
+        name: 'duplicate-name',
+        endpoint: 'http://agent1',
+      });
+      const agent2 = await createTestAgent({
+        name: 'duplicate-name',
+        endpoint: 'http://agent2',
+      });
 
       const found = await repository.findByName('duplicate-name');
       expect(found).toBeDefined();
@@ -89,11 +95,11 @@ describe('AgentRepository', () => {
       await createTestAgent({ name: 'inactive-1', status: 'inactive' });
 
       const activeAgents = await repository.findAll({
-        where: { status: 'active' }
+        where: { status: 'active' },
       });
-      
+
       expect(activeAgents).toHaveLength(2);
-      expect(activeAgents.every(a => a.status === 'active')).toBe(true);
+      expect(activeAgents.every((a) => a.status === 'active')).toBe(true);
     });
   });
 
@@ -103,26 +109,26 @@ describe('AgentRepository', () => {
       const recentTime = new Date(now.getTime() - 30000); // 30 seconds ago
       const oldTime = new Date(now.getTime() - 120000); // 2 minutes ago
 
-      await createTestAgent({ 
+      await createTestAgent({
         name: 'active-recent',
         status: 'active',
-        lastSeen: recentTime
+        lastSeen: recentTime,
       });
 
-      await createTestAgent({ 
+      await createTestAgent({
         name: 'active-old',
         status: 'active',
-        lastSeen: oldTime
+        lastSeen: oldTime,
       });
 
-      await createTestAgent({ 
+      await createTestAgent({
         name: 'inactive-recent',
         status: 'inactive',
-        lastSeen: recentTime
+        lastSeen: recentTime,
       });
 
       const activeAgents = await repository.findActive();
-      
+
       expect(activeAgents).toHaveLength(1);
       expect(activeAgents[0].name).toBe('active-recent');
     });
@@ -130,17 +136,19 @@ describe('AgentRepository', () => {
 
   describe('updateHeartbeat', () => {
     it('should update agent lastSeen and status', async () => {
-      const agent = await createTestAgent({ 
+      const agent = await createTestAgent({
         name: 'heartbeat-test',
         status: 'inactive',
-        lastSeen: new Date('2020-01-01')
+        lastSeen: new Date('2020-01-01'),
       });
 
       const beforeUpdate = new Date();
       const updated = await repository.updateHeartbeat(agent.id);
 
       expect(updated.status).toBe('active');
-      expect(updated.lastSeen.getTime()).toBeGreaterThanOrEqual(beforeUpdate.getTime());
+      expect(updated.lastSeen.getTime()).toBeGreaterThanOrEqual(
+        beforeUpdate.getTime()
+      );
     });
   });
 
@@ -151,26 +159,26 @@ describe('AgentRepository', () => {
       const recentTime = new Date(now.getTime() - 30000); // 30 seconds ago
       const threshold = new Date(now.getTime() - 60000); // 1 minute ago
 
-      await createTestAgent({ 
+      await createTestAgent({
         name: 'old-active',
         status: 'active',
-        lastSeen: oldTime
+        lastSeen: oldTime,
       });
 
-      await createTestAgent({ 
+      await createTestAgent({
         name: 'recent-active',
         status: 'active',
-        lastSeen: recentTime
+        lastSeen: recentTime,
       });
 
-      await createTestAgent({ 
+      await createTestAgent({
         name: 'already-inactive',
         status: 'inactive',
-        lastSeen: oldTime
+        lastSeen: oldTime,
       });
 
       const count = await repository.markInactive(threshold);
-      
+
       expect(count).toBe(1); // Only 'old-active' should be marked
 
       const oldAgent = await repository.findByName('old-active');
@@ -183,26 +191,26 @@ describe('AgentRepository', () => {
 
   describe('getCapabilitiesStats', () => {
     it('should return capability statistics', async () => {
-      await createTestAgent({ 
+      await createTestAgent({
         name: 'agent-1',
         status: 'active',
-        capabilities: ['analyze', 'process']
+        capabilities: ['analyze', 'process'],
       });
 
-      await createTestAgent({ 
+      await createTestAgent({
         name: 'agent-2',
         status: 'active',
-        capabilities: ['analyze', 'transform']
+        capabilities: ['analyze', 'transform'],
       });
 
-      await createTestAgent({ 
+      await createTestAgent({
         name: 'agent-3',
         status: 'inactive',
-        capabilities: ['analyze', 'process', 'transform']
+        capabilities: ['analyze', 'process', 'transform'],
       });
 
       const stats = await repository.getCapabilitiesStats();
-      
+
       const analyzeStats = stats.find((s: any) => s.capability === 'analyze');
       expect(analyzeStats).toBeDefined();
       expect(analyzeStats.agent_count).toBe(3n);

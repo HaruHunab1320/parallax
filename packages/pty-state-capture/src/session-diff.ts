@@ -29,7 +29,7 @@ export function jaccardSimilarity(a: string, b: string): number {
 
 export function diffTranscripts(
   baseline: SessionTranscript,
-  candidate: SessionTranscript,
+  candidate: SessionTranscript
 ): SessionDiffResult {
   const flags: string[] = [];
   let score = 0;
@@ -86,26 +86,27 @@ export function diffTranscripts(
     const baseTurn = baseline.turns[i] ?? null;
     const candTurn = candidate.turns[i] ?? null;
 
-    const similarity = baseTurn && candTurn
-      ? jaccardSimilarity(baseTurn.cleanOutput, candTurn.cleanOutput)
-      : 0;
+    const similarity =
+      baseTurn && candTurn
+        ? jaccardSimilarity(baseTurn.cleanOutput, candTurn.cleanOutput)
+        : 0;
 
     if (baseTurn && candTurn) {
       totalSimilarity += similarity;
       comparedCount += 1;
     }
 
-    const durationDeltaMs = baseTurn && candTurn
-      ? candTurn.timing.durationMs - baseTurn.timing.durationMs
-      : 0;
+    const durationDeltaMs =
+      baseTurn && candTurn
+        ? candTurn.timing.durationMs - baseTurn.timing.durationMs
+        : 0;
 
-    const finalStateMatch = baseTurn && candTurn
-      ? baseTurn.finalState === candTurn.finalState
-      : false;
+    const finalStateMatch =
+      baseTurn && candTurn
+        ? baseTurn.finalState === candTurn.finalState
+        : false;
 
-    const isStuck = candTurn
-      ? STUCK_STATES.has(candTurn.finalState)
-      : false;
+    const isStuck = candTurn ? STUCK_STATES.has(candTurn.finalState) : false;
 
     turnComparisons.push({
       baselineTurnIndex: baseTurn?.index ?? null,
@@ -164,7 +165,7 @@ function buildSummary(
   candidate: SessionTranscript,
   score: number,
   severity: RegressionSeverity,
-  flags: string[],
+  flags: string[]
 ): string {
   const parts: string[] = [
     `${severity} (score ${score})`,

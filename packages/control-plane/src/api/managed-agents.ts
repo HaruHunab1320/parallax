@@ -4,10 +4,10 @@
  * REST endpoints for spawning and managing CLI agents through runtime providers.
  */
 
-import { Router, Request, Response } from 'express';
-import { Logger } from 'pino';
-import { AgentRuntimeService } from '../agent-runtime';
-import { AgentConfig, AgentFilter } from '@parallaxai/runtime-interface';
+import type { AgentConfig, AgentFilter } from '@parallaxai/runtime-interface';
+import { type Request, type Response, Router } from 'express';
+import type { Logger } from 'pino';
+import type { AgentRuntimeService } from '../agent-runtime';
 
 export function createManagedAgentsRouter(
   agentRuntimeService: AgentRuntimeService,
@@ -24,14 +24,19 @@ export function createManagedAgentsRouter(
   // Get runtime health
   router.get('/runtimes/:name/health', async (req: Request, res: Response) => {
     try {
-      const health = await agentRuntimeService.getRuntimeHealth(req.params.name);
+      const health = await agentRuntimeService.getRuntimeHealth(
+        req.params.name
+      );
       if (!health) {
         res.status(404).json({ error: 'Runtime not found' });
         return;
       }
       res.json(health);
     } catch (error) {
-      logger.error({ error, runtime: req.params.name }, 'Failed to get runtime health');
+      logger.error(
+        { error, runtime: req.params.name },
+        'Failed to get runtime health'
+      );
       res.status(500).json({ error: 'Failed to get runtime health' });
     }
   });
@@ -49,7 +54,9 @@ export function createManagedAgentsRouter(
       }
 
       if (req.query.type) {
-        const types = Array.isArray(req.query.type) ? req.query.type : [req.query.type];
+        const types = Array.isArray(req.query.type)
+          ? req.query.type
+          : [req.query.type];
         filter.type = types as any;
       }
 
@@ -89,7 +96,10 @@ export function createManagedAgentsRouter(
 
       const agent = await agentRuntimeService.spawn(config, preferredRuntime);
 
-      logger.info({ agentId: agent.id, type: config.type, name: config.name }, 'Agent spawned');
+      logger.info(
+        { agentId: agent.id, type: config.type, name: config.name },
+        'Agent spawned'
+      );
 
       res.status(201).json(agent);
     } catch (error) {
@@ -155,7 +165,8 @@ export function createManagedAgentsRouter(
     } catch (error) {
       logger.error({ error, agentId: req.params.id }, 'Failed to send message');
       res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to send message',
+        error:
+          error instanceof Error ? error.message : 'Failed to send message',
       });
     }
   });
@@ -163,7 +174,9 @@ export function createManagedAgentsRouter(
   // Get agent logs
   router.get('/:id/logs', async (req: Request, res: Response) => {
     try {
-      const tail = req.query.tail ? parseInt(req.query.tail as string, 10) : 100;
+      const tail = req.query.tail
+        ? parseInt(req.query.tail as string, 10)
+        : 100;
 
       const logs = await agentRuntimeService.logs(req.params.id, { tail });
 
@@ -181,7 +194,9 @@ export function createManagedAgentsRouter(
     try {
       const metrics = await agentRuntimeService.metrics(req.params.id);
       if (!metrics) {
-        res.status(404).json({ error: 'Agent not found or metrics unavailable' });
+        res
+          .status(404)
+          .json({ error: 'Agent not found or metrics unavailable' });
         return;
       }
       res.json(metrics);

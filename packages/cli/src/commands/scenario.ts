@@ -1,9 +1,9 @@
-import { Command } from 'commander';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import chalk from 'chalk';
-import ora from 'ora';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import { Command } from 'commander';
 import * as yaml from 'js-yaml';
+import ora from 'ora';
 import { ParallaxHttpClient } from '../utils/http-client';
 
 type ScenarioSpec = {
@@ -12,7 +12,12 @@ type ScenarioSpec = {
   description?: string;
   structuredSpec?: {
     goal?: string;
-    inputs?: Array<{ name: string; type: string; description?: string; values?: string[] }>;
+    inputs?: Array<{
+      name: string;
+      type: string;
+      description?: string;
+      values?: string[];
+    }>;
     decisionPoints?: Array<{
       name: string;
       logic?: string;
@@ -22,17 +27,23 @@ type ScenarioSpec = {
       fail?: string;
       action?: string;
     }>;
-    escalationPaths?: Array<{ trigger: string; destination: string; actions?: string[] }>;
+    escalationPaths?: Array<{
+      trigger: string;
+      destination: string;
+      actions?: string[];
+    }>;
     outputs?: Array<{ name: string; description?: string }>;
   };
 };
 
 type ScenarioFile = ScenarioSpec | Record<string, ScenarioSpec>;
 type ScenarioStructuredSpec = NonNullable<ScenarioSpec['structuredSpec']>;
-type ScenarioDecisionPoint = NonNullable<ScenarioStructuredSpec['decisionPoints']>[number];
+type ScenarioDecisionPoint = NonNullable<
+  ScenarioStructuredSpec['decisionPoints']
+>[number];
 
 function formatInputs(inputs?: ScenarioStructuredSpec['inputs']) {
-  if (!inputs || !inputs.length) return 'None';
+  if (!inputs?.length) return 'None';
   return inputs.map((item) => `${item.name}: ${item.type}`).join(', ');
 }
 
@@ -40,23 +51,33 @@ function sanitizeId(id: string) {
   return id.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
 }
 
-function resolveScenario(data: ScenarioFile, scenarioId?: string): ScenarioSpec {
+function resolveScenario(
+  data: ScenarioFile,
+  scenarioId?: string
+): ScenarioSpec {
   if (!scenarioId && 'structuredSpec' in data) {
     return data as ScenarioSpec;
   }
   if (!scenarioId) {
-    throw new Error('Scenario file contains multiple entries. Provide --id to select one.');
+    throw new Error(
+      'Scenario file contains multiple entries. Provide --id to select one.'
+    );
   }
   const record = data as Record<string, ScenarioSpec>;
   const scenario = record[scenarioId];
   if (!scenario) {
     const keys = Object.keys(record).slice(0, 5).join(', ');
-    throw new Error(`Scenario "${scenarioId}" not found. Available: ${keys}${Object.keys(record).length > 5 ? '...' : ''}`);
+    throw new Error(
+      `Scenario "${scenarioId}" not found. Available: ${keys}${Object.keys(record).length > 5 ? '...' : ''}`
+    );
   }
   return { id: scenarioId, ...scenario };
 }
 
-function buildDecisionBlock(name: string, decisionPoint: ScenarioDecisionPoint) {
+function buildDecisionBlock(
+  name: string,
+  decisionPoint: ScenarioDecisionPoint
+) {
   const blockName = sanitizeId(name);
   const base = `decision_${blockName}`;
   if (decisionPoint.outcomes) {
@@ -86,7 +107,11 @@ if (gate_passed) {
 decisions = decisions.push(${base})`;
   }
 
-  const action = decisionPoint.action || decisionPoint.condition || decisionPoint.logic || 'evaluate';
+  const action =
+    decisionPoint.action ||
+    decisionPoint.condition ||
+    decisionPoint.logic ||
+    'evaluate';
   return `
 ${base} = { name: "${name}", outcome: "info", action: "${action}" }
 decisions = decisions.push(${base})`;
@@ -95,12 +120,15 @@ decisions = decisions.push(${base})`;
 function compileScenarioToPrism(scenario: ScenarioSpec, confidence: number) {
   const id = sanitizeId(scenario.id || scenario.title || 'scenario');
   const title = scenario.title || scenario.id || 'Scenario';
-  const description = scenario.description || scenario.structuredSpec?.goal || '';
+  const description =
+    scenario.description || scenario.structuredSpec?.goal || '';
   const inputs = formatInputs(scenario.structuredSpec?.inputs);
   const decisionPoints = scenario.structuredSpec?.decisionPoints || [];
 
   const decisionBlocks = decisionPoints.length
-    ? decisionPoints.map((point) => buildDecisionBlock(point.name || 'decision', point)).join('\n')
+    ? decisionPoints
+        .map((point) => buildDecisionBlock(point.name || 'decision', point))
+        .join('\n')
     : 'decisions = decisions.push({ name: "default", outcome: "none", action: "no-op" })';
 
   return `/**
@@ -135,14 +163,18 @@ async function readScenarioFile(filePath: string): Promise<ScenarioFile> {
   return yaml.load(content) as ScenarioFile;
 }
 
-export const scenarioCommand = new Command('scenario')
-  .description('Compile or run scenario specs as Prism patterns');
+export const scenarioCommand = new Command('scenario').description(
+  'Compile or run scenario specs as Prism patterns'
+);
 
 scenarioCommand
   .command('compile')
   .description('Compile a scenario YAML/JSON file into a Prism pattern')
   .argument('<scenario-file>', 'Path to scenario YAML/JSON')
-  .option('--id <scenario-id>', 'Scenario id when file contains multiple entries')
+  .option(
+    '--id <scenario-id>',
+    'Scenario id when file contains multiple entries'
+  )
   .option('-o, --output <file>', 'Output .prism path')
   .option('--confidence <value>', 'Fallback confidence value', '0.78')
   .action(async (scenarioFile, options) => {
@@ -151,11 +183,23 @@ scenarioCommand
       const data = await readScenarioFile(scenarioFile);
       const scenario = resolveScenario(data, options.id);
       const confidence = Number(options.confidence);
-      const prism = compileScenarioToPrism(scenario, Number.isFinite(confidence) ? confidence : 0.78);
-      const filename = options.output || path.join(process.cwd(), `${sanitizeId(scenario.id || scenario.title || 'scenario')}.prism`);
+      const prism = compileScenarioToPrism(
+        scenario,
+        Number.isFinite(confidence) ? confidence : 0.78
+      );
+      const filename =
+        options.output ||
+        path.join(
+          process.cwd(),
+          `${sanitizeId(scenario.id || scenario.title || 'scenario')}.prism`
+        );
       await fs.writeFile(filename, prism, 'utf8');
       spinner.succeed(`Generated ${chalk.cyan(path.basename(filename))}`);
-      console.log(chalk.gray('Next: copy this pattern into the Parallax patterns directory and reload the control plane.'));
+      console.log(
+        chalk.gray(
+          'Next: copy this pattern into the Parallax patterns directory and reload the control plane.'
+        )
+      );
     } catch (error: any) {
       spinner.fail('Scenario compilation failed');
       console.error(error.message || error);
@@ -165,13 +209,21 @@ scenarioCommand
 
 scenarioCommand
   .command('run')
-  .description('Compile and execute a scenario against the Parallax control plane')
+  .description(
+    'Compile and execute a scenario against the Parallax control plane'
+  )
   .argument('<scenario-file>', 'Path to scenario YAML/JSON')
-  .option('--id <scenario-id>', 'Scenario id when file contains multiple entries')
+  .option(
+    '--id <scenario-id>',
+    'Scenario id when file contains multiple entries'
+  )
   .option('--confidence <value>', 'Fallback confidence value', '0.78')
   .option('-i, --input <json>', 'Input data as JSON string')
   .option('-f, --file <path>', 'Input data from JSON file')
-  .option('--patterns-dir <path>', 'Patterns directory (defaults to PARALLAX_PATTERNS_DIR or ./patterns)')
+  .option(
+    '--patterns-dir <path>',
+    'Patterns directory (defaults to PARALLAX_PATTERNS_DIR or ./patterns)'
+  )
   .option('--no-reload', 'Skip control plane reload after writing the pattern')
   .action(async (scenarioFile, options) => {
     const spinner = ora('Preparing scenario...').start();
@@ -179,9 +231,15 @@ scenarioCommand
       const data = await readScenarioFile(scenarioFile);
       const scenario = resolveScenario(data, options.id);
       const confidence = Number(options.confidence);
-      const prism = compileScenarioToPrism(scenario, Number.isFinite(confidence) ? confidence : 0.78);
+      const prism = compileScenarioToPrism(
+        scenario,
+        Number.isFinite(confidence) ? confidence : 0.78
+      );
 
-      const patternsDir = options.patternsDir || process.env.PARALLAX_PATTERNS_DIR || path.join(process.cwd(), 'patterns');
+      const patternsDir =
+        options.patternsDir ||
+        process.env.PARALLAX_PATTERNS_DIR ||
+        path.join(process.cwd(), 'patterns');
       await fs.mkdir(patternsDir, { recursive: true });
       const patternId = sanitizeId(scenario.id || scenario.title || 'scenario');
       const outputPath = path.join(patternsDir, `${patternId}.prism`);
@@ -211,7 +269,10 @@ scenarioCommand
       console.log(chalk.white('Pattern: ') + patternId);
       console.log(chalk.white('Status: ') + chalk.green(result.status));
       if (result.confidence !== undefined) {
-        console.log(chalk.white('Confidence: ') + chalk.yellow(result.confidence.toFixed(2)));
+        console.log(
+          chalk.white('Confidence: ') +
+            chalk.yellow(result.confidence.toFixed(2))
+        );
       }
       console.log(chalk.white('\nResult:'));
       console.log(JSON.stringify(result.result, null, 2));

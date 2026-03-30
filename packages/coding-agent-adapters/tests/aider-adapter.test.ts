@@ -2,9 +2,9 @@
  * Aider Adapter Tests
  */
 
-import { describe, it, expect } from 'vitest';
-import { AiderAdapter } from '../src/aider-adapter';
 import type { SpawnConfig } from 'pty-manager';
+import { describe, expect, it } from 'vitest';
+import { AiderAdapter } from '../src/aider-adapter';
 
 describe('AiderAdapter', () => {
   const adapter = new AiderAdapter();
@@ -25,15 +25,21 @@ describe('AiderAdapter', () => {
     });
 
     it('should have pipx alternative', () => {
-      expect(adapter.installation.alternatives).toContain('pipx install aider-chat (isolated install)');
+      expect(adapter.installation.alternatives).toContain(
+        'pipx install aider-chat (isolated install)'
+      );
     });
 
     it('should have brew alternative', () => {
-      expect(adapter.installation.alternatives?.some(a => a.includes('brew'))).toBe(true);
+      expect(
+        adapter.installation.alternatives?.some((a) => a.includes('brew'))
+      ).toBe(true);
     });
 
     it('should have docs URL', () => {
-      expect(adapter.installation.docsUrl).toBe('https://aider.chat/docs/install.html');
+      expect(adapter.installation.docsUrl).toBe(
+        'https://aider.chat/docs/install.html'
+      );
     });
 
     it('should have min version', () => {
@@ -334,14 +340,18 @@ describe('AiderAdapter', () => {
     });
 
     it('should detect OpenRouter OAuth login offer (onboarding.py)', () => {
-      const result = adapter.detectLogin('Login to OpenRouter or create a free account?');
+      const result = adapter.detectLogin(
+        'Login to OpenRouter or create a free account?'
+      );
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('oauth');
     });
 
     it('should detect OpenRouter browser flow (onboarding.py:311)', () => {
-      const result = adapter.detectLogin('Please open this URL in your browser to connect Aider with OpenRouter: https://openrouter.ai/auth');
+      const result = adapter.detectLogin(
+        'Please open this URL in your browser to connect Aider with OpenRouter: https://openrouter.ai/auth'
+      );
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('browser');
@@ -349,7 +359,9 @@ describe('AiderAdapter', () => {
     });
 
     it('should detect "waiting for browser" auth flow', () => {
-      const result = adapter.detectLogin('Waiting up to 5 minutes for you to finish in the browser...');
+      const result = adapter.detectLogin(
+        'Waiting up to 5 minutes for you to finish in the browser...'
+      );
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('browser');
@@ -371,7 +383,9 @@ describe('AiderAdapter', () => {
     });
 
     it('should detect OpenRouter OAuth as login blocking prompt', () => {
-      const result = adapter.detectBlockingPrompt('Login to OpenRouter or create a free account?');
+      const result = adapter.detectBlockingPrompt(
+        'Login to OpenRouter or create a free account?'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('login');
@@ -379,14 +393,18 @@ describe('AiderAdapter', () => {
     });
 
     it('should detect model selection', () => {
-      const result = adapter.detectBlockingPrompt('Which model would you like to use?');
+      const result = adapter.detectBlockingPrompt(
+        'Which model would you like to use?'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('model_select');
     });
 
     it('should detect confirmation validation error (io.py:897)', () => {
-      const result = adapter.detectBlockingPrompt('Please answer with one of: yes, no, skip, all');
+      const result = adapter.detectBlockingPrompt(
+        'Please answer with one of: yes, no, skip, all'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('unknown');
@@ -402,7 +420,9 @@ describe('AiderAdapter', () => {
     });
 
     it('should detect destructive operation with (Y)es/(N)o format', () => {
-      const result = adapter.detectBlockingPrompt('Overwrite existing file? (Y)es/(N)o [No]:');
+      const result = adapter.detectBlockingPrompt(
+        'Overwrite existing file? (Y)es/(N)o [No]:'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -463,11 +483,17 @@ describe('AiderAdapter', () => {
     });
 
     it('should NOT detect ready when OAuth login is shown', () => {
-      expect(adapter.detectReady('Login to OpenRouter or create a free account?\n> ')).toBe(false);
+      expect(
+        adapter.detectReady('Login to OpenRouter or create a free account?\n> ')
+      ).toBe(false);
     });
 
     it('should NOT detect ready when browser auth is in progress', () => {
-      expect(adapter.detectReady('Waiting up to 5 minutes for you to finish in the browser...')).toBe(false);
+      expect(
+        adapter.detectReady(
+          'Waiting up to 5 minutes for you to finish in the browser...'
+        )
+      ).toBe(false);
     });
 
     it('should return false for loading output', () => {
@@ -484,7 +510,9 @@ describe('AiderAdapter', () => {
     });
 
     it('should remove file operation messages', () => {
-      const result = adapter.parseOutput('Added main.py to the chat.\nActual content Done.');
+      const result = adapter.parseOutput(
+        'Added main.py to the chat.\nActual content Done.'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.content).not.toContain('Added main.py');
@@ -545,47 +573,61 @@ describe('AiderAdapter', () => {
 
     // ── Decline rules ───────────────────────────────────────────────────
     it('should decline telemetry opt-in (main.py:650)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('telemetry')
       );
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('n');
       expect(rule?.once).toBe(true);
-      expect(rule?.pattern.test('Allow collection of anonymous analytics to help improve aider?')).toBe(true);
+      expect(
+        rule?.pattern.test(
+          'Allow collection of anonymous analytics to help improve aider?'
+        )
+      ).toBe(true);
     });
 
     it('should decline release notes offer (main.py:1107)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('release notes')
       );
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('n');
       expect(rule?.once).toBe(true);
-      expect(rule?.pattern.test("Would you like to see what's new in this version?")).toBe(true);
+      expect(
+        rule?.pattern.test("Would you like to see what's new in this version?")
+      ).toBe(true);
     });
 
     it('should decline bug report (report.py:70)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('bug report')
       );
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('n');
-      expect(rule?.pattern.test('Open a GitHub Issue pre-filled with the above error in your browser? (Y/n)')).toBe(true);
+      expect(
+        rule?.pattern.test(
+          'Open a GitHub Issue pre-filled with the above error in your browser? (Y/n)'
+        )
+      ).toBe(true);
     });
 
     // ── File / edit operations ──────────────────────────────────────────
     it('should accept add file to chat (base_coder.py:1773)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('add files to chat')
       );
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('y');
       expect(rule?.pattern.test('Add main.py to the chat?')).toBe(true);
-      expect(rule?.pattern.test("Add file to the chat? (Y)es/(N)o/(D)on't ask again [Yes]:")).toBe(true);
+      expect(
+        rule?.pattern.test(
+          "Add file to the chat? (Y)es/(N)o/(D)on't ask again [Yes]:"
+        )
+      ).toBe(true);
     });
 
     it('should accept add URL to chat (base_coder.py:977)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('url')
       );
       expect(rule).toBeDefined();
@@ -594,7 +636,7 @@ describe('AiderAdapter', () => {
     });
 
     it('should accept create new file (base_coder.py:2207)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('create new files')
       );
       expect(rule).toBeDefined();
@@ -603,16 +645,20 @@ describe('AiderAdapter', () => {
     });
 
     it('should accept allow edits to file (base_coder.py:2227)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('edits to file not yet')
       );
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('y');
-      expect(rule?.pattern.test('Allow edits to file that has not been added to the chat?')).toBe(true);
+      expect(
+        rule?.pattern.test(
+          'Allow edits to file that has not been added to the chat?'
+        )
+      ).toBe(true);
     });
 
     it('should accept architect mode "Edit the files?" (architect_coder.py:17)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('architect')
       );
       expect(rule).toBeDefined();
@@ -622,7 +668,7 @@ describe('AiderAdapter', () => {
 
     // ── Shell operations ────────────────────────────────────────────────
     it('should accept run shell command (base_coder.py:2455)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('run shell')
       );
       expect(rule).toBeDefined();
@@ -632,7 +678,7 @@ describe('AiderAdapter', () => {
     });
 
     it('should accept add command output to chat (base_coder.py:2480)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('shell command output')
       );
       expect(rule).toBeDefined();
@@ -641,37 +687,45 @@ describe('AiderAdapter', () => {
     });
 
     it('should accept add tokens of command output (commands.py:1029)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('/run command output')
       );
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('y');
-      expect(rule?.pattern.test('Add 2.5k tokens of command output to the chat?')).toBe(true);
+      expect(
+        rule?.pattern.test('Add 2.5k tokens of command output to the chat?')
+      ).toBe(true);
     });
 
     // ── Setup / maintenance ─────────────────────────────────────────────
     it('should accept git repo creation (main.py:123)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('git repo')
       );
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('y');
       expect(rule?.once).toBe(true);
-      expect(rule?.pattern.test("No git repo found, create one to track aider's changes (recommended)?")).toBe(true);
+      expect(
+        rule?.pattern.test(
+          "No git repo found, create one to track aider's changes (recommended)?"
+        )
+      ).toBe(true);
     });
 
     it('should accept .gitignore update (main.py:191)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('gitignore')
       );
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('y');
       expect(rule?.once).toBe(true);
-      expect(rule?.pattern.test('Add .aider* to .gitignore (recommended)?')).toBe(true);
+      expect(
+        rule?.pattern.test('Add .aider* to .gitignore (recommended)?')
+      ).toBe(true);
     });
 
     it('should accept pip install (utils.py:317)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('python dependencies')
       );
       expect(rule).toBeDefined();
@@ -680,7 +734,7 @@ describe('AiderAdapter', () => {
     });
 
     it('should accept playwright install (scrape.py:62)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('playwright')
       );
       expect(rule).toBeDefined();
@@ -690,7 +744,7 @@ describe('AiderAdapter', () => {
 
     // ── Other safe confirmations ────────────────────────────────────────
     it('should accept lint error fix (commands.py:389)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('lint')
       );
       expect(rule).toBeDefined();
@@ -699,7 +753,7 @@ describe('AiderAdapter', () => {
     });
 
     it('should accept context limit continuation (base_coder.py:1415)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('context limit')
       );
       expect(rule).toBeDefined();
@@ -753,7 +807,7 @@ describe('AiderAdapter', () => {
   describe('getWorkspaceFiles()', () => {
     it('should return .aider.conventions.md as primary memory file', () => {
       const files = adapter.getWorkspaceFiles();
-      const memory = files.find(f => f.type === 'memory');
+      const memory = files.find((f) => f.type === 'memory');
       expect(memory).toBeDefined();
       expect(memory!.relativePath).toBe('.aider.conventions.md');
       expect(memory!.autoLoaded).toBe(true);
@@ -762,7 +816,7 @@ describe('AiderAdapter', () => {
 
     it('should include .aider.conf.yml config', () => {
       const files = adapter.getWorkspaceFiles();
-      const config = files.find(f => f.relativePath === '.aider.conf.yml');
+      const config = files.find((f) => f.relativePath === '.aider.conf.yml');
       expect(config).toBeDefined();
       expect(config!.type).toBe('config');
       expect(config!.format).toBe('yaml');
@@ -770,7 +824,7 @@ describe('AiderAdapter', () => {
 
     it('should include .aiderignore rules file', () => {
       const files = adapter.getWorkspaceFiles();
-      const rules = files.find(f => f.type === 'rules');
+      const rules = files.find((f) => f.type === 'rules');
       expect(rules).toBeDefined();
       expect(rules!.relativePath).toBe('.aiderignore');
       expect(rules!.format).toBe('text');

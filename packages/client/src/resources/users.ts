@@ -1,13 +1,13 @@
-import { HttpClient } from '../http.js';
-import {
-  User,
-  UserListResponse,
-  UserListParams,
-  UserCreateInput,
-  UserUpdateInput,
+import type { HttpClient } from '../http.js';
+import type {
   ApiKeyCreateInput,
   ApiKeyCreateResponse,
   ApiKeyListResponse,
+  User,
+  UserCreateInput,
+  UserListParams,
+  UserListResponse,
+  UserUpdateInput,
 } from '../types/users.js';
 
 export class UsersResource {
@@ -40,10 +40,7 @@ export class UsersResource {
 
   /** Update a user (Enterprise) */
   async update(id: string, updates: UserUpdateInput): Promise<User> {
-    return this.http.put<User>(
-      `/api/users/${encodeURIComponent(id)}`,
-      updates
-    );
+    return this.http.put<User>(`/api/users/${encodeURIComponent(id)}`, updates);
   }
 
   /** Delete a user (Enterprise) */

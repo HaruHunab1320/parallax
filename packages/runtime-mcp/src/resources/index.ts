@@ -6,15 +6,15 @@
 
 export {
   AGENT_RESOURCE_TEMPLATE,
-  parseAgentUri,
   listAgentResources,
+  parseAgentUri,
   readAgentResource,
 } from './agent-resource.js';
 
 export {
   LOGS_RESOURCE_TEMPLATE,
-  parseLogsUri,
   listLogsResources,
+  parseLogsUri,
   readLogsResource,
   subscribeLogsResource,
 } from './logs-resource.js';

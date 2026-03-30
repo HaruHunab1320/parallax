@@ -1,15 +1,18 @@
-import { Pattern } from './types';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { Logger } from 'pino';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import * as yaml from 'js-yaml';
-import { compileOrgPattern, OrgPattern } from '../org-patterns';
+import type { Logger } from 'pino';
+import { compileOrgPattern, type OrgPattern } from '../org-patterns';
+import type { Pattern } from './types';
 
 export class PatternLoader {
   private patterns: Map<string, Pattern> = new Map();
   private logger: Logger;
 
-  constructor(private patternsDir: string, logger: Logger) {
+  constructor(
+    private patternsDir: string,
+    logger: Logger
+  ) {
     this.logger = logger;
   }
 
@@ -20,8 +23,10 @@ export class PatternLoader {
       const files = await fs.readdir(this.patternsDir);
 
       // Load both .prism and .yaml/.yml files
-      const prismFiles = files.filter(f => f.endsWith('.prism'));
-      const yamlFiles = files.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+      const prismFiles = files.filter((f) => f.endsWith('.prism'));
+      const yamlFiles = files.filter(
+        (f) => f.endsWith('.yaml') || f.endsWith('.yml')
+      );
 
       // Load Prism files directly
       for (const file of prismFiles) {
@@ -35,11 +40,14 @@ export class PatternLoader {
         await this.loadYamlPattern(filePath);
       }
 
-      this.logger.info({
-        total: this.patterns.size,
-        prism: prismFiles.length,
-        yaml: yamlFiles.length,
-      }, 'Patterns loaded');
+      this.logger.info(
+        {
+          total: this.patterns.size,
+          prism: prismFiles.length,
+          yaml: yamlFiles.length,
+        },
+        'Patterns loaded'
+      );
     } catch (error) {
       this.logger.error({ error }, 'Failed to load patterns');
       throw error;
@@ -69,9 +77,10 @@ export class PatternLoader {
       // Create Pattern object from compiled result
       // Ensure input has required 'type' property for PatternInput
       const inputConfig = compiled.metadata.input;
-      const patternInput = inputConfig && typeof inputConfig === 'object' && 'type' in inputConfig
-        ? inputConfig as { type: string; required?: boolean; schema?: any }
-        : { type: 'object', schema: inputConfig };
+      const patternInput =
+        inputConfig && typeof inputConfig === 'object' && 'type' in inputConfig
+          ? (inputConfig as { type: string; required?: boolean; schema?: any })
+          : { type: 'object', schema: inputConfig };
 
       const pattern: Pattern = {
         name: compiled.name,
@@ -83,7 +92,8 @@ export class PatternLoader {
         minAgents: compiled.metadata.agents.minAgents,
         maxAgents: compiled.metadata.agents.maxAgents,
         script: compiled.script,
-        workspace: orgPattern.metadata?.workspace || (orgPattern as any).workspace,
+        workspace:
+          orgPattern.metadata?.workspace || (orgPattern as any).workspace,
         metadata: {
           source: 'yaml',
           compiledFrom: filePath,
@@ -94,7 +104,10 @@ export class PatternLoader {
 
       if (this.validatePattern(pattern)) {
         this.patterns.set(pattern.name, pattern);
-        this.logger.debug({ pattern: pattern.name }, 'Org-chart pattern loaded');
+        this.logger.debug(
+          { pattern: pattern.name },
+          'Org-chart pattern loaded'
+        );
       }
     } catch (error) {
       this.logger.error({ filePath, error }, 'Failed to load YAML pattern');
@@ -111,21 +124,32 @@ export class PatternLoader {
 
       if (this.validatePattern(pattern)) {
         this.patterns.set(pattern.name, pattern);
-        this.logger.debug({ pattern: pattern.name, source: 'prism' }, 'Pattern loaded');
+        this.logger.debug(
+          { pattern: pattern.name, source: 'prism' },
+          'Pattern loaded'
+        );
       }
     } catch (error) {
       this.logger.error({ filePath, error }, 'Failed to load pattern');
     }
   }
 
-  private parsePrismPatternInstance(content: string, filePath: string): Pattern {
-    return PatternLoader.parsePrismPattern(content, path.basename(filePath, '.prism'));
+  private parsePrismPatternInstance(
+    content: string,
+    filePath: string
+  ): Pattern {
+    return PatternLoader.parsePrismPattern(
+      content,
+      path.basename(filePath, '.prism')
+    );
   }
 
   static parsePrismPattern(content: string, fallbackName: string): Pattern {
     // Parse pattern metadata from comments
     const metadataMatch = content.match(/\/\*\*([\s\S]*?)\*\//);
-    const metadata = metadataMatch ? PatternLoader.parseMetadata(metadataMatch[1]) : {};
+    const metadata = metadataMatch
+      ? PatternLoader.parseMetadata(metadataMatch[1])
+      : {};
 
     // Extract the actual script by removing the metadata comment block
     const script = metadataMatch

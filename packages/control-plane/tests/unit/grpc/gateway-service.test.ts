@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import pino from 'pino';
-import { GatewayService } from '@/grpc/services/gateway-service';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExecutionEventBus } from '@/execution-events';
+import { GatewayService } from '@/grpc/services/gateway-service';
 import type { IAgentRegistry } from '@/registry/agent-registry-interface';
 
 // ── Helpers ──
@@ -270,7 +270,9 @@ describe('GatewayService', () => {
         if (msg.task_request) capturedRequest = msg;
       });
 
-      const dispatchPromise = service.dispatchTask('agent-1', { description: 'test' });
+      const dispatchPromise = service.dispatchTask('agent-1', {
+        description: 'test',
+      });
       await vi.advanceTimersByTimeAsync(0);
 
       stream.emit('data', {
@@ -300,7 +302,11 @@ describe('GatewayService', () => {
 
       // Start a dispatch that will be pending
       stream.write.mockImplementation(() => {});
-      const dispatchPromise = service.dispatchTask('agent-1', { description: 'test' }, 60000);
+      const dispatchPromise = service.dispatchTask(
+        'agent-1',
+        { description: 'test' },
+        60000
+      );
       await vi.advanceTimersByTimeAsync(0);
 
       // End stream
@@ -321,7 +327,11 @@ describe('GatewayService', () => {
       await vi.advanceTimersByTimeAsync(0);
 
       stream.write.mockImplementation(() => {});
-      const dispatchPromise = service.dispatchTask('agent-1', { description: 'test' }, 60000);
+      const dispatchPromise = service.dispatchTask(
+        'agent-1',
+        { description: 'test' },
+        60000
+      );
       await vi.advanceTimersByTimeAsync(0);
 
       stream.emit('error', new Error('Connection reset'));
@@ -485,7 +495,12 @@ describe('GatewayService', () => {
       stream.emit('data', makeHello());
       await vi.advanceTimersByTimeAsync(0);
 
-      service.dispatchThreadInput('agent-1', 'thread-1', 'do something', 'text');
+      service.dispatchThreadInput(
+        'agent-1',
+        'thread-1',
+        'do something',
+        'text'
+      );
 
       expect(stream.write).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -508,7 +523,12 @@ describe('GatewayService', () => {
   describe('handleThreadEvent', () => {
     it('emits to ExecutionEventBus and local listeners', async () => {
       const eventBus = new ExecutionEventBus();
-      const svcWithBus = new GatewayService(registry, logger, 'node-1', eventBus);
+      const svcWithBus = new GatewayService(
+        registry,
+        logger,
+        'node-1',
+        eventBus
+      );
 
       const stream = createMockStream();
       const impl = svcWithBus.getImplementation();
@@ -548,7 +568,12 @@ describe('GatewayService', () => {
 
     it('ignores events with no thread_id', async () => {
       const eventBus = new ExecutionEventBus();
-      const svcWithBus = new GatewayService(registry, logger, 'node-1', eventBus);
+      const svcWithBus = new GatewayService(
+        registry,
+        logger,
+        'node-1',
+        eventBus
+      );
 
       const stream = createMockStream();
       const impl = svcWithBus.getImplementation();
@@ -571,7 +596,12 @@ describe('GatewayService', () => {
   describe('handleThreadStatusUpdate', () => {
     it('emits status to event bus and updates session tracking', async () => {
       const eventBus = new ExecutionEventBus();
-      const svcWithBus = new GatewayService(registry, logger, 'node-1', eventBus);
+      const svcWithBus = new GatewayService(
+        registry,
+        logger,
+        'node-1',
+        eventBus
+      );
 
       const stream = createMockStream();
       const impl = svcWithBus.getImplementation();
@@ -631,7 +661,9 @@ describe('GatewayService', () => {
       await vi.advanceTimersByTimeAsync(0);
 
       const events: any[] = [];
-      const unsubscribe = service.subscribeThreadEvents('thread-sub-1', (e) => events.push(e));
+      const unsubscribe = service.subscribeThreadEvents('thread-sub-1', (e) =>
+        events.push(e)
+      );
 
       // Emit a thread event
       stream.emit('data', {
@@ -669,7 +701,12 @@ describe('GatewayService', () => {
   describe('cleanupAgent with active threads', () => {
     it('emits thread_failed for active threads on disconnect', async () => {
       const eventBus = new ExecutionEventBus();
-      const svcWithBus = new GatewayService(registry, logger, 'node-1', eventBus);
+      const svcWithBus = new GatewayService(
+        registry,
+        logger,
+        'node-1',
+        eventBus
+      );
 
       const stream = createMockStream();
       const impl = svcWithBus.getImplementation();
@@ -708,7 +745,9 @@ describe('GatewayService', () => {
       await vi.advanceTimersByTimeAsync(0);
 
       // Should have emitted gateway_thread_failed
-      const failedEvents = busEvents.filter(e => e.type === 'gateway_thread_failed');
+      const failedEvents = busEvents.filter(
+        (e) => e.type === 'gateway_thread_failed'
+      );
       expect(failedEvents).toHaveLength(1);
       expect(failedEvents[0].executionId).toBe('thread-cleanup-1');
 

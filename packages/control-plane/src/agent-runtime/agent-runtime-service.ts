@@ -5,13 +5,12 @@
  * and provides a unified interface for spawning and managing CLI agents.
  */
 
-import { Logger } from 'pino';
-import { EventEmitter } from 'events';
-import {
+import { EventEmitter } from 'node:events';
+import type {
   AgentConfig,
+  AgentFilter,
   AgentHandle,
   AgentMessage,
-  AgentFilter,
   AgentMetrics,
   SpawnThreadInput,
   ThreadEvent,
@@ -19,7 +18,12 @@ import {
   ThreadHandle,
   ThreadInput,
 } from '@parallaxai/runtime-interface';
-import { RuntimeClient, RuntimeClientOptions, RuntimeHealthStatus } from './runtime-client';
+import type { Logger } from 'pino';
+import {
+  RuntimeClient,
+  type RuntimeClientOptions,
+  type RuntimeHealthStatus,
+} from './runtime-client';
 
 export interface RuntimeRegistration {
   name: string;
@@ -47,7 +51,7 @@ export class AgentRuntimeService extends EventEmitter {
 
   constructor(
     private logger: Logger,
-    private options: AgentRuntimeServiceOptions = {}
+    options: AgentRuntimeServiceOptions = {}
   ) {
     super();
     this.healthCheckInterval = options.healthCheckInterval || 30000;
@@ -65,9 +69,15 @@ export class AgentRuntimeService extends EventEmitter {
     priority: number = 100
   ): void {
     // Set up event forwarding
-    client.on('thread_event', (data: any) => this.emit('thread_event', { ...data, runtime: name }));
-    client.on('agent_started', (data: any) => this.emit('agent_started', { ...data, runtime: name }));
-    client.on('agent_stopped', (data: any) => this.emit('agent_stopped', { ...data, runtime: name }));
+    client.on('thread_event', (data: any) =>
+      this.emit('thread_event', { ...data, runtime: name })
+    );
+    client.on('agent_started', (data: any) =>
+      this.emit('agent_started', { ...data, runtime: name })
+    );
+    client.on('agent_stopped', (data: any) =>
+      this.emit('agent_stopped', { ...data, runtime: name })
+    );
 
     const registration: RuntimeRegistration = {
       name,
@@ -78,7 +88,10 @@ export class AgentRuntimeService extends EventEmitter {
     };
 
     this.runtimes.set(name, registration);
-    this.logger.info({ runtime: name, type, priority }, 'Runtime registered (direct)');
+    this.logger.info(
+      { runtime: name, type, priority },
+      'Runtime registered (direct)'
+    );
   }
 
   /**
@@ -90,7 +103,10 @@ export class AgentRuntimeService extends EventEmitter {
     clientOptions: RuntimeClientOptions,
     priority: number = 100
   ): Promise<void> {
-    const client = new RuntimeClient(this.logger.child({ runtime: name }), clientOptions);
+    const client = new RuntimeClient(
+      this.logger.child({ runtime: name }),
+      clientOptions
+    );
 
     // Set up event forwarding
     client.on('connected', () => {
@@ -103,13 +119,27 @@ export class AgentRuntimeService extends EventEmitter {
       this.emit('runtime_disconnected', name);
     });
 
-    client.on('agent_started', (data) => this.emit('agent_started', { ...data, runtime: name }));
-    client.on('agent_ready', (data) => this.emit('agent_ready', { ...data, runtime: name }));
-    client.on('agent_stopped', (data) => this.emit('agent_stopped', { ...data, runtime: name }));
-    client.on('agent_error', (data) => this.emit('agent_error', { ...data, runtime: name }));
-    client.on('message', (data) => this.emit('message', { ...data, runtime: name }));
-    client.on('question', (data) => this.emit('question', { ...data, runtime: name }));
-    client.on('thread_event', (data) => this.emit('thread_event', { ...data, runtime: name }));
+    client.on('agent_started', (data) =>
+      this.emit('agent_started', { ...data, runtime: name })
+    );
+    client.on('agent_ready', (data) =>
+      this.emit('agent_ready', { ...data, runtime: name })
+    );
+    client.on('agent_stopped', (data) =>
+      this.emit('agent_stopped', { ...data, runtime: name })
+    );
+    client.on('agent_error', (data) =>
+      this.emit('agent_error', { ...data, runtime: name })
+    );
+    client.on('message', (data) =>
+      this.emit('message', { ...data, runtime: name })
+    );
+    client.on('question', (data) =>
+      this.emit('question', { ...data, runtime: name })
+    );
+    client.on('thread_event', (data) =>
+      this.emit('thread_event', { ...data, runtime: name })
+    );
     client.on('error', (error) => {
       this.logger.warn({ runtime: name, error }, 'Runtime client error');
     });
@@ -118,7 +148,10 @@ export class AgentRuntimeService extends EventEmitter {
     try {
       await client.connect();
     } catch (error) {
-      this.logger.warn({ runtime: name, error }, 'Failed to connect to runtime, will retry');
+      this.logger.warn(
+        { runtime: name, error },
+        'Failed to connect to runtime, will retry'
+      );
     }
 
     const registration: RuntimeRegistration = {
@@ -153,8 +186,13 @@ export class AgentRuntimeService extends EventEmitter {
   /**
    * Get all registered runtimes
    */
-  listRuntimes(): Array<{ name: string; type: string; healthy: boolean; priority: number }> {
-    return Array.from(this.runtimes.values()).map(r => ({
+  listRuntimes(): Array<{
+    name: string;
+    type: string;
+    healthy: boolean;
+    priority: number;
+  }> {
+    return Array.from(this.runtimes.values()).map((r) => ({
       name: r.name,
       type: r.type,
       healthy: r.healthy,
@@ -171,7 +209,7 @@ export class AgentRuntimeService extends EventEmitter {
 
     try {
       return await registration.client.healthCheck();
-    } catch (error) {
+    } catch (_error) {
       return { healthy: false, message: 'Health check failed' };
     }
   }
@@ -179,7 +217,10 @@ export class AgentRuntimeService extends EventEmitter {
   /**
    * Spawn an agent on the most suitable runtime
    */
-  async spawn(config: AgentConfig, preferredRuntime?: string): Promise<AgentHandle> {
+  async spawn(
+    config: AgentConfig,
+    preferredRuntime?: string
+  ): Promise<AgentHandle> {
     const runtime = this.selectRuntime(config, preferredRuntime);
     if (!runtime) {
       throw new Error('No healthy runtime available for agent spawn');
@@ -199,7 +240,10 @@ export class AgentRuntimeService extends EventEmitter {
   /**
    * Stop an agent
    */
-  async stop(agentId: string, options?: { force?: boolean; timeout?: number }): Promise<void> {
+  async stop(
+    agentId: string,
+    options?: { force?: boolean; timeout?: number }
+  ): Promise<void> {
     const runtimeName = this.agentToRuntime.get(agentId);
     if (!runtimeName) {
       // Agent not tracked, try all runtimes
@@ -233,9 +277,15 @@ export class AgentRuntimeService extends EventEmitter {
     for (const [name, runtime] of this.runtimes) {
       try {
         await runtime.client.cleanupExecution(executionId);
-        this.logger.debug({ executionId, runtime: name }, 'Execution resources cleaned up');
+        this.logger.debug(
+          { executionId, runtime: name },
+          'Execution resources cleaned up'
+        );
       } catch (error) {
-        this.logger.warn({ executionId, runtime: name, error }, 'Failed to clean up execution resources');
+        this.logger.warn(
+          { executionId, runtime: name, error },
+          'Failed to clean up execution resources'
+        );
       }
     }
   }
@@ -243,7 +293,10 @@ export class AgentRuntimeService extends EventEmitter {
   /**
    * Spawn a thread on the most suitable runtime
    */
-  async spawnThread(input: SpawnThreadInput, preferredRuntime?: string): Promise<ThreadHandle> {
+  async spawnThread(
+    input: SpawnThreadInput,
+    preferredRuntime?: string
+  ): Promise<ThreadHandle> {
     const runtime = this.selectRuntime(undefined, preferredRuntime);
     if (!runtime) {
       throw new Error('No healthy runtime available for thread spawn');
@@ -257,7 +310,11 @@ export class AgentRuntimeService extends EventEmitter {
     }
 
     this.logger.info(
-      { threadId: thread.id, runtime: runtime.name, agentType: input.agentType },
+      {
+        threadId: thread.id,
+        runtime: runtime.name,
+        agentType: input.agentType,
+      },
       'Thread spawned'
     );
 
@@ -267,7 +324,10 @@ export class AgentRuntimeService extends EventEmitter {
   /**
    * Stop a thread
    */
-  async stopThread(threadId: string, options?: { force?: boolean; timeout?: number }): Promise<void> {
+  async stopThread(
+    threadId: string,
+    options?: { force?: boolean; timeout?: number }
+  ): Promise<void> {
     const runtimeName = this.threadToRuntime.get(threadId);
     if (!runtimeName) {
       throw new Error(`Thread ${threadId} not found`);
@@ -308,7 +368,9 @@ export class AgentRuntimeService extends EventEmitter {
   /**
    * List threads across all runtimes
    */
-  async listThreads(filter?: ThreadFilter): Promise<Array<ThreadHandle & { runtime: string }>> {
+  async listThreads(
+    filter?: ThreadFilter
+  ): Promise<Array<ThreadHandle & { runtime: string }>> {
     const results: Array<ThreadHandle & { runtime: string }> = [];
 
     for (const runtime of this.runtimes.values()) {
@@ -322,7 +384,10 @@ export class AgentRuntimeService extends EventEmitter {
           }
         }
       } catch (error) {
-        this.logger.warn({ runtime: runtime.name, error }, 'Failed to list threads from runtime');
+        this.logger.warn(
+          { runtime: runtime.name, error },
+          'Failed to list threads from runtime'
+        );
       }
     }
 
@@ -349,7 +414,10 @@ export class AgentRuntimeService extends EventEmitter {
   /**
    * Subscribe to thread events
    */
-  subscribeThread(threadId: string, callback: (event: ThreadEvent) => void): () => void {
+  subscribeThread(
+    threadId: string,
+    callback: (event: ThreadEvent) => void
+  ): () => void {
     const runtimeName = this.threadToRuntime.get(threadId);
     if (!runtimeName) {
       throw new Error(`Thread ${threadId} not found`);
@@ -390,7 +458,9 @@ export class AgentRuntimeService extends EventEmitter {
   /**
    * List all agents across all runtimes
    */
-  async list(filter?: AgentFilter): Promise<Array<AgentHandle & { runtime: string }>> {
+  async list(
+    filter?: AgentFilter
+  ): Promise<Array<AgentHandle & { runtime: string }>> {
     const results: Array<AgentHandle & { runtime: string }> = [];
 
     for (const runtime of this.runtimes.values()) {
@@ -401,7 +471,10 @@ export class AgentRuntimeService extends EventEmitter {
           this.agentToRuntime.set(agent.id, runtime.name);
         }
       } catch (error) {
-        this.logger.warn({ runtime: runtime.name, error }, 'Failed to list agents from runtime');
+        this.logger.warn(
+          { runtime: runtime.name, error },
+          'Failed to list agents from runtime'
+        );
       }
     }
 
@@ -415,7 +488,7 @@ export class AgentRuntimeService extends EventEmitter {
     agentId: string,
     message: string,
     options?: { expectResponse?: boolean; timeout?: number }
-  ): Promise<AgentMessage | void> {
+  ): Promise<AgentMessage | undefined> {
     const runtimeName = this.agentToRuntime.get(agentId);
     if (!runtimeName) {
       throw new Error(`Agent ${agentId} not found`);
@@ -466,7 +539,10 @@ export class AgentRuntimeService extends EventEmitter {
   /**
    * Subscribe to messages from an agent
    */
-  subscribe(agentId: string, callback: (message: AgentMessage) => void): () => void {
+  subscribe(
+    agentId: string,
+    callback: (message: AgentMessage) => void
+  ): () => void {
     const runtimeName = this.agentToRuntime.get(agentId);
     if (!runtimeName) {
       throw new Error(`Agent ${agentId} not found`);
@@ -501,7 +577,10 @@ export class AgentRuntimeService extends EventEmitter {
   /**
    * Select the best runtime for spawning an agent
    */
-  private selectRuntime(config?: AgentConfig, preferredRuntime?: string): RuntimeRegistration | null {
+  private selectRuntime(
+    _config?: AgentConfig,
+    preferredRuntime?: string
+  ): RuntimeRegistration | null {
     // Use preferred runtime if specified and healthy
     if (preferredRuntime) {
       const runtime = this.runtimes.get(preferredRuntime);
@@ -512,7 +591,7 @@ export class AgentRuntimeService extends EventEmitter {
 
     // Get all healthy runtimes sorted by priority
     const healthyRuntimes = Array.from(this.runtimes.values())
-      .filter(r => r.healthy)
+      .filter((r) => r.healthy)
       .sort((a, b) => a.priority - b.priority);
 
     if (healthyRuntimes.length === 0) {
@@ -536,13 +615,19 @@ export class AgentRuntimeService extends EventEmitter {
           runtime.healthy = health.healthy;
 
           if (wasHealthy && !runtime.healthy) {
-            this.logger.warn({ runtime: runtime.name }, 'Runtime became unhealthy');
+            this.logger.warn(
+              { runtime: runtime.name },
+              'Runtime became unhealthy'
+            );
             this.emit('runtime_unhealthy', runtime.name);
           } else if (!wasHealthy && runtime.healthy) {
-            this.logger.info({ runtime: runtime.name }, 'Runtime became healthy');
+            this.logger.info(
+              { runtime: runtime.name },
+              'Runtime became healthy'
+            );
             this.emit('runtime_healthy', runtime.name);
           }
-        } catch (error) {
+        } catch (_error) {
           runtime.healthy = false;
         }
       }

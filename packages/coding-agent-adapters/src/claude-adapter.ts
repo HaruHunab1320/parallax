@@ -5,14 +5,20 @@
  */
 
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
   ToolRunningInfo,
 } from 'adapter-types';
-import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
+import {
+  type AgentCredentials,
+  type AgentFileDescriptor,
+  BaseCodingAdapter,
+  type InstallationInfo,
+  type ModelRecommendations,
+} from './base-coding-adapter';
 
 const CLAUDE_HOOK_MARKER_PREFIX = 'PARALLAX_CLAUDE_HOOK';
 
@@ -55,7 +61,8 @@ export class ClaudeAdapter extends BaseCodingAdapter {
    */
   readonly autoResponseRules: AutoResponseRule[] = [
     {
-      pattern: /choose\s+the\s+text\s+style\s+that\s+looks\s+best\s+with\s+your\s+terminal|syntax\s+theme:/i,
+      pattern:
+        /choose\s+the\s+text\s+style\s+that\s+looks\s+best\s+with\s+your\s+terminal|syntax\s+theme:/i,
       type: 'config',
       response: '',
       responseType: 'keys',
@@ -65,7 +72,8 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       once: true,
     },
     {
-      pattern: /trust.*(?:folder|directory)|safety.?check|project.you.created|(?:Yes|Allow).*(?:No|Deny).*(?:Enter|Return)/i,
+      pattern:
+        /trust.*(?:folder|directory)|safety.?check|project.you.created|(?:Yes|Allow).*(?:No|Deny).*(?:Enter|Return)/i,
       type: 'permission',
       response: '',
       responseType: 'keys',
@@ -75,12 +83,14 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       once: true,
     },
     {
-      pattern: /wants? (?:your )?permission|needs your permission|(?:Allow|Approve)\s[\s\S]{0,50}(?:Deny|Don't allow)/i,
+      pattern:
+        /wants? (?:your )?permission|needs your permission|(?:Allow|Approve)\s[\s\S]{0,50}(?:Deny|Don't allow)/i,
       type: 'permission',
       response: '',
       responseType: 'keys',
       keys: ['enter'],
-      description: 'Auto-approve tool permission prompts (file access, MCP tools, etc.)',
+      description:
+        'Auto-approve tool permission prompts (file access, MCP tools, etc.)',
       safe: true,
       once: true,
     },
@@ -117,7 +127,8 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       safe: true,
     },
     {
-      pattern: /how is claude doing this session\?\s*\(optional\)|1:\s*bad\s+2:\s*fine\s+3:\s*good\s+0:\s*dismiss/i,
+      pattern:
+        /how is claude doing this session\?\s*\(optional\)|1:\s*bad\s+2:\s*fine\s+3:\s*good\s+0:\s*dismiss/i,
       type: 'config',
       response: '0',
       responseType: 'text',
@@ -174,7 +185,9 @@ export class ClaudeAdapter extends BaseCodingAdapter {
 
   getArgs(config: SpawnConfig): string[] {
     const args: string[] = [];
-    const adapterConfig = config.adapterConfig as ClaudeAdapterConfig | undefined;
+    const adapterConfig = config.adapterConfig as
+      | ClaudeAdapterConfig
+      | undefined;
 
     // Print mode for non-interactive usage (skip if interactive mode)
     if (!this.isInteractive(config)) {
@@ -206,7 +219,9 @@ export class ClaudeAdapter extends BaseCodingAdapter {
   getEnv(config: SpawnConfig): Record<string, string> {
     const env: Record<string, string> = {};
     const credentials = this.getCredentials(config);
-    const adapterConfig = config.adapterConfig as ClaudeAdapterConfig | undefined;
+    const adapterConfig = config.adapterConfig as
+      | ClaudeAdapterConfig
+      | undefined;
 
     // API key from credentials or env
     if (credentials.anthropicKey) {
@@ -278,9 +293,12 @@ export class ClaudeAdapter extends BaseCodingAdapter {
 
     // Command hook mode (fallback): emit marker lines to stdout
     const markerPrefix = options?.markerPrefix || CLAUDE_HOOK_MARKER_PREFIX;
-    const scriptPath = options?.scriptPath || '.claude/hooks/parallax-hook-telemetry.sh';
+    const scriptPath =
+      options?.scriptPath || '.claude/hooks/parallax-hook-telemetry.sh';
     const scriptCommand = `"${'$'}CLAUDE_PROJECT_DIR"/${scriptPath}`;
-    const hookEntry = [{ matcher: '', hooks: [{ type: 'command', command: scriptCommand }] }];
+    const hookEntry = [
+      { matcher: '', hooks: [{ type: 'command', command: scriptCommand }] },
+    ];
 
     const settingsHooks: Record<string, unknown> = {
       Notification: hookEntry,
@@ -339,13 +357,19 @@ jq -nc \
       const payload = match[2];
       try {
         const parsed = JSON.parse(payload) as Record<string, unknown>;
-        const event = typeof parsed.event === 'string' ? parsed.event : undefined;
+        const event =
+          typeof parsed.event === 'string' ? parsed.event : undefined;
         if (!event) continue;
         markers.push({
           event,
-          notification_type: typeof parsed.notification_type === 'string' ? parsed.notification_type : undefined,
-          tool_name: typeof parsed.tool_name === 'string' ? parsed.tool_name : undefined,
-          message: typeof parsed.message === 'string' ? parsed.message : undefined,
+          notification_type:
+            typeof parsed.notification_type === 'string'
+              ? parsed.notification_type
+              : undefined,
+          tool_name:
+            typeof parsed.tool_name === 'string' ? parsed.tool_name : undefined,
+          message:
+            typeof parsed.message === 'string' ? parsed.message : undefined,
         });
       } catch {
         // Ignore malformed marker payloads.
@@ -361,7 +385,10 @@ jq -nc \
   }
 
   private stripHookMarkers(output: string): string {
-    return output.replace(/(?:^|\n)\s*[A-Z0-9_]*CLAUDE_HOOK[A-Z0-9_]*\s+\{[^\n\r]+\}\s*/g, '\n');
+    return output.replace(
+      /(?:^|\n)\s*[A-Z0-9_]*CLAUDE_HOOK[A-Z0-9_]*\s+\{[^\n\r]+\}\s*/g,
+      '\n'
+    );
   }
 
   detectLogin(output: string): LoginDetection {
@@ -378,7 +405,8 @@ jq -nc \
       return {
         required: true,
         type: 'cli_auth',
-        instructions: 'Claude Code requires authentication. Run "claude login" in your terminal.',
+        instructions:
+          'Claude Code requires authentication. Run "claude login" in your terminal.',
       };
     }
 
@@ -393,7 +421,8 @@ jq -nc \
       return {
         required: true,
         type: 'api_key',
-        instructions: 'Set ANTHROPIC_API_KEY environment variable or provide credentials in adapterConfig',
+        instructions:
+          'Set ANTHROPIC_API_KEY environment variable or provide credentials in adapterConfig',
       };
     }
 
@@ -458,9 +487,11 @@ jq -nc \
 
     // Bypass Permissions confirmation prompt — only match the actual modal dialog,
     // NOT the status bar hint "bypass permissions on". The dialog has numbered options.
-    if (/Bypass Permissions mode.*accept all responsibility/is.test(stripped) &&
-        /❯\s*1\.\s*No.*exit/i.test(stripped) &&
-        /2\.\s*Yes.*I accept/i.test(stripped)) {
+    if (
+      /Bypass Permissions mode.*accept all responsibility/is.test(stripped) &&
+      /❯\s*1\.\s*No.*exit/i.test(stripped) &&
+      /2\.\s*Yes.*I accept/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'permission',
@@ -468,12 +499,17 @@ jq -nc \
         options: ['1', '2'],
         suggestedResponse: '2',
         canAutoRespond: true,
-        instructions: 'Claude is asking to confirm bypass permissions mode; reply 2 to accept',
+        instructions:
+          'Claude is asking to confirm bypass permissions mode; reply 2 to accept',
       };
     }
 
     // Claude survey/feedback prompt (optional)
-    if (/how is claude doing this session\?\s*\(optional\)|1:\s*bad\s+2:\s*fine\s+3:\s*good\s+0:\s*dismiss/i.test(stripped)) {
+    if (
+      /how is claude doing this session\?\s*\(optional\)|1:\s*bad\s+2:\s*fine\s+3:\s*good\s+0:\s*dismiss/i.test(
+        stripped
+      )
+    ) {
       return {
         detected: true,
         type: 'config',
@@ -486,7 +522,11 @@ jq -nc \
     }
 
     // Generic Claude modal/dialog controls discovered from live capture
-    if (/enter\/tab\/space to toggle.*esc to cancel|enter to confirm.*esc to cancel|esc to close/i.test(stripped)) {
+    if (
+      /enter\/tab\/space to toggle.*esc to cancel|enter to confirm.*esc to cancel|esc to close/i.test(
+        stripped
+      )
+    ) {
       return {
         detected: true,
         type: 'config',
@@ -504,8 +544,12 @@ jq -nc \
     // Require either explicit navigation instructions or an interactive
     // menu-style line with a prompt/selection marker.
     if (
-      /press .* to navigate .* enter .* esc|use (?:arrow|↑↓) keys|enter to select|esc to (?:go back|close|cancel)/i.test(stripped) ||
-      /(?:^|\n)\s*(?:❯|>)\s*\/(?:agents|chrome|config|tasks|skills|remote-env)\b/im.test(stripped)
+      /press .* to navigate .* enter .* esc|use (?:arrow|↑↓) keys|enter to select|esc to (?:go back|close|cancel)/i.test(
+        stripped
+      ) ||
+      /(?:^|\n)\s*(?:❯|>)\s*\/(?:agents|chrome|config|tasks|skills|remote-env)\b/im.test(
+        stripped
+      )
     ) {
       return {
         detected: true,
@@ -514,12 +558,17 @@ jq -nc \
         options: ['keys:esc', 'keys:enter', 'keys:down,enter'],
         suggestedResponse: 'keys:esc',
         canAutoRespond: false,
-        instructions: 'Claude is showing an interactive menu; use arrow keys + Enter or Esc',
+        instructions:
+          'Claude is showing an interactive menu; use arrow keys + Enter or Esc',
       };
     }
 
     // Claude-specific: Tool permission prompt (TUI menu — use keys:enter)
-    if (/Do you want to|wants? (your )?permission|needs your permission/i.test(stripped)) {
+    if (
+      /Do you want to|wants? (your )?permission|needs your permission/i.test(
+        stripped
+      )
+    ) {
       return {
         detected: true,
         type: 'permission',
@@ -531,14 +580,17 @@ jq -nc \
     }
 
     // Claude-specific: Model selection prompt
-    if (/choose.*model|select.*model|available models/i.test(stripped) &&
-        /\d+\)|claude-/i.test(stripped)) {
+    if (
+      /choose.*model|select.*model|available models/i.test(stripped) &&
+      /\d+\)|claude-/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'model_select',
         prompt: 'Claude model selection',
         canAutoRespond: false,
-        instructions: 'Please select a Claude model or set ANTHROPIC_MODEL env var',
+        instructions:
+          'Please select a Claude model or set ANTHROPIC_MODEL env var',
       };
     }
 
@@ -554,7 +606,9 @@ jq -nc \
     }
 
     // Claude-specific: First-time setup wizard
-    if (/welcome to claude|first time setup|initial configuration/i.test(stripped)) {
+    if (
+      /welcome to claude|first time setup|initial configuration/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'config',
@@ -565,8 +619,10 @@ jq -nc \
     }
 
     // Claude-specific: Permission to access files/directories
-    if (/allow.*access|grant.*permission|access to .* files/i.test(stripped) &&
-        /\[y\/n\]/i.test(stripped)) {
+    if (
+      /allow.*access|grant.*permission|access to .* files/i.test(stripped) &&
+      /\[y\/n\]/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'permission',
@@ -650,12 +706,17 @@ jq -nc \
 
     // Prefer contextual pattern: "Claude in <App>[tool_name]".
     // Do not treat "Claude in <App> enabled · /chrome" as a running tool.
-    const contextualMatch = tail.match(/Claude\s+in\s+([A-Za-z0-9._-]+)\s*\[(\w+_tool)\]/i);
+    const contextualMatch = tail.match(
+      /Claude\s+in\s+([A-Za-z0-9._-]+)\s*\[(\w+_tool)\]/i
+    );
     if (contextualMatch) {
       const appName = contextualMatch[1];
       const toolType = contextualMatch[2].toLowerCase();
       const friendlyName = toolType.replace(/_tool$/i, '');
-      return { toolName: friendlyName, description: `${appName} (${toolType})` };
+      return {
+        toolName: friendlyName,
+        description: `${appName} (${toolType})`,
+      };
     }
 
     // Generic fallback: bracketed tool token anywhere in tail.
@@ -690,7 +751,10 @@ jq -nc \
     if (marker?.event === 'TaskCompleted') {
       return true;
     }
-    if (marker?.event === 'Notification' && marker.notification_type === 'idle_prompt') {
+    if (
+      marker?.event === 'Notification' &&
+      marker.notification_type === 'idle_prompt'
+    ) {
       return true;
     }
     // NOTE: Do NOT call detectLoading() here. The buffer often contains stale
@@ -700,12 +764,17 @@ jq -nc \
     // PTY session level in onStallTimerFired().
 
     // If Claude is waiting for a confirmation, it's not task-complete idle.
-    if (/trust.*directory|do you want to|needs? your permission/i.test(stripped)) {
+    if (
+      /trust.*directory|do you want to|needs? your permission/i.test(stripped)
+    ) {
       return false;
     }
 
     // Turn duration pattern: "<Verb> for <duration>" (customizable verb)
-    const hasDuration = /[A-Z][A-Za-z' -]{2,40}\s+for\s+\d+(?:h\s+\d{1,2}m\s+\d{1,2}s|m\s+\d{1,2}s|s)/.test(stripped);
+    const hasDuration =
+      /[A-Z][A-Za-z' -]{2,40}\s+for\s+\d+(?:h\s+\d{1,2}m\s+\d{1,2}s|m\s+\d{1,2}s|s)/.test(
+        stripped
+      );
 
     // Idle prompt: ❯ in the tail of the output.
     // The status bar (file counts, PR info, "Update available", etc.) renders
@@ -732,7 +801,10 @@ jq -nc \
     if (!stripped.trim()) return false;
 
     if (marker?.event === 'Notification') {
-      if (marker.notification_type === 'permission_prompt' || marker.notification_type === 'elicitation_dialog') {
+      if (
+        marker.notification_type === 'permission_prompt' ||
+        marker.notification_type === 'elicitation_dialog'
+      ) {
         return false;
       }
       if (marker.notification_type === 'idle_prompt') {
@@ -744,7 +816,9 @@ jq -nc \
 
     // Guard: if the output contains a trust prompt, we're NOT ready yet —
     // the user (or auto-response) still needs to confirm.
-    if (/trust.*directory|do you want to|needs? your permission/i.test(stripped)) {
+    if (
+      /trust.*directory|do you want to|needs? your permission/i.test(stripped)
+    ) {
       return false;
     }
 
@@ -763,16 +837,19 @@ jq -nc \
     const hasShortcutsHint = stripped.includes('for shortcuts');
     const hasInteractivePromptBar =
       /❯\s+\S/.test(tail) &&
-      (
-        /\/effort/i.test(stripped) ||
+      (/\/effort/i.test(stripped) ||
         /Welcome back/i.test(stripped) ||
         /Recent activity/i.test(stripped) ||
-        /What's new/i.test(stripped)
-      );
+        /What's new/i.test(stripped));
 
     // Deliberately do NOT treat a bare "❯" as ready. Claude's TUI redraws
     // can emit transient prompt glyphs before fully settling.
-    return hasConversationalReadyText || hasLegacyPrompt || hasShortcutsHint || hasInteractivePromptBar;
+    return (
+      hasConversationalReadyText ||
+      hasLegacyPrompt ||
+      hasShortcutsHint ||
+      hasInteractivePromptBar
+    );
   }
 
   parseOutput(output: string): ParsedOutput | null {
@@ -813,7 +890,11 @@ jq -nc \
     return 'claude --version';
   }
 
-  override detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  override detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     const stripped = this.stripAnsi(output);
     const marker = this.getLatestHookMarker(stripped);
     if (marker?.event === 'SessionEnd') {

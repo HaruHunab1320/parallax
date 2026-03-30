@@ -27,7 +27,9 @@ export function parseLogsUri(uri: string): string | null {
  */
 export async function listLogsResources(
   runtime: LocalRuntime
-): Promise<Array<{ uri: string; name: string; description: string; mimeType: string }>> {
+): Promise<
+  Array<{ uri: string; name: string; description: string; mimeType: string }>
+> {
   const agents = await runtime.list();
 
   return agents.map((agent) => ({
@@ -45,7 +47,9 @@ export async function readLogsResource(
   runtime: LocalRuntime,
   uri: string,
   tail = 100
-): Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> } | null> {
+): Promise<{
+  contents: Array<{ uri: string; mimeType: string; text: string }>;
+} | null> {
   const agentId = parseLogsUri(uri);
   if (!agentId) {
     return null;

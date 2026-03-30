@@ -1,4 +1,4 @@
-import { AgentConnection } from './types';
+import type { AgentConnection } from './types';
 
 export enum LoadBalancingStrategy {
   ROUND_ROBIN = 'ROUND_ROBIN',
@@ -11,11 +11,13 @@ export class LoadBalancer {
   private currentIndex: number = 0;
   private connectionCounts: Map<string, number> = new Map();
 
-  constructor(private strategy: LoadBalancingStrategy = LoadBalancingStrategy.ROUND_ROBIN) {}
+  constructor(
+    private strategy: LoadBalancingStrategy = LoadBalancingStrategy.ROUND_ROBIN
+  ) {}
 
   selectAgent(agents: AgentConnection[]): AgentConnection | null {
-    const availableAgents = agents.filter(a => a.status === 'connected');
-    
+    const availableAgents = agents.filter((a) => a.status === 'connected');
+
     if (availableAgents.length === 0) {
       return null;
     }
@@ -23,16 +25,16 @@ export class LoadBalancer {
     switch (this.strategy) {
       case LoadBalancingStrategy.ROUND_ROBIN:
         return this.roundRobin(availableAgents);
-      
+
       case LoadBalancingStrategy.LEAST_CONNECTIONS:
         return this.leastConnections(availableAgents);
-      
+
       case LoadBalancingStrategy.WEIGHTED_RESPONSE_TIME:
         return this.weightedResponseTime(availableAgents);
-      
+
       case LoadBalancingStrategy.CONFIDENCE_BASED:
         return this.confidenceBased(availableAgents);
-      
+
       default:
         return availableAgents[0];
     }
@@ -65,7 +67,8 @@ export class LoadBalancer {
     let selectedAgent = agents[0];
 
     for (const agent of agents) {
-      const score = agent.metrics.successRate / (agent.metrics.averageLatency + 1);
+      const score =
+        agent.metrics.successRate / (agent.metrics.averageLatency + 1);
       if (score > bestScore) {
         bestScore = score;
         selectedAgent = agent;

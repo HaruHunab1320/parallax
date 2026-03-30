@@ -8,8 +8,8 @@
  * 4. Identifying potential cultural/context issues
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'quality-checker';
@@ -24,9 +24,9 @@ class QualityAgent extends ParallaxAgent {
       AGENT_NAME,
       ['translation', 'quality', 'fluency', 'grammar'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Evaluates translation fluency and naturalness'
+        description: 'Evaluates translation fluency and naturalness',
       }
     );
 
@@ -40,7 +40,10 @@ class QualityAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -49,7 +52,7 @@ class QualityAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -72,7 +75,7 @@ ${text}`;
       return {
         value: { error: 'Translation failed', checkType: 'quality' },
         confidence: 0,
-        reasoning: 'Quality check failed - could not produce translation'
+        reasoning: 'Quality check failed - could not produce translation',
       };
     }
 
@@ -127,9 +130,12 @@ You MUST respond in this exact JSON format:
       const jsonMatch = qualityText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         return {
-          value: { error: 'Could not parse quality assessment', checkType: 'quality' },
+          value: {
+            error: 'Could not parse quality assessment',
+            checkType: 'quality',
+          },
           confidence: 0.3,
-          reasoning: qualityText.substring(0, 200)
+          reasoning: qualityText.substring(0, 200),
         };
       }
 
@@ -146,17 +152,19 @@ You MUST respond in this exact JSON format:
           strengths: parsed.strengths || [],
           translation: translation,
           checkType: 'quality',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: overallScore,
-        reasoning: parsed.reasoning || `Quality score: ${Math.round(overallScore * 100)}%`
+        reasoning:
+          parsed.reasoning ||
+          `Quality score: ${Math.round(overallScore * 100)}%`,
       };
     } catch (error) {
       console.error('Quality check error:', error);
       return {
         value: { error: String(error), checkType: 'quality' },
         confidence: 0,
-        reasoning: 'Quality check failed'
+        reasoning: 'Quality check failed',
       };
     }
   }

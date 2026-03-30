@@ -40,21 +40,20 @@
 
 // Main tracker
 export { ConfidenceTracker } from './confidence-tracker';
-
+export type { InMemoryStoreConfig } from './stores/memory.store';
 // Storage backends
 export { InMemoryStore } from './stores/memory.store';
-export type { InMemoryStoreConfig } from './stores/memory.store';
 
 // Types
 export type {
+  AggregatedDataPoint,
+  AggregationInterval,
+  AnomalyDetectionConfig,
+  ConfidenceAnomalyAlert,
   ConfidenceDataPoint,
   ConfidenceMetrics,
   ConfidenceQuery,
-  ConfidenceAnomalyAlert,
-  AggregationInterval,
-  AggregatedDataPoint,
   ConfidenceStore,
-  AnomalyDetectionConfig,
   ConfidenceTrackerConfig,
   ConfidenceTrackerEvents,
   Logger,

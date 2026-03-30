@@ -5,8 +5,8 @@
  * This is the primary translation that will be returned to the user.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'translator';
@@ -21,9 +21,9 @@ class TranslatorAgent extends ParallaxAgent {
       AGENT_NAME,
       ['translation', 'translate', 'language', 'localization'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Translates text between languages with high fidelity'
+        description: 'Translates text between languages with high fidelity',
       }
     );
 
@@ -37,7 +37,10 @@ class TranslatorAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +49,7 @@ class TranslatorAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -83,9 +86,12 @@ You MUST respond in this exact JSON format:
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         return {
-          value: { error: 'Could not parse response', checkType: 'translation' },
+          value: {
+            error: 'Could not parse response',
+            checkType: 'translation',
+          },
           confidence: 0.3,
-          reasoning: responseText.substring(0, 200)
+          reasoning: responseText.substring(0, 200),
         };
       }
 
@@ -98,17 +104,17 @@ You MUST respond in this exact JSON format:
           targetLanguage: targetLanguage,
           notes: parsed.notes || '',
           checkType: 'translation',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
-        confidence: 0.90,
-        reasoning: `Translated ${text.length} characters from ${sourceLanguage} to ${targetLanguage}`
+        confidence: 0.9,
+        reasoning: `Translated ${text.length} characters from ${sourceLanguage} to ${targetLanguage}`,
       };
     } catch (error) {
       console.error('Translation error:', error);
       return {
         value: { error: String(error), checkType: 'translation' },
         confidence: 0,
-        reasoning: 'Translation failed'
+        reasoning: 'Translation failed',
       };
     }
   }

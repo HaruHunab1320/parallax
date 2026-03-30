@@ -1,6 +1,9 @@
-import { Logger } from 'pino';
-import { ThreadEvent, ThreadHandle } from '@parallaxai/runtime-interface';
-import { PersistedSharedDecision, SharedDecisionRepository } from '../db/repositories';
+import type { ThreadEvent, ThreadHandle } from '@parallaxai/runtime-interface';
+import type { Logger } from 'pino';
+import type {
+  PersistedSharedDecision,
+  SharedDecisionRepository,
+} from '../db/repositories';
 
 export class SharedDecisionService {
   constructor(
@@ -27,7 +30,10 @@ export class SharedDecisionService {
     return this.repository.findAll(filter);
   }
 
-  async projectThreadEvent(thread: ThreadHandle, event: ThreadEvent): Promise<void> {
+  async projectThreadEvent(
+    thread: ThreadHandle,
+    event: ThreadEvent
+  ): Promise<void> {
     const decision = this.extractDecision(thread, event);
     if (!decision) return;
 
@@ -36,7 +42,10 @@ export class SharedDecisionService {
       decision.category
     );
 
-    if (latest && this.areSemanticallyEquivalent(latest.summary, decision.summary)) {
+    if (
+      latest &&
+      this.areSemanticallyEquivalent(latest.summary, decision.summary)
+    ) {
       return;
     }
 
@@ -127,14 +136,24 @@ export class SharedDecisionService {
     const fromCompletion = thread.completion?.summary;
     const fromThread = thread.summary;
 
-    return fromEvent || fromCompletion || fromThread || this.buildFallbackSummary(thread, event);
+    return (
+      fromEvent ||
+      fromCompletion ||
+      fromThread ||
+      this.buildFallbackSummary(thread, event)
+    );
   }
 
   private getString(value: unknown): string | null {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+    return typeof value === 'string' && value.trim().length > 0
+      ? value.trim()
+      : null;
   }
 
-  private formatCompletionSummary(thread: ThreadHandle, summary: string): string {
+  private formatCompletionSummary(
+    thread: ThreadHandle,
+    summary: string
+  ): string {
     const artifacts = thread.completion?.artifacts ?? [];
     if (artifacts.length === 0) {
       return this.normalizeSummary(summary);
@@ -151,7 +170,10 @@ export class SharedDecisionService {
     return summary.replace(/\s+/g, ' ').trim();
   }
 
-  private buildFallbackSummary(thread: ThreadHandle, event: ThreadEvent): string | null {
+  private buildFallbackSummary(
+    thread: ThreadHandle,
+    event: ThreadEvent
+  ): string | null {
     if (event.type === 'thread_turn_complete') {
       return `Completed a supervised turn for objective: ${thread.objective}`;
     }

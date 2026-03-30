@@ -5,8 +5,8 @@
  * Part of the specialized extractors demo.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'date-extractor';
@@ -16,16 +16,11 @@ class DateExtractorAgent extends ParallaxAgent {
   private model: any = null;
 
   constructor() {
-    super(
-      AGENT_ID,
-      AGENT_NAME,
-      ['extraction', 'dates', 'parsing'],
-      {
-        expertise: 0.90,
-        model: MODEL_NAME,
-        description: 'Extracts and normalizes dates from unstructured text'
-      }
-    );
+    super(AGENT_ID, AGENT_NAME, ['extraction', 'dates', 'parsing'], {
+      expertise: 0.9,
+      model: MODEL_NAME,
+      description: 'Extracts and normalizes dates from unstructured text',
+    });
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
@@ -37,7 +32,10 @@ class DateExtractorAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(task: string, data?: any): Promise<{
+  async analyze(
+    task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +44,7 @@ class DateExtractorAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -91,7 +89,7 @@ Be thorough - look for dates in various formats: "January 15, 2024", "01/15/24",
         return {
           value: { dates: [], count: 0, error: 'Could not parse response' },
           confidence: 0.3,
-          reasoning: text.substring(0, 200)
+          reasoning: text.substring(0, 200),
         };
       }
 
@@ -99,25 +97,30 @@ Be thorough - look for dates in various formats: "January 15, 2024", "01/15/24",
       const dates = parsed.dates || [];
 
       // Calculate overall confidence based on individual date confidences
-      const avgConfidence = dates.length > 0
-        ? dates.reduce((sum: number, d: any) => sum + (d.confidence || 0.8), 0) / dates.length
-        : 0.5;
+      const avgConfidence =
+        dates.length > 0
+          ? dates.reduce(
+              (sum: number, d: any) => sum + (d.confidence || 0.8),
+              0
+            ) / dates.length
+          : 0.5;
 
       return {
         value: {
           dates: dates,
           count: dates.length,
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: avgConfidence,
-        reasoning: parsed.reasoning || `Extracted ${dates.length} dates from text`
+        reasoning:
+          parsed.reasoning || `Extracted ${dates.length} dates from text`,
       };
     } catch (error) {
       console.error('Extraction error:', error);
       return {
         value: { dates: [], count: 0, error: String(error) },
         confidence: 0,
-        reasoning: 'Extraction failed'
+        reasoning: 'Extraction failed',
       };
     }
   }

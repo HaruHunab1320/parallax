@@ -47,7 +47,10 @@ export const AggregationSchema = z.discriminatedUnion('strategy', [
   }),
   z.object({
     strategy: z.literal('voting'),
-    method: z.enum(['majority', 'unanimous', 'weighted']).optional().default('majority'),
+    method: z
+      .enum(['majority', 'unanimous', 'weighted'])
+      .optional()
+      .default('majority'),
   }),
   z.object({
     strategy: z.literal('merge'),
@@ -79,10 +82,12 @@ export const StepSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   agents: AgentSelectionSchema.optional(),
-  input: z.union([
-    z.literal('$input'), // Original input
-    z.string(), // Reference like "$steps.previous.output"
-  ]).optional(),
+  input: z
+    .union([
+      z.literal('$input'), // Original input
+      z.string(), // Reference like "$steps.previous.output"
+    ])
+    .optional(),
   groups: z.record(z.string(), ResultGroupSchema).optional(),
   aggregation: AggregationSchema.optional(),
   output: z.record(z.string(), z.any()).optional(),
@@ -99,10 +104,13 @@ export const YamlPatternSchema = z.object({
   description: z.string(),
 
   // Input schema
-  input: z.record(z.string(), z.union([
-    z.string(), // Shorthand: "document: string"
-    InputPropertySchema,
-  ])),
+  input: z.record(
+    z.string(),
+    z.union([
+      z.string(), // Shorthand: "document: string"
+      InputPropertySchema,
+    ])
+  ),
 
   // Agent selection (for simple single-phase patterns)
   agents: AgentSelectionSchema.optional(),
@@ -123,13 +131,15 @@ export const YamlPatternSchema = z.object({
   confidence: ConfidenceSchema.optional().default('average'),
 
   // Fallback behavior
-  fallback: z.object({
-    condition: z.string(), // "confidence < 0.5"
-    action: z.enum(['escalate', 'retry', 'default']),
-    target: z.string().optional(), // For escalate: agent capability
-    value: z.any().optional(), // For default: fallback value
-    maxRetries: z.number().optional(), // For retry
-  }).optional(),
+  fallback: z
+    .object({
+      condition: z.string(), // "confidence < 0.5"
+      action: z.enum(['escalate', 'retry', 'default']),
+      target: z.string().optional(), // For escalate: agent capability
+      value: z.any().optional(), // For default: fallback value
+      maxRetries: z.number().optional(), // For retry
+    })
+    .optional(),
 });
 
 export type YamlPattern = z.infer<typeof YamlPatternSchema>;

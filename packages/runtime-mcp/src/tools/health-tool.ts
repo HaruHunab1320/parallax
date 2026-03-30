@@ -21,7 +21,9 @@ export interface HealthResult {
 
 export async function executeHealth(
   runtime: LocalRuntime
-): Promise<{ success: true; health: HealthResult } | { success: false; error: string }> {
+): Promise<
+  { success: true; health: HealthResult } | { success: false; error: string }
+> {
   try {
     const healthCheck = await runtime.healthCheck();
     const agents = await runtime.list();

@@ -2,50 +2,52 @@
  * Test utilities for pattern testing
  */
 
-import { Agent, AgentResult } from '@parallaxai/runtime';
+import type { Agent, AgentResult } from '@parallaxai/runtime';
 
 /**
  * Mock agent for testing patterns
  */
 export class MockAgent implements Agent {
-  private responses: Map<string, { result: any; confidence: number }> = new Map();
-  
+  private responses: Map<string, { result: any; confidence: number }> =
+    new Map();
+
   constructor(
     public readonly id: string,
     public readonly name: string,
     public readonly capabilities: string[] = ['analysis'],
     public readonly endpoint?: string
   ) {}
-  
+
   /**
    * Configure a response for a specific task
    */
   setResponse(task: string, result: any, confidence: number): void {
     this.responses.set(task, { result, confidence });
   }
-  
+
   /**
    * Configure a default response for any task
    */
   setDefaultResponse(result: any, confidence: number): void {
     this.responses.set('*', { result, confidence });
   }
-  
+
   async isAvailable(): Promise<boolean> {
     return true;
   }
-  
+
   async analyze<T>(task: string, data?: any): Promise<AgentResult<T>> {
-    const response = this.responses.get(task) || this.responses.get('*') || {
-      result: { mock: true, task, data },
-      confidence: 0.8
-    };
-    
+    const response = this.responses.get(task) ||
+      this.responses.get('*') || {
+        result: { mock: true, task, data },
+        confidence: 0.8,
+      };
+
     return {
       value: response.result as T,
       confidence: response.confidence,
       agent: this.name,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 }
@@ -53,13 +55,17 @@ export class MockAgent implements Agent {
 /**
  * Create a set of mock agents for testing
  */
-export function createMockAgents(count: number, prefix = 'mock-agent'): MockAgent[] {
-  return Array.from({ length: count }, (_, i) => 
-    new MockAgent(
-      `${prefix}-${i + 1}`,
-      `Mock Agent ${i + 1}`,
-      ['analysis', 'test']
-    )
+export function createMockAgents(
+  count: number,
+  prefix = 'mock-agent'
+): MockAgent[] {
+  return Array.from(
+    { length: count },
+    (_, i) =>
+      new MockAgent(`${prefix}-${i + 1}`, `Mock Agent ${i + 1}`, [
+        'analysis',
+        'test',
+      ])
   );
 }
 
@@ -71,15 +77,15 @@ export function createMockContext(agents: Agent[], input: any = {}) {
     input,
     agents,
     parallax: {
-      agents
+      agents,
     },
     executePattern: async (name: string, input: any) => {
       // Mock pattern execution
       return {
         value: { pattern: name, input },
-        confidence: 0.85
+        confidence: 0.85,
       };
-    }
+    },
   };
 }
 

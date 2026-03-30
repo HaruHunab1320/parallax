@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('AuditResource', () => {
@@ -7,7 +7,10 @@ describe('AuditResource', () => {
 
   beforeEach(() => {
     originalFetch = globalThis.fetch;
-    client = new ParallaxClient({ baseUrl: 'http://localhost:8081', apiKey: 'plx_admin' });
+    client = new ParallaxClient({
+      baseUrl: 'http://localhost:8081',
+      apiKey: 'plx_admin',
+    });
   });
 
   afterEach(() => {
@@ -16,7 +19,8 @@ describe('AuditResource', () => {
 
   function mockFetch(body: unknown) {
     globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true, status: 200,
+      ok: true,
+      status: 200,
       json: async () => body,
     });
   }
@@ -35,7 +39,8 @@ describe('AuditResource', () => {
 
   it('should query audit logs with filters', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      ok: true, status: 200,
+      ok: true,
+      status: 200,
       json: async () => ({ logs: [], total: 0, limit: 50, offset: 0 }),
     });
     globalThis.fetch = fetchMock;

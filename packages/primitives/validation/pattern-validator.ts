@@ -1,14 +1,14 @@
 /**
  * Pattern Validator
- * 
+ *
  * Validates composed patterns using the Prism validator
  */
 
-import { UnifiedValidator } from '@prism-lang/validator';
-import { ExecutablePattern, PatternValidation } from '../types';
 // import { Logger } from 'pino';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import { UnifiedValidator } from '@prism-lang/validator';
+import type { ExecutablePattern, PatternValidation } from '../types';
 
 export class PatternValidator {
   private logger?: any;
@@ -22,23 +22,25 @@ export class PatternValidator {
   /**
    * Validates a composed pattern
    */
-  async validatePattern(pattern: ExecutablePattern): Promise<PatternValidation> {
+  async validatePattern(
+    pattern: ExecutablePattern
+  ): Promise<PatternValidation> {
     const validation: PatternValidation = {
       isValid: true,
       errors: [],
       warnings: [],
-      suggestions: []
+      suggestions: [],
     };
 
     try {
       // Validate the Prism syntax
       const syntaxValidation = await this.validateSyntax(pattern.code);
-      
+
       if (!syntaxValidation.isValid) {
         validation.isValid = false;
         validation.errors.push(...syntaxValidation.errors);
       }
-      
+
       validation.warnings.push(...syntaxValidation.warnings);
 
       // Validate pattern structure
@@ -58,17 +60,21 @@ export class PatternValidator {
       const optimizations = this.suggestOptimizations(pattern);
       validation.suggestions.push(...optimizations);
 
-      this.logger?.info({
-        patternId: pattern.metadata?.id,
-        isValid: validation.isValid,
-        errorCount: validation.errors.length,
-        warningCount: validation.warnings.length
-      }, 'Pattern validation complete');
-
+      this.logger?.info(
+        {
+          patternId: pattern.metadata?.id,
+          isValid: validation.isValid,
+          errorCount: validation.errors.length,
+          warningCount: validation.warnings.length,
+        },
+        'Pattern validation complete'
+      );
     } catch (error) {
       validation.isValid = false;
-      validation.errors.push(`Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
+      validation.errors.push(
+        `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+
       this.logger?.error({ error }, 'Pattern validation failed');
     }
 
@@ -83,18 +89,18 @@ export class PatternValidator {
       isValid: true,
       errors: [],
       warnings: [],
-      suggestions: []
+      suggestions: [],
     };
 
     try {
       const result = this.prismValidator.validate(code);
-      
+
       if (!result.valid) {
         validation.isValid = false;
-        
+
         // Extract errors from validator result
         if (result.errors && Array.isArray(result.errors)) {
-          validation.errors = result.errors.map((err: any) => 
+          validation.errors = result.errors.map((err: any) =>
             typeof err === 'string' ? err : err.message || 'Syntax error'
           );
         } else {
@@ -104,16 +110,21 @@ export class PatternValidator {
 
       // Check for common issues
       if (code.includes('undefined')) {
-        validation.warnings.push('Pattern contains "undefined" - ensure all variables are properly initialized');
+        validation.warnings.push(
+          'Pattern contains "undefined" - ensure all variables are properly initialized'
+        );
       }
 
       if (!code.includes('~>')) {
-        validation.warnings.push('Pattern does not use confidence operators (~>) - consider adding confidence values');
+        validation.warnings.push(
+          'Pattern does not use confidence operators (~>) - consider adding confidence values'
+        );
       }
-
     } catch (error) {
       validation.isValid = false;
-      validation.errors.push(`Syntax validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      validation.errors.push(
+        `Syntax validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
 
     return validation;
@@ -127,7 +138,7 @@ export class PatternValidator {
       isValid: true,
       errors: [],
       warnings: [],
-      suggestions: []
+      suggestions: [],
     };
 
     // Check that pattern has required metadata
@@ -150,7 +161,9 @@ export class PatternValidator {
     // Check for required imports
     const hasImports = pattern.code.includes('import {');
     if (!hasImports && pattern.primitives.length > 0) {
-      validation.warnings.push('Pattern uses primitives but has no import statements');
+      validation.warnings.push(
+        'Pattern uses primitives but has no import statements'
+      );
     }
 
     // Check for export statement
@@ -173,23 +186,35 @@ export class PatternValidator {
 
     // Analyze confidence flow
     const hasThreshold = pattern.primitives.includes('threshold');
-    const hasTransform = pattern.primitives.includes('transform');
+    const _hasTransform = pattern.primitives.includes('transform');
     const hasConsensus = pattern.primitives.includes('consensus');
 
-    if (!hasThreshold && pattern.metadata?.minConfidence && pattern.metadata.minConfidence > 0.5) {
-      suggestions.push('Consider adding a threshold primitive to enforce minimum confidence requirements');
+    if (
+      !hasThreshold &&
+      pattern.metadata?.minConfidence &&
+      pattern.metadata.minConfidence > 0.5
+    ) {
+      suggestions.push(
+        'Consider adding a threshold primitive to enforce minimum confidence requirements'
+      );
     }
 
     if (hasConsensus && !hasThreshold) {
-      suggestions.push('Consensus pattern typically benefits from threshold filtering');
+      suggestions.push(
+        'Consensus pattern typically benefits from threshold filtering'
+      );
     }
 
     // Check for confidence operators in code
     const confidenceOperatorCount = (pattern.code.match(/~>/g) || []).length;
     if (confidenceOperatorCount === 0) {
-      warnings.push('Pattern does not use confidence operators (~>) - confidence may not propagate correctly');
+      warnings.push(
+        'Pattern does not use confidence operators (~>) - confidence may not propagate correctly'
+      );
     } else if (confidenceOperatorCount < 3 && pattern.primitives.length > 3) {
-      suggestions.push('Consider adding more confidence operators to improve confidence tracking');
+      suggestions.push(
+        'Consider adding more confidence operators to improve confidence tracking'
+      );
     }
 
     return { warnings, suggestions };
@@ -202,24 +227,44 @@ export class PatternValidator {
     const suggestions: string[] = [];
 
     // Check for parallel opportunities
-    if (pattern.primitives.includes('sequential') && !pattern.primitives.includes('dependency')) {
-      suggestions.push('Consider using parallel execution if tasks are independent');
+    if (
+      pattern.primitives.includes('sequential') &&
+      !pattern.primitives.includes('dependency')
+    ) {
+      suggestions.push(
+        'Consider using parallel execution if tasks are independent'
+      );
     }
 
     // Check for retry without circuit breaker
-    if (pattern.primitives.includes('retry') && !pattern.primitives.includes('circuit')) {
-      suggestions.push('Consider adding circuit breaker to prevent cascading failures');
+    if (
+      pattern.primitives.includes('retry') &&
+      !pattern.primitives.includes('circuit')
+    ) {
+      suggestions.push(
+        'Consider adding circuit breaker to prevent cascading failures'
+      );
     }
 
     // Check for missing fallback
-    if (pattern.metadata?.minConfidence && pattern.metadata.minConfidence > 0.8 && 
-        !pattern.primitives.includes('fallback')) {
-      suggestions.push('High confidence requirement - consider adding fallback for reliability');
+    if (
+      pattern.metadata?.minConfidence &&
+      pattern.metadata.minConfidence > 0.8 &&
+      !pattern.primitives.includes('fallback')
+    ) {
+      suggestions.push(
+        'High confidence requirement - consider adding fallback for reliability'
+      );
     }
 
     // Check for redundant primitives
-    if (pattern.primitives.includes('parallel') && pattern.primitives.includes('race')) {
-      suggestions.push('Pattern uses both parallel and race - consider if both are necessary');
+    if (
+      pattern.primitives.includes('parallel') &&
+      pattern.primitives.includes('race')
+    ) {
+      suggestions.push(
+        'Pattern uses both parallel and race - consider if both are necessary'
+      );
     }
 
     return suggestions;
@@ -231,7 +276,7 @@ export class PatternValidator {
   async validatePatternFile(filePath: string): Promise<PatternValidation> {
     try {
       const code = await fs.readFile(filePath, 'utf-8');
-      
+
       // Extract metadata from file
       const pattern: ExecutablePattern = {
         code,
@@ -239,17 +284,19 @@ export class PatternValidator {
         confidence: this.extractConfidence(code),
         metadata: {
           filePath,
-          fileName: path.basename(filePath)
-        }
+          fileName: path.basename(filePath),
+        },
       };
 
       return this.validatePattern(pattern);
     } catch (error) {
       return {
         isValid: false,
-        errors: [`Failed to read pattern file: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        errors: [
+          `Failed to read pattern file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ],
         warnings: [],
-        suggestions: []
+        suggestions: [],
       };
     }
   }
@@ -259,11 +306,12 @@ export class PatternValidator {
    */
   private extractPrimitives(code: string): string[] {
     const primitives: string[] = [];
-    const importRegex = /import\s*{\s*([^}]+)\s*}\s*from\s*["']@parallax\/primitives/g;
+    const importRegex =
+      /import\s*{\s*([^}]+)\s*}\s*from\s*["']@parallax\/primitives/g;
     let match;
 
     while ((match = importRegex.exec(code)) !== null) {
-      const imports = match[1].split(',').map(s => s.trim());
+      const imports = match[1].split(',').map((s) => s.trim());
       primitives.push(...imports);
     }
 
@@ -282,7 +330,7 @@ export class PatternValidator {
 
     // Count confidence operators as a rough estimate
     const confidenceOperators = (code.match(/~>/g) || []).length;
-    return Math.min(1.0, 0.5 + (confidenceOperators * 0.1));
+    return Math.min(1.0, 0.5 + confidenceOperators * 0.1);
   }
 }
 

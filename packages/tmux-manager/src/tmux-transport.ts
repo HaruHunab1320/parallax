@@ -5,7 +5,7 @@
  * Replaces node-pty as the PTY backend — no native addons required.
  */
 
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 import { ensureTmux } from './ensure-tmux.js';
 
 export interface TmuxSpawnOptions {
@@ -29,46 +29,67 @@ export interface TmuxCaptureOptions {
  * Mapping from our SPECIAL_KEYS names to tmux send-keys key names.
  */
 export const TMUX_KEY_MAP: Record<string, string> = {
-  'enter': 'Enter',
-  'return': 'Enter',
-  'tab': 'Tab',
-  'escape': 'Escape',
-  'esc': 'Escape',
-  'space': 'Space',
-  'backspace': 'BSpace',
-  'delete': 'DC',
-  'insert': 'IC',
-  'up': 'Up',
-  'down': 'Down',
-  'left': 'Left',
-  'right': 'Right',
-  'home': 'Home',
-  'end': 'End',
-  'pageup': 'PageUp',
-  'pagedown': 'PageDown',
-  'f1': 'F1',
-  'f2': 'F2',
-  'f3': 'F3',
-  'f4': 'F4',
-  'f5': 'F5',
-  'f6': 'F6',
-  'f7': 'F7',
-  'f8': 'F8',
-  'f9': 'F9',
-  'f10': 'F10',
-  'f11': 'F11',
-  'f12': 'F12',
+  enter: 'Enter',
+  return: 'Enter',
+  tab: 'Tab',
+  escape: 'Escape',
+  esc: 'Escape',
+  space: 'Space',
+  backspace: 'BSpace',
+  delete: 'DC',
+  insert: 'IC',
+  up: 'Up',
+  down: 'Down',
+  left: 'Left',
+  right: 'Right',
+  home: 'Home',
+  end: 'End',
+  pageup: 'PageUp',
+  pagedown: 'PageDown',
+  f1: 'F1',
+  f2: 'F2',
+  f3: 'F3',
+  f4: 'F4',
+  f5: 'F5',
+  f6: 'F6',
+  f7: 'F7',
+  f8: 'F8',
+  f9: 'F9',
+  f10: 'F10',
+  f11: 'F11',
+  f12: 'F12',
   // Ctrl keys map to tmux C- prefix
-  'ctrl+a': 'C-a', 'ctrl+b': 'C-b', 'ctrl+c': 'C-c', 'ctrl+d': 'C-d',
-  'ctrl+e': 'C-e', 'ctrl+f': 'C-f', 'ctrl+g': 'C-g', 'ctrl+h': 'C-h',
-  'ctrl+i': 'C-i', 'ctrl+j': 'C-j', 'ctrl+k': 'C-k', 'ctrl+l': 'C-l',
-  'ctrl+m': 'C-m', 'ctrl+n': 'C-n', 'ctrl+o': 'C-o', 'ctrl+p': 'C-p',
-  'ctrl+q': 'C-q', 'ctrl+r': 'C-r', 'ctrl+s': 'C-s', 'ctrl+t': 'C-t',
-  'ctrl+u': 'C-u', 'ctrl+v': 'C-v', 'ctrl+w': 'C-w', 'ctrl+x': 'C-x',
-  'ctrl+y': 'C-y', 'ctrl+z': 'C-z',
+  'ctrl+a': 'C-a',
+  'ctrl+b': 'C-b',
+  'ctrl+c': 'C-c',
+  'ctrl+d': 'C-d',
+  'ctrl+e': 'C-e',
+  'ctrl+f': 'C-f',
+  'ctrl+g': 'C-g',
+  'ctrl+h': 'C-h',
+  'ctrl+i': 'C-i',
+  'ctrl+j': 'C-j',
+  'ctrl+k': 'C-k',
+  'ctrl+l': 'C-l',
+  'ctrl+m': 'C-m',
+  'ctrl+n': 'C-n',
+  'ctrl+o': 'C-o',
+  'ctrl+p': 'C-p',
+  'ctrl+q': 'C-q',
+  'ctrl+r': 'C-r',
+  'ctrl+s': 'C-s',
+  'ctrl+t': 'C-t',
+  'ctrl+u': 'C-u',
+  'ctrl+v': 'C-v',
+  'ctrl+w': 'C-w',
+  'ctrl+x': 'C-x',
+  'ctrl+y': 'C-y',
+  'ctrl+z': 'C-z',
   // Shift combinations
-  'shift+up': 'S-Up', 'shift+down': 'S-Down',
-  'shift+left': 'S-Left', 'shift+right': 'S-Right',
+  'shift+up': 'S-Up',
+  'shift+down': 'S-Down',
+  'shift+left': 'S-Left',
+  'shift+right': 'S-Right',
   'shift+tab': 'BTab',
 };
 
@@ -77,12 +98,9 @@ export const TMUX_KEY_MAP: Record<string, string> = {
  * Manages tmux sessions via CLI commands.
  */
 export class TmuxTransport {
-  private pollingTimers: Map<string, ReturnType<typeof setInterval>> = new Map();
+  private pollingTimers: Map<string, ReturnType<typeof setInterval>> =
+    new Map();
   private lastCapture: Map<string, string> = new Map();
-
-  constructor() {
-    // No setup needed — tmux is a system binary
-  }
 
   /**
    * Spawn a new tmux session running the given command.
@@ -104,15 +122,19 @@ export class TmuxTransport {
     // Create detached session with specified dimensions
     execSync(
       `tmux new-session -d -s ${this.shellEscape(sessionName)} ` +
-      `-x ${options.cols} -y ${options.rows} ` +
-      `-c ${this.shellEscape(options.cwd)} ` +
-      `${this.shellEscape(shellCommand)}`,
+        `-x ${options.cols} -y ${options.rows} ` +
+        `-c ${this.shellEscape(options.cwd)} ` +
+        `${this.shellEscape(shellCommand)}`,
       { stdio: 'pipe', timeout: 10000 }
     );
 
     // Configure session options
-    this.tmuxExec(`set-option -t ${this.shellEscape(sessionName)} history-limit ${options.historyLimit}`);
-    this.tmuxExec(`set-option -t ${this.shellEscape(sessionName)} remain-on-exit on`);
+    this.tmuxExec(
+      `set-option -t ${this.shellEscape(sessionName)} history-limit ${options.historyLimit}`
+    );
+    this.tmuxExec(
+      `set-option -t ${this.shellEscape(sessionName)} remain-on-exit on`
+    );
   }
 
   /**
@@ -150,7 +172,8 @@ export class TmuxTransport {
     try {
       const pid = this.getPanePid(sessionName);
       if (pid) {
-        const nodeSignal = sig === 'SIGKILL' ? '-9' : sig === 'SIGTERM' ? '-15' : `-${sig}`;
+        const nodeSignal =
+          sig === 'SIGKILL' ? '-9' : sig === 'SIGTERM' ? '-15' : `-${sig}`;
         execSync(`kill ${nodeSignal} ${pid}`, { stdio: 'pipe', timeout: 3000 });
       }
     } catch {
@@ -171,10 +194,14 @@ export class TmuxTransport {
     if (text.length > CHUNK_SIZE) {
       for (let i = 0; i < text.length; i += CHUNK_SIZE) {
         const chunk = text.slice(i, i + CHUNK_SIZE);
-        this.tmuxExec(`send-keys -t ${this.shellEscape(sessionName)} -l ${this.shellEscape(chunk)}`);
+        this.tmuxExec(
+          `send-keys -t ${this.shellEscape(sessionName)} -l ${this.shellEscape(chunk)}`
+        );
       }
     } else {
-      this.tmuxExec(`send-keys -t ${this.shellEscape(sessionName)} -l ${this.shellEscape(text)}`);
+      this.tmuxExec(
+        `send-keys -t ${this.shellEscape(sessionName)} -l ${this.shellEscape(text)}`
+      );
     }
   }
 
@@ -188,7 +215,9 @@ export class TmuxTransport {
       this.tmuxExec(`send-keys -t ${this.shellEscape(sessionName)} ${tmuxKey}`);
     } else {
       // Try sending as literal text
-      this.tmuxExec(`send-keys -t ${this.shellEscape(sessionName)} -l ${this.shellEscape(key)}`);
+      this.tmuxExec(
+        `send-keys -t ${this.shellEscape(sessionName)} -l ${this.shellEscape(key)}`
+      );
     }
   }
 
@@ -224,13 +253,16 @@ export class TmuxTransport {
   startOutputStreaming(
     sessionName: string,
     callback: (data: string) => void,
-    pollIntervalMs: number = 100,
+    pollIntervalMs: number = 100
   ): void {
     this.lastCapture.set(sessionName, '');
 
     const timer = setInterval(() => {
       try {
-        const current = this.capturePane(sessionName, { ansi: true, scrollback: 500 });
+        const current = this.capturePane(sessionName, {
+          ansi: true,
+          scrollback: 500,
+        });
         const last = this.lastCapture.get(sessionName) || '';
 
         if (current !== last) {
@@ -276,7 +308,7 @@ export class TmuxTransport {
         { encoding: 'utf-8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }
       ).trim();
       const pid = parseInt(output, 10);
-      return isNaN(pid) ? undefined : pid;
+      return Number.isNaN(pid) ? undefined : pid;
     } catch {
       return undefined;
     }
@@ -303,7 +335,9 @@ export class TmuxTransport {
    */
   resize(sessionName: string, cols: number, rows: number): void {
     try {
-      this.tmuxExec(`resize-window -t ${this.shellEscape(sessionName)} -x ${cols} -y ${rows}`);
+      this.tmuxExec(
+        `resize-window -t ${this.shellEscape(sessionName)} -x ${cols} -y ${rows}`
+      );
     } catch {
       // May fail if window doesn't exist
     }
@@ -335,7 +369,7 @@ export class TmuxTransport {
         { encoding: 'utf-8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }
       ).trim();
       const code = parseInt(output, 10);
-      return isNaN(code) ? undefined : code;
+      return Number.isNaN(code) ? undefined : code;
     } catch {
       return undefined;
     }
@@ -344,7 +378,9 @@ export class TmuxTransport {
   /**
    * List all tmux sessions matching a prefix.
    */
-  static listSessions(prefix?: string): Array<{ name: string; created: string; attached: boolean }> {
+  static listSessions(
+    prefix?: string
+  ): Array<{ name: string; created: string; attached: boolean }> {
     try {
       const output = execSync(
         `tmux list-sessions -F '#{session_name}|#{session_created}|#{session_attached}'`,
@@ -353,12 +389,13 @@ export class TmuxTransport {
 
       if (!output) return [];
 
-      return output.split('\n')
-        .map(line => {
+      return output
+        .split('\n')
+        .map((line) => {
           const [name, created, attached] = line.split('|');
           return { name, created, attached: attached === '1' };
         })
-        .filter(s => !prefix || s.name.startsWith(prefix));
+        .filter((s) => !prefix || s.name.startsWith(prefix));
     } catch {
       return [];
     }

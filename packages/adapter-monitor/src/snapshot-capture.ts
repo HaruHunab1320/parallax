@@ -4,13 +4,13 @@
  * Captures CLI startup snapshots in isolated Docker containers.
  */
 
+import { DEFAULT_CAPTURE_OPTIONS, MONITORED_CLIS } from './config';
 import type {
   AdapterType,
-  StartupSnapshot,
   CaptureOptions,
   DetectedPattern,
+  StartupSnapshot,
 } from './types';
-import { MONITORED_CLIS, DEFAULT_CAPTURE_OPTIONS } from './config';
 
 /**
  * Strip ANSI escape codes from a string
@@ -77,7 +77,7 @@ function analyzePatterns(lines: string[]): DetectedPattern[] {
       patterns.push({
         type: 'prompt',
         text: line,
-        regex: line.match(/([a-z]+)>\s*$/i)?.[1] + '>\\s*$',
+        regex: `${line.match(/([a-z]+)>\s*$/i)?.[1]}>\\s*$`,
         lineNumber: i + 1,
         confidence: 0.9,
       });
@@ -178,7 +178,11 @@ function analyzePatterns(lines: string[]): DetectedPattern[] {
     // --- Turn complete patterns ---
 
     // Claude: "<Verb> for <duration>" (e.g. "Cooked for 1m 6s")
-    if (/[A-Z][A-Za-z' -]{2,40}\s+for\s+\d+(?:h\s+\d{1,2}m\s+\d{1,2}s|m\s+\d{1,2}s|s)/.test(line)) {
+    if (
+      /[A-Z][A-Za-z' -]{2,40}\s+for\s+\d+(?:h\s+\d{1,2}m\s+\d{1,2}s|m\s+\d{1,2}s|s)/.test(
+        line
+      )
+    ) {
       patterns.push({
         type: 'turn_complete',
         text: line,
@@ -271,7 +275,8 @@ function analyzePatterns(lines: string[]): DetectedPattern[] {
 function generateDockerfile(adapter: AdapterType): string {
   const source = MONITORED_CLIS[adapter];
 
-  const baseImage = source.registry === 'pip' ? 'python:3.11-slim' : 'node:20-slim';
+  const baseImage =
+    source.registry === 'pip' ? 'python:3.11-slim' : 'node:20-slim';
 
   return `
 FROM ${baseImage}
@@ -288,7 +293,7 @@ ENV HOME=/home/testuser
 ENV XDG_CONFIG_HOME=/home/testuser/.config
 
 # Install the CLI
-${source.registry === 'pip' ? 'RUN pip install --user ' + source.package : 'RUN npm install -g ' + source.package}
+${source.registry === 'pip' ? `RUN pip install --user ${source.package}` : `RUN npm install -g ${source.package}`}
 
 # Add local bin to PATH
 ENV PATH="/home/testuser/.local/bin:/home/testuser/.npm-global/bin:$PATH"
@@ -353,9 +358,12 @@ export async function captureWithDocker(
 
   console.log(`Building Docker image for ${adapter}@${version}...`);
 
-  const stream = await docker.buildImage(pack as unknown as NodeJS.ReadableStream, {
-    t: imageName,
-  });
+  const stream = await docker.buildImage(
+    pack as unknown as NodeJS.ReadableStream,
+    {
+      t: imageName,
+    }
+  );
 
   // Wait for build to complete
   await new Promise<void>((resolve, reject) => {
@@ -393,15 +401,21 @@ export async function captureWithDocker(
     logStream.on('end', resolve);
 
     // Timeout safety
-    setTimeout(() => {
-      container.stop().catch(() => {});
-      resolve();
-    }, (opts.timeout || 30000) + 5000);
+    setTimeout(
+      () => {
+        container.stop().catch(() => {});
+        resolve();
+      },
+      (opts.timeout || 30000) + 5000
+    );
   });
 
   // Cleanup
   await container.remove({ force: true }).catch(() => {});
-  await docker.getImage(imageName).remove({ force: true }).catch(() => {});
+  await docker
+    .getImage(imageName)
+    .remove({ force: true })
+    .catch(() => {});
 
   const captureDurationMs = Date.now() - startTime;
 
@@ -411,7 +425,9 @@ export async function captureWithDocker(
   const patterns = analyzePatterns(lines);
 
   const authRequired = patterns.some((p) => p.type === 'auth');
-  const reachedReady = patterns.some((p) => p.type === 'ready' || p.type === 'prompt');
+  const reachedReady = patterns.some(
+    (p) => p.type === 'ready' || p.type === 'prompt'
+  );
 
   return {
     adapter,
@@ -441,7 +457,7 @@ export async function captureLocally(
   const source = MONITORED_CLIS[adapter];
 
   // Use child_process to run the CLI
-  const { spawn } = await import('child_process');
+  const { spawn } = await import('node:child_process');
 
   return new Promise((resolve, reject) => {
     let rawOutput = '';
@@ -480,7 +496,9 @@ export async function captureLocally(
       const patterns = analyzePatterns(lines);
 
       const authRequired = patterns.some((p) => p.type === 'auth');
-      const reachedReady = patterns.some((p) => p.type === 'ready' || p.type === 'prompt');
+      const reachedReady = patterns.some(
+        (p) => p.type === 'ready' || p.type === 'prompt'
+      );
 
       resolve({
         adapter,

@@ -9,4 +9,3 @@ export default defineConfig({
   clean: true,
   external: ['pty-manager'],
 });
-

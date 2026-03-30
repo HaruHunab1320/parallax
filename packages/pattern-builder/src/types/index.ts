@@ -2,8 +2,8 @@
  * Type exports for Pattern Builder
  */
 
-export * from './nodes';
 export * from './edges';
+export * from './nodes';
 
 // Pattern metadata
 export interface PatternMetadata {

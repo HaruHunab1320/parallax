@@ -32,7 +32,9 @@ describe('SessionStateCapture', () => {
       source: 'claude',
     });
 
-    const readyLikeGemini = await capture.feed('Type your message or @path/to/file');
+    const readyLikeGemini = await capture.feed(
+      'Type your message or @path/to/file'
+    );
     expect(readyLikeGemini.state.state).toBe('unknown');
 
     const approvalLikeGemini = await capture.feed('Do you want to proceed?');
@@ -47,19 +49,29 @@ describe('SessionStateCapture', () => {
       source: 'claude',
     });
 
-    const awaitingInput = await capture.feed('Interrupted · What should Claude do instead?');
+    const awaitingInput = await capture.feed(
+      'Interrupted · What should Claude do instead?'
+    );
     expect(awaitingInput.state.state).toBe('awaiting_input');
-    expect(awaitingInput.state.ruleId).toBe('awaiting_input_claude_interrupted');
+    expect(awaitingInput.state.ruleId).toBe(
+      'awaiting_input_claude_interrupted'
+    );
 
-    const awaitingApproval = await capture.feed('Do you want to proceed? 1. Yes 2. Yes, and don\'t ask again');
+    const awaitingApproval = await capture.feed(
+      "Do you want to proceed? 1. Yes 2. Yes, and don't ask again"
+    );
     expect(awaitingApproval.state.state).toBe('awaiting_approval');
     expect(awaitingApproval.state.ruleId).toBe('awaiting_approval_claude_menu');
 
-    const busy = await capture.feed('⏸ plan mode on (shift+tab to exit) · Finagling… (5m 33s · ↓ 14.5k tokens)');
+    const busy = await capture.feed(
+      '⏸ plan mode on (shift+tab to exit) · Finagling… (5m 33s · ↓ 14.5k tokens)'
+    );
     expect(busy.state.state).toBe('busy_streaming');
     expect(busy.state.ruleId).toBe('busy_plan_mode_claude');
 
-    const ready = await capture.feed('❯ Try "refactor eliza.ts" ? for shortcuts');
+    const ready = await capture.feed(
+      '❯ Try "refactor eliza.ts" ? for shortcuts'
+    );
     expect(ready.state.state).toBe('ready_for_input');
     expect(ready.state.ruleId).toBe('ready_prompt_claude');
   });
@@ -78,7 +90,10 @@ describe('SessionStateCapture', () => {
       capture.feed('❯ Try "fix lint errors" ? for shortcuts'),
     ]);
 
-    const transitionsRaw = await readFile(capture.paths.transitionsPath, 'utf8');
+    const transitionsRaw = await readFile(
+      capture.paths.transitionsPath,
+      'utf8'
+    );
     const transitions = transitionsRaw
       .trim()
       .split('\n')
@@ -113,7 +128,10 @@ describe('SessionStateCapture', () => {
       source: 'codex',
     });
 
-    const startupControl = await capture.feed('\x1b[?2004h\x1b[>7u\x1b[6n', 'stdout');
+    const startupControl = await capture.feed(
+      '\x1b[?2004h\x1b[>7u\x1b[6n',
+      'stdout'
+    );
     expect(startupControl.stateChanged).toBe(false);
     expect(startupControl.state.state).toBe('unknown');
 
@@ -164,7 +182,9 @@ describe('SessionStateCapture', () => {
     });
 
     // Enter an active state first.
-    const busy = await capture.feed('Optimizing for ludicrous speed (esc to cancel, 2s)');
+    const busy = await capture.feed(
+      'Optimizing for ludicrous speed (esc to cancel, 2s)'
+    );
     expect(busy.state.state).toBe('busy_streaming');
 
     const readyFrame = `${'x'.repeat(240)} > Type your message or @path/to/file`;

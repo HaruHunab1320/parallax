@@ -1,12 +1,12 @@
-import { HttpClient } from '../http.js';
-import {
-  Trigger,
-  TriggerListResponse,
-  TriggerListParams,
-  WebhookTriggerCreateInput,
+import type { HttpClient } from '../http.js';
+import type {
   EventTriggerCreateInput,
+  Trigger,
+  TriggerListParams,
+  TriggerListResponse,
   TriggerUpdateInput,
   WebhookReceiverResponse,
+  WebhookTriggerCreateInput,
 } from '../types/triggers.js';
 
 export class TriggersResource {

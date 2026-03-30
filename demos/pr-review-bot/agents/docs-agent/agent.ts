@@ -5,41 +5,43 @@
  * Demonstrates a TypeScript agent in the Parallax multi-language ecosystem.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 // Documentation patterns to check (fallback when no LLM)
 const DOC_PATTERNS = [
   {
-    pattern: /export\s+(async\s+)?function\s+\w+\s*\([^)]*\)[^{]*\{(?!\s*\/\*\*|\s*\/\/)/g,
+    pattern:
+      /export\s+(async\s+)?function\s+\w+\s*\([^)]*\)[^{]*\{(?!\s*\/\*\*|\s*\/\/)/g,
     severity: 'medium',
     issue: 'Exported function lacks documentation',
-    suggestion: 'Add JSDoc comment describing purpose, parameters, and return value'
+    suggestion:
+      'Add JSDoc comment describing purpose, parameters, and return value',
   },
   {
     pattern: /export\s+class\s+\w+[^{]*\{(?!\s*\/\*\*|\s*\/\/)/g,
     severity: 'medium',
     issue: 'Exported class lacks documentation',
-    suggestion: 'Add JSDoc comment describing the class purpose'
+    suggestion: 'Add JSDoc comment describing the class purpose',
   },
   {
     pattern: /\/\/\s*TODO[^:\n]*$/gm,
     severity: 'low',
     issue: 'TODO comment without description',
-    suggestion: 'Add details about what needs to be done'
+    suggestion: 'Add details about what needs to be done',
   },
   {
     pattern: /function\s+\w{1,2}\s*\(|const\s+\w{1,2}\s*=/g,
     severity: 'medium',
     issue: 'Single-letter or very short variable/function name',
-    suggestion: 'Use descriptive names that explain purpose'
+    suggestion: 'Use descriptive names that explain purpose',
   },
   {
     pattern: /\/\*\*[\s\S]*?\*\/\s*\n\s*\/\*\*/g,
     severity: 'low',
     issue: 'Multiple consecutive doc comments may indicate stale docs',
-    suggestion: 'Review and consolidate documentation'
-  }
+    suggestion: 'Review and consolidate documentation',
+  },
 ];
 
 class DocsAgent extends ParallaxAgent {
@@ -54,21 +56,26 @@ class DocsAgent extends ParallaxAgent {
       {
         expertise: 0.8,
         language: 'typescript',
-        description: 'Analyzes code for documentation quality and clarity'
+        description: 'Analyzes code for documentation quality and clarity',
       }
     );
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       this.gemini = new GoogleGenerativeAI(apiKey);
-      this.model = this.gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      this.model = this.gemini.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+      });
       console.log('Gemini LLM initialized for documentation analysis');
     } else {
       console.warn('GEMINI_API_KEY not set - using pattern-based analysis');
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -83,7 +90,7 @@ class DocsAgent extends ParallaxAgent {
           documentation_score: 0,
         },
         confidence: 0.5,
-        reasoning: 'Empty input'
+        reasoning: 'Empty input',
       };
     }
 
@@ -154,7 +161,7 @@ ${code}
       return {
         value: parsed,
         confidence,
-        reasoning: parsed.reasoning || 'LLM analysis completed'
+        reasoning: parsed.reasoning || 'LLM analysis completed',
       };
     } catch {
       return {
@@ -164,7 +171,7 @@ ${code}
           documentation_score: 50,
         },
         confidence: 0.5,
-        reasoning: 'Could not parse structured response'
+        reasoning: 'Could not parse structured response',
       };
     }
   }
@@ -189,14 +196,16 @@ ${code}
           severity: pattern.severity,
           issue: pattern.issue,
           line_hint: `Line ${lineNum}`,
-          suggestion: pattern.suggestion
+          suggestion: pattern.suggestion,
         });
       }
     }
 
     // Check for good documentation (JSDoc comments)
     const jsdocCount = (code.match(/\/\*\*[\s\S]*?\*\//g) || []).length;
-    const functionCount = (code.match(/function\s+\w+|=>\s*\{|=>\s*[^{]/g) || []).length;
+    const functionCount = (
+      code.match(/function\s+\w+|=>\s*\{|=>\s*[^{]/g) || []
+    ).length;
 
     const docRatio = functionCount > 0 ? jsdocCount / functionCount : 0;
     const documentationScore = Math.round(Math.min(100, docRatio * 100 + 20));
@@ -207,16 +216,17 @@ ${code}
     return {
       value: {
         findings,
-        summary: findings.length > 0
-          ? `Found ${findings.length} documentation issue(s)`
-          : 'Documentation appears adequate',
+        summary:
+          findings.length > 0
+            ? `Found ${findings.length} documentation issue(s)`
+            : 'Documentation appears adequate',
         documentation_score: documentationScore,
         jsdoc_comments: jsdocCount,
         functions_detected: functionCount,
-        analysis_method: 'pattern_matching'
+        analysis_method: 'pattern_matching',
       },
       confidence,
-      reasoning: 'Pattern-based analysis (LLM not available)'
+      reasoning: 'Pattern-based analysis (LLM not available)',
     };
   }
 }

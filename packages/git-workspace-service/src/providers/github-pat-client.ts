@@ -6,12 +6,12 @@
  */
 
 import type {
-  PullRequestInfo,
-  IssueInfo,
   CreateIssueOptions,
   IssueComment,
   IssueCommentOptions,
+  IssueInfo,
   IssueState,
+  PullRequestInfo,
 } from '../types';
 
 // Lazy-loaded Octokit
@@ -121,7 +121,11 @@ export class GitHubPatClient {
       });
     }
 
-    this.log('info', { owner, repo, prNumber: pr.number }, 'Pull request created');
+    this.log(
+      'info',
+      { owner, repo, prNumber: pr.number },
+      'Pull request created'
+    );
 
     return {
       number: pr.number,
@@ -138,7 +142,11 @@ export class GitHubPatClient {
   /**
    * Get a pull request
    */
-  async getPullRequest(owner: string, repo: string, prNumber: number): Promise<PullRequestInfo> {
+  async getPullRequest(
+    owner: string,
+    repo: string,
+    prNumber: number
+  ): Promise<PullRequestInfo> {
     const { data: pr } = await this.octokit.pulls.get({
       owner,
       repo,
@@ -180,7 +188,11 @@ export class GitHubPatClient {
       milestone: options.milestone,
     });
 
-    this.log('info', { owner, repo, issueNumber: issue.number }, 'Issue created');
+    this.log(
+      'info',
+      { owner, repo, issueNumber: issue.number },
+      'Issue created'
+    );
 
     return this.mapIssue(issue);
   }
@@ -188,7 +200,11 @@ export class GitHubPatClient {
   /**
    * Get an issue
    */
-  async getIssue(owner: string, repo: string, issueNumber: number): Promise<IssueInfo> {
+  async getIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number
+  ): Promise<IssueInfo> {
     const { data: issue } = await this.octokit.issues.get({
       owner,
       repo,
@@ -306,7 +322,11 @@ export class GitHubPatClient {
       body: options.body,
     });
 
-    this.log('info', { owner, repo, issueNumber, commentId: comment.id }, 'Comment added');
+    this.log(
+      'info',
+      { owner, repo, issueNumber, commentId: comment.id },
+      'Comment added'
+    );
 
     return {
       id: comment.id,
@@ -332,32 +352,42 @@ export class GitHubPatClient {
       per_page: 100,
     });
 
-    return comments.map((comment: {
-      id: number;
-      html_url: string;
-      body?: string;
-      user?: { login: string };
-      created_at: string;
-    }) => ({
-      id: comment.id,
-      url: comment.html_url,
-      body: comment.body || '',
-      author: comment.user?.login || 'unknown',
-      createdAt: new Date(comment.created_at),
-    }));
+    return comments.map(
+      (comment: {
+        id: number;
+        html_url: string;
+        body?: string;
+        user?: { login: string };
+        created_at: string;
+      }) => ({
+        id: comment.id,
+        url: comment.html_url,
+        body: comment.body || '',
+        author: comment.user?.login || 'unknown',
+        createdAt: new Date(comment.created_at),
+      })
+    );
   }
 
   /**
    * Close an issue
    */
-  async closeIssue(owner: string, repo: string, issueNumber: number): Promise<IssueInfo> {
+  async closeIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number
+  ): Promise<IssueInfo> {
     return this.updateIssue(owner, repo, issueNumber, { state: 'closed' });
   }
 
   /**
    * Reopen an issue
    */
-  async reopenIssue(owner: string, repo: string, issueNumber: number): Promise<IssueInfo> {
+  async reopenIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number
+  ): Promise<IssueInfo> {
     return this.updateIssue(owner, repo, issueNumber, { state: 'open' });
   }
 
@@ -368,7 +398,11 @@ export class GitHubPatClient {
   /**
    * Delete a branch
    */
-  async deleteBranch(owner: string, repo: string, branch: string): Promise<void> {
+  async deleteBranch(
+    owner: string,
+    repo: string,
+    branch: string
+  ): Promise<void> {
     await this.octokit.git.deleteRef({
       owner,
       repo,
@@ -381,7 +415,11 @@ export class GitHubPatClient {
   /**
    * Check if a branch exists
    */
-  async branchExists(owner: string, repo: string, branch: string): Promise<boolean> {
+  async branchExists(
+    owner: string,
+    repo: string,
+    branch: string
+  ): Promise<boolean> {
     try {
       await this.octokit.repos.getBranch({ owner, repo, branch });
       return true;

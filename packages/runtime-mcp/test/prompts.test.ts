@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  generateSpawnReviewTeamPrompt,
   generateSpawnDevAgentPrompt,
-  SPAWN_REVIEW_TEAM_PROMPT,
+  generateSpawnReviewTeamPrompt,
   SPAWN_DEV_AGENT_PROMPT,
+  SPAWN_REVIEW_TEAM_PROMPT,
 } from '../src/prompts/index.js';
 
 describe('Prompt Definitions', () => {
@@ -20,11 +20,15 @@ describe('Prompt Definitions', () => {
     it('should have required arguments', () => {
       expect(SPAWN_REVIEW_TEAM_PROMPT.arguments).toHaveLength(2);
 
-      const projectDir = SPAWN_REVIEW_TEAM_PROMPT.arguments.find(a => a.name === 'project_dir');
+      const projectDir = SPAWN_REVIEW_TEAM_PROMPT.arguments.find(
+        (a) => a.name === 'project_dir'
+      );
       expect(projectDir).toBeDefined();
       expect(projectDir!.required).toBe(true);
 
-      const reviewFocus = SPAWN_REVIEW_TEAM_PROMPT.arguments.find(a => a.name === 'review_focus');
+      const reviewFocus = SPAWN_REVIEW_TEAM_PROMPT.arguments.find(
+        (a) => a.name === 'review_focus'
+      );
       expect(reviewFocus).toBeDefined();
       expect(reviewFocus!.required).toBe(false);
     });
@@ -38,13 +42,19 @@ describe('Prompt Definitions', () => {
     it('should have required arguments', () => {
       expect(SPAWN_DEV_AGENT_PROMPT.arguments).toHaveLength(3);
 
-      const task = SPAWN_DEV_AGENT_PROMPT.arguments.find(a => a.name === 'task');
+      const task = SPAWN_DEV_AGENT_PROMPT.arguments.find(
+        (a) => a.name === 'task'
+      );
       expect(task!.required).toBe(true);
 
-      const projectDir = SPAWN_DEV_AGENT_PROMPT.arguments.find(a => a.name === 'project_dir');
+      const projectDir = SPAWN_DEV_AGENT_PROMPT.arguments.find(
+        (a) => a.name === 'project_dir'
+      );
       expect(projectDir!.required).toBe(true);
 
-      const agentType = SPAWN_DEV_AGENT_PROMPT.arguments.find(a => a.name === 'agent_type');
+      const agentType = SPAWN_DEV_AGENT_PROMPT.arguments.find(
+        (a) => a.name === 'agent_type'
+      );
       expect(agentType!.required).toBe(false);
     });
   });

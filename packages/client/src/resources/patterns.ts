@@ -1,20 +1,20 @@
-import { HttpClient } from '../http.js';
-import {
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type { HttpClient } from '../http.js';
+import type {
   Pattern,
-  PatternListResponse,
-  PatternValidation,
-  PatternExecuteResponse,
-  PatternMetricsResponse,
-  PatternCreateInput,
-  PatternUploadInput,
-  PatternUploadResponse,
   PatternBatchUploadInput,
   PatternBatchUploadResponse,
-  PatternVersionsResponse,
+  PatternCreateInput,
   PatternExecuteOptions,
+  PatternExecuteResponse,
+  PatternListResponse,
+  PatternMetricsResponse,
+  PatternUploadInput,
+  PatternUploadResponse,
+  PatternValidation,
+  PatternVersionsResponse,
 } from '../types/patterns.js';
-import * as fs from 'fs';
-import * as path from 'path';
 
 export class PatternsResource {
   constructor(private http: HttpClient) {}
@@ -64,7 +64,10 @@ export class PatternsResource {
   }
 
   /** Update an existing pattern (Enterprise) */
-  async update(name: string, updates: Partial<PatternCreateInput>): Promise<Pattern> {
+  async update(
+    name: string,
+    updates: Partial<PatternCreateInput>
+  ): Promise<Pattern> {
     return this.http.put<Pattern>(
       `/api/patterns/${encodeURIComponent(name)}`,
       updates
@@ -86,15 +89,23 @@ export class PatternsResource {
    *
    * Reads the file from disk and uploads it.
    */
-  async uploadFile(filePath: string, overwrite = false): Promise<PatternUploadResponse> {
+  async uploadFile(
+    filePath: string,
+    overwrite = false
+  ): Promise<PatternUploadResponse> {
     const content = fs.readFileSync(filePath, 'utf-8');
     const filename = path.basename(filePath);
     return this.upload({ filename, content, overwrite });
   }
 
   /** Batch upload multiple pattern files (Enterprise) */
-  async uploadBatch(input: PatternBatchUploadInput): Promise<PatternBatchUploadResponse> {
-    return this.http.post<PatternBatchUploadResponse>('/api/patterns/upload/batch', input);
+  async uploadBatch(
+    input: PatternBatchUploadInput
+  ): Promise<PatternBatchUploadResponse> {
+    return this.http.post<PatternBatchUploadResponse>(
+      '/api/patterns/upload/batch',
+      input
+    );
   }
 
   /** Get version history for a pattern (Enterprise) */

@@ -4,7 +4,11 @@ import type { SessionTranscript, Turn } from './types';
 
 function makeTurn(overrides: Partial<Turn> & { index: number }): Turn {
   return {
-    timing: { startedAt: '2025-01-01T00:00:00Z', endedAt: '2025-01-01T00:00:01Z', durationMs: 1000 },
+    timing: {
+      startedAt: '2025-01-01T00:00:00Z',
+      endedAt: '2025-01-01T00:00:01Z',
+      durationMs: 1000,
+    },
     input: '',
     rawOutput: '',
     cleanOutput: '',
@@ -15,7 +19,9 @@ function makeTurn(overrides: Partial<Turn> & { index: number }): Turn {
   };
 }
 
-function makeTranscript(overrides: Partial<SessionTranscript> = {}): SessionTranscript {
+function makeTranscript(
+  overrides: Partial<SessionTranscript> = {}
+): SessionTranscript {
   return {
     sessionId: 'test',
     startedAt: '2025-01-01T00:00:00Z',
@@ -55,7 +61,11 @@ describe('jaccardSimilarity', () => {
 describe('diffTranscripts', () => {
   it('returns score 0 for identical transcripts', () => {
     const turns = [
-      makeTurn({ index: 0, cleanOutput: 'hello world', finalState: 'completed' }),
+      makeTurn({
+        index: 0,
+        cleanOutput: 'hello world',
+        finalState: 'completed',
+      }),
     ];
     const baseline = makeTranscript({ turns, finalState: 'completed' });
     const candidate = makeTranscript({ turns, finalState: 'completed' });
@@ -131,7 +141,9 @@ describe('diffTranscripts', () => {
 
   it('detects output divergence', () => {
     const baseline = makeTranscript({
-      turns: [makeTurn({ index: 0, cleanOutput: 'alpha beta gamma delta epsilon' })],
+      turns: [
+        makeTurn({ index: 0, cleanOutput: 'alpha beta gamma delta epsilon' }),
+      ],
     });
     const candidate = makeTranscript({
       turns: [makeTurn({ index: 0, cleanOutput: 'one two three four five' })],

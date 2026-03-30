@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('BackupResource', () => {
@@ -7,7 +7,10 @@ describe('BackupResource', () => {
 
   beforeEach(() => {
     originalFetch = globalThis.fetch;
-    client = new ParallaxClient({ baseUrl: 'http://localhost:8081', apiKey: 'plx_admin' });
+    client = new ParallaxClient({
+      baseUrl: 'http://localhost:8081',
+      apiKey: 'plx_admin',
+    });
   });
 
   afterEach(() => {
@@ -45,7 +48,14 @@ describe('BackupResource', () => {
 
   it('should get backup info', async () => {
     mockFetch({
-      tables: { patterns: 5, agents: 10, users: 3, schedules: 2, triggers: 1, executions: 100 },
+      tables: {
+        patterns: 5,
+        agents: 10,
+        users: 3,
+        schedules: 2,
+        triggers: 1,
+        executions: 100,
+      },
       totalRecords: 21,
       executionsExcluded: true,
       executionCount: 100,
@@ -59,7 +69,8 @@ describe('BackupResource', () => {
 
   it('should restore from backup in merge mode', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      ok: true, status: 200,
+      ok: true,
+      status: 200,
       json: async () => ({
         message: 'Restore completed',
         mode: 'merge',
@@ -74,7 +85,14 @@ describe('BackupResource', () => {
     const backup = {
       version: '1.0',
       timestamp: '2026-03-14T10:00:00Z',
-      tables: { patterns: [], agents: [], users: [], schedules: [], triggers: [], licenses: [] },
+      tables: {
+        patterns: [],
+        agents: [],
+        users: [],
+        schedules: [],
+        triggers: [],
+        licenses: [],
+      },
       metadata: { totalRecords: 0 },
     };
 
@@ -87,7 +105,8 @@ describe('BackupResource', () => {
 
   it('should restore in replace mode', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      ok: true, status: 200,
+      ok: true,
+      status: 200,
       json: async () => ({
         message: 'Restore completed',
         mode: 'replace',
@@ -100,7 +119,14 @@ describe('BackupResource', () => {
     const backup = {
       version: '1.0',
       timestamp: '2026-03-14T10:00:00Z',
-      tables: { patterns: [], agents: [], users: [], schedules: [], triggers: [], licenses: [] },
+      tables: {
+        patterns: [],
+        agents: [],
+        users: [],
+        schedules: [],
+        triggers: [],
+        licenses: [],
+      },
       metadata: { totalRecords: 0 },
     };
 
@@ -118,14 +144,27 @@ describe('BackupResource', () => {
         version: '1.0',
         timestamp: '2026-03-14T10:00:00Z',
         records: 50,
-        tables: { patterns: 10, agents: 20, users: 5, schedules: 10, triggers: 5 },
+        tables: {
+          patterns: 10,
+          agents: 20,
+          users: 5,
+          schedules: 10,
+          triggers: 5,
+        },
       },
     });
 
     const backup = {
       version: '1.0',
       timestamp: '2026-03-14T10:00:00Z',
-      tables: { patterns: [], agents: [], users: [], schedules: [], triggers: [], licenses: [] },
+      tables: {
+        patterns: [],
+        agents: [],
+        users: [],
+        schedules: [],
+        triggers: [],
+        licenses: [],
+      },
       metadata: { totalRecords: 50 },
     };
 

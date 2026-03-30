@@ -3,8 +3,8 @@
  */
 
 import * as grpc from '@grpc/grpc-js';
+import type { Logger } from 'pino';
 import type { IAgentRegistry, ServiceRegistration } from '../../registry';
-import { Logger } from 'pino';
 
 export class RegistryServiceImpl {
   constructor(
@@ -19,7 +19,7 @@ export class RegistryServiceImpl {
       renew: this.renew.bind(this),
       listAgents: this.listAgents.bind(this),
       getAgent: this.getAgent.bind(this),
-      watch: this.watch.bind(this)
+      watch: this.watch.bind(this),
     };
   }
 
@@ -29,11 +29,11 @@ export class RegistryServiceImpl {
   ) {
     try {
       const { agent } = call.request;
-      
+
       if (!agent?.id) {
         callback({
           code: grpc.status.INVALID_ARGUMENT,
-          details: 'Missing agent registration'
+          details: 'Missing agent registration',
         });
         return;
       }
@@ -52,10 +52,10 @@ export class RegistryServiceImpl {
         health: {
           status: 'healthy',
           lastCheck: new Date(),
-          checkInterval: 30000
+          checkInterval: 30000,
         },
         registeredAt: new Date(),
-        ttl: agent.ttl?.seconds ? Number(agent.ttl.seconds) : 60
+        ttl: agent.ttl?.seconds ? Number(agent.ttl.seconds) : 60,
       };
 
       await this.registerAgent(serviceRegistration);
@@ -63,13 +63,13 @@ export class RegistryServiceImpl {
       callback(null, {
         success: true,
         message: 'Agent registered',
-        lease_id: `lease-${agent.id}`
+        lease_id: `lease-${agent.id}`,
       });
     } catch (error) {
       this.logger.error({ error }, 'Failed to register agent');
       callback({
         code: grpc.status.INTERNAL,
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -80,25 +80,25 @@ export class RegistryServiceImpl {
   ) {
     try {
       const agentId = call.request?.agent_id || call.request?.id;
-      
+
       if (!agentId) {
         callback({
           code: grpc.status.INVALID_ARGUMENT,
-          details: 'Missing agent id'
+          details: 'Missing agent id',
         });
         return;
       }
 
       this.logger.info({ agentId }, 'Unregistering agent via gRPC');
-      
+
       await this.unregisterAgent(agentId);
-      
+
       callback(null, { success: true, message: 'Agent unregistered' });
     } catch (error) {
       this.logger.error({ error }, 'Failed to unregister agent');
       callback({
         code: grpc.status.INTERNAL,
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -110,39 +110,39 @@ export class RegistryServiceImpl {
     try {
       const { lease_id } = call.request;
       const agentId = lease_id.replace('lease-', '');
-      
+
       this.logger.debug({ agentId }, 'Renewing agent lease via gRPC');
-      
+
       // Update last seen time
       const agent = await this.getAgentInternal(agentId);
       if (!agent) {
         callback({
           code: grpc.status.NOT_FOUND,
-          details: 'Agent not found'
+          details: 'Agent not found',
         });
         return;
       }
-      
+
       const updated: ServiceRegistration = {
         ...agent,
         health: {
           status: 'healthy',
           lastCheck: new Date(),
-          checkInterval: agent.health?.checkInterval || 30000
-        }
+          checkInterval: agent.health?.checkInterval || 30000,
+        },
       };
       await this.registerAgent(updated);
-      
+
       callback(null, {
         success: true,
         message: 'Lease renewed',
-        lease_id
+        lease_id,
       });
     } catch (error) {
       this.logger.error({ error }, 'Failed to renew lease');
       callback({
         code: grpc.status.INTERNAL,
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -153,18 +153,20 @@ export class RegistryServiceImpl {
   ) {
     try {
       const agents = await this.listAgentsInternal();
-      
+
       // Convert to proto format
       const protoAgents = agents
-        .filter(agent => this.matchesCapabilities(agent, call.request?.capabilities))
-        .map(agent => this.toAgentRegistration(agent));
-      
+        .filter((agent) =>
+          this.matchesCapabilities(agent, call.request?.capabilities)
+        )
+        .map((agent) => this.toAgentRegistration(agent));
+
       callback(null, { agents: protoAgents, total_count: protoAgents.length });
     } catch (error) {
       this.logger.error({ error }, 'Failed to list agents');
       callback({
         code: grpc.status.INTERNAL,
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -176,23 +178,23 @@ export class RegistryServiceImpl {
     try {
       const { agent_id } = call.request;
       const agent = await this.getAgentInternal(agent_id);
-      
+
       if (!agent) {
         callback({
           code: grpc.status.NOT_FOUND,
-          details: 'Agent not found'
+          details: 'Agent not found',
         });
         return;
       }
-      
+
       const protoAgent = this.toAgentRegistration(agent);
-      
+
       callback(null, protoAgent);
     } catch (error) {
       this.logger.error({ error }, 'Failed to get agent');
       callback({
         code: grpc.status.INTERNAL,
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -200,7 +202,10 @@ export class RegistryServiceImpl {
   async watch(call: grpc.ServerWritableStream<any, any>) {
     const { include_initial, capabilities } = call.request || {};
     let active = true;
-    let previous = new Map<string, { agent: ServiceRegistration; hash: string }>();
+    let previous = new Map<
+      string,
+      { agent: ServiceRegistration; hash: string }
+    >();
 
     let interval: NodeJS.Timeout | null = null;
     const stop = () => {
@@ -219,22 +224,26 @@ export class RegistryServiceImpl {
       call.write({
         type,
         agent: this.toAgentRegistration(agent),
-        timestamp: this.toTimestamp(new Date())
+        timestamp: this.toTimestamp(new Date()),
       });
     };
 
     const poll = async () => {
       if (!active) return;
-      const agents = (await this.listAgentsInternal())
-        .filter(agent => this.matchesCapabilities(agent, capabilities));
+      const agents = (await this.listAgentsInternal()).filter((agent) =>
+        this.matchesCapabilities(agent, capabilities)
+      );
 
-      const current = new Map<string, { agent: ServiceRegistration; hash: string }>();
+      const current = new Map<
+        string,
+        { agent: ServiceRegistration; hash: string }
+      >();
       for (const agent of agents) {
         const hash = JSON.stringify({
           name: agent.name,
           endpoint: agent.endpoint,
           capabilities: agent.metadata?.capabilities || [],
-          metadata: agent.metadata || {}
+          metadata: agent.metadata || {},
         });
         current.set(agent.id, { agent, hash });
       }
@@ -274,7 +283,9 @@ export class RegistryServiceImpl {
     return this.agentRegistry.listServices('agent');
   }
 
-  private async getAgentInternal(agentId: string): Promise<ServiceRegistration | null> {
+  private async getAgentInternal(
+    agentId: string
+  ): Promise<ServiceRegistration | null> {
     return this.agentRegistry.get(agentId);
   }
 
@@ -286,10 +297,13 @@ export class RegistryServiceImpl {
     await this.agentRegistry.unregister('agent', agentId);
   }
 
-  private matchesCapabilities(agent: ServiceRegistration, capabilities?: string[]): boolean {
+  private matchesCapabilities(
+    agent: ServiceRegistration,
+    capabilities?: string[]
+  ): boolean {
     if (!capabilities || capabilities.length === 0) return true;
     const agentCaps = agent.metadata?.capabilities || [];
-    return capabilities.every(cap => agentCaps.includes(cap));
+    return capabilities.every((cap) => agentCaps.includes(cap));
   }
 
   private toAgentRegistration(agent: ServiceRegistration): {
@@ -311,17 +325,17 @@ export class RegistryServiceImpl {
         version: metadata.version || '',
         region: metadata.region || '',
         labels: metadata.labels || {},
-        default_confidence: metadata.default_confidence || 0
+        default_confidence: metadata.default_confidence || 0,
       },
       registered_at: this.toTimestamp(agent.registeredAt || new Date()),
-      ttl: agent.ttl ? { seconds: agent.ttl, nanos: 0 } : undefined
+      ttl: agent.ttl ? { seconds: agent.ttl, nanos: 0 } : undefined,
     };
   }
 
   private toTimestamp(date: Date): { seconds: number; nanos: number } {
     return {
       seconds: Math.floor(date.getTime() / 1000),
-      nanos: 0
+      nanos: 0,
     };
   }
 }

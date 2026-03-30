@@ -21,10 +21,6 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { Logger } from 'pino';
-import type {
-  GatewayThreadEvent,
-  GatewayThreadStatusUpdate,
-} from '@parallaxai/sdk-typescript';
 
 export interface SwarmContext {
   executionId: string;
@@ -59,7 +55,7 @@ const TOOLS = [
     description:
       'Escalate a question or decision to the architect (lead agent). ' +
       'Use when you need guidance on architecture, approach, or coordination with other agents. ' +
-      'Returns the architect\'s response.',
+      "Returns the architect's response.",
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -69,7 +65,7 @@ const TOOLS = [
         },
         context: {
           type: 'string',
-          description: 'Relevant context about what you\'re working on',
+          description: "Relevant context about what you're working on",
         },
       },
       required: ['question'],
@@ -90,7 +86,14 @@ const TOOLS = [
         },
         category: {
           type: 'string',
-          enum: ['architecture', 'naming', 'library', 'api_design', 'testing', 'other'],
+          enum: [
+            'architecture',
+            'naming',
+            'library',
+            'api_design',
+            'testing',
+            'other',
+          ],
           description: 'Category of the decision',
         },
       },
@@ -110,7 +113,7 @@ const TOOLS = [
   {
     name: 'get_shared_context',
     description:
-      'Pull the full shared context for this execution — the architect\'s plan, ' +
+      "Pull the full shared context for this execution — the architect's plan, " +
       'all shared decisions, and sibling statuses. Use at the start of your work ' +
       'or when you need to catch up on what the swarm has decided.',
     inputSchema: {
@@ -177,7 +180,7 @@ export class SwarmCoordinationServer {
 
           case 'share_decision': {
             const decision = args.decision as string;
-            const category = args.category as string || 'other';
+            const category = (args.category as string) || 'other';
 
             this.logger.info(
               { threadId: this.context.threadId, decision, category },

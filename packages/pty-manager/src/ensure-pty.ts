@@ -15,9 +15,9 @@
  *    node-gyp rebuild as a last resort (with a 2-minute timeout)
  */
 
-import { existsSync, readdirSync, statSync, chmodSync } from 'fs';
-import { join, relative, dirname } from 'path';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
+import { chmodSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 
 const TAG = '[pty-preflight]';
 const platformArch = `${process.platform}-${process.arch}`;
@@ -51,7 +51,10 @@ function findNodePtyRoots(): string[] {
   ];
 
   for (const candidate of candidates) {
-    if (existsSync(join(candidate, 'package.json')) && !roots.includes(candidate)) {
+    if (
+      existsSync(join(candidate, 'package.json')) &&
+      !roots.includes(candidate)
+    ) {
       roots.push(candidate);
     }
   }
@@ -61,7 +64,9 @@ function findNodePtyRoots(): string[] {
 
 // ─── Find native binary ─────────────────────────────────────────────────────
 
-function findNativeBinary(nodePtyRoot: string): { type: string; path: string } | null {
+function findNativeBinary(
+  nodePtyRoot: string
+): { type: string; path: string } | null {
   // Prebuilt (node-pty >= 1.0)
   const prebuildPath = join(nodePtyRoot, 'prebuilds', platformArch, 'pty.node');
   if (existsSync(prebuildPath)) {
@@ -79,7 +84,10 @@ function findNativeBinary(nodePtyRoot: string): { type: string; path: string } |
 
 // ─── Fix spawn-helper permissions ────────────────────────────────────────────
 
-function fixSpawnHelpers(nodePtyRoot: string, log: (msg: string) => void): void {
+function fixSpawnHelpers(
+  nodePtyRoot: string,
+  log: (msg: string) => void
+): void {
   if (process.platform === 'win32') return;
 
   const prebuildsDir = join(nodePtyRoot, 'prebuilds');
@@ -93,7 +101,9 @@ function fixSpawnHelpers(nodePtyRoot: string, log: (msg: string) => void): void 
           const stat = statSync(helperPath);
           if ((stat.mode & 0o111) === 0) {
             chmodSync(helperPath, 0o755);
-            log(`${TAG} Fixed spawn-helper permissions: ${relative(nodePtyRoot, helperPath)}`);
+            log(
+              `${TAG} Fixed spawn-helper permissions: ${relative(nodePtyRoot, helperPath)}`
+            );
           }
         } catch {
           // Permission denied — not fatal
@@ -107,7 +117,10 @@ function fixSpawnHelpers(nodePtyRoot: string, log: (msg: string) => void): void 
 
 // ─── Rebuild if missing ──────────────────────────────────────────────────────
 
-function rebuildNodePty(nodePtyRoot: string, log: (msg: string) => void): boolean {
+function rebuildNodePty(
+  nodePtyRoot: string,
+  log: (msg: string) => void
+): boolean {
   log(`${TAG} No native binary found — attempting node-gyp rebuild...`);
   try {
     execSync('node-gyp rebuild', {
@@ -118,7 +131,9 @@ function rebuildNodePty(nodePtyRoot: string, log: (msg: string) => void): boolea
     log(`${TAG} node-gyp rebuild succeeded`);
     return true;
   } catch (err) {
-    log(`${TAG} node-gyp rebuild failed: ${err instanceof Error ? err.message : err}`);
+    log(
+      `${TAG} node-gyp rebuild failed: ${err instanceof Error ? err.message : err}`
+    );
     return false;
   }
 }
@@ -173,7 +188,7 @@ export function ensurePty(log: (msg: string) => void = console.log): void {
   if (!anyBinaryFound) {
     throw new Error(
       `${TAG} No node-pty native binary available for ${platformArch}. ` +
-      `Try: cd node_modules/node-pty && node-gyp rebuild`
+        `Try: cd node_modules/node-pty && node-gyp rebuild`
     );
   }
 }

@@ -34,7 +34,10 @@ export interface SpawnDevAgentArgs {
 }
 
 export function generateSpawnDevAgentPrompt(args: SpawnDevAgentArgs): {
-  messages: Array<{ role: 'user' | 'assistant'; content: { type: 'text'; text: string } }>;
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: { type: 'text'; text: string };
+  }>;
 } {
   const agentType = args.agent_type || 'claude';
 

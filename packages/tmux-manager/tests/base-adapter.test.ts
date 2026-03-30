@@ -1,22 +1,43 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { BaseCLIAdapter } from '../src/adapters/base-adapter.js';
-import type { SpawnConfig, ParsedOutput, LoginDetection } from '../src/types.js';
+import type {
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
+} from '../src/types.js';
 
 class TestAdapter extends BaseCLIAdapter {
   readonly adapterType = 'test';
   readonly displayName = 'Test';
 
-  getCommand(): string { return 'echo'; }
-  getArgs(_config: SpawnConfig): string[] { return []; }
-  getEnv(_config: SpawnConfig): Record<string, string> { return {}; }
-  detectLogin(_output: string): LoginDetection { return { required: false }; }
-  detectReady(output: string): boolean { return output.includes('ready>'); }
+  getCommand(): string {
+    return 'echo';
+  }
+  getArgs(_config: SpawnConfig): string[] {
+    return [];
+  }
+  getEnv(_config: SpawnConfig): Record<string, string> {
+    return {};
+  }
+  detectLogin(_output: string): LoginDetection {
+    return { required: false };
+  }
+  detectReady(output: string): boolean {
+    return output.includes('ready>');
+  }
   parseOutput(output: string): ParsedOutput | null {
     const cleaned = output.trim();
     if (!cleaned) return null;
-    return { type: 'response', content: cleaned, isComplete: true, isQuestion: false };
+    return {
+      type: 'response',
+      content: cleaned,
+      isComplete: true,
+      isQuestion: false,
+    };
   }
-  getPromptPattern(): RegExp { return /ready>\s*$/m; }
+  getPromptPattern(): RegExp {
+    return /ready>\s*$/m;
+  }
 }
 
 describe('BaseCLIAdapter', () => {
@@ -30,9 +51,15 @@ describe('BaseCLIAdapter', () => {
   });
 
   it('should detect blocking prompts', () => {
-    expect(adapter.detectBlockingPrompt('update available [y/n]').detected).toBe(true);
-    expect(adapter.detectBlockingPrompt('update available [y/n]').type).toBe('update');
-    expect(adapter.detectBlockingPrompt('nothing special here').detected).toBe(false);
+    expect(
+      adapter.detectBlockingPrompt('update available [y/n]').detected
+    ).toBe(true);
+    expect(adapter.detectBlockingPrompt('update available [y/n]').type).toBe(
+      'update'
+    );
+    expect(adapter.detectBlockingPrompt('nothing special here').detected).toBe(
+      false
+    );
   });
 
   it('should detect y/n prompts', () => {

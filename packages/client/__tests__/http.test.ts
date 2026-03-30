@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { HttpClient } from '../src/http';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxError } from '../src/error';
+import { HttpClient } from '../src/http';
 
 describe('HttpClient', () => {
   let originalFetch: typeof globalThis.fetch;
@@ -13,7 +13,9 @@ describe('HttpClient', () => {
     globalThis.fetch = originalFetch;
   });
 
-  function mockFetch(response: Partial<Response> & { json?: () => Promise<unknown> }) {
+  function mockFetch(
+    response: Partial<Response> & { json?: () => Promise<unknown> }
+  ) {
     const fn = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -99,7 +101,11 @@ describe('HttpClient', () => {
       const fetchMock = mockFetch({ json: async () => ({}) });
 
       const client = new HttpClient({ baseUrl: 'http://localhost:8081' });
-      await client.get('/api/executions', { limit: 10, offset: 0, status: 'completed' });
+      await client.get('/api/executions', {
+        limit: 10,
+        offset: 0,
+        status: 'completed',
+      });
 
       const [url] = fetchMock.mock.calls[0];
       expect(url).toContain('limit=10');
@@ -130,7 +136,7 @@ describe('HttpClient', () => {
       await client.get('/api/patterns');
 
       const [, init] = fetchMock.mock.calls[0];
-      expect(init.headers['Authorization']).toBe('plx_test123');
+      expect(init.headers.Authorization).toBe('plx_test123');
     });
 
     it('should send API key with ApiKey prefix for non-plx keys', async () => {
@@ -143,7 +149,7 @@ describe('HttpClient', () => {
       await client.get('/api/patterns');
 
       const [, init] = fetchMock.mock.calls[0];
-      expect(init.headers['Authorization']).toBe('ApiKey some-other-key');
+      expect(init.headers.Authorization).toBe('ApiKey some-other-key');
     });
 
     it('should send Bearer token', async () => {
@@ -156,7 +162,7 @@ describe('HttpClient', () => {
       await client.get('/api/patterns');
 
       const [, init] = fetchMock.mock.calls[0];
-      expect(init.headers['Authorization']).toBe('Bearer jwt-token-here');
+      expect(init.headers.Authorization).toBe('Bearer jwt-token-here');
     });
 
     it('should allow no auth for OSS mode', async () => {
@@ -166,7 +172,7 @@ describe('HttpClient', () => {
       await client.get('/api/patterns');
 
       const [, init] = fetchMock.mock.calls[0];
-      expect(init.headers['Authorization']).toBeUndefined();
+      expect(init.headers.Authorization).toBeUndefined();
     });
 
     it('should update access token via setAccessToken', async () => {
@@ -181,7 +187,7 @@ describe('HttpClient', () => {
       await client.get('/api/patterns');
 
       const [, init] = fetchMock.mock.calls[0];
-      expect(init.headers['Authorization']).toBe('Bearer new-token');
+      expect(init.headers.Authorization).toBe('Bearer new-token');
     });
   });
 
@@ -210,7 +216,9 @@ describe('HttpClient', () => {
 
       const client = new HttpClient({ baseUrl: 'http://localhost:8081' });
 
-      await expect(client.post('/api/patterns', {})).rejects.toThrow(ParallaxError);
+      await expect(client.post('/api/patterns', {})).rejects.toThrow(
+        ParallaxError
+      );
       await expect(client.post('/api/patterns', {})).rejects.toMatchObject({
         status: 400,
         message: 'Missing required field: name',
@@ -251,7 +259,9 @@ describe('HttpClient', () => {
 
       const client = new HttpClient({ baseUrl: 'http://localhost:8081' });
 
-      await expect(client.get('/api/patterns/nonexistent')).rejects.toMatchObject({
+      await expect(
+        client.get('/api/patterns/nonexistent')
+      ).rejects.toMatchObject({
         status: 404,
         isNotFound: true,
       });
@@ -276,7 +286,9 @@ describe('HttpClient', () => {
       mockFetch({
         ok: false,
         status: 500,
-        json: async () => { throw new Error('not json'); },
+        json: async () => {
+          throw new Error('not json');
+        },
       });
 
       const client = new HttpClient({
@@ -297,7 +309,11 @@ describe('HttpClient', () => {
       globalThis.fetch = vi.fn().mockImplementation(async () => {
         callCount++;
         if (callCount < 3) {
-          return { ok: false, status: 500, json: async () => ({ error: 'Server error' }) };
+          return {
+            ok: false,
+            status: 500,
+            json: async () => ({ error: 'Server error' }),
+          };
         }
         return { ok: true, status: 200, json: async () => ({ data: 'ok' }) };
       });
@@ -325,7 +341,9 @@ describe('HttpClient', () => {
         retries: 3,
       });
 
-      await expect(client.post('/api/patterns', {})).rejects.toThrow(ParallaxError);
+      await expect(client.post('/api/patterns', {})).rejects.toThrow(
+        ParallaxError
+      );
       expect(fetchMock).toHaveBeenCalledOnce();
     });
 

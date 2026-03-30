@@ -1,6 +1,10 @@
-import { Prisma } from '@prisma/client';
-import { randomUUID } from 'crypto';
-import { ThreadEvent, ThreadFilter, ThreadHandle } from '@parallaxai/runtime-interface';
+import { randomUUID } from 'node:crypto';
+import type {
+  ThreadEvent,
+  ThreadFilter,
+  ThreadHandle,
+} from '@parallaxai/runtime-interface';
+import type { Prisma } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 
 export interface PersistedThread {
@@ -51,7 +55,9 @@ function normalizeThreadRecord(record: any): PersistedThread {
     metadata: (record.metadata as Record<string, unknown> | null) ?? null,
     createdAt: new Date(record.createdAt),
     updatedAt: new Date(record.updatedAt),
-    lastActivityAt: record.lastActivityAt ? new Date(record.lastActivityAt) : null,
+    lastActivityAt: record.lastActivityAt
+      ? new Date(record.lastActivityAt)
+      : null,
   };
 }
 
@@ -67,10 +73,15 @@ function normalizeThreadEventRecord(record: any): PersistedThreadEvent {
 }
 
 export class ThreadRepository extends BaseRepository {
-  async upsert(thread: ThreadHandle, runtimeName?: string): Promise<PersistedThread> {
+  async upsert(
+    thread: ThreadHandle,
+    runtimeName?: string
+  ): Promise<PersistedThread> {
     return this.executeQuery(async () => {
       const createdAt = thread.createdAt.toISOString();
-      const lastActivityAt = thread.lastActivityAt ? thread.lastActivityAt.toISOString() : null;
+      const lastActivityAt = thread.lastActivityAt
+        ? thread.lastActivityAt.toISOString()
+        : null;
       const rows = await this.prisma.$queryRaw<PersistedThread[]>`
         INSERT INTO "threads" (
           "id",
@@ -173,7 +184,10 @@ export class ThreadRepository extends BaseRepository {
   async findAll(filter?: ThreadFilter): Promise<PersistedThread[]> {
     return this.executeQuery(async () => {
       const query = this.buildThreadListQuery(filter);
-      const rows = await this.prisma.$queryRawUnsafe<PersistedThread[]>(query.sql, ...query.params);
+      const rows = await this.prisma.$queryRawUnsafe<PersistedThread[]>(
+        query.sql,
+        ...query.params
+      );
       return rows.map(normalizeThreadRecord);
     }, 'ThreadRepository.findAll');
   }
@@ -261,7 +275,10 @@ export class ThreadRepository extends BaseRepository {
     }, 'ThreadRepository.recordRuntimeProjection');
   }
 
-  private buildThreadListQuery(filter?: ThreadFilter): { sql: string; params: unknown[] } {
+  private buildThreadListQuery(filter?: ThreadFilter): {
+    sql: string;
+    params: unknown[];
+  } {
     const where: string[] = [];
     const params: unknown[] = [];
 
@@ -276,7 +293,9 @@ export class ThreadRepository extends BaseRepository {
     }
 
     if (filter?.status) {
-      const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+      const statuses = Array.isArray(filter.status)
+        ? filter.status
+        : [filter.status];
       const placeholders = statuses.map((status) => {
         params.push(status);
         return `$${params.length}`;
@@ -285,7 +304,9 @@ export class ThreadRepository extends BaseRepository {
     }
 
     if (filter?.agentType) {
-      const agentTypes = Array.isArray(filter.agentType) ? filter.agentType : [filter.agentType];
+      const agentTypes = Array.isArray(filter.agentType)
+        ? filter.agentType
+        : [filter.agentType];
       const placeholders = agentTypes.map((agentType) => {
         params.push(agentType);
         return `$${params.length}`;

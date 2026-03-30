@@ -5,13 +5,13 @@
  */
 
 import { EventEmitter } from 'node:events';
-import {
+import type {
   AgentConfig,
   AgentHandle,
   AgentMessage,
+  AgentMetrics,
   AgentStatus,
   AgentType,
-  AgentMetrics,
   SpawnThreadInput,
   ThreadEvent,
   ThreadFilter,
@@ -23,15 +23,15 @@ import {
  * Options for stopping an agent
  */
 export interface StopOptions {
-  force?: boolean;        // Force kill without graceful shutdown
-  timeout?: number;       // Timeout for graceful shutdown in ms
+  force?: boolean; // Force kill without graceful shutdown
+  timeout?: number; // Timeout for graceful shutdown in ms
 }
 
 /**
  * Options for sending a message to an agent
  */
 export interface SendOptions {
-  timeout?: number;       // Timeout waiting for response in ms
+  timeout?: number; // Timeout waiting for response in ms
   expectResponse?: boolean; // Whether to wait for a response
 }
 
@@ -39,9 +39,9 @@ export interface SendOptions {
  * Options for retrieving logs
  */
 export interface LogOptions {
-  tail?: number;          // Number of lines from end
-  follow?: boolean;       // Stream new logs
-  since?: Date;           // Logs since this time
+  tail?: number; // Number of lines from end
+  follow?: boolean; // Stream new logs
+  since?: Date; // Logs since this time
 }
 
 /**
@@ -120,7 +120,11 @@ export interface RuntimeProvider {
   /**
    * Send a message/task to an agent
    */
-  send(agentId: string, message: string, options?: SendOptions): Promise<AgentMessage | void>;
+  send(
+    agentId: string,
+    message: string,
+    options?: SendOptions
+  ): Promise<AgentMessage | undefined>;
 
   /**
    * Subscribe to messages from an agent
@@ -190,16 +194,33 @@ export interface ThreadRuntimeProvider {
 /**
  * Extended RuntimeProvider with event emitter capabilities
  */
-export interface RuntimeProviderWithEvents extends RuntimeProvider, EventEmitter {
+export interface RuntimeProviderWithEvents
+  extends RuntimeProvider,
+    EventEmitter {
   // Event handlers
   on(event: 'agent_started', listener: (agent: AgentHandle) => void): this;
   on(event: 'agent_ready', listener: (agent: AgentHandle) => void): this;
-  on(event: 'agent_stopped', listener: (agent: AgentHandle, reason: string) => void): this;
-  on(event: 'agent_error', listener: (agent: AgentHandle, error: string) => void): this;
-  on(event: 'login_required', listener: (agent: AgentHandle, loginUrl?: string) => void): this;
+  on(
+    event: 'agent_stopped',
+    listener: (agent: AgentHandle, reason: string) => void
+  ): this;
+  on(
+    event: 'agent_error',
+    listener: (agent: AgentHandle, error: string) => void
+  ): this;
+  on(
+    event: 'login_required',
+    listener: (agent: AgentHandle, loginUrl?: string) => void
+  ): this;
   on(event: 'message', listener: (message: AgentMessage) => void): this;
-  on(event: 'question', listener: (agent: AgentHandle, question: string) => void): this;
-  on(event: 'thread_event', listener: (thread: ThreadHandle, event: ThreadEvent) => void): this;
+  on(
+    event: 'question',
+    listener: (agent: AgentHandle, question: string) => void
+  ): this;
+  on(
+    event: 'thread_event',
+    listener: (thread: ThreadHandle, event: ThreadEvent) => void
+  ): this;
 
   emit(event: 'agent_started', agent: AgentHandle): boolean;
   emit(event: 'agent_ready', agent: AgentHandle): boolean;
@@ -208,13 +229,20 @@ export interface RuntimeProviderWithEvents extends RuntimeProvider, EventEmitter
   emit(event: 'login_required', agent: AgentHandle, loginUrl?: string): boolean;
   emit(event: 'message', message: AgentMessage): boolean;
   emit(event: 'question', agent: AgentHandle, question: string): boolean;
-  emit(event: 'thread_event', thread: ThreadHandle, threadEvent: ThreadEvent): boolean;
+  emit(
+    event: 'thread_event',
+    thread: ThreadHandle,
+    threadEvent: ThreadEvent
+  ): boolean;
 }
 
 /**
  * Abstract base class for runtime providers
  */
-export abstract class BaseRuntimeProvider extends EventEmitter implements RuntimeProvider {
+export abstract class BaseRuntimeProvider
+  extends EventEmitter
+  implements RuntimeProvider
+{
   abstract readonly name: string;
   abstract readonly type: 'local' | 'docker' | 'kubernetes';
 
@@ -228,7 +256,11 @@ export abstract class BaseRuntimeProvider extends EventEmitter implements Runtim
   abstract get(agentId: string): Promise<AgentHandle | null>;
   abstract list(filter?: AgentFilter): Promise<AgentHandle[]>;
 
-  abstract send(agentId: string, message: string, options?: SendOptions): Promise<AgentMessage | void>;
+  abstract send(
+    agentId: string,
+    message: string,
+    options?: SendOptions
+  ): Promise<AgentMessage | undefined>;
   abstract subscribe(agentId: string): AsyncIterable<AgentMessage>;
 
   abstract logs(agentId: string, options?: LogOptions): AsyncIterable<string>;

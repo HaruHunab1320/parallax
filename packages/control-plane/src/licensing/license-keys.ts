@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 /**
  * Ed25519 public key for license verification (base64-encoded SPKI DER).

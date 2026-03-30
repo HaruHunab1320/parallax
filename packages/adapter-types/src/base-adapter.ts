@@ -4,14 +4,14 @@
  * Abstract base class with common functionality for CLI adapters.
  */
 
-import { spawn } from 'child_process';
+import { spawn } from 'node:child_process';
 import type { CLIAdapter } from './adapter-interface.js';
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from './types.js';
 
 /**
@@ -44,7 +44,11 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
   /**
    * Default exit detection - look for common exit patterns
    */
-  detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     if (output.includes('Process exited with code')) {
       const match = output.match(/Process exited with code (\d+)/);
       return {
@@ -53,7 +57,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
       };
     }
 
-    if (output.includes('Command not found') || output.includes('command not found')) {
+    if (
+      output.includes('Command not found') ||
+      output.includes('command not found')
+    ) {
       return {
         exited: true,
         code: 127,
@@ -72,7 +79,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     let stripped = this.stripAnsi(output);
 
     // Strip TUI box-drawing/chrome characters so patterns work for ink/React CLIs
-    stripped = stripped.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⏺←→↑↓]/g, ' ');
+    stripped = stripped.replace(
+      /[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⏺←→↑↓]/g,
+      ' '
+    );
     stripped = stripped.replace(/ {2,}/g, ' ');
 
     // Check for login/auth first (highest priority)
@@ -89,7 +99,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for common update prompts
-    if (/update (available|now|ready)/i.test(stripped) && /\[y\/n\]/i.test(stripped)) {
+    if (
+      /update (available|now|ready)/i.test(stripped) &&
+      /\[y\/n\]/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'update',
@@ -102,7 +115,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for terms of service / license acceptance
-    if (/accept.*(terms|license|agreement)/i.test(stripped) && /\[y\/n\]/i.test(stripped)) {
+    if (
+      /accept.*(terms|license|agreement)/i.test(stripped) &&
+      /\[y\/n\]/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'tos',
@@ -125,7 +141,9 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for project/workspace selection
-    if (/choose.*(project|workspace)|select.*(project|workspace)/i.test(stripped)) {
+    if (
+      /choose.*(project|workspace)|select.*(project|workspace)/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'project_select',
@@ -136,7 +154,11 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for generic y/n prompts
-    if (/\[y\/n\]|\(y\/n\)|\[Y\/n\]|\[y\/N\]|\(Y\)es\/\(N\)o|Yes\/No\??/i.test(stripped)) {
+    if (
+      /\[y\/n\]|\(y\/n\)|\[Y\/n\]|\[y\/N\]|\(Y\)es\/\(N\)o|Yes\/No\??/i.test(
+        stripped
+      )
+    ) {
       return {
         detected: true,
         type: 'unknown',
@@ -148,7 +170,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for numbered menu prompts
-    if (/^\s*[›>]?\s*[1-9]\.\s+\w+/m.test(stripped) && /\?\s*$/m.test(stripped)) {
+    if (
+      /^\s*[›>]?\s*[1-9]\.\s+\w+/m.test(stripped) &&
+      /\?\s*$/m.test(stripped)
+    ) {
       const optionMatches = stripped.match(/[›>]?\s*([1-9])\.\s+([^\n]+)/g);
       const options = optionMatches
         ? optionMatches.map((m) => m.replace(/^[›>\s]*/, '').trim())
@@ -165,7 +190,11 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for "Enter to confirm" style prompts
-    if (/press enter|hit enter|enter to (confirm|continue|proceed)|press return/i.test(stripped)) {
+    if (
+      /press enter|hit enter|enter to (confirm|continue|proceed)|press return/i.test(
+        stripped
+      )
+    ) {
       return {
         detected: true,
         type: 'unknown',
@@ -177,7 +206,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for trust/permission prompts
-    if (/trust|allow|permission|grant access/i.test(stripped) && /\?\s*$/m.test(stripped)) {
+    if (
+      /trust|allow|permission|grant access/i.test(stripped) &&
+      /\?\s*$/m.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'permission',
@@ -217,13 +249,21 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
    */
   formatInput(message: string): string {
     // eslint-disable-next-line no-control-regex
-    return message.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\\u001b\[[0-9;]*[a-zA-Z]/g, '').replace(/\n+/g, ' ').trim();
+    return message
+      .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
+      .replace(/\\u001b\[[0-9;]*[a-zA-Z]/g, '')
+      .replace(/\n+/g, ' ')
+      .trim();
   }
 
   /**
    * Validate CLI installation by running --version or --help
    */
-  async validateInstallation(): Promise<{ installed: boolean; version?: string; error?: string }> {
+  async validateInstallation(): Promise<{
+    installed: boolean;
+    version?: string;
+    error?: string;
+  }> {
     return new Promise((resolve) => {
       const command = this.getCommand();
 
@@ -299,9 +339,15 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     // Replace cursor-forward sequences with spaces before stripping
     const withSpaces = str.replace(/\x1b\[\d*C/g, ' ');
     // Strip OSC sequences
-    const withoutOsc = withSpaces.replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '');
+    const withoutOsc = withSpaces.replace(
+      /\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g,
+      ''
+    );
     // Strip DCS sequences
-    const withoutDcs = withoutOsc.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
+    const withoutDcs = withoutOsc.replace(
+      /\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g,
+      ''
+    );
     // eslint-disable-next-line no-control-regex
     return withoutDcs.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
   }

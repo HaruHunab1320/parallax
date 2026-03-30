@@ -4,11 +4,14 @@
  * REST API for workspace and credential management.
  */
 
-import { Router, Request, Response } from 'express';
-import { Logger } from 'pino';
-import { WorkspaceService } from 'git-workspace-service';
-import type { WorkspaceConfig, WorkspaceFinalization } from 'git-workspace-service';
-import { CredentialService } from './credential-service';
+import { type Request, type Response, Router } from 'express';
+import type {
+  WorkspaceConfig,
+  WorkspaceFinalization,
+  WorkspaceService,
+} from 'git-workspace-service';
+import type { Logger } from 'pino';
+import type { CredentialService } from './credential-service';
 
 export interface WorkspaceApiConfig {
   workspaceService: WorkspaceService;
@@ -71,7 +74,10 @@ export function createWorkspaceRouter(config: WorkspaceApiConfig): Router {
     } catch (error) {
       logger.error({ error }, 'Failed to provision workspace');
       res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to provision workspace',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to provision workspace',
       });
     }
   });
@@ -129,28 +135,37 @@ export function createWorkspaceRouter(config: WorkspaceApiConfig): Router {
    * POST /api/workspaces/:id/finalize
    * Finalize a workspace (push, create PR, cleanup)
    */
-  router.post('/workspaces/:id/finalize', async (req: Request, res: Response) => {
-    try {
-      const finalization: WorkspaceFinalization = {
-        push: req.body.push !== false,
-        createPr: req.body.createPr === true,
-        pr: req.body.pr,
-        cleanup: req.body.cleanup !== false,
-      };
+  router.post(
+    '/workspaces/:id/finalize',
+    async (req: Request, res: Response) => {
+      try {
+        const finalization: WorkspaceFinalization = {
+          push: req.body.push !== false,
+          createPr: req.body.createPr === true,
+          pr: req.body.pr,
+          cleanup: req.body.cleanup !== false,
+        };
 
-      const pr = await workspaceService.finalize(req.params.id, finalization);
+        const pr = await workspaceService.finalize(req.params.id, finalization);
 
-      res.json({
-        success: true,
-        pullRequest: pr || null,
-      });
-    } catch (error) {
-      logger.error({ workspaceId: req.params.id, error }, 'Failed to finalize workspace');
-      res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to finalize workspace',
-      });
+        res.json({
+          success: true,
+          pullRequest: pr || null,
+        });
+      } catch (error) {
+        logger.error(
+          { workspaceId: req.params.id, error },
+          'Failed to finalize workspace'
+        );
+        res.status(500).json({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to finalize workspace',
+        });
+      }
     }
-  });
+  );
 
   /**
    * DELETE /api/workspaces/:id
@@ -161,9 +176,15 @@ export function createWorkspaceRouter(config: WorkspaceApiConfig): Router {
       await workspaceService.cleanup(req.params.id);
       res.status(204).send();
     } catch (error) {
-      logger.error({ workspaceId: req.params.id, error }, 'Failed to cleanup workspace');
+      logger.error(
+        { workspaceId: req.params.id, error },
+        'Failed to cleanup workspace'
+      );
       res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to cleanup workspace',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to cleanup workspace',
       });
     }
   });
@@ -178,7 +199,8 @@ export function createWorkspaceRouter(config: WorkspaceApiConfig): Router {
    */
   router.post('/credentials/git', async (req: Request, res: Response) => {
     try {
-      const { repo, access, executionId, taskId, agentId, reason, ttlSeconds } = req.body;
+      const { repo, access, executionId, taskId, agentId, reason, ttlSeconds } =
+        req.body;
 
       if (!repo) {
         res.status(400).json({ error: 'repo is required' });
@@ -213,7 +235,8 @@ export function createWorkspaceRouter(config: WorkspaceApiConfig): Router {
     } catch (error) {
       logger.error({ error }, 'Failed to get credentials');
       res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to get credentials',
+        error:
+          error instanceof Error ? error.message : 'Failed to get credentials',
       });
     }
   });
@@ -227,9 +250,15 @@ export function createWorkspaceRouter(config: WorkspaceApiConfig): Router {
       await credentialService.revokeCredential(req.params.id);
       res.status(204).send();
     } catch (error) {
-      logger.error({ credentialId: req.params.id, error }, 'Failed to revoke credential');
+      logger.error(
+        { credentialId: req.params.id, error },
+        'Failed to revoke credential'
+      );
       res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to revoke credential',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to revoke credential',
       });
     }
   });

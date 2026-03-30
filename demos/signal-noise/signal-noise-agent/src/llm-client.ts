@@ -37,7 +37,7 @@ export async function generateResponse(
 
   // Convert message history to Gemini format
   const history = request.messages.slice(0, -1).map((m) => ({
-    role: m.role === 'assistant' ? 'model' as const : 'user' as const,
+    role: m.role === 'assistant' ? ('model' as const) : ('user' as const),
     parts: [{ text: m.content }],
   }));
 

@@ -8,9 +8,9 @@
  * Uses fake timers to verify stall timer resets.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PTYSession } from '../src/pty-session';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CLIAdapter } from '../src/adapters/adapter-interface';
+import { PTYSession } from '../src/pty-session';
 
 function createMockAdapter(): CLIAdapter {
   return {
@@ -63,8 +63,8 @@ function createSessionWithStatus(status: string): PTYSession {
     createMockAdapter(),
     { name: 'test', type: 'test' },
     silentLogger as never,
-    true,   // stall detection enabled
-    5000,   // stall timeout
+    true, // stall detection enabled
+    5000 // stall timeout
   );
 
   const internals = getInternals(session);
@@ -97,7 +97,9 @@ describe('notifyHookEvent', () => {
 
       session.notifyHookEvent('tool_running');
 
-      expect(internals._lastActivityAt.getTime()).toBeGreaterThan(past.getTime());
+      expect(internals._lastActivityAt.getTime()).toBeGreaterThan(
+        past.getTime()
+      );
     });
 
     it('resets stall timer when content has changed', () => {
@@ -228,7 +230,9 @@ describe('notifyHookEvent', () => {
 
       session.notifyHookEvent('permission_approved');
 
-      expect(internals._lastActivityAt.getTime()).toBeGreaterThan(past.getTime());
+      expect(internals._lastActivityAt.getTime()).toBeGreaterThan(
+        past.getTime()
+      );
     });
 
     it('resets stall timer when content has changed', () => {
@@ -265,7 +269,9 @@ describe('notifyHookEvent', () => {
 
       session.notifyHookEvent('some_unknown_event');
 
-      expect(internals._lastActivityAt.getTime()).toBeGreaterThan(past.getTime());
+      expect(internals._lastActivityAt.getTime()).toBeGreaterThan(
+        past.getTime()
+      );
     });
 
     it('resets stall timer when content has changed', () => {

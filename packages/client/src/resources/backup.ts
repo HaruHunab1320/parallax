@@ -1,5 +1,5 @@
-import { HttpClient } from '../http.js';
-import {
+import type { HttpClient } from '../http.js';
+import type {
   BackupData,
   BackupInfoResponse,
   RestoreResponse,

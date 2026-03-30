@@ -1,20 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  generateApprovalConfig,
-  generateClaudeApprovalConfig,
-  generateGeminiApprovalConfig,
-  generateCodexApprovalConfig,
-  generateAiderApprovalConfig,
-  generateHermesApprovalConfig,
-  listPresets,
-  getPresetDefinition,
-  TOOL_CATEGORIES,
-  PRESET_DEFINITIONS,
-  CLAUDE_TOOL_CATEGORIES,
-  GEMINI_TOOL_CATEGORIES,
-  CODEX_TOOL_CATEGORIES,
   AIDER_COMMAND_CATEGORIES,
   type ApprovalPreset,
+  CLAUDE_TOOL_CATEGORIES,
+  CODEX_TOOL_CATEGORIES,
+  GEMINI_TOOL_CATEGORIES,
+  generateAiderApprovalConfig,
+  generateApprovalConfig,
+  generateClaudeApprovalConfig,
+  generateCodexApprovalConfig,
+  generateGeminiApprovalConfig,
+  generateHermesApprovalConfig,
+  getPresetDefinition,
+  listPresets,
+  PRESET_DEFINITIONS,
+  TOOL_CATEGORIES,
   type ToolCategory,
 } from '../src/approval-presets';
 
@@ -22,9 +22,20 @@ import {
 // Constants and helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ALL_PRESETS: ApprovalPreset[] = ['readonly', 'standard', 'permissive', 'autonomous'];
+const ALL_PRESETS: ApprovalPreset[] = [
+  'readonly',
+  'standard',
+  'permissive',
+  'autonomous',
+];
 const ALL_CATEGORIES: ToolCategory[] = [
-  'file_read', 'file_write', 'shell', 'web', 'agent', 'planning', 'user_interaction',
+  'file_read',
+  'file_write',
+  'shell',
+  'web',
+  'agent',
+  'planning',
+  'user_interaction',
 ];
 
 describe('Approval Presets', () => {
@@ -36,7 +47,7 @@ describe('Approval Presets', () => {
     it('returns all 4 presets', () => {
       const presets = listPresets();
       expect(presets).toHaveLength(4);
-      expect(presets.map(p => p.preset)).toEqual(ALL_PRESETS);
+      expect(presets.map((p) => p.preset)).toEqual(ALL_PRESETS);
     });
 
     it('returns a copy (not the original array)', () => {
@@ -56,12 +67,18 @@ describe('Approval Presets', () => {
     });
 
     it('throws for unknown preset', () => {
-      expect(() => getPresetDefinition('nonexistent' as ApprovalPreset)).toThrow('Unknown preset');
+      expect(() =>
+        getPresetDefinition('nonexistent' as ApprovalPreset)
+      ).toThrow('Unknown preset');
     });
 
     it('every category in autoApprove/requireApproval/blocked is a valid ToolCategory', () => {
       for (const def of PRESET_DEFINITIONS) {
-        for (const cat of [...def.autoApprove, ...def.requireApproval, ...def.blocked]) {
+        for (const cat of [
+          ...def.autoApprove,
+          ...def.requireApproval,
+          ...def.blocked,
+        ]) {
           expect(ALL_CATEGORIES).toContain(cat);
         }
       }
@@ -75,7 +92,9 @@ describe('Approval Presets', () => {
   describe('TOOL_CATEGORIES', () => {
     it('defines all 7 categories', () => {
       expect(TOOL_CATEGORIES).toHaveLength(7);
-      expect(TOOL_CATEGORIES.map(t => t.category).sort()).toEqual([...ALL_CATEGORIES].sort());
+      expect(TOOL_CATEGORIES.map((t) => t.category).sort()).toEqual(
+        [...ALL_CATEGORIES].sort()
+      );
     });
   });
 
@@ -132,7 +151,9 @@ describe('Approval Presets', () => {
     });
 
     it('throws for unknown adapter type', () => {
-      expect(() => generateApprovalConfig('unknown' as never, 'standard')).toThrow('Unknown adapter type');
+      expect(() =>
+        generateApprovalConfig('unknown' as never, 'standard')
+      ).toThrow('Unknown adapter type');
     });
   });
 
@@ -181,7 +202,9 @@ describe('Approval Presets', () => {
 
     it('writes to .claude/settings.json', () => {
       const config = generateClaudeApprovalConfig('standard');
-      expect(config.workspaceFiles[0].relativePath).toBe('.claude/settings.json');
+      expect(config.workspaceFiles[0].relativePath).toBe(
+        '.claude/settings.json'
+      );
       expect(config.workspaceFiles[0].format).toBe('json');
     });
   });
@@ -224,7 +247,9 @@ describe('Approval Presets', () => {
 
     it('writes to .gemini/settings.json', () => {
       const config = generateGeminiApprovalConfig('standard');
-      expect(config.workspaceFiles[0].relativePath).toBe('.gemini/settings.json');
+      expect(config.workspaceFiles[0].relativePath).toBe(
+        '.gemini/settings.json'
+      );
       expect(config.workspaceFiles[0].format).toBe('json');
     });
   });
@@ -355,7 +380,12 @@ describe('Approval Presets', () => {
 
 describe('generateHermesApprovalConfig()', () => {
   it('returns a no-op translation for all presets', () => {
-    for (const preset of ['readonly', 'standard', 'permissive', 'autonomous'] as const) {
+    for (const preset of [
+      'readonly',
+      'standard',
+      'permissive',
+      'autonomous',
+    ] as const) {
       const config = generateHermesApprovalConfig(preset);
       expect(config.preset).toBe(preset);
       expect(config.cliFlags).toEqual([]);

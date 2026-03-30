@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { CertificateManager } from './certificate-manager';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import pino from 'pino';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { CertificateManager } from './certificate-manager';
 
 const logger = pino({ level: 'silent' });
 
@@ -57,7 +57,10 @@ describe('CertificateManager', () => {
     });
 
     it('should throw if CA not initialized', async () => {
-      const freshManager = new CertificateManager(certsDir + '-nonexistent', logger);
+      const freshManager = new CertificateManager(
+        `${certsDir}-nonexistent`,
+        logger
+      );
       await expect(
         freshManager.generateCertificate({ commonName: 'test' })
       ).rejects.toThrow('CA not initialized');
@@ -98,7 +101,9 @@ describe('CertificateManager', () => {
       cert.serialNumber = '99';
       cert.validity.notBefore = new Date();
       cert.validity.notAfter = new Date();
-      cert.validity.notAfter.setFullYear(cert.validity.notAfter.getFullYear() + 1);
+      cert.validity.notAfter.setFullYear(
+        cert.validity.notAfter.getFullYear() + 1
+      );
       const attrs = [{ name: 'commonName', value: 'Rogue CA' }];
       cert.setSubject(attrs);
       cert.setIssuer(attrs);
@@ -112,7 +117,9 @@ describe('CertificateManager', () => {
     it('should throw when CA not initialized', async () => {
       const freshManager = new CertificateManager('/tmp/nonexistent', logger);
       await expect(
-        freshManager.verifyCertificate('-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----')
+        freshManager.verifyCertificate(
+          '-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----'
+        )
       ).rejects.toThrow('CA not initialized');
     });
   });

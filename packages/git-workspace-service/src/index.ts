@@ -4,120 +4,120 @@
  * Git workspace provisioning and credential management service.
  */
 
-// Main services
-export { WorkspaceService } from './workspace-service';
-export type { WorkspaceServiceOptions, WorkspaceServiceLogger } from './workspace-service';
-
+export type {
+  CredentialGrantStore,
+  CredentialServiceLogger,
+  CredentialServiceOptions,
+} from './credential-service';
 export { CredentialService } from './credential-service';
 export type {
-  CredentialServiceOptions,
-  CredentialServiceLogger,
-  CredentialGrantStore,
-} from './credential-service';
-
+  OAuthDeviceFlowConfig,
+  OAuthDeviceFlowLogger,
+  TokenStoreOptions,
+} from './oauth';
+// OAuth
+export {
+  FileTokenStore,
+  MemoryTokenStore,
+  OAuthDeviceFlow,
+  TokenStore,
+} from './oauth';
+export type {
+  GitHubPatClientLogger,
+  GitHubPatClientOptions,
+} from './providers/github-pat-client';
+export { GitHubPatClient } from './providers/github-pat-client';
+export type {
+  GitHubProviderConfig,
+  GitHubProviderLogger,
+} from './providers/github-provider';
 // Providers
 export { GitHubProvider } from './providers/github-provider';
-export type { GitHubProviderConfig, GitHubProviderLogger } from './providers/github-provider';
-
-export { GitHubPatClient } from './providers/github-pat-client';
-export type { GitHubPatClientOptions, GitHubPatClientLogger } from './providers/github-pat-client';
-
-// OAuth
-export { OAuthDeviceFlow, TokenStore, FileTokenStore, MemoryTokenStore } from './oauth';
-export type { OAuthDeviceFlowConfig, OAuthDeviceFlowLogger, TokenStoreOptions } from './oauth';
-
-// Utilities
-export {
-  generateBranchName,
-  parseBranchName,
-  isManagedBranch,
-  filterBranchesByExecution,
-  createBranchInfo,
-  generateSlug,
-  DEFAULT_BRANCH_PREFIX,
-} from './utils/branch-naming';
-export type { BranchNamingOptions } from './utils/branch-naming';
-
-export {
-  configureCredentialHelper,
-  cleanupCredentialFiles,
-  updateCredentials,
-  getGitCredentialConfig,
-  createNodeCredentialHelperScript,
-  createShellCredentialHelperScript,
-  outputCredentials,
-} from './utils/git-credential-helper';
-export type { CredentialHelperContext } from './utils/git-credential-helper';
-
+// Types
+export type {
+  AgentPermissions,
+  AuthPrompt,
+  AuthPromptEmitter,
+  AuthResult,
+  // Branch
+  BranchConfig,
+  BranchInfo,
+  BranchStrategy,
+  CompletionHook,
+  CreateIssueOptions,
+  CredentialContext,
+  CredentialGrant,
+  // Credential service config
+  CredentialServiceConfig,
+  CredentialType,
+  DeviceCodeResponse,
+  GitCredential,
+  GitCredentialRequest,
+  // GitHub App
+  GitHubAppConfig,
+  GitHubAppInstallation,
+  // Git providers
+  GitProvider,
+  GitProviderAdapter,
+  IssueComment,
+  IssueCommentOptions,
+  IssueInfo,
+  // Issues
+  IssueState,
+  OAuthToken,
+  // Permissions & OAuth
+  PermissionLevel,
+  // Pull requests
+  PullRequestInfo,
+  RepositoryScope,
+  SshCredentials,
+  TokenCredentials,
+  // Credentials
+  UserProvidedCredentials,
+  Workspace,
+  WorkspaceConfig,
+  WorkspaceEvent,
+  WorkspaceEventHandler,
+  // Events
+  WorkspaceEventType,
+  WorkspaceFinalization,
+  WorkspacePhase,
+  WorkspaceProgress,
+  WorkspaceServiceConfig,
+  // Workspace
+  WorkspaceStatus,
+  // Workspace strategy & progress
+  WorkspaceStrategy,
+} from './types';
 // Permission defaults
 export {
   DEFAULT_AGENT_PERMISSIONS,
   READONLY_AGENT_PERMISSIONS,
 } from './types';
-
-// Types
+export type { BranchNamingOptions } from './utils/branch-naming';
+// Utilities
+export {
+  createBranchInfo,
+  DEFAULT_BRANCH_PREFIX,
+  filterBranchesByExecution,
+  generateBranchName,
+  generateSlug,
+  isManagedBranch,
+  parseBranchName,
+} from './utils/branch-naming';
+export type { CredentialHelperContext } from './utils/git-credential-helper';
+export {
+  cleanupCredentialFiles,
+  configureCredentialHelper,
+  createNodeCredentialHelperScript,
+  createShellCredentialHelperScript,
+  getGitCredentialConfig,
+  outputCredentials,
+  updateCredentials,
+} from './utils/git-credential-helper';
 export type {
-  // Git providers
-  GitProvider,
-  CredentialType,
-  GitProviderAdapter,
-  TokenCredentials,
-  SshCredentials,
-
-  // Branch
-  BranchConfig,
-  BranchInfo,
-  BranchStrategy,
-
-  // Workspace strategy & progress
-  WorkspaceStrategy,
-  WorkspacePhase,
-  WorkspaceProgress,
-  CompletionHook,
-
-  // Credentials
-  UserProvidedCredentials,
-  CredentialContext,
-  GitCredentialRequest,
-  GitCredential,
-  CredentialGrant,
-
-  // Workspace
-  WorkspaceStatus,
-  WorkspaceConfig,
-  Workspace,
-  WorkspaceFinalization,
-  WorkspaceServiceConfig,
-
-  // Pull requests
-  PullRequestInfo,
-
-  // Issues
-  IssueState,
-  IssueInfo,
-  CreateIssueOptions,
-  IssueComment,
-  IssueCommentOptions,
-
-  // Permissions & OAuth
-  PermissionLevel,
-  RepositoryScope,
-  AgentPermissions,
-  OAuthToken,
-  DeviceCodeResponse,
-  AuthPrompt,
-  AuthResult,
-  AuthPromptEmitter,
-
-  // GitHub App
-  GitHubAppConfig,
-  GitHubAppInstallation,
-
-  // Credential service config
-  CredentialServiceConfig,
-
-  // Events
-  WorkspaceEventType,
-  WorkspaceEvent,
-  WorkspaceEventHandler,
-} from './types';
+  WorkspaceServiceLogger,
+  WorkspaceServiceOptions,
+} from './workspace-service';
+// Main services
+export { WorkspaceService } from './workspace-service';

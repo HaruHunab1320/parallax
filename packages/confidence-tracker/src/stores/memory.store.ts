@@ -1,9 +1,9 @@
-import { EventEmitter } from 'events';
-import {
-  ConfidenceStore,
-  ConfidenceDataPoint,
-  AggregationInterval,
+import { EventEmitter } from 'node:events';
+import type {
   AggregatedDataPoint,
+  AggregationInterval,
+  ConfidenceDataPoint,
+  ConfidenceStore,
 } from '../types';
 
 /**
@@ -127,7 +127,9 @@ export class InMemoryStore extends EventEmitter implements ConfidenceStore {
     const avgConfidence =
       categoryData.reduce((sum, dp) => sum + dp.confidence, 0) /
       categoryData.length;
-    const successCount = categoryData.filter((dp) => dp.confidence > 0.7).length;
+    const successCount = categoryData.filter(
+      (dp) => dp.confidence > 0.7
+    ).length;
     const entityBreakdown = new Map<string, number>();
 
     categoryData.forEach((dp) => {
@@ -157,9 +159,10 @@ export class InMemoryStore extends EventEmitter implements ConfidenceStore {
 
     // Calculate mean and standard deviation
     const confidences = entityData.map((dp) => dp.confidence);
-    const mean = confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
+    const mean =
+      confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
     const variance =
-      confidences.reduce((sum, c) => sum + Math.pow(c - mean, 2), 0) /
+      confidences.reduce((sum, c) => sum + (c - mean) ** 2, 0) /
       confidences.length;
     const stdDev = Math.sqrt(variance);
 
@@ -211,7 +214,9 @@ export class InMemoryStore extends EventEmitter implements ConfidenceStore {
     }
 
     if (params.categories?.length) {
-      results = results.filter((dp) => params.categories!.includes(dp.category));
+      results = results.filter((dp) =>
+        params.categories!.includes(dp.category)
+      );
     }
 
     if (params.startTime) {

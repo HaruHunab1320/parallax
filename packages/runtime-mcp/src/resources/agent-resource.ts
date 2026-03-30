@@ -4,8 +4,8 @@
  * Provides current agent state as a JSON resource.
  */
 
-import type { LocalRuntime } from '@parallaxai/runtime-local';
 import type { AgentHandle } from '@parallaxai/runtime-interface';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
 
 export const AGENT_RESOURCE_TEMPLATE = {
   uriTemplate: 'agents://{agentId}',
@@ -27,7 +27,9 @@ export function parseAgentUri(uri: string): string | null {
  */
 export async function listAgentResources(
   runtime: LocalRuntime
-): Promise<Array<{ uri: string; name: string; description: string; mimeType: string }>> {
+): Promise<
+  Array<{ uri: string; name: string; description: string; mimeType: string }>
+> {
   const agents = await runtime.list();
 
   return agents.map((agent) => ({
@@ -44,7 +46,9 @@ export async function listAgentResources(
 export async function readAgentResource(
   runtime: LocalRuntime,
   uri: string
-): Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> } | null> {
+): Promise<{
+  contents: Array<{ uri: string; mimeType: string; text: string }>;
+} | null> {
   const agentId = parseAgentUri(uri);
   if (!agentId) {
     return null;

@@ -56,9 +56,9 @@ async function main() {
     // Wait a bit between calls
     if (breaker.getState() === 'OPEN') {
       console.log('  Waiting 2.5s for circuit to half-open...');
-      await new Promise(r => setTimeout(r, 2500));
+      await new Promise((r) => setTimeout(r, 2500));
     } else {
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 100));
     }
   }
 

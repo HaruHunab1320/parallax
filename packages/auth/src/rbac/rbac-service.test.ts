@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { RBACService } from './rbac-service';
-import { Resources, Actions, DefaultRoles, Permissions, Scopes } from './permissions';
-import { JWTPayload } from '../types';
 import pino from 'pino';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { JWTPayload } from '../types';
+import { Actions, Permissions, Resources, Scopes } from './permissions';
+import { RBACService } from './rbac-service';
 
 const logger = pino({ level: 'silent' });
 
@@ -96,14 +96,18 @@ describe('RBACService', () => {
       const perms = rbac.getUserPermissions(['developer']);
       expect(perms.length).toBeGreaterThan(0);
       // Developer should have pattern read
-      expect(perms.some((p) => p.resource === Resources.PATTERN && p.action === Actions.READ)).toBe(
-        true
-      );
+      expect(
+        perms.some(
+          (p) => p.resource === Resources.PATTERN && p.action === Actions.READ
+        )
+      ).toBe(true);
     });
 
     it('should merge permissions from multiple roles', () => {
       const perms = rbac.getUserPermissions(['viewer', 'developer']);
-      expect(perms.length).toBeGreaterThan(rbac.getUserPermissions(['viewer']).length);
+      expect(perms.length).toBeGreaterThan(
+        rbac.getUserPermissions(['viewer']).length
+      );
     });
 
     it('should return empty for unknown role', () => {
@@ -126,7 +130,13 @@ describe('RBACService', () => {
       rbac.addRole({
         name: 'auditor',
         description: 'Audit access',
-        permissions: [{ resource: Resources.METRICS, action: Actions.READ, scope: Scopes.ALL }],
+        permissions: [
+          {
+            resource: Resources.METRICS,
+            action: Actions.READ,
+            scope: Scopes.ALL,
+          },
+        ],
       });
       const role = rbac.getRole('auditor');
       expect(role).toBeDefined();

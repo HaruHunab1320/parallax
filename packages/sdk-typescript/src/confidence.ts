@@ -10,10 +10,10 @@ function extractConfidence(result: any): number {
     if (typeof result.confidence === 'number') {
       return result.confidence;
     }
-    
+
     // Check for confidence keywords
     let confidence = 0.5; // default
-    
+
     if (result.certainly || result.definitely || result.absolutely) {
       confidence = 0.95;
     } else if (result.probably || result.likely) {
@@ -23,22 +23,22 @@ function extractConfidence(result: any): number {
     } else if (result.unlikely || result.doubtful) {
       confidence = 0.3;
     }
-    
+
     // Adjust based on uncertainties
     if (result.uncertainties && Array.isArray(result.uncertainties)) {
       confidence -= result.uncertainties.length * 0.1;
     }
-    
+
     return Math.max(0.1, Math.min(1, confidence));
   }
-  
+
   return 0.5; // default confidence
 }
 
 /**
  * Decorator that automatically extracts confidence from agent responses
  * using the @prism-lang/confidence package
- * 
+ *
  * @example
  * ```typescript
  * class MyAgent extends ParallaxAgent {
@@ -64,15 +64,19 @@ export function withConfidence(
 
   descriptor.value = async function (...args: any[]) {
     const result = await originalMethod.apply(this, args);
-    
+
     // Check if the result is already in the expected format [result, confidence]
-    if (Array.isArray(result) && result.length === 2 && typeof result[1] === 'number') {
+    if (
+      Array.isArray(result) &&
+      result.length === 2 &&
+      typeof result[1] === 'number'
+    ) {
       return result;
     }
-    
+
     // Extract confidence using @prism-lang/confidence
     const confidence = extractConfidence(result);
-    
+
     // Return as tuple [result, confidence]
     return [result, confidence];
   };
@@ -82,7 +86,7 @@ export function withConfidence(
 
 /**
  * Alternative functional wrapper for confidence extraction
- * 
+ *
  * @example
  * ```typescript
  * const analyzeWithConfidence = withConfidenceWrapper(async (task, data) => {
@@ -90,20 +94,24 @@ export function withConfidence(
  * });
  * ```
  */
-export function withConfidenceWrapper<T extends (...args: any[]) => Promise<any>>(
-  fn: T
-): (...args: Parameters<T>) => Promise<[any, number]> {
+export function withConfidenceWrapper<
+  T extends (...args: any[]) => Promise<any>,
+>(fn: T): (...args: Parameters<T>) => Promise<[any, number]> {
   return async (...args: Parameters<T>) => {
     const result = await fn(...args);
-    
+
     // Check if already has confidence
-    if (Array.isArray(result) && result.length === 2 && typeof result[1] === 'number') {
+    if (
+      Array.isArray(result) &&
+      result.length === 2 &&
+      typeof result[1] === 'number'
+    ) {
       return result as [any, number];
     }
-    
+
     // Extract confidence
     const confidence = extractConfidence(result);
-    
+
     return [result, confidence] as [any, number];
   };
 }

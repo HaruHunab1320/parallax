@@ -97,16 +97,18 @@ async function main() {
   // Compile to Prism DSL
   console.log('\n--- Compiled to Prism DSL ---\n');
   const prismResult = OrgChartCompiler.compile(pattern, { target: 'prism' });
-  console.log(prismResult.output.substring(0, 800) + '...\n');
+  console.log(`${prismResult.output.substring(0, 800)}...\n`);
 
   // Compile to JSON execution plan
   console.log('\n--- Compiled to JSON Execution Plan ---\n');
   const jsonPlan = OrgChartCompiler.compileToJson(pattern);
-  console.log(JSON.stringify(jsonPlan, null, 2).substring(0, 600) + '...\n');
+  console.log(`${JSON.stringify(jsonPlan, null, 2).substring(0, 600)}...\n`);
 
   // Compile to Mermaid diagram
   console.log('\n--- Compiled to Mermaid Diagram ---\n');
-  const mermaidResult = OrgChartCompiler.compile(pattern, { target: 'mermaid' });
+  const mermaidResult = OrgChartCompiler.compile(pattern, {
+    target: 'mermaid',
+  });
   console.log(mermaidResult.output);
 
   // Show available targets

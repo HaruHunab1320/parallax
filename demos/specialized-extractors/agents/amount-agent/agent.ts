@@ -5,8 +5,8 @@
  * Part of the specialized extractors demo.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'amount-extractor';
@@ -21,9 +21,10 @@ class AmountExtractorAgent extends ParallaxAgent {
       AGENT_NAME,
       ['extraction', 'amounts', 'currency', 'parsing'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Extracts and normalizes monetary amounts from unstructured text'
+        description:
+          'Extracts and normalizes monetary amounts from unstructured text',
       }
     );
 
@@ -37,7 +38,10 @@ class AmountExtractorAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(task: string, data?: any): Promise<{
+  async analyze(
+    task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +50,7 @@ class AmountExtractorAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -94,7 +98,7 @@ Be thorough - look for amounts in various formats: "$1,234.56", "1234.56 USD", "
         return {
           value: { amounts: [], count: 0, error: 'Could not parse response' },
           confidence: 0.3,
-          reasoning: text.substring(0, 200)
+          reasoning: text.substring(0, 200),
         };
       }
 
@@ -102,26 +106,32 @@ Be thorough - look for amounts in various formats: "$1,234.56", "1234.56 USD", "
       const amounts = parsed.amounts || [];
 
       // Calculate overall confidence based on individual amount confidences
-      const avgConfidence = amounts.length > 0
-        ? amounts.reduce((sum: number, a: any) => sum + (a.confidence || 0.8), 0) / amounts.length
-        : 0.5;
+      const avgConfidence =
+        amounts.length > 0
+          ? amounts.reduce(
+              (sum: number, a: any) => sum + (a.confidence || 0.8),
+              0
+            ) / amounts.length
+          : 0.5;
 
       return {
         value: {
           amounts: amounts,
           count: amounts.length,
           total: parsed.total,
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: avgConfidence,
-        reasoning: parsed.reasoning || `Extracted ${amounts.length} monetary amounts from text`
+        reasoning:
+          parsed.reasoning ||
+          `Extracted ${amounts.length} monetary amounts from text`,
       };
     } catch (error) {
       console.error('Extraction error:', error);
       return {
         value: { amounts: [], count: 0, error: String(error) },
         confidence: 0,
-        reasoning: 'Extraction failed'
+        reasoning: 'Extraction failed',
       };
     }
   }

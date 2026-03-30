@@ -1,8 +1,11 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResultCache } from './result-cache';
-import { CachePolicy, ExecutionResult } from './types';
+import type { CachePolicy, ExecutionResult } from './types';
 
-function makeResult(taskId: string, overrides: Partial<ExecutionResult> = {}): ExecutionResult {
+function makeResult(
+  taskId: string,
+  overrides: Partial<ExecutionResult> = {}
+): ExecutionResult {
   return {
     taskId,
     status: 'success',

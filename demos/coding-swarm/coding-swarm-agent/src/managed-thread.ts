@@ -6,9 +6,12 @@
  * pty-manager-style events to GatewayThreadEvent/GatewayThreadStatusUpdate.
  */
 
-import type { GatewayThreadEvent, GatewayThreadStatusUpdate } from '@parallaxai/sdk-typescript';
-import type { TmuxManager } from 'tmux-manager';
+import type {
+  GatewayThreadEvent,
+  GatewayThreadStatusUpdate,
+} from '@parallaxai/sdk-typescript';
 import type { Logger } from 'pino';
+import type { TmuxManager } from 'tmux-manager';
 
 export interface ManagedThreadInfo {
   threadId: string;
@@ -27,7 +30,9 @@ export class ManagedThread {
     public readonly info: ManagedThreadInfo,
     private readonly manager: TmuxManager,
     private readonly onEvent: (event: GatewayThreadEvent) => void,
-    private readonly onStatusUpdate: (update: GatewayThreadStatusUpdate) => void,
+    private readonly onStatusUpdate: (
+      update: GatewayThreadStatusUpdate
+    ) => void,
     private readonly logger: Logger
   ) {
     this.bindEvents();
@@ -65,21 +70,34 @@ export class ManagedThread {
       });
     });
 
-    on('blocking_prompt', (session: any, promptInfo: any, autoResponded: boolean) => {
-      if (session.id !== sessionId) return;
-      this.emitEvent('blocked', {
-        prompt: promptInfo.prompt,
-        type: promptInfo.type,
-        options: promptInfo.options,
-        autoResponded,
-      });
-      if (!autoResponded) {
-        this.emitStatus('blocked', `Blocked: ${promptInfo.prompt || 'awaiting input'}`);
+    on(
+      'blocking_prompt',
+      (session: any, promptInfo: any, autoResponded: boolean) => {
+        if (session.id !== sessionId) return;
+        this.emitEvent('blocked', {
+          prompt: promptInfo.prompt,
+          type: promptInfo.type,
+          options: promptInfo.options,
+          autoResponded,
+        });
+        if (!autoResponded) {
+          this.emitStatus(
+            'blocked',
+            `Blocked: ${promptInfo.prompt || 'awaiting input'}`
+          );
+        }
       }
-    });
+    );
 
     on('task_complete', (session: any, data?: any) => {
-      this.logger.info({ sessionId: session?.id, expectedSessionId: sessionId, match: session?.id === sessionId }, 'task_complete event received');
+      this.logger.info(
+        {
+          sessionId: session?.id,
+          expectedSessionId: sessionId,
+          match: session?.id === sessionId,
+        },
+        'task_complete event received'
+      );
       if (session.id !== sessionId) return;
       this.logger.info({ threadId }, 'Emitting turn_complete to gateway');
       this.emitEvent('turn_complete', {
@@ -111,10 +129,13 @@ export class ManagedThread {
       this.emitStatus('failed', `Thread error: ${error}`);
     });
 
-    on('stall_detected', (session: any, _recentOutput: string, stallDurationMs: number) => {
-      if (session.id !== sessionId) return;
-      this.emitEvent('stall', { stallDurationMs });
-    });
+    on(
+      'stall_detected',
+      (session: any, _recentOutput: string, stallDurationMs: number) => {
+        if (session.id !== sessionId) return;
+        this.emitEvent('stall', { stallDurationMs });
+      }
+    );
 
     on('session_status_changed', (session: any) => {
       if (session.id !== sessionId) return;
@@ -175,7 +196,10 @@ export class ManagedThread {
         timeout: force ? 5000 : 30000,
       });
     } catch (error) {
-      this.logger.warn({ threadId: this.info.threadId, error }, 'Error stopping thread session');
+      this.logger.warn(
+        { threadId: this.info.threadId, error },
+        'Error stopping thread session'
+      );
     }
   }
 }

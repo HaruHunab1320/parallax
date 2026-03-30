@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import axios, { AxiosInstance } from 'axios';
+import type { Server } from 'node:http';
+import axios, { type AxiosInstance } from 'axios';
 import jwt from 'jsonwebtoken';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer } from '../../server';
-import type { Server } from 'http';
 
 describe('Control Plane HTTP API', () => {
   let server: Server;
@@ -28,7 +28,12 @@ describe('Control Plane HTTP API', () => {
     // Create an axios instance with auth header for protected endpoints
     const secret = process.env.JWT_SECRET || 'test-secret';
     const authToken = jwt.sign(
-      { sub: 'test-user', email: 'test@test.com', role: 'admin', type: 'access' },
+      {
+        sub: 'test-user',
+        email: 'test@test.com',
+        role: 'admin',
+        type: 'access',
+      },
       secret,
       { expiresIn: 3600 }
     );
@@ -49,7 +54,9 @@ describe('Control Plane HTTP API', () => {
       const response = await axios.get(`${baseURL}/health`);
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('status');
-      expect(['healthy', 'degraded', 'unhealthy']).toContain(response.data.status);
+      expect(['healthy', 'degraded', 'unhealthy']).toContain(
+        response.data.status
+      );
     });
   });
 
@@ -91,9 +98,12 @@ describe('Control Plane HTTP API', () => {
 
       if (patterns.length > 0) {
         const patternName = patterns[0].name;
-        const response = await api.post(`/api/patterns/${patternName}/validate`, {
-          input: { task: 'test', data: {} }
-        });
+        const response = await api.post(
+          `/api/patterns/${patternName}/validate`,
+          {
+            input: { task: 'test', data: {} },
+          }
+        );
         expect(response.status).toBe(200);
         expect(response.data).toHaveProperty('valid');
         expect(typeof response.data.valid).toBe('boolean');
@@ -130,7 +140,7 @@ describe('Control Plane HTTP API', () => {
         const patternName = patterns[0].name;
         const response = await api.post('/api/executions', {
           patternName,
-          input: { task: 'test', data: {} }
+          input: { task: 'test', data: {} },
         });
 
         expect(response.status).toBe(202);

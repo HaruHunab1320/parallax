@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { LicenseEnforcer } from '../licensing/license-enforcer';
-import { Logger } from 'pino';
+import type { Logger } from 'pino';
+import type { LicenseEnforcer } from '../licensing/license-enforcer';
 
 export function createLicenseRouter(
   licenseEnforcer: LicenseEnforcer,
@@ -64,7 +64,10 @@ export function createLicenseRouter(
         upgradeUrl: hasFeature ? null : 'https://parallax.ai/enterprise',
       });
     } catch (error) {
-      log.error({ error, feature: req.params.feature }, 'Failed to check feature');
+      log.error(
+        { error, feature: req.params.feature },
+        'Failed to check feature'
+      );
       res.status(500).json({ error: 'Failed to check feature availability' });
     }
   });

@@ -1,11 +1,11 @@
-import { Logger } from 'pino';
-import {
+import type {
   SpawnThreadInput,
   ThreadPreparationSpec,
   ThreadWorkspaceRef,
 } from '@parallaxai/runtime-interface';
-import { MemoryContextService } from './memory-context.service';
-import { WorkspaceConfig, WorkspaceService } from '../workspace';
+import type { Logger } from 'pino';
+import type { WorkspaceConfig, WorkspaceService } from '../workspace';
+import type { MemoryContextService } from './memory-context.service';
 
 export class ThreadPreparationService {
   private workspaceService?: WorkspaceService;
@@ -80,13 +80,20 @@ export class ThreadPreparationService {
     return preparedInput;
   }
 
-  private async resolveWorkspace(input: SpawnThreadInput): Promise<ThreadWorkspaceRef | undefined> {
+  private async resolveWorkspace(
+    input: SpawnThreadInput
+  ): Promise<ThreadWorkspaceRef | undefined> {
     const workspace = input.preparation?.workspace ?? input.workspace;
     if (!workspace) {
       return undefined;
     }
 
-    if (workspace.path || workspace.workspaceId || !workspace.repo || !this.workspaceService) {
+    if (
+      workspace.path ||
+      workspace.workspaceId ||
+      !workspace.repo ||
+      !this.workspaceService
+    ) {
       return workspace;
     }
 

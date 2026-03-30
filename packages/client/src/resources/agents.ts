@@ -1,13 +1,13 @@
-import { HttpClient } from '../http.js';
-import {
+import type { HttpClient } from '../http.js';
+import type {
   Agent,
-  AgentListResponse,
+  AgentBulkDeleteResponse,
+  AgentDeleteResponse,
   AgentHealthResponse,
+  AgentListResponse,
   AgentTestInput,
   AgentTestResponse,
   CapabilityStats,
-  AgentDeleteResponse,
-  AgentBulkDeleteResponse,
 } from '../types/agents.js';
 
 export class AgentsResource {
@@ -44,7 +44,10 @@ export class AgentsResource {
   }
 
   /** Update agent status (active, inactive, error) */
-  async updateStatus(id: string, status: 'active' | 'inactive' | 'error'): Promise<Agent> {
+  async updateStatus(
+    id: string,
+    status: 'active' | 'inactive' | 'error'
+  ): Promise<Agent> {
     return this.http.patch<Agent>(
       `/api/agents/${encodeURIComponent(id)}/status`,
       { status }

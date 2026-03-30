@@ -1,6 +1,6 @@
-import { Logger } from 'pino';
-import { ThreadEvent, ThreadHandle } from '@parallaxai/runtime-interface';
-import {
+import type { ThreadEvent, ThreadHandle } from '@parallaxai/runtime-interface';
+import type { Logger } from 'pino';
+import type {
   EpisodicExperienceRepository,
   PersistedEpisodicExperience,
 } from '../db/repositories';
@@ -22,7 +22,10 @@ export class EpisodicExperienceService {
     return this.repository.findAll(filter);
   }
 
-  async projectThreadEvent(thread: ThreadHandle, event: ThreadEvent): Promise<void> {
+  async projectThreadEvent(
+    thread: ThreadHandle,
+    event: ThreadEvent
+  ): Promise<void> {
     const experience = this.extractExperience(thread, event);
     if (!experience) return;
 
@@ -37,7 +40,11 @@ export class EpisodicExperienceService {
 
     await this.repository.create(experience);
     this.logger.debug(
-      { threadId: thread.id, executionId: thread.executionId, outcome: experience.outcome },
+      {
+        threadId: thread.id,
+        executionId: thread.executionId,
+        outcome: experience.outcome,
+      },
       'Episodic experience captured from thread event'
     );
   }
@@ -71,7 +78,11 @@ export class EpisodicExperienceService {
     if (!summary) return null;
 
     const outcome = this.getOutcome(thread, event);
-    const normalizedSummary = this.buildExperienceSummary(thread, summary, outcome);
+    const normalizedSummary = this.buildExperienceSummary(
+      thread,
+      summary,
+      outcome
+    );
 
     return {
       executionId: thread.executionId,
@@ -92,7 +103,10 @@ export class EpisodicExperienceService {
   }
 
   private getOutcome(thread: ThreadHandle, event: ThreadEvent): string {
-    if (event.type === 'thread_failed' || thread.completion?.state === 'failed') {
+    if (
+      event.type === 'thread_failed' ||
+      thread.completion?.state === 'failed'
+    ) {
       return 'failed';
     }
     if (thread.completion?.state === 'partial') {
@@ -106,11 +120,12 @@ export class EpisodicExperienceService {
     summary: string,
     outcome: string
   ): string {
-    const prefix = outcome === 'successful'
-      ? 'Succeeded'
-      : outcome === 'partial'
-        ? 'Partially succeeded'
-        : 'Failed';
+    const prefix =
+      outcome === 'successful'
+        ? 'Succeeded'
+        : outcome === 'partial'
+          ? 'Partially succeeded'
+          : 'Failed';
     const artifactText = (thread.completion?.artifacts ?? [])
       .slice(0, 3)
       .map((artifact) => `${artifact.type}:${artifact.value}`)
@@ -126,14 +141,19 @@ export class EpisodicExperienceService {
   }
 
   private getString(value: unknown): string | null {
-    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+    return typeof value === 'string' && value.trim().length > 0
+      ? value.trim()
+      : null;
   }
 
   private normalizeSummary(summary: string): string {
     return summary.replace(/\s+/g, ' ').trim();
   }
 
-  private buildFallbackSummary(thread: ThreadHandle, event: ThreadEvent): string | null {
+  private buildFallbackSummary(
+    thread: ThreadHandle,
+    event: ThreadEvent
+  ): string | null {
     if (event.type === 'thread_turn_complete') {
       return `Completed a supervised turn for objective: ${thread.objective}`;
     }

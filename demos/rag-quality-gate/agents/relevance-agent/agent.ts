@@ -5,8 +5,8 @@
  * Catches cases where the model goes off-topic or misunderstands the question.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'relevance-checker';
@@ -21,9 +21,9 @@ class RelevanceAgent extends ParallaxAgent {
       AGENT_NAME,
       ['quality-gate', 'relevance', 'verification', 'rag'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Verifies that answers are relevant to the question asked'
+        description: 'Verifies that answers are relevant to the question asked',
       }
     );
 
@@ -37,7 +37,10 @@ class RelevanceAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +49,7 @@ class RelevanceAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -90,7 +93,7 @@ Be practical - answers can include context and background as long as they addres
         return {
           value: { passed: false, error: 'Could not parse response' },
           confidence: 0.3,
-          reasoning: text.substring(0, 200)
+          reasoning: text.substring(0, 200),
         };
       }
 
@@ -106,17 +109,17 @@ Be practical - answers can include context and background as long as they addres
           offTopicContent: parsed.offTopicContent || [],
           missingFocus: parsed.missingFocus,
           checkType: 'relevance',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: score,
-        reasoning: parsed.reasoning || 'Relevance check completed'
+        reasoning: parsed.reasoning || 'Relevance check completed',
       };
     } catch (error) {
       console.error('Analysis error:', error);
       return {
         value: { passed: false, error: String(error), checkType: 'relevance' },
         confidence: 0,
-        reasoning: 'Analysis failed'
+        reasoning: 'Analysis failed',
       };
     }
   }

@@ -4,11 +4,11 @@
  * Manages webhook and event-based triggers for pattern execution.
  */
 
-import { PrismaClient, Trigger } from '@prisma/client';
-import { Logger } from 'pino';
-import { EventEmitter } from 'events';
-import { createHmac, randomBytes } from 'crypto';
-import { IPatternEngine } from '../pattern-engine/interfaces';
+import { createHmac, randomBytes } from 'node:crypto';
+import { EventEmitter } from 'node:events';
+import type { PrismaClient, Trigger } from '@prisma/client';
+import type { Logger } from 'pino';
+import type { IPatternEngine } from '../pattern-engine/interfaces';
 
 export interface WebhookTriggerConfig {
   name: string;
@@ -47,13 +47,19 @@ export interface TriggerServiceEvents {
   'trigger-deleted': (triggerId: string) => void;
   'trigger-fired': (trigger: Trigger, executionId: string) => void;
   'trigger-failed': (trigger: Trigger, error: Error) => void;
-  'event': (eventType: string, payload: any) => void;
-  'error': (error: Error) => void;
+  event: (eventType: string, payload: any) => void;
+  error: (error: Error) => void;
 }
 
 export declare interface TriggerService {
-  on<E extends keyof TriggerServiceEvents>(event: E, listener: TriggerServiceEvents[E]): this;
-  emit<E extends keyof TriggerServiceEvents>(event: E, ...args: Parameters<TriggerServiceEvents[E]>): boolean;
+  on<E extends keyof TriggerServiceEvents>(
+    event: E,
+    listener: TriggerServiceEvents[E]
+  ): this;
+  emit<E extends keyof TriggerServiceEvents>(
+    event: E,
+    ...args: Parameters<TriggerServiceEvents[E]>
+  ): boolean;
 }
 
 export class TriggerService extends EventEmitter {
@@ -171,12 +177,16 @@ export class TriggerService extends EventEmitter {
     const data: any = {};
 
     if (updates.name !== undefined) data.name = updates.name;
-    if (updates.patternName !== undefined) data.patternName = updates.patternName;
-    if (updates.description !== undefined) data.description = updates.description;
+    if (updates.patternName !== undefined)
+      data.patternName = updates.patternName;
+    if (updates.description !== undefined)
+      data.description = updates.description;
     if (updates.secret !== undefined) data.webhookSecret = updates.secret;
     if (updates.eventType !== undefined) data.eventType = updates.eventType;
-    if (updates.eventFilter !== undefined) data.eventFilter = updates.eventFilter;
-    if (updates.inputMapping !== undefined) data.inputMapping = updates.inputMapping;
+    if (updates.eventFilter !== undefined)
+      data.eventFilter = updates.eventFilter;
+    if (updates.inputMapping !== undefined)
+      data.inputMapping = updates.inputMapping;
     if (updates.metadata !== undefined) data.metadata = updates.metadata;
 
     const trigger = await this.prisma.trigger.update({
@@ -321,24 +331,37 @@ export class TriggerService extends EventEmitter {
 
     // Validate signature if secret is set
     if (trigger.webhookSecret) {
-      const signature = payload.headers['x-parallax-signature'] ||
-                        payload.headers['x-hub-signature-256'];
+      const signature =
+        payload.headers['x-parallax-signature'] ||
+        payload.headers['x-hub-signature-256'];
 
-      if (!signature || !this.validateSignature(payload.body, trigger.webhookSecret, signature)) {
-        this.logger.warn({ triggerId: trigger.id }, 'Webhook signature validation failed');
+      if (
+        !signature ||
+        !this.validateSignature(payload.body, trigger.webhookSecret, signature)
+      ) {
+        this.logger.warn(
+          { triggerId: trigger.id },
+          'Webhook signature validation failed'
+        );
         return { triggered: false, error: 'Invalid signature' };
       }
     }
 
     try {
-      const input = this.mapInput(payload.body, trigger.inputMapping as Record<string, string> | null);
+      const input = this.mapInput(
+        payload.body,
+        trigger.inputMapping as Record<string, string> | null
+      );
 
       this.logger.info(
         { triggerId: trigger.id, patternName: trigger.patternName },
         'Executing webhook trigger'
       );
 
-      const result = await this.patternEngine.executePattern(trigger.patternName, input);
+      const result = await this.patternEngine.executePattern(
+        trigger.patternName,
+        input
+      );
 
       // Update trigger stats
       await this.prisma.trigger.update({
@@ -353,7 +376,10 @@ export class TriggerService extends EventEmitter {
 
       return { triggered: true, executionId: result.id };
     } catch (error) {
-      this.logger.error({ error, triggerId: trigger.id }, 'Webhook trigger failed');
+      this.logger.error(
+        { error, triggerId: trigger.id },
+        'Webhook trigger failed'
+      );
       this.emit('trigger-failed', trigger, error as Error);
       return { triggered: false, error: (error as Error).message };
     }
@@ -374,19 +400,34 @@ export class TriggerService extends EventEmitter {
       }
 
       // Check filter conditions
-      if (!this.matchesFilter(payload, trigger.eventFilter as Record<string, any> | null)) {
+      if (
+        !this.matchesFilter(
+          payload,
+          trigger.eventFilter as Record<string, any> | null
+        )
+      ) {
         continue;
       }
 
       try {
-        const input = this.mapInput(payload, trigger.inputMapping as Record<string, string> | null);
+        const input = this.mapInput(
+          payload,
+          trigger.inputMapping as Record<string, string> | null
+        );
 
         this.logger.info(
-          { triggerId: trigger.id, eventType, patternName: trigger.patternName },
+          {
+            triggerId: trigger.id,
+            eventType,
+            patternName: trigger.patternName,
+          },
           'Executing event trigger'
         );
 
-        const result = await this.patternEngine.executePattern(trigger.patternName, input);
+        const result = await this.patternEngine.executePattern(
+          trigger.patternName,
+          input
+        );
 
         // Update trigger stats
         await this.prisma.trigger.update({
@@ -399,7 +440,10 @@ export class TriggerService extends EventEmitter {
 
         this.emit('trigger-fired', trigger, result.id);
       } catch (error) {
-        this.logger.error({ error, triggerId: trigger.id, eventType }, 'Event trigger failed');
+        this.logger.error(
+          { error, triggerId: trigger.id, eventType },
+          'Event trigger failed'
+        );
         this.emit('trigger-failed', trigger, error as Error);
       }
     }
@@ -442,11 +486,16 @@ export class TriggerService extends EventEmitter {
     return randomBytes(32).toString('hex');
   }
 
-  private validateSignature(payload: any, secret: string, signature: string): boolean {
-    const body = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    const expectedSignature = 'sha256=' + createHmac('sha256', secret)
+  private validateSignature(
+    payload: any,
+    secret: string,
+    signature: string
+  ): boolean {
+    const body =
+      typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const expectedSignature = `sha256=${createHmac('sha256', secret)
       .update(body)
-      .digest('hex');
+      .digest('hex')}`;
 
     return signature === expectedSignature;
   }
@@ -516,17 +565,20 @@ export class TriggerService extends EventEmitter {
               if (!(actualValue <= (opValue as number))) return false;
               break;
             case '$in':
-              if (!Array.isArray(opValue) || !opValue.includes(actualValue)) return false;
+              if (!Array.isArray(opValue) || !opValue.includes(actualValue))
+                return false;
               break;
             case '$nin':
-              if (Array.isArray(opValue) && opValue.includes(actualValue)) return false;
+              if (Array.isArray(opValue) && opValue.includes(actualValue))
+                return false;
               break;
             case '$exists':
               if ((actualValue !== undefined) !== opValue) return false;
               break;
             default:
               // Treat as nested object comparison
-              if (!this.matchesFilter(actualValue, { [op]: opValue })) return false;
+              if (!this.matchesFilter(actualValue, { [op]: opValue }))
+                return false;
           }
         }
       } else {

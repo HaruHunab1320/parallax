@@ -4,8 +4,8 @@
  * Finds executions stuck in 'running' or 'pending' status and marks them as failed.
  */
 
-import { Logger } from 'pino';
-import { ExecutionRepository } from '../db/repositories/execution.repository';
+import type { Logger } from 'pino';
+import type { ExecutionRepository } from '../db/repositories/execution.repository';
 
 export class StartupRecoveryService {
   private logger: Logger;
@@ -26,7 +26,9 @@ export class StartupRecoveryService {
     this.logger.info({ nodeId: this.nodeId }, 'Starting orphan recovery...');
 
     try {
-      const orphaned = await this.executionRepo.findOrphanedExecutions(this.nodeId);
+      const orphaned = await this.executionRepo.findOrphanedExecutions(
+        this.nodeId
+      );
 
       if (orphaned.length === 0) {
         this.logger.info('No orphaned executions found');
@@ -69,7 +71,10 @@ export class StartupRecoveryService {
         }
       }
 
-      this.logger.info({ recovered, total: orphaned.length }, 'Orphan recovery complete');
+      this.logger.info(
+        { recovered, total: orphaned.length },
+        'Orphan recovery complete'
+      );
       return recovered;
     } catch (error) {
       this.logger.error({ error }, 'Orphan recovery failed');
@@ -121,7 +126,10 @@ export class StartupRecoveryService {
         }
       }
 
-      this.logger.info({ recovered, total: orphaned.length }, 'HA orphan recovery complete');
+      this.logger.info(
+        { recovered, total: orphaned.length },
+        'HA orphan recovery complete'
+      );
       return recovered;
     } catch (error) {
       this.logger.error({ error }, 'HA orphan recovery failed');

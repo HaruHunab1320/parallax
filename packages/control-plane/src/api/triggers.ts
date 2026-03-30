@@ -5,9 +5,9 @@
  */
 
 import { Router } from 'express';
-import { Logger } from 'pino';
-import { TriggerService } from '../scheduler';
-import { LicenseEnforcer } from '../licensing/license-enforcer';
+import type { Logger } from 'pino';
+import type { LicenseEnforcer } from '../licensing/license-enforcer';
+import type { TriggerService } from '../scheduler';
 
 export function createTriggersRouter(
   triggerService: TriggerService,
@@ -60,9 +60,10 @@ export function createTriggersRouter(
       // Add webhook URLs
       const triggersWithUrls = triggers.map((trigger) => ({
         ...trigger,
-        webhookUrl: trigger.type === 'webhook' && trigger.webhookPath
-          ? triggerService.getWebhookUrl(trigger, baseUrl || '')
-          : undefined,
+        webhookUrl:
+          trigger.type === 'webhook' && trigger.webhookPath
+            ? triggerService.getWebhookUrl(trigger, baseUrl || '')
+            : undefined,
       }));
 
       return res.json({
@@ -72,7 +73,8 @@ export function createTriggersRouter(
     } catch (error) {
       log.error({ error }, 'Failed to list triggers');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to list triggers',
+        error:
+          error instanceof Error ? error.message : 'Failed to list triggers',
       });
     }
   });
@@ -83,7 +85,8 @@ export function createTriggersRouter(
    */
   router.post('/webhook', async (req: any, res: any) => {
     try {
-      const { name, patternName, description, secret, inputMapping, metadata } = req.body;
+      const { name, patternName, description, secret, inputMapping, metadata } =
+        req.body;
 
       if (!name || !patternName) {
         return res.status(400).json({
@@ -102,7 +105,10 @@ export function createTriggersRouter(
 
       const webhookUrl = triggerService.getWebhookUrl(trigger, baseUrl || '');
 
-      log.info({ triggerId: trigger.id, name }, 'Webhook trigger created via API');
+      log.info(
+        { triggerId: trigger.id, name },
+        'Webhook trigger created via API'
+      );
 
       return res.status(201).json({
         ...trigger,
@@ -111,7 +117,10 @@ export function createTriggersRouter(
     } catch (error) {
       log.error({ error }, 'Failed to create webhook trigger');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to create webhook trigger',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create webhook trigger',
       });
     }
   });
@@ -148,13 +157,19 @@ export function createTriggersRouter(
         metadata,
       });
 
-      log.info({ triggerId: trigger.id, name, eventType }, 'Event trigger created via API');
+      log.info(
+        { triggerId: trigger.id, name, eventType },
+        'Event trigger created via API'
+      );
 
       return res.status(201).json(trigger);
     } catch (error) {
       log.error({ error }, 'Failed to create event trigger');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to create event trigger',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create event trigger',
       });
     }
   });
@@ -174,7 +189,10 @@ export function createTriggersRouter(
 
       const response: any = { ...trigger };
       if (trigger.type === 'webhook' && trigger.webhookPath) {
-        response.webhookUrl = triggerService.getWebhookUrl(trigger, baseUrl || '');
+        response.webhookUrl = triggerService.getWebhookUrl(
+          trigger,
+          baseUrl || ''
+        );
       }
 
       return res.json(response);
@@ -219,19 +237,26 @@ export function createTriggersRouter(
 
       const response: any = { ...trigger };
       if (trigger.type === 'webhook' && trigger.webhookPath) {
-        response.webhookUrl = triggerService.getWebhookUrl(trigger, baseUrl || '');
+        response.webhookUrl = triggerService.getWebhookUrl(
+          trigger,
+          baseUrl || ''
+        );
       }
 
       return res.json(response);
     } catch (error) {
-      log.error({ error, triggerId: req.params.id }, 'Failed to update trigger');
+      log.error(
+        { error, triggerId: req.params.id },
+        'Failed to update trigger'
+      );
 
       if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: error.message });
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to update trigger',
+        error:
+          error instanceof Error ? error.message : 'Failed to update trigger',
       });
     }
   });
@@ -249,14 +274,18 @@ export function createTriggersRouter(
 
       return res.status(204).send();
     } catch (error) {
-      log.error({ error, triggerId: req.params.id }, 'Failed to delete trigger');
+      log.error(
+        { error, triggerId: req.params.id },
+        'Failed to delete trigger'
+      );
 
       if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: error.message });
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to delete trigger',
+        error:
+          error instanceof Error ? error.message : 'Failed to delete trigger',
       });
     }
   });
@@ -281,7 +310,8 @@ export function createTriggersRouter(
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to pause trigger',
+        error:
+          error instanceof Error ? error.message : 'Failed to pause trigger',
       });
     }
   });
@@ -299,14 +329,18 @@ export function createTriggersRouter(
 
       return res.json(trigger);
     } catch (error) {
-      log.error({ error, triggerId: req.params.id }, 'Failed to resume trigger');
+      log.error(
+        { error, triggerId: req.params.id },
+        'Failed to resume trigger'
+      );
 
       if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: error.message });
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to resume trigger',
+        error:
+          error instanceof Error ? error.message : 'Failed to resume trigger',
       });
     }
   });

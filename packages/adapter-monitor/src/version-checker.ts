@@ -4,20 +4,28 @@
  * Checks for new versions of CLI adapters from npm, pip, and GitHub.
  */
 
-import type { AdapterType, CLIVersionSource, VersionCheckResult } from './types';
 import { MONITORED_CLIS } from './config';
+import type {
+  AdapterType,
+  CLIVersionSource,
+  VersionCheckResult,
+} from './types';
 
 /**
  * Fetch latest version from npm registry
  */
 async function checkNpmVersion(packageName: string): Promise<string> {
-  const response = await fetch(`https://registry.npmjs.org/${packageName}/latest`);
+  const response = await fetch(
+    `https://registry.npmjs.org/${packageName}/latest`
+  );
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch npm package ${packageName}: ${response.status}`);
+    throw new Error(
+      `Failed to fetch npm package ${packageName}: ${response.status}`
+    );
   }
 
-  const data = await response.json() as { version: string };
+  const data = (await response.json()) as { version: string };
   return data.version;
 }
 
@@ -28,32 +36,44 @@ async function checkPipVersion(packageName: string): Promise<string> {
   const response = await fetch(`https://pypi.org/pypi/${packageName}/json`);
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch PyPI package ${packageName}: ${response.status}`);
+    throw new Error(
+      `Failed to fetch PyPI package ${packageName}: ${response.status}`
+    );
   }
 
-  const data = await response.json() as { info: { version: string } };
+  const data = (await response.json()) as { info: { version: string } };
   return data.info.version;
 }
 
 /**
  * Fetch latest release from GitHub
  */
-async function checkGitHubVersion(repo: string): Promise<{ version: string; url: string }> {
-  const response = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
-    headers: {
-      Accept: 'application/vnd.github.v3+json',
-      // Add token if available for higher rate limits
-      ...(process.env.GITHUB_TOKEN && {
-        Authorization: `token ${process.env.GITHUB_TOKEN}`,
-      }),
-    },
-  });
+async function checkGitHubVersion(
+  repo: string
+): Promise<{ version: string; url: string }> {
+  const response = await fetch(
+    `https://api.github.com/repos/${repo}/releases/latest`,
+    {
+      headers: {
+        Accept: 'application/vnd.github.v3+json',
+        // Add token if available for higher rate limits
+        ...(process.env.GITHUB_TOKEN && {
+          Authorization: `token ${process.env.GITHUB_TOKEN}`,
+        }),
+      },
+    }
+  );
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch GitHub releases for ${repo}: ${response.status}`);
+    throw new Error(
+      `Failed to fetch GitHub releases for ${repo}: ${response.status}`
+    );
   }
 
-  const data = await response.json() as { tag_name: string; html_url: string };
+  const data = (await response.json()) as {
+    tag_name: string;
+    html_url: string;
+  };
 
   // Strip 'v' prefix if present
   const version = data.tag_name.replace(/^v/, '');
@@ -64,7 +84,9 @@ async function checkGitHubVersion(repo: string): Promise<{ version: string; url:
 /**
  * Check version for a single CLI
  */
-export async function checkVersion(source: CLIVersionSource): Promise<VersionCheckResult> {
+export async function checkVersion(
+  source: CLIVersionSource
+): Promise<VersionCheckResult> {
   let latestVersion: string;
   let changelogUrl: string | undefined;
 
@@ -80,7 +102,7 @@ export async function checkVersion(source: CLIVersionSource): Promise<VersionChe
         changelogUrl = `https://pypi.org/project/${source.package}/#history`;
         break;
 
-      case 'github':
+      case 'github': {
         if (!source.githubRepo) {
           throw new Error(`GitHub repo not specified for ${source.type}`);
         }
@@ -88,6 +110,7 @@ export async function checkVersion(source: CLIVersionSource): Promise<VersionChe
         latestVersion = result.version;
         changelogUrl = result.url;
         break;
+      }
 
       default:
         throw new Error(`Unknown registry type: ${source.registry}`);
@@ -155,6 +178,10 @@ export async function checkAllVersions(
 /**
  * Filter to only adapters with updates available
  */
-export function filterUpdatesAvailable(results: VersionCheckResult[]): VersionCheckResult[] {
-  return results.filter((r) => r.updateAvailable && r.latestVersion !== 'unknown');
+export function filterUpdatesAvailable(
+  results: VersionCheckResult[]
+): VersionCheckResult[] {
+  return results.filter(
+    (r) => r.updateAvailable && r.latestVersion !== 'unknown'
+  );
 }

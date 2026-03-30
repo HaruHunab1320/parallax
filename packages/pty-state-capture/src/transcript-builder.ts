@@ -1,5 +1,5 @@
-import { readFile } from 'node:fs/promises';
 import { Buffer } from 'node:buffer';
+import { readFile } from 'node:fs/promises';
 import { SessionStateCapture } from './session-capture';
 import { TurnExtractor } from './turn-extractor';
 import type {
@@ -34,7 +34,10 @@ export class TranscriptBuilder {
     this.capture = capture;
   }
 
-  async feedThrough(chunk: string, direction: StreamDirection = 'stdout'): Promise<Turn | undefined> {
+  async feedThrough(
+    chunk: string,
+    direction: StreamDirection = 'stdout'
+  ): Promise<Turn | undefined> {
     if (!this.capture) {
       throw new Error('No capture attached. Call attachCapture() first.');
     }
@@ -42,7 +45,11 @@ export class TranscriptBuilder {
     return this.pushResult(result, chunk, direction);
   }
 
-  pushResult(result: FeedOutputResult, chunk: string, direction: StreamDirection): Turn | undefined {
+  pushResult(
+    result: FeedOutputResult,
+    chunk: string,
+    direction: StreamDirection
+  ): Turn | undefined {
     const ts = result.state.ts;
     if (!this.startedAt) this.startedAt = ts;
     this.lastTs = ts;
@@ -62,7 +69,8 @@ export class TranscriptBuilder {
       source: this.source,
       startedAt,
       endedAt,
-      totalDurationMs: new Date(endedAt).getTime() - new Date(startedAt).getTime(),
+      totalDurationMs:
+        new Date(endedAt).getTime() - new Date(startedAt).getTime(),
       turns,
       finalState: finalTurn?.finalState ?? 'unknown',
       totalTransitions: this.totalTransitions,
@@ -79,7 +87,7 @@ interface RawEventRow {
 export async function buildTranscriptFromJsonl(
   rawEventsPath: string,
   captureOptions: SessionCaptureOptions,
-  transcriptOptions?: Partial<TranscriptBuilderOptions>,
+  transcriptOptions?: Partial<TranscriptBuilderOptions>
 ): Promise<SessionTranscript> {
   const text = await readFile(rawEventsPath, 'utf8');
   const lines = text.split('\n').filter(Boolean);

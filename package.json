@@ -6,6 +6,8 @@
   "scripts": {
     "build": "turbo build --filter=!./apps/demo-* --filter=!./examples/* --filter=!./demos/*",
     "lint": "turbo lint",
+    "lint:biome": "biome check",
+    "format": "biome check --fix",
     "test": "turbo test",
     "test:coverage": "turbo test -- --coverage",
     "test:watch": "turbo test -- --watch",
@@ -57,6 +59,7 @@
     "k8s:upgrade": "helm upgrade parallax ./k8s/helm/parallax"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.10",
     "@eslint/js": "^9.29.0",
     "@turbo/gen": "^2.3.3",
     "@types/ws": "^8.5.10",

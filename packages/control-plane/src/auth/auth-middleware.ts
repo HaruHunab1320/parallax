@@ -4,9 +4,9 @@
  * Express middleware for JWT authentication and API key validation.
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { AuthService, TokenPayload, AuthError } from './auth-service';
-import { Logger } from 'pino';
+import type { NextFunction, Request, Response } from 'express';
+import type { Logger } from 'pino';
+import { AuthError, type AuthService, type TokenPayload } from './auth-service';
 
 // Extend Express Request to include user
 declare global {
@@ -35,7 +35,11 @@ export function createAuthMiddleware(
 ) {
   const log = logger.child({ component: 'AuthMiddleware' });
 
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     try {
       const authHeader = req.headers.authorization;
 
@@ -69,7 +73,10 @@ export function createAuthMiddleware(
         };
 
         // Get API key details for permission checking
-        const keyHash = require('crypto').createHash('sha256').update(apiKey).digest('hex');
+        const keyHash = require('node:crypto')
+          .createHash('sha256')
+          .update(apiKey)
+          .digest('hex');
         const keyRecord = await (authService as any).prisma.apiKey.findUnique({
           where: { keyHash },
           select: { id: true, permissions: true },

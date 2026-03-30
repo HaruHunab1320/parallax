@@ -1,7 +1,7 @@
-import { TamagotchiState, DisplayRenderer } from './types';
+import { createRenderer } from './composite-renderer';
 import { FrameBuffer } from './frame-buffer';
 import { SPRITES } from './sprites';
-import { createRenderer } from './composite-renderer';
+import { type DisplayRenderer, TamagotchiState } from './types';
 
 const MAX_TEXT_LINES = 5;
 const TEXT_MAX_CHARS = 14;
@@ -46,7 +46,8 @@ export class TamagotchiDisplay {
 
   /** Add a line to the scrolling text log. */
   addTextLine(line: string): void {
-    const trimmed = line.length > TEXT_MAX_CHARS ? line.slice(0, TEXT_MAX_CHARS) : line;
+    const trimmed =
+      line.length > TEXT_MAX_CHARS ? line.slice(0, TEXT_MAX_CHARS) : line;
     this.textLines.push(trimmed);
     if (this.textLines.length > MAX_TEXT_LINES) {
       this.textLines.shift();
@@ -55,7 +56,10 @@ export class TamagotchiDisplay {
 
   /** Update the last line that starts with `prefix`, or add a new line if none match. */
   updateLastMatchingLine(prefix: string, newLine: string): void {
-    const trimmed = newLine.length > TEXT_MAX_CHARS ? newLine.slice(0, TEXT_MAX_CHARS) : newLine;
+    const trimmed =
+      newLine.length > TEXT_MAX_CHARS
+        ? newLine.slice(0, TEXT_MAX_CHARS)
+        : newLine;
     for (let i = this.textLines.length - 1; i >= 0; i--) {
       if (this.textLines[i].startsWith(prefix.slice(0, TEXT_MAX_CHARS))) {
         this.textLines[i] = trimmed;

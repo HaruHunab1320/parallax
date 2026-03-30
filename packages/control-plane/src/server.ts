@@ -2,94 +2,91 @@
  * HTTP server for Parallax Control Plane
  */
 
-import express from 'express';
-import cors from 'cors';
-import pino from 'pino';
-import { PatternEngine, PatternExecutorAdapter } from './pattern-engine';
-import { TracedPatternEngine } from './pattern-engine/pattern-engine-traced';
-import { IPatternEngine } from './pattern-engine/interfaces';
-import { DatabasePatternService } from './pattern-engine/database-pattern-service';
-import { RuntimeManager } from './runtime-manager';
-import { RuntimeConfig } from './runtime-manager/types';
-import { EtcdRegistry } from './registry';
-import { HealthCheckService, createHealthRouter } from './health/health-check';
-import { MetricsCollector } from './metrics/metrics-collector';
-import { initializeTracing, getTracingConfig } from '@parallaxai/telemetry';
+import { createServer as createHttpServer } from 'node:http';
+import path from 'node:path';
+import { URL } from 'node:url';
+// Data plane imports for ExecutionEngine integration
 import {
-  createPatternsRouter,
+  ConfidenceTracker,
+  AgentProxy as DataPlaneAgentProxy,
+  ExecutionEngine,
+  type ExecutionEngineConfig,
+  type ProxyConfig,
+} from '@parallaxai/data-plane';
+import { getTracingConfig, initializeTracing } from '@parallaxai/telemetry';
+import cors from 'cors';
+import express from 'express';
+import pino from 'pino';
+import { WebSocketServer } from 'ws';
+import { AgentRuntimeService } from './agent-runtime';
+import {
   createAgentsRouter,
+  createAuditRouter,
+  createAuthRouter,
+  createBackupRouter,
   createExecutionsRouter,
   createExecutionWebSocketHandler,
   createLicenseRouter,
+  createManagedAgentsRouter,
+  createManagedThreadsRouter,
+  createPatternsRouter,
   createSchedulesRouter,
   createTriggersRouter,
   createUsersRouter,
-  createAuthRouter,
-  createAuditRouter,
-  createBackupRouter,
-  createManagedAgentsRouter,
-  createManagedThreadsRouter,
 } from './api';
-import {
-  WorkspaceService,
-  CredentialService,
-  GitHubProvider,
-  createWorkspaceRouter,
-  createGitHubWebhookRouter,
-} from './workspace';
-import { AgentRuntimeService } from './agent-runtime';
-import { AuthService, requireAuth, optionalAuth } from './auth';
 import { AuditService } from './audit';
-import { LicenseEnforcer } from './licensing/license-enforcer';
+import { AuthService, optionalAuth, requireAuth } from './auth';
 import { DatabaseService } from './db/database.service';
-import { GrpcServer, GatewayService } from './grpc';
-import { StartupRecoveryService, TimeoutChecker, GracefulShutdownHandler } from './resilience';
-import path from 'path';
-import { createServer as createHttpServer } from 'http';
-import { WebSocketServer } from 'ws';
-import { URL } from 'url';
 import { ExecutionEventBus } from './execution-events';
-import {
-  ThreadPersistenceService,
-  SharedDecisionService,
-  EpisodicExperienceService,
-  MemoryContextService,
-  ThreadPreparationService,
-} from './threads';
-
+import { GatewayService, GrpcServer } from './grpc';
 // High Availability imports
+import { type HAServices, initializeHA, shutdownHA } from './ha';
+import { createHealthRouter, HealthCheckService } from './health/health-check';
+import { LicenseEnforcer } from './licensing/license-enforcer';
+import { MetricsCollector } from './metrics/metrics-collector';
+import { PatternEngine, PatternExecutorAdapter } from './pattern-engine';
+import { DatabasePatternService } from './pattern-engine/database-pattern-service';
+import type { IPatternEngine } from './pattern-engine/interfaces';
+import { TracedPatternEngine } from './pattern-engine/pattern-engine-traced';
+import { EtcdRegistry } from './registry';
 import {
-  initializeHA,
-  shutdownHA,
-  HAServices,
-} from './ha';
-
-// Data plane imports for ExecutionEngine integration
-import {
-  ExecutionEngine,
-  ExecutionEngineConfig,
-  AgentProxy as DataPlaneAgentProxy,
-  ProxyConfig,
-  ConfidenceTracker,
-} from '@parallaxai/data-plane';
-
+  GracefulShutdownHandler,
+  StartupRecoveryService,
+  TimeoutChecker,
+} from './resilience';
+import { RuntimeManager } from './runtime-manager';
+import type { RuntimeConfig } from './runtime-manager/types';
 // Scheduler imports
 import {
-  SchedulerService,
-  TriggerService,
   createSchedulerService,
   createTriggerService,
   EventTypes,
+  type SchedulerService,
+  type TriggerService,
 } from './scheduler';
+import {
+  EpisodicExperienceService,
+  MemoryContextService,
+  SharedDecisionService,
+  ThreadPersistenceService,
+  ThreadPreparationService,
+} from './threads';
+import {
+  CredentialService,
+  createGitHubWebhookRouter,
+  createWorkspaceRouter,
+  GitHubProvider,
+  WorkspaceService,
+} from './workspace';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
   transport: {
     target: 'pino-pretty',
     options: {
-      colorize: true
-    }
-  }
+      colorize: true,
+    },
+  },
 });
 
 export async function createServer(): Promise<express.Application> {
@@ -108,16 +105,24 @@ export async function createServer(): Promise<express.Application> {
   await database.initialize();
 
   // Generate nodeId for this control plane instance
-  const nodeId = process.env.PARALLAX_NODE_ID
-    || process.env.HOSTNAME
-    || `node-${process.pid}`;
+  const nodeId =
+    process.env.PARALLAX_NODE_ID ||
+    process.env.HOSTNAME ||
+    `node-${process.pid}`;
   logger.info({ nodeId }, 'Control plane node ID');
 
   // Run startup recovery — find and fail orphaned executions from previous runs
-  const startupRecovery = new StartupRecoveryService(database.executions, nodeId, logger);
+  const startupRecovery = new StartupRecoveryService(
+    database.executions,
+    nodeId,
+    logger
+  );
   const recoveredCount = await startupRecovery.recoverOrphanedExecutions();
   if (recoveredCount > 0) {
-    logger.info({ recoveredCount }, 'Recovered orphaned executions from previous run');
+    logger.info(
+      { recoveredCount },
+      'Recovered orphaned executions from previous run'
+    );
   }
 
   // Initialize license enforcer
@@ -138,18 +143,27 @@ export async function createServer(): Promise<express.Application> {
   }
 
   // Initialize services
-  const etcdEndpoints = (process.env.PARALLAX_ETCD_ENDPOINTS || 'localhost:2379').split(',');
+  const etcdEndpoints = (
+    process.env.PARALLAX_ETCD_ENDPOINTS || 'localhost:2379'
+  ).split(',');
   const registry = new EtcdRegistry(etcdEndpoints, 'parallax', logger);
 
   const runtimeConfig: RuntimeConfig = {
-    maxInstances: parseInt(process.env.PARALLAX_RUNTIME_MAX_INSTANCES || '10'),
-    instanceTimeout: parseInt(process.env.PARALLAX_RUNTIME_TIMEOUT || '30000'),
-    warmupInstances: parseInt(process.env.PARALLAX_RUNTIME_WARMUP || '2'),
-    metricsEnabled: process.env.PARALLAX_METRICS_ENABLED === 'true'
+    maxInstances: parseInt(
+      process.env.PARALLAX_RUNTIME_MAX_INSTANCES || '10',
+      10
+    ),
+    instanceTimeout: parseInt(
+      process.env.PARALLAX_RUNTIME_TIMEOUT || '30000',
+      10
+    ),
+    warmupInstances: parseInt(process.env.PARALLAX_RUNTIME_WARMUP || '2', 10),
+    metricsEnabled: process.env.PARALLAX_METRICS_ENABLED === 'true',
   };
   const runtimeManager = new RuntimeManager(runtimeConfig, logger);
 
-  const patternsDir = process.env.PARALLAX_PATTERNS_DIR || path.join(process.cwd(), 'patterns');
+  const patternsDir =
+    process.env.PARALLAX_PATTERNS_DIR || path.join(process.cwd(), 'patterns');
   const executionEvents = new ExecutionEventBus();
 
   // Initialize database pattern service (Enterprise feature)
@@ -161,56 +175,83 @@ export async function createServer(): Promise<express.Application> {
 
   // Initialize ExecutionEngine (data plane integration)
   let executionEngine: ExecutionEngine | undefined;
-  const enableExecutionEngine = process.env.PARALLAX_EXECUTION_ENGINE !== 'false';
+  const enableExecutionEngine =
+    process.env.PARALLAX_EXECUTION_ENGINE !== 'false';
 
   if (enableExecutionEngine) {
     const proxyConfig: ProxyConfig = {
-      timeout: parseInt(process.env.PARALLAX_AGENT_TIMEOUT || '30000'),
-      retries: parseInt(process.env.PARALLAX_AGENT_RETRIES || '2'),
+      timeout: parseInt(process.env.PARALLAX_AGENT_TIMEOUT || '30000', 10),
+      retries: parseInt(process.env.PARALLAX_AGENT_RETRIES || '2', 10),
       circuitBreaker: {
-        failureThreshold: parseInt(process.env.PARALLAX_CB_FAILURE_THRESHOLD || '5'),
-        resetTimeout: parseInt(process.env.PARALLAX_CB_RESET_TIMEOUT || '30000'),
-        monitoringPeriod: parseInt(process.env.PARALLAX_CB_MONITORING_PERIOD || '60000'),
+        failureThreshold: parseInt(
+          process.env.PARALLAX_CB_FAILURE_THRESHOLD || '5',
+          10
+        ),
+        resetTimeout: parseInt(
+          process.env.PARALLAX_CB_RESET_TIMEOUT || '30000',
+          10
+        ),
+        monitoringPeriod: parseInt(
+          process.env.PARALLAX_CB_MONITORING_PERIOD || '60000',
+          10
+        ),
       },
       rateLimit: {
-        maxRequests: parseInt(process.env.PARALLAX_RATE_LIMIT_MAX || '100'),
-        windowMs: parseInt(process.env.PARALLAX_RATE_LIMIT_WINDOW || '60000'),
+        maxRequests: parseInt(process.env.PARALLAX_RATE_LIMIT_MAX || '100', 10),
+        windowMs: parseInt(
+          process.env.PARALLAX_RATE_LIMIT_WINDOW || '60000',
+          10
+        ),
       },
     };
 
     const dataPlaneAgentProxy = new DataPlaneAgentProxy(proxyConfig, logger);
 
-    const confidenceTracker = new ConfidenceTracker({
-      maxDataPoints: 10000,
-      retentionPeriodDays: 7,
-      aggregationIntervals: {
-        minute: 60,
-        hour: 24,
-        day: 30,
+    const confidenceTracker = new ConfidenceTracker(
+      {
+        maxDataPoints: 10000,
+        retentionPeriodDays: 7,
+        aggregationIntervals: {
+          minute: 60,
+          hour: 24,
+          day: 30,
+        },
+        anomalyDetection: {
+          enabled: true,
+          suddenDropThreshold: 0.3,
+          lowConfidenceThreshold: 0.5,
+          highVarianceThreshold: 0.2,
+          checkIntervalMs: 60000,
+        },
+        store: 'memory',
       },
-      anomalyDetection: {
-        enabled: true,
-        suddenDropThreshold: 0.3,
-        lowConfidenceThreshold: 0.5,
-        highVarianceThreshold: 0.2,
-        checkIntervalMs: 60000,
-      },
-      store: 'memory',
-    }, logger);
+      logger
+    );
 
     const executionEngineConfig: ExecutionEngineConfig = {
-      maxConcurrency: parseInt(process.env.PARALLAX_MAX_CONCURRENCY || '10'),
-      defaultTimeout: parseInt(process.env.PARALLAX_AGENT_TIMEOUT || '30000'),
+      maxConcurrency: parseInt(
+        process.env.PARALLAX_MAX_CONCURRENCY || '10',
+        10
+      ),
+      defaultTimeout: parseInt(
+        process.env.PARALLAX_AGENT_TIMEOUT || '30000',
+        10
+      ),
       retryConfig: {
-        maxRetries: parseInt(process.env.PARALLAX_AGENT_RETRIES || '2'),
+        maxRetries: parseInt(process.env.PARALLAX_AGENT_RETRIES || '2', 10),
         backoffMultiplier: 2,
         initialDelay: 1000,
       },
       cache: {
         enabled: process.env.PARALLAX_CACHE_ENABLED !== 'false',
-        ttl: parseInt(process.env.PARALLAX_CACHE_TTL || '300'),
-        confidenceThreshold: parseFloat(process.env.PARALLAX_CACHE_CONFIDENCE_THRESHOLD || '0.8'),
-        maxEntries: parseInt(process.env.PARALLAX_CACHE_MAX_ENTRIES || '1000'),
+        ttl: parseInt(process.env.PARALLAX_CACHE_TTL || '300', 10),
+        confidenceThreshold: parseFloat(
+          process.env.PARALLAX_CACHE_CONFIDENCE_THRESHOLD || '0.8'
+        ),
+        maxEntries: parseInt(
+          process.env.PARALLAX_CACHE_MAX_ENTRIES || '1000',
+          10
+        ),
       },
     };
 
@@ -253,41 +294,49 @@ export async function createServer(): Promise<express.Application> {
   }
 
   // Initialize Gateway Service for NAT-traversing agents
-  const gatewayService = new GatewayService(registry, logger, undefined, executionEvents);
+  const gatewayService = new GatewayService(
+    registry,
+    logger,
+    undefined,
+    executionEvents
+  );
 
   // Use traced pattern engine if tracing is enabled
   // Note: workspaceService and agentRuntimeService will be set later after they're initialized
-  const patternEngine: IPatternEngine = tracingConfig.exporterType !== 'none'
-    ? new TracedPatternEngine(
-        runtimeManager,
-        registry,
-        patternsDir,
-        logger,
-        database,
-        executionEvents,
-        databasePatterns,
-        undefined, // workspaceService - set later
-        executionEngine,
-        undefined  // agentRuntimeService - set later
-      )
-    : new PatternEngine(
-        runtimeManager,
-        registry,
-        patternsDir,
-        logger,
-        database,
-        executionEvents,
-        databasePatterns,
-        undefined, // workspaceService - set later
-        executionEngine,
-        undefined  // agentRuntimeService - set later
-      );
+  const patternEngine: IPatternEngine =
+    tracingConfig.exporterType !== 'none'
+      ? new TracedPatternEngine(
+          runtimeManager,
+          registry,
+          patternsDir,
+          logger,
+          database,
+          executionEvents,
+          databasePatterns,
+          undefined, // workspaceService - set later
+          executionEngine,
+          undefined // agentRuntimeService - set later
+        )
+      : new PatternEngine(
+          runtimeManager,
+          registry,
+          patternsDir,
+          logger,
+          database,
+          executionEvents,
+          databasePatterns,
+          undefined, // workspaceService - set later
+          executionEngine,
+          undefined // agentRuntimeService - set later
+        );
   await patternEngine.initialize();
 
   // Wire up nested pattern execution support
   // This allows ExecutionEngine to execute patterns via the PatternExecutor interface
   if (executionEngine) {
-    const patternExecutorAdapter = new PatternExecutorAdapter(patternEngine as PatternEngine);
+    const patternExecutorAdapter = new PatternExecutorAdapter(
+      patternEngine as PatternEngine
+    );
     executionEngine.setPatternExecutor(patternExecutorAdapter);
     logger.info('Nested pattern execution enabled via PatternExecutorAdapter');
   }
@@ -302,32 +351,43 @@ export async function createServer(): Promise<express.Application> {
 
   // Initialize High Availability services (Enterprise feature)
   let haServices: HAServices | null = null;
-  const haEnabled = licenseEnforcer.hasFeature('high_availability') &&
-                    process.env.PARALLAX_HA_ENABLED === 'true';
+  const haEnabled =
+    licenseEnforcer.hasFeature('high_availability') &&
+    process.env.PARALLAX_HA_ENABLED === 'true';
 
   if (haEnabled) {
     const redisUrl = process.env.PARALLAX_REDIS_URL || 'redis://localhost:6379';
     try {
-      haServices = await initializeHA({
-        enabled: true,
-        etcdEndpoints,
-        redisUrl,
-        hostname: process.env.HOSTNAME || 'localhost',
-        port: parseInt(process.env.PORT || '3000'),
-      }, logger);
+      haServices = await initializeHA(
+        {
+          enabled: true,
+          etcdEndpoints,
+          redisUrl,
+          hostname: process.env.HOSTNAME || 'localhost',
+          port: parseInt(process.env.PORT || '3000', 10),
+        },
+        logger
+      );
       logger.info('High Availability services initialized');
     } catch (error) {
-      logger.error({ error }, 'Failed to initialize HA services - continuing without HA');
+      logger.error(
+        { error },
+        'Failed to initialize HA services - continuing without HA'
+      );
     }
   }
 
   // Start timeout checker — periodically fails timed-out executions
   const timeoutChecker = new TimeoutChecker(database.executions, logger, {
     // Default 2 hours for thread-based executions (coding agents take time)
-    defaultTimeoutMs: parseInt(process.env.PARALLAX_DEFAULT_EXECUTION_TIMEOUT || '7200000'),
-    isLeader: haEnabled && haServices
-      ? () => haServices!.leaderElection.isLeader()
-      : () => true,
+    defaultTimeoutMs: parseInt(
+      process.env.PARALLAX_DEFAULT_EXECUTION_TIMEOUT || '7200000',
+      10
+    ),
+    isLeader:
+      haEnabled && haServices
+        ? () => haServices!.leaderElection.isLeader()
+        : () => true,
   });
   timeoutChecker.start();
 
@@ -349,16 +409,14 @@ export async function createServer(): Promise<express.Application> {
     const prisma = database.getPrismaClient();
 
     // Create scheduler service
-    schedulerService = createSchedulerService(
-      prisma,
-      patternEngine,
-      logger,
-      {
-        leaderElection: haServices?.leaderElection,
-        lock: haServices?.lock,
-        pollFrequencyMs: parseInt(process.env.PARALLAX_SCHEDULER_POLL_MS || '1000'),
-      }
-    );
+    schedulerService = createSchedulerService(prisma, patternEngine, logger, {
+      leaderElection: haServices?.leaderElection,
+      lock: haServices?.lock,
+      pollFrequencyMs: parseInt(
+        process.env.PARALLAX_SCHEDULER_POLL_MS || '1000',
+        10
+      ),
+    });
 
     // Create trigger service
     triggerService = createTriggerService(prisma, patternEngine, logger);
@@ -389,144 +447,179 @@ export async function createServer(): Promise<express.Application> {
   const localRuntimeUrl = process.env.PARALLAX_LOCAL_RUNTIME_URL;
   const dockerRuntimeUrl = process.env.PARALLAX_DOCKER_RUNTIME_URL;
   const k8sRuntimeUrl = process.env.PARALLAX_K8S_RUNTIME_URL;
+  agentRuntimeService = new AgentRuntimeService(logger);
 
-  // Always create the runtime service — gateway runtime is always available
-  {
-    agentRuntimeService = new AgentRuntimeService(logger);
-
-    // Register local runtime if configured
-    if (localRuntimeUrl) {
-      try {
-        await agentRuntimeService.registerRuntime(
-          'local',
-          'local',
-          { baseUrl: localRuntimeUrl },
-          10 // High priority for local dev
-        );
-        logger.info({ url: localRuntimeUrl }, 'Local runtime registered');
-      } catch (error) {
-        logger.warn({ error, url: localRuntimeUrl }, 'Failed to connect to local runtime');
-      }
-    }
-
-    // Register Docker runtime if configured
-    if (dockerRuntimeUrl) {
-      try {
-        await agentRuntimeService.registerRuntime(
-          'docker',
-          'docker',
-          { baseUrl: dockerRuntimeUrl },
-          20 // Lower priority than local
-        );
-        logger.info({ url: dockerRuntimeUrl }, 'Docker runtime registered');
-      } catch (error) {
-        logger.warn({ error, url: dockerRuntimeUrl }, 'Failed to connect to Docker runtime');
-      }
-    }
-
-    // Register Kubernetes runtime if configured
-    if (k8sRuntimeUrl) {
-      try {
-        await agentRuntimeService.registerRuntime(
-          'kubernetes',
-          'kubernetes',
-          { baseUrl: k8sRuntimeUrl },
-          30 // Lower priority than Docker (used for production)
-        );
-        logger.info({ url: k8sRuntimeUrl }, 'Kubernetes runtime registered');
-      } catch (error) {
-        logger.warn({ error, url: k8sRuntimeUrl }, 'Failed to connect to Kubernetes runtime');
-      }
-    }
-
-    // Register gateway runtime — dispatches threads to gateway-connected agents
-    {
-      const { GatewayRuntimeAdapter } = require('./agent-runtime/gateway-runtime-adapter');
-      const gatewayRuntime = new GatewayRuntimeAdapter(
-        logger.child({ runtime: 'gateway' }),
-        gatewayService
-      );
-      agentRuntimeService.registerRuntimeDirect(
-        'gateway',
-        'gateway',
-        gatewayRuntime,
-        5 // Highest priority — prefer gateway agents over spawning new ones
-      );
-      logger.info('Gateway runtime registered');
-    }
-
-    // Forward runtime events to execution events
-    agentRuntimeService.on('agent_ready', (data) => {
-      executionEvents.emitEvent({
-        executionId: 'runtime',
-        type: 'managed_agent_ready',
-        data,
-        timestamp: new Date(),
-      });
-    });
-
-    agentRuntimeService.on('agent_stopped', (data) => {
-      executionEvents.emitEvent({
-        executionId: 'runtime',
-        type: 'managed_agent_stopped',
-        data,
-        timestamp: new Date(),
-      });
-    });
-
-    agentRuntimeService.on('message', (data) => {
-      executionEvents.emitEvent({
-        executionId: 'runtime',
-        type: 'managed_agent_message',
-        data,
-        timestamp: new Date(),
-      });
-    });
-
-    agentRuntimeService.on('thread_event', (data) => {
-      if (threadPersistenceService) {
-        void threadPersistenceService.projectRuntimeEvent(data).catch((error) => {
-          logger.error({ error, threadId: data.event.threadId }, 'Failed to persist thread event');
-        });
-      }
-      if (sharedDecisionService) {
-        void sharedDecisionService.projectThreadEvent(data.thread, data.event).catch((error) => {
-          logger.error({ error, threadId: data.event.threadId }, 'Failed to capture shared decision');
-        });
-      }
-      if (episodicExperienceService) {
-        void episodicExperienceService.projectThreadEvent(data.thread, data.event).catch((error) => {
-          logger.error({ error, threadId: data.event.threadId }, 'Failed to capture episodic experience');
-        });
-      }
-
-      executionEvents.emitEvent({
-        executionId: 'runtime',
-        type: 'managed_thread_event',
-        data,
-        timestamp: new Date(),
-      });
-    });
-
-    // Wire agent runtime service into pattern engine for dynamic agent spawning
-    patternEngine.setAgentRuntimeService(agentRuntimeService);
-    logger.info('Agent runtime service wired to pattern engine');
-
-    threadPersistenceService = new ThreadPersistenceService(database.threads, logger);
-    sharedDecisionService = new SharedDecisionService(database.sharedDecisions, logger);
-    episodicExperienceService = new EpisodicExperienceService(database.episodicExperiences, logger);
-    memoryContextService = new MemoryContextService(
-      database.sharedDecisions,
-      database.episodicExperiences,
-      logger
-    );
-    threadPreparationService = new ThreadPreparationService(memoryContextService, logger);
-    patternEngine.setThreadPreparationService?.(threadPreparationService);
+  // Register local runtime if configured
+  if (localRuntimeUrl) {
     try {
-      await threadPersistenceService.recoverFromRuntimes(agentRuntimeService);
+      await agentRuntimeService.registerRuntime(
+        'local',
+        'local',
+        { baseUrl: localRuntimeUrl },
+        10 // High priority for local dev
+      );
+      logger.info({ url: localRuntimeUrl }, 'Local runtime registered');
     } catch (error) {
-      logger.warn({ error }, 'Failed to recover runtime-backed threads into persistence');
+      logger.warn(
+        { error, url: localRuntimeUrl },
+        'Failed to connect to local runtime'
+      );
     }
+  }
+
+  // Register Docker runtime if configured
+  if (dockerRuntimeUrl) {
+    try {
+      await agentRuntimeService.registerRuntime(
+        'docker',
+        'docker',
+        { baseUrl: dockerRuntimeUrl },
+        20 // Lower priority than local
+      );
+      logger.info({ url: dockerRuntimeUrl }, 'Docker runtime registered');
+    } catch (error) {
+      logger.warn(
+        { error, url: dockerRuntimeUrl },
+        'Failed to connect to Docker runtime'
+      );
+    }
+  }
+
+  // Register Kubernetes runtime if configured
+  if (k8sRuntimeUrl) {
+    try {
+      await agentRuntimeService.registerRuntime(
+        'kubernetes',
+        'kubernetes',
+        { baseUrl: k8sRuntimeUrl },
+        30 // Lower priority than Docker (used for production)
+      );
+      logger.info({ url: k8sRuntimeUrl }, 'Kubernetes runtime registered');
+    } catch (error) {
+      logger.warn(
+        { error, url: k8sRuntimeUrl },
+        'Failed to connect to Kubernetes runtime'
+      );
+    }
+  }
+
+  // Register gateway runtime — dispatches threads to gateway-connected agents
+  {
+    const {
+      GatewayRuntimeAdapter,
+    } = require('./agent-runtime/gateway-runtime-adapter');
+    const gatewayRuntime = new GatewayRuntimeAdapter(
+      logger.child({ runtime: 'gateway' }),
+      gatewayService
+    );
+    agentRuntimeService.registerRuntimeDirect(
+      'gateway',
+      'gateway',
+      gatewayRuntime,
+      5 // Highest priority — prefer gateway agents over spawning new ones
+    );
+    logger.info('Gateway runtime registered');
+  }
+
+  // Forward runtime events to execution events
+  agentRuntimeService.on('agent_ready', (data) => {
+    executionEvents.emitEvent({
+      executionId: 'runtime',
+      type: 'managed_agent_ready',
+      data,
+      timestamp: new Date(),
+    });
+  });
+
+  agentRuntimeService.on('agent_stopped', (data) => {
+    executionEvents.emitEvent({
+      executionId: 'runtime',
+      type: 'managed_agent_stopped',
+      data,
+      timestamp: new Date(),
+    });
+  });
+
+  agentRuntimeService.on('message', (data) => {
+    executionEvents.emitEvent({
+      executionId: 'runtime',
+      type: 'managed_agent_message',
+      data,
+      timestamp: new Date(),
+    });
+  });
+
+  agentRuntimeService.on('thread_event', (data) => {
+    if (threadPersistenceService) {
+      void threadPersistenceService.projectRuntimeEvent(data).catch((error) => {
+        logger.error(
+          { error, threadId: data.event.threadId },
+          'Failed to persist thread event'
+        );
+      });
+    }
+    if (sharedDecisionService) {
+      void sharedDecisionService
+        .projectThreadEvent(data.thread, data.event)
+        .catch((error) => {
+          logger.error(
+            { error, threadId: data.event.threadId },
+            'Failed to capture shared decision'
+          );
+        });
+    }
+    if (episodicExperienceService) {
+      void episodicExperienceService
+        .projectThreadEvent(data.thread, data.event)
+        .catch((error) => {
+          logger.error(
+            { error, threadId: data.event.threadId },
+            'Failed to capture episodic experience'
+          );
+        });
+    }
+
+    executionEvents.emitEvent({
+      executionId: 'runtime',
+      type: 'managed_thread_event',
+      data,
+      timestamp: new Date(),
+    });
+  });
+
+  // Wire agent runtime service into pattern engine for dynamic agent spawning
+  patternEngine.setAgentRuntimeService(agentRuntimeService);
+  logger.info('Agent runtime service wired to pattern engine');
+
+  threadPersistenceService = new ThreadPersistenceService(
+    database.threads,
+    logger
+  );
+  sharedDecisionService = new SharedDecisionService(
+    database.sharedDecisions,
+    logger
+  );
+  episodicExperienceService = new EpisodicExperienceService(
+    database.episodicExperiences,
+    logger
+  );
+  memoryContextService = new MemoryContextService(
+    database.sharedDecisions,
+    database.episodicExperiences,
+    logger
+  );
+  threadPreparationService = new ThreadPreparationService(
+    memoryContextService,
+    logger
+  );
+  patternEngine.setThreadPreparationService?.(threadPreparationService);
+  try {
+    await threadPersistenceService.recoverFromRuntimes(agentRuntimeService);
+  } catch (error) {
+    logger.warn(
+      { error },
+      'Failed to recover runtime-backed threads into persistence'
+    );
   }
 
   // Initialize Workspace Service (for git workspace provisioning)
@@ -536,7 +629,9 @@ export async function createServer(): Promise<express.Application> {
 
   const githubAppId = process.env.PARALLAX_GITHUB_APP_ID;
   const githubPrivateKey = process.env.PARALLAX_GITHUB_PRIVATE_KEY;
-  const workspacesDir = process.env.PARALLAX_WORKSPACES_DIR || path.join(process.cwd(), '.workspaces');
+  const workspacesDir =
+    process.env.PARALLAX_WORKSPACES_DIR ||
+    path.join(process.cwd(), '.workspaces');
 
   if (githubAppId && githubPrivateKey) {
     // Initialize GitHub provider for authenticated git operations
@@ -558,14 +653,20 @@ export async function createServer(): Promise<express.Application> {
       credentialService = new CredentialService(
         {
           githubProvider,
-          defaultTtlSeconds: parseInt(process.env.PARALLAX_CREDENTIAL_TTL || '3600'),
+          defaultTtlSeconds: parseInt(
+            process.env.PARALLAX_CREDENTIAL_TTL || '3600',
+            10
+          ),
           repository: database.credentialGrants,
         },
         logger
       );
       logger.info('Credential service initialized (with database persistence)');
     } catch (error) {
-      logger.warn({ error }, 'Failed to initialize GitHub provider - falling back to PAT if available');
+      logger.warn(
+        { error },
+        'Failed to initialize GitHub provider - falling back to PAT if available'
+      );
       githubProvider = null;
     }
   }
@@ -582,13 +683,19 @@ export async function createServer(): Promise<express.Application> {
     });
 
     await workspaceService.initialize();
-    logger.info({ workspacesDir, hasCredentialService: !!credentialService }, 'Workspace service initialized');
+    logger.info(
+      { workspacesDir, hasCredentialService: !!credentialService },
+      'Workspace service initialized'
+    );
 
     // Wire workspace service into pattern engine
     patternEngine.setWorkspaceService(workspaceService);
     threadPreparationService?.setWorkspaceService(workspaceService);
   } catch (error) {
-    logger.warn({ error }, 'Failed to initialize workspace service - continuing without workspace support');
+    logger.warn(
+      { error },
+      'Failed to initialize workspace service - continuing without workspace support'
+    );
     workspaceService = null;
   }
 
@@ -606,9 +713,10 @@ export async function createServer(): Promise<express.Application> {
   if (haServices) {
     app.get('/health/cluster', async (_req, res) => {
       try {
-        const clusterHealth = await haServices!.clusterHealth.getClusterHealth();
+        const clusterHealth =
+          await haServices!.clusterHealth.getClusterHealth();
         res.json(clusterHealth);
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to get cluster health' });
       }
     });
@@ -653,7 +761,13 @@ export async function createServer(): Promise<express.Application> {
   }
 
   // API Routes
-  const patternsRouter = createPatternsRouter(patternEngine as PatternEngine, metrics, logger, licenseEnforcer, database);
+  const patternsRouter = createPatternsRouter(
+    patternEngine as PatternEngine,
+    metrics,
+    logger,
+    licenseEnforcer,
+    database
+  );
   const agentsRouter = createAgentsRouter(registry, metrics, logger, database);
   const executionsRouter = createExecutionsRouter(
     patternEngine as PatternEngine,
@@ -672,13 +786,24 @@ export async function createServer(): Promise<express.Application> {
 
   // Schedules and Triggers routers (Enterprise features)
   if (schedulerService) {
-    const schedulesRouter = createSchedulesRouter(schedulerService, licenseEnforcer, logger);
+    const schedulesRouter = createSchedulesRouter(
+      schedulerService,
+      licenseEnforcer,
+      logger
+    );
     app.use('/api/schedules', schedulesRouter);
   }
 
   if (triggerService) {
-    const baseUrl = process.env.PARALLAX_BASE_URL || `http://localhost:${process.env.PORT || '3000'}`;
-    const triggersRouter = createTriggersRouter(triggerService, licenseEnforcer, logger, baseUrl);
+    const baseUrl =
+      process.env.PARALLAX_BASE_URL ||
+      `http://localhost:${process.env.PORT || '3000'}`;
+    const triggersRouter = createTriggersRouter(
+      triggerService,
+      licenseEnforcer,
+      logger,
+      baseUrl
+    );
     app.use('/api/triggers', triggersRouter);
   }
 
@@ -697,7 +822,12 @@ export async function createServer(): Promise<express.Application> {
 
   // Audit router (Enterprise feature)
   if (auditService && authService) {
-    const auditRouter = createAuditRouter(auditService, authService, licenseEnforcer, logger);
+    const auditRouter = createAuditRouter(
+      auditService,
+      authService,
+      licenseEnforcer,
+      logger
+    );
     app.use('/api/audit', auditRouter);
   }
 
@@ -715,7 +845,10 @@ export async function createServer(): Promise<express.Application> {
 
   // Managed agents router (for spawning CLI agents)
   if (agentRuntimeService) {
-    const managedAgentsRouter = createManagedAgentsRouter(agentRuntimeService, logger);
+    const managedAgentsRouter = createManagedAgentsRouter(
+      agentRuntimeService,
+      logger
+    );
     app.use('/api/managed-agents', managedAgentsRouter);
     const managedThreadsRouter = createManagedThreadsRouter(
       agentRuntimeService,
@@ -802,7 +935,7 @@ export async function createServer(): Promise<express.Application> {
     });
   });
 
-  const port = parseInt(process.env.PORT || '3000');
+  const port = parseInt(process.env.PORT || '3000', 10);
 
   // Store gRPC server instance for shutdown
   let grpcServerInstance: GrpcServer | null = null;
@@ -813,11 +946,16 @@ export async function createServer(): Promise<express.Application> {
     nodeId,
     logger,
     {
-      setShuttingDown: (value: boolean) => (patternEngine as PatternEngine).setShuttingDown(value),
-      getInFlightExecutionIds: () => (patternEngine as PatternEngine).getInFlightExecutionIds(),
+      setShuttingDown: (value: boolean) =>
+        (patternEngine as PatternEngine).setShuttingDown(value),
+      getInFlightExecutionIds: () =>
+        (patternEngine as PatternEngine).getInFlightExecutionIds(),
     },
     {
-      drainTimeoutMs: parseInt(process.env.PARALLAX_SHUTDOWN_DRAIN_TIMEOUT || '30000'),
+      drainTimeoutMs: parseInt(
+        process.env.PARALLAX_SHUTDOWN_DRAIN_TIMEOUT || '30000',
+        10
+      ),
     }
   );
 
@@ -864,9 +1002,11 @@ export async function createServer(): Promise<express.Application> {
   if (enableExecutionEngine && executionEngine) {
     const dpProxy = executionEngine.getAgentProxy() as any;
     if (typeof dpProxy.setGatewayDispatcher === 'function') {
-      dpProxy.setGatewayDispatcher(async (agentId: string, request: any, timeout: number) => {
-        return gatewayService.dispatchTask(agentId, request, timeout);
-      });
+      dpProxy.setGatewayDispatcher(
+        async (agentId: string, request: any, timeout: number) => {
+          return gatewayService.dispatchTask(agentId, request, timeout);
+        }
+      );
       logger.info('Gateway dispatcher wired to data-plane AgentProxy');
     }
   }
@@ -877,9 +1017,16 @@ export async function createServer(): Promise<express.Application> {
   logger.info('Route setup complete, initializing gRPC server...');
 
   // Initialize gRPC server
-  const grpcServer = new GrpcServer(patternEngine, registry, database, logger, executionEvents, gatewayService);
+  const grpcServer = new GrpcServer(
+    patternEngine,
+    registry,
+    database,
+    logger,
+    executionEvents,
+    gatewayService
+  );
   grpcServerInstance = grpcServer;
-  const grpcPort = parseInt(process.env.GRPC_PORT || '50051');
+  const grpcPort = parseInt(process.env.GRPC_PORT || '50051', 10);
 
   const start = async () => {
     const server = createHttpServer(app);
@@ -897,7 +1044,9 @@ export async function createServer(): Promise<express.Application> {
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       let executionId: string | null = null;
 
-      const pathMatch = url.pathname.match(/^\/api\/executions\/([^/]+)\/stream$/);
+      const pathMatch = url.pathname.match(
+        /^\/api\/executions\/([^/]+)\/stream$/
+      );
       if (pathMatch) {
         executionId = pathMatch[1];
       } else if (url.pathname === '/api/executions/stream') {
@@ -920,7 +1069,10 @@ export async function createServer(): Promise<express.Application> {
       await grpcServer.start(grpcPort);
       logger.info(`gRPC server listening on port ${grpcPort}`);
     } catch (grpcError: any) {
-      logger.error({ error: grpcError.message || grpcError }, `Failed to start gRPC server on port ${grpcPort}`);
+      logger.error(
+        { error: grpcError.message || grpcError },
+        `Failed to start gRPC server on port ${grpcPort}`
+      );
       // Continue without gRPC for now
       logger.warn('Continuing without gRPC server - HTTP API will still work');
     }
@@ -930,11 +1082,17 @@ export async function createServer(): Promise<express.Application> {
       logger.info(`Health check: http://localhost:${port}/health`);
       logger.info(`API: http://localhost:${port}/api`);
       logger.info(`gRPC: 0.0.0.0:${grpcPort}`);
-      logger.info(`WebSocket: ws://localhost:${port}/api/executions/:id/stream`);
-      logger.info(`Tracing: ${tracingConfig.exporterType === 'none' ? 'Disabled' : 'Enabled'}`);
+      logger.info(
+        `WebSocket: ws://localhost:${port}/api/executions/:id/stream`
+      );
+      logger.info(
+        `Tracing: ${tracingConfig.exporterType === 'none' ? 'Disabled' : 'Enabled'}`
+      );
       logger.info(`License: ${licenseEnforcer.getLicenseType()}`);
       if (haEnabled) {
-        logger.info(`HA: Enabled (Leader: ${haServices?.leaderElection.isLeader() ? 'Yes' : 'No'})`);
+        logger.info(
+          `HA: Enabled (Leader: ${haServices?.leaderElection.isLeader() ? 'Yes' : 'No'})`
+        );
       }
       if (schedulerService) {
         logger.info(`Scheduler: Enabled`);
@@ -944,7 +1102,13 @@ export async function createServer(): Promise<express.Application> {
       }
     });
 
-    return { httpServer: server, grpcServer, haServices, schedulerService, triggerService };
+    return {
+      httpServer: server,
+      grpcServer,
+      haServices,
+      schedulerService,
+      triggerService,
+    };
   };
 
   return Object.assign(app, { start });
@@ -953,12 +1117,19 @@ export async function createServer(): Promise<express.Application> {
 // Start server if run directly
 if (require.main === module) {
   createServer()
-    .then(server => (server as any).start())
-    .catch(error => {
+    .then((server) => (server as any).start())
+    .catch((error) => {
       // Use console.error for full output — Pino's default serializer misses
       // non-enumerable Error properties (message, stack) when key is 'error' not 'err'
       console.error('FATAL: Failed to start server:', error);
-      logger.error({ err: error, errorMessage: String(error?.message), errorStack: String(error?.stack) }, 'Failed to start server');
+      logger.error(
+        {
+          err: error,
+          errorMessage: String(error?.message),
+          errorStack: String(error?.stack),
+        },
+        'Failed to start server'
+      );
       process.exit(1);
     });
 }

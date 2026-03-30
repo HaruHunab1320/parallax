@@ -4,14 +4,14 @@
  * Built-in adapter for bash/zsh shell sessions.
  */
 
-import type { CLIAdapter } from './adapter-interface';
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from '../types';
+import type { CLIAdapter } from './adapter-interface';
 
 /**
  * Options for the shell adapter
@@ -82,12 +82,20 @@ export class ShellAdapter implements CLIAdapter {
   private isContinuationPrompt(output: string): boolean {
     const stripped = this.stripAnsi(output);
     // Match common continuation prompts at the end of output
-    return /(?:quote|dquote|heredoc|bquote|cmdsubst|pipe|then|else|do|loop)>\s*$/.test(stripped)
+    return (
+      /(?:quote|dquote|heredoc|bquote|cmdsubst|pipe|then|else|do|loop)>\s*$/.test(
+        stripped
+      ) ||
       // Also match bare > that's preceded by one of these words on the same line
-      || /(?:quote|dquote|heredoc|bquote)>\s*$/m.test(stripped);
+      /(?:quote|dquote|heredoc|bquote)>\s*$/m.test(stripped)
+    );
   }
 
-  detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     if (output.includes('exit')) {
       return { exited: true, code: 0 };
     }
@@ -118,7 +126,11 @@ export class ShellAdapter implements CLIAdapter {
     return new RegExp(`(?:${escaped}|\\$|#)\\s*$`, 'm');
   }
 
-  async validateInstallation(): Promise<{ installed: boolean; version?: string; error?: string }> {
+  async validateInstallation(): Promise<{
+    installed: boolean;
+    version?: string;
+    error?: string;
+  }> {
     // Shell is always installed
     return { installed: true };
   }

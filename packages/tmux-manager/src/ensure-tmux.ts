@@ -5,7 +5,7 @@
  * Throws a descriptive error if tmux is not found.
  */
 
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 
 let _checked = false;
 let _version: string | undefined;
@@ -30,7 +30,7 @@ export function ensureTmux(log?: (msg: string) => void): string {
     }).trim();
 
     // tmux -V outputs something like "tmux 3.4" or "tmux next-3.5"
-    const match = output.match(/tmux\s+([\w.\-]+)/);
+    const match = output.match(/tmux\s+([\w.-]+)/);
     _version = match?.[1] ?? output;
     _checked = true;
 
@@ -39,7 +39,7 @@ export function ensureTmux(log?: (msg: string) => void): string {
   } catch {
     throw new Error(
       'tmux is required but not found on PATH. ' +
-      'Install it with: brew install tmux (macOS) or apt install tmux (Linux)'
+        'Install it with: brew install tmux (macOS) or apt install tmux (Linux)'
     );
   }
 }

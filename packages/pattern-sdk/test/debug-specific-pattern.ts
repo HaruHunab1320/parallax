@@ -50,7 +50,7 @@ const result = validator.validateAll(patternCode);
 console.log('Valid:', result.valid);
 if (result.formattedErrors) {
   console.log('\nErrors:');
-  result.formattedErrors.forEach(err => {
+  result.formattedErrors.forEach((err) => {
     console.log(`Line ${err.line}: ${err.message}`);
   });
 }
@@ -58,7 +58,7 @@ if (result.formattedErrors) {
 // Also check syntax
 if (result.syntax?.errors) {
   console.log('\nSyntax errors:');
-  result.syntax.errors.forEach(err => {
+  result.syntax.errors.forEach((err) => {
     console.log(`Line ${err.line}: ${err.message}`);
   });
 }

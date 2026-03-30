@@ -1,12 +1,12 @@
-import { HttpClient } from '../http.js';
-import {
+import type { HttpClient } from '../http.js';
+import type {
+  AuditCleanupResponse,
+  AuditFailedLoginsResponse,
   AuditQueryParams,
   AuditQueryResponse,
+  AuditResourceResponse,
   AuditStatsResponse,
   AuditUserResponse,
-  AuditResourceResponse,
-  AuditFailedLoginsResponse,
-  AuditCleanupResponse,
 } from '../types/audit.js';
 
 export class AuditResource {
@@ -14,7 +14,10 @@ export class AuditResource {
 
   /** Query audit logs with filters (Enterprise, admin only) */
   async query(params?: AuditQueryParams): Promise<AuditQueryResponse> {
-    return this.http.get<AuditQueryResponse>('/api/audit', params as Record<string, string | number | boolean | undefined>);
+    return this.http.get<AuditQueryResponse>(
+      '/api/audit',
+      params as Record<string, string | number | boolean | undefined>
+    );
   }
 
   /** Get audit log statistics (Enterprise, admin only) */
@@ -47,10 +50,13 @@ export class AuditResource {
     email?: string,
     hours = 24
   ): Promise<AuditFailedLoginsResponse> {
-    return this.http.get<AuditFailedLoginsResponse>('/api/audit/failed-logins', {
-      email,
-      hours,
-    });
+    return this.http.get<AuditFailedLoginsResponse>(
+      '/api/audit/failed-logins',
+      {
+        email,
+        hours,
+      }
+    );
   }
 
   /** Clean up old audit logs (Enterprise, admin only) */

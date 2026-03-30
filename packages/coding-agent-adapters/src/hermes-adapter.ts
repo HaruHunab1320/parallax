@@ -5,12 +5,18 @@
  */
 
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
   BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from 'adapter-types';
-import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
+import {
+  type AgentCredentials,
+  type AgentFileDescriptor,
+  BaseCodingAdapter,
+  type InstallationInfo,
+  type ModelRecommendations,
+} from './base-coding-adapter';
 
 export class HermesAdapter extends BaseCodingAdapter {
   readonly adapterType = 'hermes';
@@ -32,14 +38,16 @@ export class HermesAdapter extends BaseCodingAdapter {
     return [
       {
         relativePath: 'AGENTS.md',
-        description: 'Project instructions and architecture notes loaded by Hermes context files',
+        description:
+          'Project instructions and architecture notes loaded by Hermes context files',
         autoLoaded: true,
         type: 'memory',
         format: 'markdown',
       },
       {
         relativePath: 'SOUL.md',
-        description: 'Optional persona/context file auto-injected into Hermes system prompt',
+        description:
+          'Optional persona/context file auto-injected into Hermes system prompt',
         autoLoaded: true,
         type: 'memory',
         format: 'markdown',
@@ -132,21 +140,31 @@ export class HermesAdapter extends BaseCodingAdapter {
         type: 'tool_wait',
         prompt: 'Hermes clarify prompt',
         canAutoRespond: false,
-        instructions: 'Hermes is waiting for clarify input (arrow keys + Enter or free text).',
+        instructions:
+          'Hermes is waiting for clarify input (arrow keys + Enter or free text).',
       };
     }
 
-    if (/Sudo Password Required|password hidden|Password \(hidden\):/i.test(stripped)) {
+    if (
+      /Sudo Password Required|password hidden|Password \(hidden\):/i.test(
+        stripped
+      )
+    ) {
       return {
         detected: true,
         type: 'tool_wait',
         prompt: 'Hermes sudo password prompt',
         canAutoRespond: false,
-        instructions: 'Hermes terminal tool is waiting for a sudo password or skip.',
+        instructions:
+          'Hermes terminal tool is waiting for a sudo password or skip.',
       };
     }
 
-    if (/Dangerous Command|Allow once|Allow for this session|permanent allowlist|\bDeny\b/i.test(stripped)) {
+    if (
+      /Dangerous Command|Allow once|Allow for this session|permanent allowlist|\bDeny\b/i.test(
+        stripped
+      )
+    ) {
       return {
         detected: true,
         type: 'permission',
@@ -164,12 +182,19 @@ export class HermesAdapter extends BaseCodingAdapter {
     const tail = stripped.slice(-1200);
 
     // Thinking spinner verbs from agent/display.py
-    if (/(?:pondering|contemplating|musing|cogitating|ruminating|deliberating|mulling|reflecting|processing|reasoning|analyzing|computing|synthesizing|formulating|brainstorming)\.\.\.\s*\(\d+\.\d+s\)/i.test(tail)) {
+    if (
+      /(?:pondering|contemplating|musing|cogitating|ruminating|deliberating|mulling|reflecting|processing|reasoning|analyzing|computing|synthesizing|formulating|brainstorming)\.\.\.\s*\(\d+\.\d+s\)/i.test(
+        tail
+      )
+    ) {
       return true;
     }
 
     // Tool spinner / active progress line with elapsed time.
-    if (/\(\d+\.\d+s\)\s*$/.test(tail) && /(?:🔍|📄|💻|⚙️|📖|✍️|🔧|🌐|👆|⌨️|📋|🧠|📚|🎨|🐍|🔀|⚡|💬)/.test(tail)) {
+    if (
+      /\(\d+\.\d+s\)\s*$/.test(tail) &&
+      /(?:🔍|📄|💻|⚙️|📖|✍️|🔧|🌐|👆|⌨️|📋|🧠|📚|🎨|🐍|🔀|⚡|💬)/.test(tail)
+    ) {
       return true;
     }
 
@@ -214,7 +239,11 @@ export class HermesAdapter extends BaseCodingAdapter {
       return false;
     }
 
-    if (/Hermes needs your input|Sudo Password Required|Dangerous Command/i.test(tail)) {
+    if (
+      /Hermes needs your input|Sudo Password Required|Dangerous Command/i.test(
+        tail
+      )
+    ) {
       return false;
     }
 
@@ -244,7 +273,10 @@ export class HermesAdapter extends BaseCodingAdapter {
 
     // Fallback: keep tail content with prompts stripped.
     if (!content) {
-      content = this.extractContent(stripped, /(?:^|\n)\s*(?:⚕|⚠|🔐|\?|✎)?\s*❯\s*$/gim);
+      content = this.extractContent(
+        stripped,
+        /(?:^|\n)\s*(?:⚕|⚠|🔐|\?|✎)?\s*❯\s*$/gim
+      );
     }
 
     return {
@@ -262,7 +294,11 @@ export class HermesAdapter extends BaseCodingAdapter {
     return /(?:^|\n)\s*(?:⚕|⚠|🔐|\?|✎)?\s*❯\s*$/i;
   }
 
-  override detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  override detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     const stripped = this.stripAnsi(output);
 
     if (/Goodbye!\s*⚕/i.test(stripped)) {

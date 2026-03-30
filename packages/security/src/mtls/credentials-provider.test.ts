@@ -1,7 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MTLSCredentialsProvider, MTLSConfig } from './credentials-provider';
 import * as grpc from '@grpc/grpc-js';
 import pino from 'pino';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  type MTLSConfig,
+  MTLSCredentialsProvider,
+} from './credentials-provider';
 
 const logger = pino({ level: 'silent' });
 
@@ -47,7 +50,9 @@ describe('MTLSCredentialsProvider', () => {
       process.env.PARALLAX_AUTH_TOKEN = 'test-token-123';
       try {
         const metadata = provider.createAuthMetadata('agent-1');
-        expect(metadata.get('authorization')).toEqual(['Bearer test-token-123']);
+        expect(metadata.get('authorization')).toEqual([
+          'Bearer test-token-123',
+        ]);
       } finally {
         if (originalToken !== undefined) {
           process.env.PARALLAX_AUTH_TOKEN = originalToken;
@@ -93,7 +98,11 @@ describe('MTLSCredentialsProvider', () => {
 
   describe('createVerificationInterceptor', () => {
     it('should call next() when client cert checking disabled', () => {
-      const config: MTLSConfig = { enabled: true, certsDir: '/tmp', checkClientCertificate: false };
+      const config: MTLSConfig = {
+        enabled: true,
+        certsDir: '/tmp',
+        checkClientCertificate: false,
+      };
       const provider = new MTLSCredentialsProvider(config, logger);
       const interceptor = provider.createVerificationInterceptor();
 
@@ -103,7 +112,11 @@ describe('MTLSCredentialsProvider', () => {
     });
 
     it('should reject when no agent-id in metadata', () => {
-      const config: MTLSConfig = { enabled: true, certsDir: '/tmp', checkClientCertificate: true };
+      const config: MTLSConfig = {
+        enabled: true,
+        certsDir: '/tmp',
+        checkClientCertificate: true,
+      };
       const provider = new MTLSCredentialsProvider(config, logger);
       const interceptor = provider.createVerificationInterceptor();
 

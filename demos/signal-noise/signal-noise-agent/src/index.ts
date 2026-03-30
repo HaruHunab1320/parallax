@@ -1,11 +1,13 @@
-import path from 'path';
-import { loadPersona } from './persona-loader';
+import path from 'node:path';
 import { PersonaAgent } from './persona-agent';
+import { loadPersona } from './persona-loader';
 
 async function main() {
   const personaId = process.env.AGENT_PERSONA;
   if (!personaId) {
-    console.error('AGENT_PERSONA env var required (vero, silas, sable, or echo)');
+    console.error(
+      'AGENT_PERSONA env var required (vero, silas, sable, or echo)'
+    );
     process.exit(1);
   }
 
@@ -38,7 +40,9 @@ async function main() {
 
   if (gatewayEndpoint) {
     // Gateway mode: outbound connection to remote control plane (no public endpoint needed)
-    console.log(`Starting Signal//Noise Agent: ${persona.name} (gateway mode)...`);
+    console.log(
+      `Starting Signal//Noise Agent: ${persona.name} (gateway mode)...`
+    );
     console.log(`  Gateway: ${gatewayEndpoint}`);
 
     await agent.connectViaGateway(gatewayEndpoint);
@@ -49,7 +53,9 @@ async function main() {
     const port = parseInt(process.env.AGENT_PORT || '0', 10);
     console.log(`Starting Signal//Noise Agent: ${persona.name}...`);
     console.log(`  Registry: ${registryEndpoint || 'localhost:50051'}`);
-    console.log(`  Host:     ${process.env.PARALLAX_AGENT_HOST || '127.0.0.1'}`);
+    console.log(
+      `  Host:     ${process.env.PARALLAX_AGENT_HOST || '127.0.0.1'}`
+    );
 
     const actualPort = await agent.serve(port, { registryEndpoint });
     console.log(`${persona.name} agent serving on port ${actualPort}`);

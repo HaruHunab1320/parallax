@@ -4,15 +4,15 @@
  * Abstract base class with common functionality for CLI adapters.
  */
 
-import { spawn } from 'child_process';
-import type { CLIAdapter } from './adapter-interface';
+import { spawn } from 'node:child_process';
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from '../types';
+import type { CLIAdapter } from './adapter-interface';
 
 /**
  * Abstract base class for CLI adapters with common functionality
@@ -44,7 +44,11 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
   /**
    * Default exit detection - look for common exit patterns
    */
-  detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     // Check for common exit/error patterns
     if (output.includes('Process exited with code')) {
       const match = output.match(/Process exited with code (\d+)/);
@@ -54,7 +58,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
       };
     }
 
-    if (output.includes('Command not found') || output.includes('command not found')) {
+    if (
+      output.includes('Command not found') ||
+      output.includes('command not found')
+    ) {
       return {
         exited: true,
         code: 127,
@@ -74,7 +81,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
 
     // Strip TUI box-drawing/chrome characters so patterns work for ink/React CLIs
     // (Gemini CLI, Claude Code TUI mode, etc.)
-    stripped = stripped.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⏺←→↑↓]/g, ' ');
+    stripped = stripped.replace(
+      /[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⏺←→↑↓]/g,
+      ' '
+    );
     stripped = stripped.replace(/ {2,}/g, ' ');
 
     // Check for login/auth first (highest priority)
@@ -91,7 +101,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for common update prompts
-    if (/update (available|now|ready)/i.test(stripped) && /\[y\/n\]/i.test(stripped)) {
+    if (
+      /update (available|now|ready)/i.test(stripped) &&
+      /\[y\/n\]/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'update',
@@ -104,7 +117,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for terms of service / license acceptance
-    if (/accept.*(terms|license|agreement)/i.test(stripped) && /\[y\/n\]/i.test(stripped)) {
+    if (
+      /accept.*(terms|license|agreement)/i.test(stripped) &&
+      /\[y\/n\]/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'tos',
@@ -127,7 +143,9 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for project/workspace selection
-    if (/choose.*(project|workspace)|select.*(project|workspace)/i.test(stripped)) {
+    if (
+      /choose.*(project|workspace)|select.*(project|workspace)/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'project_select',
@@ -139,7 +157,11 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
 
     // Check for generic y/n prompts - multiple formats
     // [y/n], (y/n), [Y/n], [y/N], (Y)es/(N)o, Yes/No
-    if (/\[y\/n\]|\(y\/n\)|\[Y\/n\]|\[y\/N\]|\(Y\)es\/\(N\)o|Yes\/No\??/i.test(stripped)) {
+    if (
+      /\[y\/n\]|\(y\/n\)|\[Y\/n\]|\[y\/N\]|\(Y\)es\/\(N\)o|Yes\/No\??/i.test(
+        stripped
+      )
+    ) {
       return {
         detected: true,
         type: 'unknown',
@@ -151,7 +173,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for numbered menu prompts (1. Yes / 2. No, or › 1. Yes)
-    if (/^\s*[›>]?\s*[1-9]\.\s+\w+/m.test(stripped) && /\?\s*$/m.test(stripped)) {
+    if (
+      /^\s*[›>]?\s*[1-9]\.\s+\w+/m.test(stripped) &&
+      /\?\s*$/m.test(stripped)
+    ) {
       // Extract numbered options
       const optionMatches = stripped.match(/[›>]?\s*([1-9])\.\s+([^\n]+)/g);
       const options = optionMatches
@@ -169,7 +194,11 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for "Enter to confirm" / "Press enter to continue" style prompts
-    if (/press enter|hit enter|enter to (confirm|continue|proceed)|press return/i.test(stripped)) {
+    if (
+      /press enter|hit enter|enter to (confirm|continue|proceed)|press return/i.test(
+        stripped
+      )
+    ) {
       return {
         detected: true,
         type: 'unknown',
@@ -181,7 +210,10 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     }
 
     // Check for trust/permission prompts (Claude Code style)
-    if (/trust|allow|permission|grant access/i.test(stripped) && /\?\s*$/m.test(stripped)) {
+    if (
+      /trust|allow|permission|grant access/i.test(stripped) &&
+      /\?\s*$/m.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'permission',
@@ -227,7 +259,11 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
   /**
    * Validate CLI installation by running --version or --help
    */
-  async validateInstallation(): Promise<{ installed: boolean; version?: string; error?: string }> {
+  async validateInstallation(): Promise<{
+    installed: boolean;
+    version?: string;
+    error?: string;
+  }> {
     return new Promise((resolve) => {
       const command = this.getCommand();
 
@@ -283,7 +319,7 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
    */
   protected containsQuestion(output: string): boolean {
     const questionPatterns = [
-      /\?$/m,                           // Ends with ?
+      /\?$/m, // Ends with ?
       /would you like/i,
       /do you want/i,
       /should I/i,
@@ -305,9 +341,15 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
     // TUI CLIs use these instead of literal spaces for word positioning.
     const withSpaces = str.replace(/\x1b\[\d*C/g, ' ');
     // Strip OSC sequences: \x1b] ... BEL or \x1b] ... ST
-    const withoutOsc = withSpaces.replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '');
+    const withoutOsc = withSpaces.replace(
+      /\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g,
+      ''
+    );
     // Strip DCS sequences: \x1bP ... ST
-    const withoutDcs = withoutOsc.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
+    const withoutDcs = withoutOsc.replace(
+      /\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g,
+      ''
+    );
     // eslint-disable-next-line no-control-regex
     return withoutDcs.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
   }

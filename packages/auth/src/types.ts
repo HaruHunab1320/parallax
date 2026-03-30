@@ -52,7 +52,7 @@ export interface Role {
   permissions: Permission[];
 }
 
-import { Request } from 'express';
+import type { Request } from 'express';
 
 export interface AuthRequest extends Request {
   user?: JWTPayload;

@@ -11,20 +11,19 @@
  * Test repo: git@github.com:HaruHunab1320/git-workspace-service-testbed.git
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
-import { execSync, exec } from 'child_process';
-import { promisify } from 'util';
-import {
-  WorkspaceService,
-  CredentialService,
-} from '../src';
+import { exec } from 'node:child_process';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { promisify } from 'node:util';
+import { CredentialService, WorkspaceService } from '../src';
 
 const execAsync = promisify(exec);
 
-const TEST_REPO_SSH = 'git@github.com:HaruHunab1320/git-workspace-service-testbed.git';
-const TEST_REPO_HTTPS = 'https://github.com/HaruHunab1320/git-workspace-service-testbed.git';
+const TEST_REPO_SSH =
+  'git@github.com:HaruHunab1320/git-workspace-service-testbed.git';
+const TEST_REPO_HTTPS =
+  'https://github.com/HaruHunab1320/git-workspace-service-testbed.git';
 
 interface TestResult {
   name: string;
@@ -53,7 +52,10 @@ async function runTest(name: string, fn: () => Promise<void>): Promise<void> {
   }
 }
 
-async function checkGitConfig(): Promise<{ useSsh: boolean; hasToken: boolean }> {
+async function checkGitConfig(): Promise<{
+  useSsh: boolean;
+  hasToken: boolean;
+}> {
   let useSsh = false;
   const hasToken = !!process.env.GITHUB_TOKEN;
 
@@ -77,7 +79,9 @@ async function main() {
   console.log(`  GITHUB_TOKEN: ${hasToken ? 'set' : 'not set'}`);
 
   if (!useSsh && !hasToken) {
-    console.log('\n\x1b[33mWarning: No authentication method available.\x1b[0m');
+    console.log(
+      '\n\x1b[33mWarning: No authentication method available.\x1b[0m'
+    );
     console.log('Set GITHUB_TOKEN or configure SSH key for GitHub.\n');
     process.exit(1);
   }
@@ -86,7 +90,9 @@ async function main() {
   console.log(`\nUsing repo: ${repoUrl}\n`);
 
   // Create temp directory
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'git-worktree-test-'));
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), 'git-worktree-test-')
+  );
   console.log(`Workspace directory: ${tempDir}\n`);
 
   // Set up services
@@ -102,8 +108,8 @@ async function main() {
     credentialService,
     logger: {
       info: () => {},
-      warn: (data, msg) => console.log(`    [WARN] ${msg}`),
-      error: (data, msg) => console.log(`    [ERROR] ${msg}`),
+      warn: (_data, msg) => console.log(`    [WARN] ${msg}`),
+      error: (_data, msg) => console.log(`    [ERROR] ${msg}`),
       debug: () => {},
     },
   });
@@ -119,9 +125,13 @@ async function main() {
 
   console.log('Running worktree tests...\n');
 
-  let parentWorkspace: Awaited<ReturnType<typeof workspaceService.provision>> | null = null;
-  let worktree1: Awaited<ReturnType<typeof workspaceService.provision>> | null = null;
-  let worktree2: Awaited<ReturnType<typeof workspaceService.provision>> | null = null;
+  let parentWorkspace: Awaited<
+    ReturnType<typeof workspaceService.provision>
+  > | null = null;
+  let worktree1: Awaited<ReturnType<typeof workspaceService.provision>> | null =
+    null;
+  let worktree2: Awaited<ReturnType<typeof workspaceService.provision>> | null =
+    null;
 
   // Test 1: Create parent clone workspace
   await runTest('Create parent clone workspace', async () => {
@@ -143,8 +153,10 @@ async function main() {
     });
 
     if (!parentWorkspace) throw new Error('Parent workspace not created');
-    if (parentWorkspace.strategy !== 'clone') throw new Error('Expected clone strategy');
-    if (parentWorkspace.status !== 'ready') throw new Error(`Unexpected status: ${parentWorkspace.status}`);
+    if (parentWorkspace.strategy !== 'clone')
+      throw new Error('Expected clone strategy');
+    if (parentWorkspace.status !== 'ready')
+      throw new Error(`Unexpected status: ${parentWorkspace.status}`);
 
     // Verify .git directory exists
     const gitDir = path.join(parentWorkspace.path, '.git');
@@ -175,17 +187,23 @@ async function main() {
     });
 
     if (!worktree1) throw new Error('Worktree 1 not created');
-    if (worktree1.strategy !== 'worktree') throw new Error('Expected worktree strategy');
-    if (worktree1.parentWorkspaceId !== parentWorkspace.id) throw new Error('Parent ID mismatch');
+    if (worktree1.strategy !== 'worktree')
+      throw new Error('Expected worktree strategy');
+    if (worktree1.parentWorkspaceId !== parentWorkspace.id)
+      throw new Error('Parent ID mismatch');
 
     // Verify worktree directory exists
     const stat = await fs.stat(worktree1.path);
     if (!stat.isDirectory()) throw new Error('Worktree directory not created');
 
     // Verify it's on the correct branch
-    const { stdout } = await execAsync('git branch --show-current', { cwd: worktree1.path });
+    const { stdout } = await execAsync('git branch --show-current', {
+      cwd: worktree1.path,
+    });
     if (stdout.trim() !== worktree1.branch.name) {
-      throw new Error(`Branch mismatch: expected ${worktree1.branch.name}, got ${stdout.trim()}`);
+      throw new Error(
+        `Branch mismatch: expected ${worktree1.branch.name}, got ${stdout.trim()}`
+      );
     }
   });
 
@@ -207,7 +225,8 @@ async function main() {
     });
 
     if (!worktree2) throw new Error('Worktree 2 not created');
-    if (worktree2.strategy !== 'worktree') throw new Error('Expected worktree strategy');
+    if (worktree2.strategy !== 'worktree')
+      throw new Error('Expected worktree strategy');
   });
 
   // Test 4: Verify worktrees are listed from parent
@@ -224,12 +243,16 @@ async function main() {
   await runTest('Verify git worktree list', async () => {
     if (!parentWorkspace) throw new Error('No parent workspace');
 
-    const { stdout } = await execAsync('git worktree list', { cwd: parentWorkspace.path });
+    const { stdout } = await execAsync('git worktree list', {
+      cwd: parentWorkspace.path,
+    });
     const lines = stdout.trim().split('\n');
 
     // Should have 3 entries: main clone + 2 worktrees
     if (lines.length !== 3) {
-      throw new Error(`Expected 3 worktree entries, got ${lines.length}:\n${stdout}`);
+      throw new Error(
+        `Expected 3 worktree entries, got ${lines.length}:\n${stdout}`
+      );
     }
   });
 
@@ -242,10 +265,14 @@ async function main() {
     await fs.writeFile(testFile, content);
 
     await execAsync('git add worktree1-test.txt', { cwd: worktree1.path });
-    await execAsync('git commit -m "Test commit from worktree 1"', { cwd: worktree1.path });
+    await execAsync('git commit -m "Test commit from worktree 1"', {
+      cwd: worktree1.path,
+    });
 
     // Verify commit exists
-    const { stdout } = await execAsync('git log --oneline -1', { cwd: worktree1.path });
+    const { stdout } = await execAsync('git log --oneline -1', {
+      cwd: worktree1.path,
+    });
     if (!stdout.includes('Test commit from worktree 1')) {
       throw new Error('Commit not found in worktree 1');
     }
@@ -260,15 +287,21 @@ async function main() {
     await fs.writeFile(testFile, content);
 
     await execAsync('git add worktree2-test.txt', { cwd: worktree2.path });
-    await execAsync('git commit -m "Test commit from worktree 2"', { cwd: worktree2.path });
+    await execAsync('git commit -m "Test commit from worktree 2"', {
+      cwd: worktree2.path,
+    });
   });
 
   // Test 8: Verify worktrees are isolated (different branches)
   await runTest('Verify worktrees have different branches', async () => {
     if (!worktree1 || !worktree2) throw new Error('Missing worktrees');
 
-    const { stdout: branch1 } = await execAsync('git branch --show-current', { cwd: worktree1.path });
-    const { stdout: branch2 } = await execAsync('git branch --show-current', { cwd: worktree2.path });
+    const { stdout: branch1 } = await execAsync('git branch --show-current', {
+      cwd: worktree1.path,
+    });
+    const { stdout: branch2 } = await execAsync('git branch --show-current', {
+      cwd: worktree2.path,
+    });
 
     if (branch1.trim() === branch2.trim()) {
       throw new Error('Worktrees should be on different branches');
@@ -277,7 +310,8 @@ async function main() {
 
   // Test 9: Verify credential sharing
   await runTest('Verify worktrees share parent credential', async () => {
-    if (!parentWorkspace || !worktree1 || !worktree2) throw new Error('Missing workspaces');
+    if (!parentWorkspace || !worktree1 || !worktree2)
+      throw new Error('Missing workspaces');
 
     if (worktree1.credential.id !== parentWorkspace.credential.id) {
       throw new Error('Worktree 1 should share parent credential');
@@ -310,7 +344,9 @@ async function main() {
     }
 
     // Verify git worktree list updated
-    const { stdout } = await execAsync('git worktree list', { cwd: parentWorkspace.path });
+    const { stdout } = await execAsync('git worktree list', {
+      cwd: parentWorkspace.path,
+    });
     if (stdout.includes(worktree1.path)) {
       throw new Error('Worktree should be removed from git worktree list');
     }

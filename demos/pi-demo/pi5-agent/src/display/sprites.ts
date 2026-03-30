@@ -1,4 +1,8 @@
-import { TamagotchiState, SpriteFrame, AnimationFrames } from './types';
+import {
+  type AnimationFrames,
+  type SpriteFrame,
+  TamagotchiState,
+} from './types';
 
 /**
  * Convert ASCII art to a SpriteFrame. '#' = on, anything else = off.

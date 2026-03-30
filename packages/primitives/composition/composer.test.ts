@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import type { OrchestrationRequirements } from '../types';
 import { PatternComposer } from './composer';
-import { OrchestrationRequirements } from '../types';
 
 describe('PatternComposer', () => {
   let composer: PatternComposer;

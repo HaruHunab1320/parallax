@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 
 export enum CircuitState {
   CLOSED = 'CLOSED',
@@ -45,7 +45,7 @@ export class CircuitBreaker extends EventEmitter {
 
   private onSuccess(): void {
     this.failureCount = 0;
-    
+
     if (this.state === CircuitState.HALF_OPEN) {
       this.successCount++;
       if (this.successCount >= 3) {
@@ -59,7 +59,7 @@ export class CircuitBreaker extends EventEmitter {
   private onFailure(): void {
     this.failureCount++;
     this.lastFailureTime = new Date();
-    
+
     if (this.state === CircuitState.HALF_OPEN) {
       this.state = CircuitState.OPEN;
       this.successCount = 0;
@@ -74,8 +74,7 @@ export class CircuitBreaker extends EventEmitter {
 
   private shouldAttemptReset(): boolean {
     return (
-      this.nextAttemptTime !== undefined &&
-      new Date() >= this.nextAttemptTime
+      this.nextAttemptTime !== undefined && new Date() >= this.nextAttemptTime
     );
   }
 

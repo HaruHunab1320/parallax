@@ -4,11 +4,11 @@
  * REST API endpoints for user management.
  */
 
+import { createHash, randomBytes } from 'node:crypto';
+import type { PrismaClient } from '@prisma/client';
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { Logger } from 'pino';
-import { LicenseEnforcer } from '../licensing/license-enforcer';
-import { createHash, randomBytes } from 'crypto';
+import type { Logger } from 'pino';
+import type { LicenseEnforcer } from '../licensing/license-enforcer';
 
 export function createUsersRouter(
   prisma: PrismaClient,
@@ -101,7 +101,9 @@ export function createUsersRouter(
       });
 
       if (existing) {
-        return res.status(409).json({ error: 'User with this email already exists' });
+        return res
+          .status(409)
+          .json({ error: 'User with this email already exists' });
       }
 
       const user = await prisma.user.create({
@@ -335,7 +337,8 @@ export function createUsersRouter(
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to create API key',
+        error:
+          error instanceof Error ? error.message : 'Failed to create API key',
       });
     }
   });
@@ -369,7 +372,8 @@ export function createUsersRouter(
     } catch (error) {
       log.error({ error, userId: req.params.id }, 'Failed to list API keys');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to list API keys',
+        error:
+          error instanceof Error ? error.message : 'Failed to list API keys',
       });
     }
   });
@@ -393,14 +397,18 @@ export function createUsersRouter(
 
       return res.status(204).send();
     } catch (error) {
-      log.error({ error, userId: req.params.id, keyId: req.params.keyId }, 'Failed to revoke API key');
+      log.error(
+        { error, userId: req.params.id, keyId: req.params.keyId },
+        'Failed to revoke API key'
+      );
 
       if ((error as any).code === 'P2025') {
         return res.status(404).json({ error: 'API key not found' });
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to revoke API key',
+        error:
+          error instanceof Error ? error.message : 'Failed to revoke API key',
       });
     }
   });
@@ -413,7 +421,9 @@ export function createUsersRouter(
  */
 function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex');
-  const hash = createHash('sha256').update(salt + password).digest('hex');
+  const hash = createHash('sha256')
+    .update(salt + password)
+    .digest('hex');
   return `${salt}:${hash}`;
 }
 
@@ -422,6 +432,8 @@ function hashPassword(password: string): string {
  */
 export function verifyPassword(password: string, storedHash: string): boolean {
   const [salt, hash] = storedHash.split(':');
-  const inputHash = createHash('sha256').update(salt + password).digest('hex');
+  const inputHash = createHash('sha256')
+    .update(salt + password)
+    .digest('hex');
   return hash === inputHash;
 }

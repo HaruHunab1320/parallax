@@ -1,11 +1,11 @@
-import { EventEmitter } from 'events';
-import {
+import { EventEmitter } from 'node:events';
+import type {
+  AnomalyDetectionConfig,
+  ConfidenceAnomalyAlert,
   ConfidenceDataPoint,
   ConfidenceMetrics,
-  ConfidenceAnomalyAlert,
-  ConfidenceTrackerConfig,
   ConfidenceStore,
-  AnomalyDetectionConfig,
+  ConfidenceTrackerConfig,
   Logger,
 } from './types';
 
@@ -124,8 +124,7 @@ export class ConfidenceTracker extends EventEmitter {
     }
 
     const confidences = dataPoints.map((dp) => dp.confidence);
-    const average =
-      confidences.reduce((a, b) => a + b, 0) / confidences.length;
+    const average = confidences.reduce((a, b) => a + b, 0) / confidences.length;
     const min = Math.min(...confidences);
     const max = Math.max(...confidences);
     const trend = this.calculateTrend(dataPoints);
@@ -183,14 +182,9 @@ export class ConfidenceTracker extends EventEmitter {
   /**
    * Get statistics for a category
    */
-  async getCategoryStats(
-    category: string,
-    startTime?: Date,
-    endTime?: Date
-  ) {
+  async getCategoryStats(category: string, startTime?: Date, endTime?: Date) {
     const end = endTime ?? new Date();
-    const start =
-      startTime ?? new Date(end.getTime() - 24 * 60 * 60 * 1000);
+    const start = startTime ?? new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
     return this.store.getCategoryStats(category, start, end);
   }
@@ -259,10 +253,9 @@ export class ConfidenceTracker extends EventEmitter {
     if (recentData.length < minDataPoints) return;
 
     const confidences = recentData.map((dp) => dp.confidence);
-    const average =
-      confidences.reduce((a, b) => a + b, 0) / confidences.length;
+    const average = confidences.reduce((a, b) => a + b, 0) / confidences.length;
     const variance =
-      confidences.reduce((acc, conf) => acc + Math.pow(conf - average, 2), 0) /
+      confidences.reduce((acc, conf) => acc + (conf - average) ** 2, 0) /
       confidences.length;
     const stdDev = Math.sqrt(variance);
 

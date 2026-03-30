@@ -5,14 +5,14 @@ const tests = [
   {
     name: 'String concatenation',
     code: `t = "task1"
-result = "Processed: " + t`
+result = "Processed: " + t`,
   },
   {
     name: 'Object in map',
     code: `tasks = ["a", "b"]
 results = map(tasks, (t) => {
   return {task: t}
-})`
+})`,
   },
   {
     name: 'Object with string concat',
@@ -23,7 +23,7 @@ results = map(tasks, (t) => {
     task: t,
     result: msg
   }
-})`
+})`,
   },
   {
     name: 'Reduce with property access',
@@ -31,17 +31,17 @@ results = map(tasks, (t) => {
 total = reduce(items, (sum, item) => {
   conf = item.confidence
   return sum + conf
-}, 0)`
-  }
+}, 0)`,
+  },
 ];
 
 const validator = createValidator();
 
-tests.forEach(test => {
+tests.forEach((test) => {
   const result = validator.validateAll(test.code);
   console.log(`\n${test.name}: ${result.valid ? '✅' : '❌'}`);
   if (!result.valid && result.formattedErrors) {
-    result.formattedErrors.forEach(err => {
+    result.formattedErrors.forEach((err) => {
       console.log(`  → Line ${err.line}: ${err.message}`);
     });
   }

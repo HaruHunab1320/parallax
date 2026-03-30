@@ -5,8 +5,8 @@
  * Part of the multi-model voting demo.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-3-pro-preview';
 const AGENT_ID = 'gemini-pro';
@@ -23,7 +23,7 @@ class ProAgent extends ParallaxAgent {
       {
         expertise: 0.95,
         model: MODEL_NAME,
-        description: 'Thoughtful decision-making with Gemini 3 Pro'
+        description: 'Thoughtful decision-making with Gemini 3 Pro',
       }
     );
 
@@ -37,7 +37,10 @@ class ProAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(task: string, data?: any): Promise<{
+  async analyze(
+    task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +49,7 @@ class ProAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -86,7 +89,7 @@ Be thorough but decisive. Consider edge cases and nuances.`;
         return {
           value: { decision: null, error: 'Could not parse response' },
           confidence: 0.3,
-          reasoning: text.substring(0, 200)
+          reasoning: text.substring(0, 200),
         };
       }
 
@@ -104,17 +107,17 @@ Be thorough but decisive. Consider edge cases and nuances.`;
           decision: validDecision ? parsed.decision : options[0],
           model: MODEL_NAME,
           raw_decision: parsed.decision,
-          key_factors: parsed.key_factors || []
+          key_factors: parsed.key_factors || [],
         },
         confidence: validDecision ? confidence : confidence * 0.5,
-        reasoning: parsed.reasoning || 'Decision made after careful analysis'
+        reasoning: parsed.reasoning || 'Decision made after careful analysis',
       };
     } catch (error) {
       console.error('Analysis error:', error);
       return {
         value: { decision: null, error: String(error) },
         confidence: 0,
-        reasoning: 'Analysis failed'
+        reasoning: 'Analysis failed',
       };
     }
   }

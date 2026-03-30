@@ -6,25 +6,25 @@
 // source: executions.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf";
+import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf';
 import {
   type CallOptions,
   type ChannelCredentials,
-  Client,
+  type Client,
   type ClientOptions,
   type ClientReadableStream,
   type ClientUnaryCall,
   type handleServerStreamingCall,
   type handleUnaryCall,
-  makeGenericClientConstructor,
   type Metadata,
+  makeGenericClientConstructor,
   type ServiceError,
   type UntypedServiceImplementation,
-} from "@grpc/grpc-js";
-import { Struct } from "./google/protobuf/struct";
-import { Timestamp } from "./google/protobuf/timestamp";
+} from '@grpc/grpc-js';
+import { Struct } from './google/protobuf/struct';
+import { Timestamp } from './google/protobuf/timestamp';
 
-export const protobufPackage = "parallax.executions";
+export const protobufPackage = 'parallax.executions';
 
 /** Execution status */
 export enum ExecutionStatus {
@@ -40,25 +40,23 @@ export enum ExecutionStatus {
 export function executionStatusFromJSON(object: any): ExecutionStatus {
   switch (object) {
     case 0:
-    case "EXECUTION_STATUS_UNKNOWN":
+    case 'EXECUTION_STATUS_UNKNOWN':
       return ExecutionStatus.EXECUTION_STATUS_UNKNOWN;
     case 1:
-    case "EXECUTION_STATUS_PENDING":
+    case 'EXECUTION_STATUS_PENDING':
       return ExecutionStatus.EXECUTION_STATUS_PENDING;
     case 2:
-    case "EXECUTION_STATUS_RUNNING":
+    case 'EXECUTION_STATUS_RUNNING':
       return ExecutionStatus.EXECUTION_STATUS_RUNNING;
     case 3:
-    case "EXECUTION_STATUS_COMPLETED":
+    case 'EXECUTION_STATUS_COMPLETED':
       return ExecutionStatus.EXECUTION_STATUS_COMPLETED;
     case 4:
-    case "EXECUTION_STATUS_FAILED":
+    case 'EXECUTION_STATUS_FAILED':
       return ExecutionStatus.EXECUTION_STATUS_FAILED;
     case 5:
-    case "EXECUTION_STATUS_CANCELLED":
+    case 'EXECUTION_STATUS_CANCELLED':
       return ExecutionStatus.EXECUTION_STATUS_CANCELLED;
-    case -1:
-    case "UNRECOGNIZED":
     default:
       return ExecutionStatus.UNRECOGNIZED;
   }
@@ -67,20 +65,19 @@ export function executionStatusFromJSON(object: any): ExecutionStatus {
 export function executionStatusToJSON(object: ExecutionStatus): string {
   switch (object) {
     case ExecutionStatus.EXECUTION_STATUS_UNKNOWN:
-      return "EXECUTION_STATUS_UNKNOWN";
+      return 'EXECUTION_STATUS_UNKNOWN';
     case ExecutionStatus.EXECUTION_STATUS_PENDING:
-      return "EXECUTION_STATUS_PENDING";
+      return 'EXECUTION_STATUS_PENDING';
     case ExecutionStatus.EXECUTION_STATUS_RUNNING:
-      return "EXECUTION_STATUS_RUNNING";
+      return 'EXECUTION_STATUS_RUNNING';
     case ExecutionStatus.EXECUTION_STATUS_COMPLETED:
-      return "EXECUTION_STATUS_COMPLETED";
+      return 'EXECUTION_STATUS_COMPLETED';
     case ExecutionStatus.EXECUTION_STATUS_FAILED:
-      return "EXECUTION_STATUS_FAILED";
+      return 'EXECUTION_STATUS_FAILED';
     case ExecutionStatus.EXECUTION_STATUS_CANCELLED:
-      return "EXECUTION_STATUS_CANCELLED";
-    case ExecutionStatus.UNRECOGNIZED:
+      return 'EXECUTION_STATUS_CANCELLED';
     default:
-      return "UNRECOGNIZED";
+      return 'UNRECOGNIZED';
   }
 }
 
@@ -130,56 +127,75 @@ export interface StreamExecutionResponse {
 
 function createBaseExecution(): Execution {
   return {
-    id: "",
-    patternName: "",
+    id: '',
+    patternName: '',
     status: 0,
     startTime: undefined,
     endTime: undefined,
     input: undefined,
     result: undefined,
-    error: "",
+    error: '',
     confidence: 0,
     metrics: undefined,
   };
 }
 
 export const Execution: MessageFns<Execution> = {
-  encode(message: Execution, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.id !== "") {
+  encode(
+    message: Execution,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.id !== '') {
       writer.uint32(10).string(message.id);
     }
-    if (message.patternName !== "") {
+    if (message.patternName !== '') {
       writer.uint32(18).string(message.patternName);
     }
     if (message.status !== 0) {
       writer.uint32(24).int32(message.status);
     }
     if (message.startTime !== undefined) {
-      Timestamp.encode(toTimestamp(message.startTime), writer.uint32(34).fork()).join();
+      Timestamp.encode(
+        toTimestamp(message.startTime),
+        writer.uint32(34).fork()
+      ).join();
     }
     if (message.endTime !== undefined) {
-      Timestamp.encode(toTimestamp(message.endTime), writer.uint32(42).fork()).join();
+      Timestamp.encode(
+        toTimestamp(message.endTime),
+        writer.uint32(42).fork()
+      ).join();
     }
     if (message.input !== undefined) {
-      Struct.encode(Struct.wrap(message.input), writer.uint32(50).fork()).join();
+      Struct.encode(
+        Struct.wrap(message.input),
+        writer.uint32(50).fork()
+      ).join();
     }
     if (message.result !== undefined) {
-      Struct.encode(Struct.wrap(message.result), writer.uint32(58).fork()).join();
+      Struct.encode(
+        Struct.wrap(message.result),
+        writer.uint32(58).fork()
+      ).join();
     }
-    if (message.error !== "") {
+    if (message.error !== '') {
       writer.uint32(66).string(message.error);
     }
     if (message.confidence !== 0) {
       writer.uint32(73).double(message.confidence);
     }
     if (message.metrics !== undefined) {
-      Struct.encode(Struct.wrap(message.metrics), writer.uint32(82).fork()).join();
+      Struct.encode(
+        Struct.wrap(message.metrics),
+        writer.uint32(82).fork()
+      ).join();
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): Execution {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseExecution();
     while (reader.pos < end) {
@@ -214,7 +230,9 @@ export const Execution: MessageFns<Execution> = {
             break;
           }
 
-          message.startTime = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          message.startTime = fromTimestamp(
+            Timestamp.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 5: {
@@ -222,7 +240,9 @@ export const Execution: MessageFns<Execution> = {
             break;
           }
 
-          message.endTime = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          message.endTime = fromTimestamp(
+            Timestamp.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 6: {
@@ -238,7 +258,9 @@ export const Execution: MessageFns<Execution> = {
             break;
           }
 
-          message.result = Struct.unwrap(Struct.decode(reader, reader.uint32()));
+          message.result = Struct.unwrap(
+            Struct.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 8: {
@@ -262,7 +284,9 @@ export const Execution: MessageFns<Execution> = {
             break;
           }
 
-          message.metrics = Struct.unwrap(Struct.decode(reader, reader.uint32()));
+          message.metrics = Struct.unwrap(
+            Struct.decode(reader, reader.uint32())
+          );
           continue;
         }
       }
@@ -276,25 +300,33 @@ export const Execution: MessageFns<Execution> = {
 
   fromJSON(object: any): Execution {
     return {
-      id: isSet(object.id) ? globalThis.String(object.id) : "",
-      patternName: isSet(object.patternName) ? globalThis.String(object.patternName) : "",
+      id: isSet(object.id) ? globalThis.String(object.id) : '',
+      patternName: isSet(object.patternName)
+        ? globalThis.String(object.patternName)
+        : '',
       status: isSet(object.status) ? executionStatusFromJSON(object.status) : 0,
-      startTime: isSet(object.startTime) ? fromJsonTimestamp(object.startTime) : undefined,
-      endTime: isSet(object.endTime) ? fromJsonTimestamp(object.endTime) : undefined,
+      startTime: isSet(object.startTime)
+        ? fromJsonTimestamp(object.startTime)
+        : undefined,
+      endTime: isSet(object.endTime)
+        ? fromJsonTimestamp(object.endTime)
+        : undefined,
       input: isObject(object.input) ? object.input : undefined,
       result: isObject(object.result) ? object.result : undefined,
-      error: isSet(object.error) ? globalThis.String(object.error) : "",
-      confidence: isSet(object.confidence) ? globalThis.Number(object.confidence) : 0,
+      error: isSet(object.error) ? globalThis.String(object.error) : '',
+      confidence: isSet(object.confidence)
+        ? globalThis.Number(object.confidence)
+        : 0,
       metrics: isObject(object.metrics) ? object.metrics : undefined,
     };
   },
 
   toJSON(message: Execution): unknown {
     const obj: any = {};
-    if (message.id !== "") {
+    if (message.id !== '') {
       obj.id = message.id;
     }
-    if (message.patternName !== "") {
+    if (message.patternName !== '') {
       obj.patternName = message.patternName;
     }
     if (message.status !== 0) {
@@ -312,7 +344,7 @@ export const Execution: MessageFns<Execution> = {
     if (message.result !== undefined) {
       obj.result = message.result;
     }
-    if (message.error !== "") {
+    if (message.error !== '') {
       obj.error = message.error;
     }
     if (message.confidence !== 0) {
@@ -327,16 +359,18 @@ export const Execution: MessageFns<Execution> = {
   create<I extends Exact<DeepPartial<Execution>, I>>(base?: I): Execution {
     return Execution.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<Execution>, I>>(object: I): Execution {
+  fromPartial<I extends Exact<DeepPartial<Execution>, I>>(
+    object: I
+  ): Execution {
     const message = createBaseExecution();
-    message.id = object.id ?? "";
-    message.patternName = object.patternName ?? "";
+    message.id = object.id ?? '';
+    message.patternName = object.patternName ?? '';
     message.status = object.status ?? 0;
     message.startTime = object.startTime ?? undefined;
     message.endTime = object.endTime ?? undefined;
     message.input = object.input ?? undefined;
     message.result = object.result ?? undefined;
-    message.error = object.error ?? "";
+    message.error = object.error ?? '';
     message.confidence = object.confidence ?? 0;
     message.metrics = object.metrics ?? undefined;
     return message;
@@ -344,19 +378,26 @@ export const Execution: MessageFns<Execution> = {
 };
 
 function createBaseGetExecutionRequest(): GetExecutionRequest {
-  return { executionId: "" };
+  return { executionId: '' };
 }
 
 export const GetExecutionRequest: MessageFns<GetExecutionRequest> = {
-  encode(message: GetExecutionRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.executionId !== "") {
+  encode(
+    message: GetExecutionRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.executionId !== '') {
       writer.uint32(10).string(message.executionId);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): GetExecutionRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): GetExecutionRequest {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseGetExecutionRequest();
     while (reader.pos < end) {
@@ -380,23 +421,31 @@ export const GetExecutionRequest: MessageFns<GetExecutionRequest> = {
   },
 
   fromJSON(object: any): GetExecutionRequest {
-    return { executionId: isSet(object.executionId) ? globalThis.String(object.executionId) : "" };
+    return {
+      executionId: isSet(object.executionId)
+        ? globalThis.String(object.executionId)
+        : '',
+    };
   },
 
   toJSON(message: GetExecutionRequest): unknown {
     const obj: any = {};
-    if (message.executionId !== "") {
+    if (message.executionId !== '') {
       obj.executionId = message.executionId;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<GetExecutionRequest>, I>>(base?: I): GetExecutionRequest {
+  create<I extends Exact<DeepPartial<GetExecutionRequest>, I>>(
+    base?: I
+  ): GetExecutionRequest {
     return GetExecutionRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<GetExecutionRequest>, I>>(object: I): GetExecutionRequest {
+  fromPartial<I extends Exact<DeepPartial<GetExecutionRequest>, I>>(
+    object: I
+  ): GetExecutionRequest {
     const message = createBaseGetExecutionRequest();
-    message.executionId = object.executionId ?? "";
+    message.executionId = object.executionId ?? '';
     return message;
   },
 };
@@ -406,15 +455,22 @@ function createBaseGetExecutionResponse(): GetExecutionResponse {
 }
 
 export const GetExecutionResponse: MessageFns<GetExecutionResponse> = {
-  encode(message: GetExecutionResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: GetExecutionResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.execution !== undefined) {
       Execution.encode(message.execution, writer.uint32(10).fork()).join();
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): GetExecutionResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): GetExecutionResponse {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseGetExecutionResponse();
     while (reader.pos < end) {
@@ -438,7 +494,11 @@ export const GetExecutionResponse: MessageFns<GetExecutionResponse> = {
   },
 
   fromJSON(object: any): GetExecutionResponse {
-    return { execution: isSet(object.execution) ? Execution.fromJSON(object.execution) : undefined };
+    return {
+      execution: isSet(object.execution)
+        ? Execution.fromJSON(object.execution)
+        : undefined,
+    };
   },
 
   toJSON(message: GetExecutionResponse): unknown {
@@ -449,38 +509,50 @@ export const GetExecutionResponse: MessageFns<GetExecutionResponse> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<GetExecutionResponse>, I>>(base?: I): GetExecutionResponse {
+  create<I extends Exact<DeepPartial<GetExecutionResponse>, I>>(
+    base?: I
+  ): GetExecutionResponse {
     return GetExecutionResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<GetExecutionResponse>, I>>(object: I): GetExecutionResponse {
+  fromPartial<I extends Exact<DeepPartial<GetExecutionResponse>, I>>(
+    object: I
+  ): GetExecutionResponse {
     const message = createBaseGetExecutionResponse();
-    message.execution = (object.execution !== undefined && object.execution !== null)
-      ? Execution.fromPartial(object.execution)
-      : undefined;
+    message.execution =
+      object.execution !== undefined && object.execution !== null
+        ? Execution.fromPartial(object.execution)
+        : undefined;
     return message;
   },
 };
 
 function createBaseListExecutionsRequest(): ListExecutionsRequest {
-  return { limit: 0, offset: 0, status: "" };
+  return { limit: 0, offset: 0, status: '' };
 }
 
 export const ListExecutionsRequest: MessageFns<ListExecutionsRequest> = {
-  encode(message: ListExecutionsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: ListExecutionsRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.limit !== 0) {
       writer.uint32(8).int32(message.limit);
     }
     if (message.offset !== 0) {
       writer.uint32(16).int32(message.offset);
     }
-    if (message.status !== "") {
+    if (message.status !== '') {
       writer.uint32(26).string(message.status);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): ListExecutionsRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): ListExecutionsRequest {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseListExecutionsRequest();
     while (reader.pos < end) {
@@ -523,7 +595,7 @@ export const ListExecutionsRequest: MessageFns<ListExecutionsRequest> = {
     return {
       limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
       offset: isSet(object.offset) ? globalThis.Number(object.offset) : 0,
-      status: isSet(object.status) ? globalThis.String(object.status) : "",
+      status: isSet(object.status) ? globalThis.String(object.status) : '',
     };
   },
 
@@ -535,20 +607,24 @@ export const ListExecutionsRequest: MessageFns<ListExecutionsRequest> = {
     if (message.offset !== 0) {
       obj.offset = Math.round(message.offset);
     }
-    if (message.status !== "") {
+    if (message.status !== '') {
       obj.status = message.status;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ListExecutionsRequest>, I>>(base?: I): ListExecutionsRequest {
+  create<I extends Exact<DeepPartial<ListExecutionsRequest>, I>>(
+    base?: I
+  ): ListExecutionsRequest {
     return ListExecutionsRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<ListExecutionsRequest>, I>>(object: I): ListExecutionsRequest {
+  fromPartial<I extends Exact<DeepPartial<ListExecutionsRequest>, I>>(
+    object: I
+  ): ListExecutionsRequest {
     const message = createBaseListExecutionsRequest();
     message.limit = object.limit ?? 0;
     message.offset = object.offset ?? 0;
-    message.status = object.status ?? "";
+    message.status = object.status ?? '';
     return message;
   },
 };
@@ -558,7 +634,10 @@ function createBaseListExecutionsResponse(): ListExecutionsResponse {
 }
 
 export const ListExecutionsResponse: MessageFns<ListExecutionsResponse> = {
-  encode(message: ListExecutionsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: ListExecutionsResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.executions) {
       Execution.encode(v!, writer.uint32(10).fork()).join();
     }
@@ -568,8 +647,12 @@ export const ListExecutionsResponse: MessageFns<ListExecutionsResponse> = {
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): ListExecutionsResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): ListExecutionsResponse {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseListExecutionsResponse();
     while (reader.pos < end) {
@@ -620,31 +703,43 @@ export const ListExecutionsResponse: MessageFns<ListExecutionsResponse> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ListExecutionsResponse>, I>>(base?: I): ListExecutionsResponse {
+  create<I extends Exact<DeepPartial<ListExecutionsResponse>, I>>(
+    base?: I
+  ): ListExecutionsResponse {
     return ListExecutionsResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<ListExecutionsResponse>, I>>(object: I): ListExecutionsResponse {
+  fromPartial<I extends Exact<DeepPartial<ListExecutionsResponse>, I>>(
+    object: I
+  ): ListExecutionsResponse {
     const message = createBaseListExecutionsResponse();
-    message.executions = object.executions?.map((e) => Execution.fromPartial(e)) || [];
+    message.executions =
+      object.executions?.map((e) => Execution.fromPartial(e)) || [];
     message.total = object.total ?? 0;
     return message;
   },
 };
 
 function createBaseStreamExecutionRequest(): StreamExecutionRequest {
-  return { executionId: "" };
+  return { executionId: '' };
 }
 
 export const StreamExecutionRequest: MessageFns<StreamExecutionRequest> = {
-  encode(message: StreamExecutionRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.executionId !== "") {
+  encode(
+    message: StreamExecutionRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.executionId !== '') {
       writer.uint32(10).string(message.executionId);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): StreamExecutionRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): StreamExecutionRequest {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseStreamExecutionRequest();
     while (reader.pos < end) {
@@ -668,50 +763,76 @@ export const StreamExecutionRequest: MessageFns<StreamExecutionRequest> = {
   },
 
   fromJSON(object: any): StreamExecutionRequest {
-    return { executionId: isSet(object.executionId) ? globalThis.String(object.executionId) : "" };
+    return {
+      executionId: isSet(object.executionId)
+        ? globalThis.String(object.executionId)
+        : '',
+    };
   },
 
   toJSON(message: StreamExecutionRequest): unknown {
     const obj: any = {};
-    if (message.executionId !== "") {
+    if (message.executionId !== '') {
       obj.executionId = message.executionId;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<StreamExecutionRequest>, I>>(base?: I): StreamExecutionRequest {
+  create<I extends Exact<DeepPartial<StreamExecutionRequest>, I>>(
+    base?: I
+  ): StreamExecutionRequest {
     return StreamExecutionRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<StreamExecutionRequest>, I>>(object: I): StreamExecutionRequest {
+  fromPartial<I extends Exact<DeepPartial<StreamExecutionRequest>, I>>(
+    object: I
+  ): StreamExecutionRequest {
     const message = createBaseStreamExecutionRequest();
-    message.executionId = object.executionId ?? "";
+    message.executionId = object.executionId ?? '';
     return message;
   },
 };
 
 function createBaseStreamExecutionResponse(): StreamExecutionResponse {
-  return { eventType: "", execution: undefined, eventTime: undefined, eventData: undefined };
+  return {
+    eventType: '',
+    execution: undefined,
+    eventTime: undefined,
+    eventData: undefined,
+  };
 }
 
 export const StreamExecutionResponse: MessageFns<StreamExecutionResponse> = {
-  encode(message: StreamExecutionResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.eventType !== "") {
+  encode(
+    message: StreamExecutionResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.eventType !== '') {
       writer.uint32(10).string(message.eventType);
     }
     if (message.execution !== undefined) {
       Execution.encode(message.execution, writer.uint32(18).fork()).join();
     }
     if (message.eventTime !== undefined) {
-      Timestamp.encode(toTimestamp(message.eventTime), writer.uint32(26).fork()).join();
+      Timestamp.encode(
+        toTimestamp(message.eventTime),
+        writer.uint32(26).fork()
+      ).join();
     }
     if (message.eventData !== undefined) {
-      Struct.encode(Struct.wrap(message.eventData), writer.uint32(34).fork()).join();
+      Struct.encode(
+        Struct.wrap(message.eventData),
+        writer.uint32(34).fork()
+      ).join();
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): StreamExecutionResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): StreamExecutionResponse {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseStreamExecutionResponse();
     while (reader.pos < end) {
@@ -738,7 +859,9 @@ export const StreamExecutionResponse: MessageFns<StreamExecutionResponse> = {
             break;
           }
 
-          message.eventTime = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          message.eventTime = fromTimestamp(
+            Timestamp.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 4: {
@@ -746,7 +869,9 @@ export const StreamExecutionResponse: MessageFns<StreamExecutionResponse> = {
             break;
           }
 
-          message.eventData = Struct.unwrap(Struct.decode(reader, reader.uint32()));
+          message.eventData = Struct.unwrap(
+            Struct.decode(reader, reader.uint32())
+          );
           continue;
         }
       }
@@ -760,16 +885,22 @@ export const StreamExecutionResponse: MessageFns<StreamExecutionResponse> = {
 
   fromJSON(object: any): StreamExecutionResponse {
     return {
-      eventType: isSet(object.eventType) ? globalThis.String(object.eventType) : "",
-      execution: isSet(object.execution) ? Execution.fromJSON(object.execution) : undefined,
-      eventTime: isSet(object.eventTime) ? fromJsonTimestamp(object.eventTime) : undefined,
+      eventType: isSet(object.eventType)
+        ? globalThis.String(object.eventType)
+        : '',
+      execution: isSet(object.execution)
+        ? Execution.fromJSON(object.execution)
+        : undefined,
+      eventTime: isSet(object.eventTime)
+        ? fromJsonTimestamp(object.eventTime)
+        : undefined,
       eventData: isObject(object.eventData) ? object.eventData : undefined,
     };
   },
 
   toJSON(message: StreamExecutionResponse): unknown {
     const obj: any = {};
-    if (message.eventType !== "") {
+    if (message.eventType !== '') {
       obj.eventType = message.eventType;
     }
     if (message.execution !== undefined) {
@@ -784,15 +915,20 @@ export const StreamExecutionResponse: MessageFns<StreamExecutionResponse> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<StreamExecutionResponse>, I>>(base?: I): StreamExecutionResponse {
+  create<I extends Exact<DeepPartial<StreamExecutionResponse>, I>>(
+    base?: I
+  ): StreamExecutionResponse {
     return StreamExecutionResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<StreamExecutionResponse>, I>>(object: I): StreamExecutionResponse {
+  fromPartial<I extends Exact<DeepPartial<StreamExecutionResponse>, I>>(
+    object: I
+  ): StreamExecutionResponse {
     const message = createBaseStreamExecutionResponse();
-    message.eventType = object.eventType ?? "";
-    message.execution = (object.execution !== undefined && object.execution !== null)
-      ? Execution.fromPartial(object.execution)
-      : undefined;
+    message.eventType = object.eventType ?? '';
+    message.execution =
+      object.execution !== undefined && object.execution !== null
+        ? Execution.fromPartial(object.execution)
+        : undefined;
     message.eventTime = object.eventTime ?? undefined;
     message.eventData = object.eventData ?? undefined;
     return message;
@@ -802,107 +938,156 @@ export const StreamExecutionResponse: MessageFns<StreamExecutionResponse> = {
 export type ExecutionServiceService = typeof ExecutionServiceService;
 export const ExecutionServiceService = {
   getExecution: {
-    path: "/parallax.executions.ExecutionService/GetExecution",
+    path: '/parallax.executions.ExecutionService/GetExecution',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: GetExecutionRequest): Buffer => Buffer.from(GetExecutionRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): GetExecutionRequest => GetExecutionRequest.decode(value),
+    requestSerialize: (value: GetExecutionRequest): Buffer =>
+      Buffer.from(GetExecutionRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): GetExecutionRequest =>
+      GetExecutionRequest.decode(value),
     responseSerialize: (value: GetExecutionResponse): Buffer =>
       Buffer.from(GetExecutionResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): GetExecutionResponse => GetExecutionResponse.decode(value),
+    responseDeserialize: (value: Buffer): GetExecutionResponse =>
+      GetExecutionResponse.decode(value),
   },
   listExecutions: {
-    path: "/parallax.executions.ExecutionService/ListExecutions",
+    path: '/parallax.executions.ExecutionService/ListExecutions',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: ListExecutionsRequest): Buffer =>
       Buffer.from(ListExecutionsRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): ListExecutionsRequest => ListExecutionsRequest.decode(value),
+    requestDeserialize: (value: Buffer): ListExecutionsRequest =>
+      ListExecutionsRequest.decode(value),
     responseSerialize: (value: ListExecutionsResponse): Buffer =>
       Buffer.from(ListExecutionsResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): ListExecutionsResponse => ListExecutionsResponse.decode(value),
+    responseDeserialize: (value: Buffer): ListExecutionsResponse =>
+      ListExecutionsResponse.decode(value),
   },
   streamExecution: {
-    path: "/parallax.executions.ExecutionService/StreamExecution",
+    path: '/parallax.executions.ExecutionService/StreamExecution',
     requestStream: false,
     responseStream: true,
     requestSerialize: (value: StreamExecutionRequest): Buffer =>
       Buffer.from(StreamExecutionRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): StreamExecutionRequest => StreamExecutionRequest.decode(value),
+    requestDeserialize: (value: Buffer): StreamExecutionRequest =>
+      StreamExecutionRequest.decode(value),
     responseSerialize: (value: StreamExecutionResponse): Buffer =>
       Buffer.from(StreamExecutionResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): StreamExecutionResponse => StreamExecutionResponse.decode(value),
+    responseDeserialize: (value: Buffer): StreamExecutionResponse =>
+      StreamExecutionResponse.decode(value),
   },
 } as const;
 
 export interface ExecutionServiceServer extends UntypedServiceImplementation {
   getExecution: handleUnaryCall<GetExecutionRequest, GetExecutionResponse>;
-  listExecutions: handleUnaryCall<ListExecutionsRequest, ListExecutionsResponse>;
-  streamExecution: handleServerStreamingCall<StreamExecutionRequest, StreamExecutionResponse>;
+  listExecutions: handleUnaryCall<
+    ListExecutionsRequest,
+    ListExecutionsResponse
+  >;
+  streamExecution: handleServerStreamingCall<
+    StreamExecutionRequest,
+    StreamExecutionResponse
+  >;
 }
 
 export interface ExecutionServiceClient extends Client {
   getExecution(
     request: GetExecutionRequest,
-    callback: (error: ServiceError | null, response: GetExecutionResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: GetExecutionResponse
+    ) => void
   ): ClientUnaryCall;
   getExecution(
     request: GetExecutionRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: GetExecutionResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: GetExecutionResponse
+    ) => void
   ): ClientUnaryCall;
   getExecution(
     request: GetExecutionRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: GetExecutionResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: GetExecutionResponse
+    ) => void
   ): ClientUnaryCall;
   listExecutions(
     request: ListExecutionsRequest,
-    callback: (error: ServiceError | null, response: ListExecutionsResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: ListExecutionsResponse
+    ) => void
   ): ClientUnaryCall;
   listExecutions(
     request: ListExecutionsRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: ListExecutionsResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: ListExecutionsResponse
+    ) => void
   ): ClientUnaryCall;
   listExecutions(
     request: ListExecutionsRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: ListExecutionsResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: ListExecutionsResponse
+    ) => void
   ): ClientUnaryCall;
   streamExecution(
     request: StreamExecutionRequest,
-    options?: Partial<CallOptions>,
+    options?: Partial<CallOptions>
   ): ClientReadableStream<StreamExecutionResponse>;
   streamExecution(
     request: StreamExecutionRequest,
     metadata?: Metadata,
-    options?: Partial<CallOptions>,
+    options?: Partial<CallOptions>
   ): ClientReadableStream<StreamExecutionResponse>;
 }
 
 export const ExecutionServiceClient = makeGenericClientConstructor(
   ExecutionServiceService,
-  "parallax.executions.ExecutionService",
+  'parallax.executions.ExecutionService'
 ) as unknown as {
-  new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): ExecutionServiceClient;
+  new (
+    address: string,
+    credentials: ChannelCredentials,
+    options?: Partial<ClientOptions>
+  ): ExecutionServiceClient;
   service: typeof ExecutionServiceService;
   serviceName: string;
 };
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : Partial<T>;
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends globalThis.Array<infer U>
+    ? globalThis.Array<DeepPartial<U>>
+    : T extends ReadonlyArray<infer U>
+      ? ReadonlyArray<DeepPartial<U>>
+      : T extends {}
+        ? { [K in keyof T]?: DeepPartial<T[K]> }
+        : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+      [K in Exclude<keyof I, KeysOfUnion<P>>]: never;
+    };
 
 function toTimestamp(date: Date): Timestamp {
   const seconds = Math.trunc(date.getTime() / 1_000);
@@ -919,7 +1104,7 @@ function fromTimestamp(t: Timestamp): Date {
 function fromJsonTimestamp(o: any): Date {
   if (o instanceof globalThis.Date) {
     return o;
-  } else if (typeof o === "string") {
+  } else if (typeof o === 'string') {
     return new globalThis.Date(o);
   } else {
     return fromTimestamp(Timestamp.fromJSON(o));
@@ -927,7 +1112,7 @@ function fromJsonTimestamp(o: any): Date {
 }
 
 function isObject(value: any): boolean {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function isSet(value: any): boolean {

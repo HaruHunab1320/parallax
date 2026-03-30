@@ -18,7 +18,10 @@ export interface ParallaxClientConfig {
   retries?: number;
 
   /** Callback when tokens are refreshed via refresh token flow */
-  onTokenRefresh?: (tokens: { accessToken: string; refreshToken: string }) => void;
+  onTokenRefresh?: (tokens: {
+    accessToken: string;
+    refreshToken: string;
+  }) => void;
 
   /** Custom headers to include in every request */
   headers?: Record<string, string>;

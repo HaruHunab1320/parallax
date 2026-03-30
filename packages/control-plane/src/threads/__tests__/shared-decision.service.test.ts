@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { ThreadEvent, ThreadHandle } from '@parallaxai/runtime-interface';
 import pino from 'pino';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SharedDecisionService } from '../shared-decision.service';
-import { ThreadEvent, ThreadHandle } from '@parallaxai/runtime-interface';
 
 const logger = pino({ level: 'silent' });
 
@@ -52,7 +52,9 @@ describe('SharedDecisionService', () => {
     expect(repository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         category: 'completion_outcome',
-        summary: expect.stringContaining('Artifacts: pr:https://example.com/pr/1'),
+        summary: expect.stringContaining(
+          'Artifacts: pr:https://example.com/pr/1'
+        ),
       })
     );
   });
@@ -74,7 +76,9 @@ describe('SharedDecisionService', () => {
       executionId: thread.executionId,
       type: 'thread_failed',
       timestamp: new Date(),
-      data: { error: 'Agent failed due to merge conflict while updating auth files.' },
+      data: {
+        error: 'Agent failed due to merge conflict while updating auth files.',
+      },
     };
 
     await service.projectThreadEvent(thread, event);

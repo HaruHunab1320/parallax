@@ -1,17 +1,17 @@
-import { PrismaClient } from '@prisma/client';
-import { Logger } from 'pino';
-import { getPrismaClient, disconnectPrisma } from './prisma-client';
-import { setupTimescaleDB, setupTimescaleDBJobs } from './timescaledb-setup';
+import type { PrismaClient } from '@prisma/client';
+import type { Logger } from 'pino';
+import { disconnectPrisma, getPrismaClient } from './prisma-client';
 import {
-  PatternRepository,
   AgentRepository,
-  ExecutionRepository,
-  ThreadRepository,
-  SharedDecisionRepository,
-  EpisodicExperienceRepository,
-  CredentialGrantRepository,
+  type CredentialGrantRepository,
   createCredentialGrantRepository,
+  EpisodicExperienceRepository,
+  ExecutionRepository,
+  PatternRepository,
+  SharedDecisionRepository,
+  ThreadRepository,
 } from './repositories';
+import { setupTimescaleDB, setupTimescaleDBJobs } from './timescaledb-setup';
 
 export class DatabaseService {
   private prisma: PrismaClient;
@@ -34,8 +34,14 @@ export class DatabaseService {
     this.agents = new AgentRepository(this.prisma, this.logger);
     this.executions = new ExecutionRepository(this.prisma, this.logger);
     this.threads = new ThreadRepository(this.prisma, this.logger);
-    this.sharedDecisions = new SharedDecisionRepository(this.prisma, this.logger);
-    this.episodicExperiences = new EpisodicExperienceRepository(this.prisma, this.logger);
+    this.sharedDecisions = new SharedDecisionRepository(
+      this.prisma,
+      this.logger
+    );
+    this.episodicExperiences = new EpisodicExperienceRepository(
+      this.prisma,
+      this.logger
+    );
     this.credentialGrants = createCredentialGrantRepository(this.prisma);
   }
 
@@ -44,14 +50,13 @@ export class DatabaseService {
       // Test connection
       await this.prisma.$connect();
       this.logger.info('Database connected successfully');
-      
+
       // Set up TimescaleDB features
       await setupTimescaleDB(this.prisma, this.logger);
       await setupTimescaleDBJobs(this.prisma, this.logger);
-      
+
       // Start background tasks
       this.startBackgroundTasks();
-      
     } catch (error) {
       this.logger.error({ error }, 'Failed to initialize database');
       throw error;
@@ -78,22 +83,35 @@ export class DatabaseService {
     }, 60 * 1000); // Every minute
 
     // Clean up old executions daily
-    setInterval(async () => {
-      try {
-        const olderThan = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days
-        const count = await this.executions.cleanup(olderThan);
-        if (count > 0) {
-          this.logger.info({ count }, 'Cleaned up old executions');
+    setInterval(
+      async () => {
+        try {
+          const olderThan = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days
+          const count = await this.executions.cleanup(olderThan);
+          if (count > 0) {
+            this.logger.info({ count }, 'Cleaned up old executions');
+          }
+        } catch (error) {
+          this.logger.error({ error }, 'Failed to clean up executions');
         }
-      } catch (error) {
-        this.logger.error({ error }, 'Failed to clean up executions');
-      }
-    }, 24 * 60 * 60 * 1000); // Daily
+      },
+      24 * 60 * 60 * 1000
+    ); // Daily
   }
 
   // Transaction support
   async transaction<T>(
-    fn: (prisma: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>) => Promise<T>
+    fn: (
+      prisma: Omit<
+        PrismaClient,
+        | '$connect'
+        | '$disconnect'
+        | '$on'
+        | '$transaction'
+        | '$use'
+        | '$extends'
+      >
+    ) => Promise<T>
   ): Promise<T> {
     return this.prisma.$transaction(fn);
   }

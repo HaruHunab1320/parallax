@@ -29,8 +29,16 @@ export const PROMPTS: PromptDefinition[] = [
     name: 'spawn_review_team',
     description: 'Spawn a coordinated code review team',
     arguments: [
-      { name: 'project_dir', description: 'Path to the project directory', required: true },
-      { name: 'review_focus', description: 'Focus area for review', required: false },
+      {
+        name: 'project_dir',
+        description: 'Path to the project directory',
+        required: true,
+      },
+      {
+        name: 'review_focus',
+        description: 'Focus area for review',
+        required: false,
+      },
     ],
   },
   {
@@ -39,7 +47,11 @@ export const PROMPTS: PromptDefinition[] = [
     arguments: [
       { name: 'task', description: 'Task description', required: true },
       { name: 'project_dir', description: 'Project directory', required: true },
-      { name: 'agent_type', description: 'Agent type (claude, codex, gemini, aider)', required: false },
+      {
+        name: 'agent_type',
+        description: 'Agent type (claude, codex, gemini, aider)',
+        required: false,
+      },
     ],
   },
 ];
@@ -49,7 +61,9 @@ export interface SpawnReviewTeamArgs {
   review_focus?: string;
 }
 
-export function generateSpawnReviewTeamPrompt(args: SpawnReviewTeamArgs): PromptResult {
+export function generateSpawnReviewTeamPrompt(
+  args: SpawnReviewTeamArgs
+): PromptResult {
   const focusText = args.review_focus
     ? `Focus specifically on: ${args.review_focus}`
     : 'Perform a comprehensive review covering code quality, architecture, and potential issues';
@@ -94,7 +108,9 @@ export interface SpawnDevAgentArgs {
   agent_type?: string;
 }
 
-export function generateSpawnDevAgentPrompt(args: SpawnDevAgentArgs): PromptResult {
+export function generateSpawnDevAgentPrompt(
+  args: SpawnDevAgentArgs
+): PromptResult {
   const agentType = args.agent_type || 'claude';
 
   return {

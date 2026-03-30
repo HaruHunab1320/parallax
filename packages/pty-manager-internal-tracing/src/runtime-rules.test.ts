@@ -4,10 +4,10 @@
  * Tests for the runtime rules API on PTYSession and PTYManager.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ShellAdapter } from './adapters/shell-adapter';
 import { PTYManager } from './pty-manager';
 import { PTYSession } from './pty-session';
-import { ShellAdapter } from './adapters/shell-adapter';
 import type { AutoResponseRule, BlockingPromptType } from './types';
 
 // Mock adapter for testing
@@ -46,7 +46,9 @@ describe('PTYSession Runtime Rules', () => {
 
       session.addAutoResponseRule(rule);
       expect(session.getAutoResponseRules()).toHaveLength(1);
-      expect(session.getAutoResponseRules()[0].pattern.source).toBe('test prompt');
+      expect(session.getAutoResponseRules()[0].pattern.source).toBe(
+        'test prompt'
+      );
     });
 
     it('should replace rule with same pattern', () => {
@@ -145,7 +147,12 @@ describe('PTYSession Runtime Rules', () => {
       expect(session.getAutoResponseRules()).toHaveLength(1);
 
       const newRules: AutoResponseRule[] = [
-        { pattern: /second/, type: 'update', response: 'n', description: 'Second' },
+        {
+          pattern: /second/,
+          type: 'update',
+          response: 'n',
+          description: 'Second',
+        },
         { pattern: /third/, type: 'tos', response: 'y', description: 'Third' },
       ];
 
@@ -231,9 +238,9 @@ describe('PTYManager Runtime Rules', () => {
     });
 
     it('removeAutoResponseRule should throw', () => {
-      expect(() => manager.removeAutoResponseRule('nonexistent', /test/)).toThrow(
-        'Session not found: nonexistent'
-      );
+      expect(() =>
+        manager.removeAutoResponseRule('nonexistent', /test/)
+      ).toThrow('Session not found: nonexistent');
     });
 
     it('setAutoResponseRules should throw', () => {

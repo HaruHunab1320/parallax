@@ -2,13 +2,14 @@
  * Send Thread Input Tool - Send terminal/message input to a managed thread
  */
 
-import type { LocalRuntime } from '@parallaxai/runtime-local';
 import type { ThreadRuntimeProvider } from '@parallaxai/runtime-interface';
-import { SendThreadInputSchema, type SendThreadInput } from './schemas.js';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import { type SendThreadInput, SendThreadInputSchema } from './schemas.js';
 
 export const SEND_THREAD_INPUT_TOOL = {
   name: 'send_thread_input',
-  description: 'Send message, raw terminal input, or key presses to a managed thread.',
+  description:
+    'Send message, raw terminal input, or key presses to a managed thread.',
   inputSchema: SendThreadInputSchema,
 };
 

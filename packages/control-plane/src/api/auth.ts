@@ -5,10 +5,10 @@
  */
 
 import { Router } from 'express';
-import { Logger } from 'pino';
-import { AuthService, AuthError } from '../auth/auth-service';
+import type { Logger } from 'pino';
 import { createAuthMiddleware } from '../auth/auth-middleware';
-import { LicenseEnforcer } from '../licensing/license-enforcer';
+import { AuthError, type AuthService } from '../auth/auth-service';
+import type { LicenseEnforcer } from '../licensing/license-enforcer';
 
 export function createAuthRouter(
   authService: AuthService,
@@ -189,7 +189,8 @@ export function createAuthRouter(
       }
 
       res.json({
-        message: 'If an account exists with this email, a password reset link has been sent',
+        message:
+          'If an account exists with this email, a password reset link has been sent',
       });
     } catch (error) {
       log.error({ error }, 'Password reset request failed');
@@ -344,7 +345,7 @@ export function createAuthRouter(
    * - Add tokens to a blocklist (if using Redis)
    * - Log the logout event for audit purposes
    */
-  router.post('/logout', async (req: any, res: any) => {
+  router.post('/logout', async (_req: any, res: any) => {
     // In a stateless JWT system, we just acknowledge the logout
     // The client should discard their tokens
     log.debug('Logout acknowledged');

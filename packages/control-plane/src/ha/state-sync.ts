@@ -5,9 +5,9 @@
  * instances using pub/sub for real-time updates.
  */
 
+import { EventEmitter } from 'node:events';
 import { Redis } from 'ioredis';
-import { EventEmitter } from 'events';
-import { Logger } from 'pino';
+import type { Logger } from 'pino';
 
 export interface StateSyncConfig {
   /** Redis connection URL */
@@ -30,14 +30,20 @@ export interface StateChangeEvent<T = any> {
 
 export interface StateSyncEvents {
   'state-change': (event: StateChangeEvent) => void;
-  'connected': () => void;
-  'disconnected': () => void;
-  'error': (error: Error) => void;
+  connected: () => void;
+  disconnected: () => void;
+  error: (error: Error) => void;
 }
 
 export declare interface StateSyncService {
-  on<E extends keyof StateSyncEvents>(event: E, listener: StateSyncEvents[E]): this;
-  emit<E extends keyof StateSyncEvents>(event: E, ...args: Parameters<StateSyncEvents[E]>): boolean;
+  on<E extends keyof StateSyncEvents>(
+    event: E,
+    listener: StateSyncEvents[E]
+  ): this;
+  emit<E extends keyof StateSyncEvents>(
+    event: E,
+    ...args: Parameters<StateSyncEvents[E]>
+  ): boolean;
 }
 
 export class StateSyncService extends EventEmitter {
@@ -47,7 +53,6 @@ export class StateSyncService extends EventEmitter {
   private instanceId: string;
   private channelPrefix: string;
   private keyPrefix: string;
-  private _isConnected = false;
   private subscriptions: Set<string> = new Set();
 
   constructor(config: StateSyncConfig, logger: Logger) {
@@ -58,7 +63,10 @@ export class StateSyncService extends EventEmitter {
     this.instanceId = config.instanceId;
     this.channelPrefix = config.channelPrefix || 'parallax:sync:';
     this.keyPrefix = config.keyPrefix || 'parallax:state:';
-    this.logger = logger.child({ component: 'StateSync', instanceId: this.instanceId });
+    this.logger = logger.child({
+      component: 'StateSync',
+      instanceId: this.instanceId,
+    });
 
     this.setupEventHandlers();
   }
@@ -285,7 +293,10 @@ export class StateSyncService extends EventEmitter {
         this.emit('state-change', event);
         this.logger.debug({ event }, 'Received state change');
       } catch (error) {
-        this.logger.error({ error, message }, 'Failed to parse state change message');
+        this.logger.error(
+          { error, message },
+          'Failed to parse state change message'
+        );
       }
     });
 

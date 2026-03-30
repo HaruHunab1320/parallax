@@ -36,62 +36,65 @@
  * ```
  */
 
+export { AiderAdapter } from './aider-adapter';
+export type {
+  ApprovalConfig,
+  ApprovalPreset,
+  PresetDefinition,
+  RiskLevel,
+  ToolCategory,
+  ToolCategoryInfo,
+} from './approval-presets';
+// Approval presets
+export {
+  AIDER_COMMAND_CATEGORIES,
+  CLAUDE_TOOL_CATEGORIES,
+  CODEX_TOOL_CATEGORIES,
+  GEMINI_TOOL_CATEGORIES,
+  generateAiderApprovalConfig,
+  generateApprovalConfig,
+  generateClaudeApprovalConfig,
+  generateCodexApprovalConfig,
+  generateGeminiApprovalConfig,
+  generateHermesApprovalConfig,
+  getPresetDefinition,
+  listPresets,
+  PRESET_DEFINITIONS,
+  TOOL_CATEGORIES,
+} from './approval-presets';
+// Types
+export type {
+  AdapterType,
+  AgentCredentials,
+  AgentFileDescriptor,
+  CodingAgentConfig,
+  InstallationInfo,
+  ModelRecommendations,
+  WriteMemoryOptions,
+} from './base-coding-adapter';
 // Base class for extending
 export { BaseCodingAdapter } from './base-coding-adapter';
-export type { AgentCredentials, CodingAgentConfig, InstallationInfo, ModelRecommendations, AgentFileDescriptor, WriteMemoryOptions } from './base-coding-adapter';
-
 // Adapters
 export { ClaudeAdapter } from './claude-adapter';
-export { GeminiAdapter } from './gemini-adapter';
 export { CodexAdapter } from './codex-adapter';
-export { AiderAdapter } from './aider-adapter';
+export { GeminiAdapter } from './gemini-adapter';
 export { HermesAdapter } from './hermes-adapter';
-
+export type { AdapterPatterns } from './pattern-loader';
 // Pattern loading (dynamic patterns from adapter-monitor, with baseline fallback)
 export {
-  loadPatterns,
-  loadPatternsSync,
-  preloadAllPatterns,
   clearPatternCache,
   getBaselinePatterns,
   hasDynamicPatterns,
+  loadPatterns,
+  loadPatternsSync,
+  preloadAllPatterns,
 } from './pattern-loader';
-export type { AdapterPatterns } from './pattern-loader';
 
-// Approval presets
-export {
-  generateApprovalConfig,
-  generateClaudeApprovalConfig,
-  generateGeminiApprovalConfig,
-  generateCodexApprovalConfig,
-  generateAiderApprovalConfig,
-  generateHermesApprovalConfig,
-  listPresets,
-  getPresetDefinition,
-  TOOL_CATEGORIES,
-  PRESET_DEFINITIONS,
-  CLAUDE_TOOL_CATEGORIES,
-  GEMINI_TOOL_CATEGORIES,
-  CODEX_TOOL_CATEGORIES,
-  AIDER_COMMAND_CATEGORIES,
-} from './approval-presets';
-export type {
-  ToolCategory,
-  RiskLevel,
-  ApprovalPreset,
-  ToolCategoryInfo,
-  PresetDefinition,
-  ApprovalConfig,
-} from './approval-presets';
-
-// Types
-export type { AdapterType } from './base-coding-adapter';
-
+import { AiderAdapter } from './aider-adapter';
 // Convenience function to register all adapters
 import { ClaudeAdapter } from './claude-adapter';
-import { GeminiAdapter } from './gemini-adapter';
 import { CodexAdapter } from './codex-adapter';
-import { AiderAdapter } from './aider-adapter';
+import { GeminiAdapter } from './gemini-adapter';
 import { HermesAdapter } from './hermes-adapter';
 
 /**
@@ -112,7 +115,14 @@ export function createAllAdapters() {
  */
 import type { AdapterType } from './base-coding-adapter';
 
-export const ADAPTER_TYPES: Record<AdapterType, typeof ClaudeAdapter | typeof GeminiAdapter | typeof CodexAdapter | typeof AiderAdapter | typeof HermesAdapter> = {
+export const ADAPTER_TYPES: Record<
+  AdapterType,
+  | typeof ClaudeAdapter
+  | typeof GeminiAdapter
+  | typeof CodexAdapter
+  | typeof AiderAdapter
+  | typeof HermesAdapter
+> = {
   claude: ClaudeAdapter,
   gemini: GeminiAdapter,
   codex: CodexAdapter,
@@ -156,7 +166,9 @@ export interface PreflightResult {
  * }
  * ```
  */
-export async function checkAdapters(types: AdapterType[]): Promise<PreflightResult[]> {
+export async function checkAdapters(
+  types: AdapterType[]
+): Promise<PreflightResult[]> {
   return Promise.all(
     types.map(async (type) => {
       const adapter = createAdapter(type);
@@ -170,7 +182,7 @@ export async function checkAdapters(types: AdapterType[]): Promise<PreflightResu
         installCommand: adapter.installation.command,
         docsUrl: adapter.installation.docsUrl,
       };
-    }),
+    })
   );
 }
 
@@ -197,9 +209,11 @@ export async function checkAllAdapters(): Promise<PreflightResult[]> {
 /**
  * Print installation instructions for missing adapters
  */
-export async function printMissingAdapters(types?: AdapterType[]): Promise<void> {
+export async function printMissingAdapters(
+  types?: AdapterType[]
+): Promise<void> {
   const results = types ? await checkAdapters(types) : await checkAllAdapters();
-  const missing = results.filter(r => !r.installed);
+  const missing = results.filter((r) => !r.installed);
 
   if (missing.length === 0) {
     console.log('All CLI tools are installed!');

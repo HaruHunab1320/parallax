@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { ClaudeAdapter } from '../src/claude-adapter';
-import { GeminiAdapter } from '../src/gemini-adapter';
-import { CodexAdapter } from '../src/codex-adapter';
+import { describe, expect, it } from 'vitest';
 import { AiderAdapter } from '../src/aider-adapter';
+import { ClaudeAdapter } from '../src/claude-adapter';
+import { CodexAdapter } from '../src/codex-adapter';
+import { GeminiAdapter } from '../src/gemini-adapter';
 import { HermesAdapter } from '../src/hermes-adapter';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,12 +44,14 @@ describe('ClaudeAdapter.detectTaskComplete', () => {
 
   it('detects duration + idle prompt with trailing status bar', () => {
     // Real Claude TUI: status bar renders after the ❯ prompt
-    const output = 'Response done\n✻ Churned for 50s   ❯   2 files +0 -0 · PR #48  Update available!';
+    const output =
+      'Response done\n✻ Churned for 50s   ❯   2 files +0 -0 · PR #48  Update available!';
     expect(adapter.detectTaskComplete(output)).toBe(true);
   });
 
   it('detects duration + idle prompt with trailing update notice', () => {
-    const output = 'Done\nCooked for 3m 12s\n❯  2 files +0 -0\nUpdate available!';
+    const output =
+      'Done\nCooked for 3m 12s\n❯  2 files +0 -0\nUpdate available!';
     expect(adapter.detectTaskComplete(output)).toBe(true);
   });
 
@@ -66,7 +68,8 @@ describe('ClaudeAdapter.detectTaskComplete', () => {
   it('detects turn duration through raw ANSI + spinner TUI output', () => {
     // Simulates real Claude TUI output with ANSI cursor positioning,
     // spinner characters, and box-drawing mixed in with text
-    const output = '\x1b[2J\x1b[H⠋ Processing\x1b[5C\x1b[2K' +
+    const output =
+      '\x1b[2J\x1b[H⠋ Processing\x1b[5C\x1b[2K' +
       '✻\x1b[3C Churned for 46s\x1b[10C\x1b[K' +
       '\x1b[2;1H│\x1b[5Cstatus bar text\x1b[K' +
       '\x1b[3;1H❯\x1b[2C';
@@ -74,7 +77,8 @@ describe('ClaudeAdapter.detectTaskComplete', () => {
   });
 
   it('detects "Baked for" through ANSI-garbled output', () => {
-    const output = '\x1b[1;1H\x1b[2K⠙ Working...\x1b[K\r\n' +
+    const output =
+      '\x1b[1;1H\x1b[2K⠙ Working...\x1b[K\r\n' +
       '✻ Baked for 2m 30s\x1b[20C\r\n' +
       '❯\x1b[3C 2 files +0 -0';
     expect(adapter.detectTaskComplete(output)).toBe(true);
@@ -155,7 +159,8 @@ describe('CodexAdapter.detectTaskComplete', () => {
   });
 
   it('detects non-menu composer prompt + footer hints', () => {
-    const output = 'Summary complete\n› Summarize recent commits\n? for shortcuts 100% context left';
+    const output =
+      'Summary complete\n› Summarize recent commits\n? for shortcuts 100% context left';
     expect(adapter.detectTaskComplete(output)).toBe(true);
   });
 

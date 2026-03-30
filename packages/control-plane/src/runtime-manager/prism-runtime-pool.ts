@@ -1,5 +1,5 @@
-import { RuntimeConfig, RuntimeInstance } from './types';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
+import type { RuntimeConfig, RuntimeInstance } from './types';
 
 export class PrismRuntimePool extends EventEmitter {
   private instances: Map<string, RuntimeInstance> = new Map();
@@ -28,14 +28,15 @@ export class PrismRuntimePool extends EventEmitter {
 
     this.instances.set(instance.id, instance);
     this.emit('instance:created', instance);
-    
+
     return instance;
   }
 
   async acquireInstance(): Promise<RuntimeInstance> {
     // Find idle instance
-    const idleInstance = Array.from(this.instances.values())
-      .find(inst => inst.status === 'idle');
+    const idleInstance = Array.from(this.instances.values()).find(
+      (inst) => inst.status === 'idle'
+    );
 
     if (idleInstance) {
       idleInstance.status = 'busy';
@@ -67,9 +68,10 @@ export class PrismRuntimePool extends EventEmitter {
   private async waitForAvailableInstance(): Promise<RuntimeInstance> {
     return new Promise((resolve) => {
       const checkAvailable = () => {
-        const available = Array.from(this.instances.values())
-          .find(inst => inst.status === 'idle');
-        
+        const available = Array.from(this.instances.values()).find(
+          (inst) => inst.status === 'idle'
+        );
+
         if (available) {
           available.status = 'busy';
           available.lastUsedAt = new Date();
@@ -78,7 +80,7 @@ export class PrismRuntimePool extends EventEmitter {
           setTimeout(checkAvailable, 100);
         }
       };
-      
+
       checkAvailable();
     });
   }
@@ -89,12 +91,12 @@ export class PrismRuntimePool extends EventEmitter {
 
   getMetrics() {
     const instances = Array.from(this.instances.values());
-    
+
     return {
-      activeInstances: instances.filter(i => i.status === 'busy').length,
-      idleInstances: instances.filter(i => i.status === 'idle').length,
+      activeInstances: instances.filter((i) => i.status === 'busy').length,
+      idleInstances: instances.filter((i) => i.status === 'idle').length,
       totalInstances: instances.length,
-      errorInstances: instances.filter(i => i.status === 'error').length,
+      errorInstances: instances.filter((i) => i.status === 'error').length,
     };
   }
 

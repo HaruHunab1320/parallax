@@ -4,27 +4,27 @@
  * Manages multiple PTY sessions for CLI tools.
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import type { CLIAdapter } from './adapters/adapter-interface';
 import { AdapterRegistry } from './adapters/adapter-registry';
-import { PTYSession } from './pty-session';
 import { consoleLogger } from './logger';
+import { PTYSession } from './pty-session';
 import type {
-  SpawnConfig,
-  SessionHandle,
-  SessionMessage,
-  SessionFilter,
-  SessionStatus,
-  BlockingPromptInfo,
   AuthRequiredInfo,
   AutoResponseRule,
-  StallClassification,
-  ToolRunningInfo,
-  StopOptions,
-  LogOptions,
-  TerminalAttachment,
-  PTYManagerConfig,
+  BlockingPromptInfo,
   Logger,
+  LogOptions,
+  PTYManagerConfig,
+  SessionFilter,
+  SessionHandle,
+  SessionMessage,
+  SessionStatus,
+  SpawnConfig,
+  StallClassification,
+  StopOptions,
+  TerminalAttachment,
+  ToolRunningInfo,
 } from './types';
 
 export interface PTYManagerEvents {
@@ -32,18 +32,28 @@ export interface PTYManagerEvents {
   session_ready: (session: SessionHandle) => void;
   session_stopped: (session: SessionHandle, reason: string) => void;
   session_error: (session: SessionHandle, error: string) => void;
-  login_required: (session: SessionHandle, instructions?: string, url?: string) => void;
+  login_required: (
+    session: SessionHandle,
+    instructions?: string,
+    url?: string
+  ) => void;
   auth_required: (session: SessionHandle, info: AuthRequiredInfo) => void;
-  blocking_prompt: (session: SessionHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => void;
+  blocking_prompt: (
+    session: SessionHandle,
+    promptInfo: BlockingPromptInfo,
+    autoResponded: boolean
+  ) => void;
   message: (message: SessionMessage) => void;
   question: (session: SessionHandle, question: string) => void;
-  stall_detected: (session: SessionHandle, recentOutput: string, stallDurationMs: number) => void;
+  stall_detected: (
+    session: SessionHandle,
+    recentOutput: string,
+    stallDurationMs: number
+  ) => void;
   session_status_changed: (session: SessionHandle) => void;
   task_complete: (session: SessionHandle) => void;
   tool_running: (session: SessionHandle, info: ToolRunningInfo) => void;
 }
-
-
 
 export class PTYManager extends EventEmitter {
   private sessions: Map<string, PTYSession> = new Map();
@@ -85,7 +95,9 @@ export class PTYManager extends EventEmitter {
     // Get adapter for this type
     const adapter = this.adapters.get(config.type);
     if (!adapter) {
-      throw new Error(`No adapter found for type: ${config.type}. Registered adapters: ${this.adapters.list().join(', ') || 'none'}`);
+      throw new Error(
+        `No adapter found for type: ${config.type}. Registered adapters: ${this.adapters.list().join(', ') || 'none'}`
+      );
     }
 
     // Check if ID already exists
@@ -104,7 +116,7 @@ export class PTYManager extends EventEmitter {
       config,
       this.logger,
       this._stallDetectionEnabled,
-      this._stallTimeoutMs,
+      this._stallTimeoutMs
     );
 
     // Set up event forwarding
@@ -152,9 +164,17 @@ export class PTYManager extends EventEmitter {
       this.emit('auth_required', session.toHandle(), info);
     });
 
-    session.on('blocking_prompt', (promptInfo: BlockingPromptInfo, autoResponded: boolean) => {
-      this.emit('blocking_prompt', session.toHandle(), promptInfo, autoResponded);
-    });
+    session.on(
+      'blocking_prompt',
+      (promptInfo: BlockingPromptInfo, autoResponded: boolean) => {
+        this.emit(
+          'blocking_prompt',
+          session.toHandle(),
+          promptInfo,
+          autoResponded
+        );
+      }
+    );
 
     session.on('message', (message: SessionMessage) => {
       this.emit('message', message);
@@ -186,32 +206,41 @@ export class PTYManager extends EventEmitter {
       this.emit('tool_running', session.toHandle(), info);
     });
 
-    session.on('stall_detected', (recentOutput: string, stallDurationMs: number) => {
-      const handle = session.toHandle();
-      this.emit('stall_detected', handle, recentOutput, stallDurationMs);
+    session.on(
+      'stall_detected',
+      (recentOutput: string, stallDurationMs: number) => {
+        const handle = session.toHandle();
+        this.emit('stall_detected', handle, recentOutput, stallDurationMs);
 
-      // Call external classifier if configured
-      if (this._onStallClassify) {
-        // Sanitize output before passing to LLM classifier to mitigate prompt injection.
-        // Truncate to 1500 chars and strip sequences that could be used to manipulate the classifier.
-        const sanitized = recentOutput
-          .slice(-1500)
-          .replace(/\b(ignore|disregard|forget)\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|rules?)\b/gi, '[REDACTED]')
-          .replace(/\b(you\s+are|act\s+as|pretend\s+to\s+be|you\s+must|system\s*:)\b/gi, '[REDACTED]');
-        this._onStallClassify(session.id, sanitized, stallDurationMs)
-          .then((classification) => {
-            session.handleStallClassification(classification);
-          })
-          .catch((err) => {
-            this.logger.error(
-              { sessionId: session.id, error: err },
-              'Stall classification callback failed'
+        // Call external classifier if configured
+        if (this._onStallClassify) {
+          // Sanitize output before passing to LLM classifier to mitigate prompt injection.
+          // Truncate to 1500 chars and strip sequences that could be used to manipulate the classifier.
+          const sanitized = recentOutput
+            .slice(-1500)
+            .replace(
+              /\b(ignore|disregard|forget)\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|rules?)\b/gi,
+              '[REDACTED]'
+            )
+            .replace(
+              /\b(you\s+are|act\s+as|pretend\s+to\s+be|you\s+must|system\s*:)\b/gi,
+              '[REDACTED]'
             );
-            // Reset timer so detection continues
-            session.handleStallClassification(null);
-          });
+          this._onStallClassify(session.id, sanitized, stallDurationMs)
+            .then((classification) => {
+              session.handleStallClassification(classification);
+            })
+            .catch((err) => {
+              this.logger.error(
+                { sessionId: session.id, error: err },
+                'Stall classification callback failed'
+              );
+              // Reset timer so detection continues
+              session.handleStallClassification(null);
+            });
+        }
       }
-    });
+    );
   }
 
   /**
@@ -253,7 +282,10 @@ export class PTYManager extends EventEmitter {
   async stopAll(options?: StopOptions): Promise<void> {
     const stopPromises = Array.from(this.sessions.keys()).map((id) =>
       this.stop(id, options).catch((err) => {
-        this.logger.warn({ sessionId: id, error: err }, 'Error stopping session');
+        this.logger.warn(
+          { sessionId: id, error: err },
+          'Error stopping session'
+        );
       })
     );
 
@@ -280,12 +312,16 @@ export class PTYManager extends EventEmitter {
       // Apply filters
       if (filter) {
         if (filter.status) {
-          const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+          const statuses = Array.isArray(filter.status)
+            ? filter.status
+            : [filter.status];
           if (!statuses.includes(handle.status)) continue;
         }
 
         if (filter.type) {
-          const types = Array.isArray(filter.type) ? filter.type : [filter.type];
+          const types = Array.isArray(filter.type)
+            ? filter.type
+            : [filter.type];
           if (!types.includes(handle.type)) continue;
         }
       }
@@ -317,9 +353,7 @@ export class PTYManager extends EventEmitter {
       throw new Error(`Session not found: ${sessionId}`);
     }
 
-    const lines = options?.tail
-      ? logBuffer.slice(-options.tail)
-      : logBuffer;
+    const lines = options?.tail ? logBuffer.slice(-options.tail) : logBuffer;
 
     for (const line of lines) {
       yield line;
@@ -329,7 +363,9 @@ export class PTYManager extends EventEmitter {
   /**
    * Get metrics for a session
    */
-  metrics(sessionId: string): { uptime?: number; messageCount?: number } | null {
+  metrics(
+    sessionId: string
+  ): { uptime?: number; messageCount?: number } | null {
     const session = this.sessions.get(sessionId);
     if (!session) {
       return null;
@@ -347,7 +383,10 @@ export class PTYManager extends EventEmitter {
    * Shutdown manager and stop all sessions
    */
   async shutdown(): Promise<void> {
-    this.logger.info({ count: this.sessions.size }, 'Shutting down all sessions');
+    this.logger.info(
+      { count: this.sessions.size },
+      'Shutting down all sessions'
+    );
 
     await this.stopAll({ timeout: 3000 });
 
@@ -437,7 +476,11 @@ export class PTYManager extends EventEmitter {
   configureStallDetection(
     enabled: boolean,
     timeoutMs?: number,
-    classify?: (sessionId: string, recentOutput: string, stallDurationMs: number) => Promise<StallClassification | null>,
+    classify?: (
+      sessionId: string,
+      recentOutput: string,
+      stallDurationMs: number
+    ) => Promise<StallClassification | null>
   ): void {
     this._stallDetectionEnabled = enabled;
     if (timeoutMs !== undefined) {

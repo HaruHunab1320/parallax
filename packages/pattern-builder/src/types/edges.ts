@@ -2,7 +2,7 @@
  * Edge type definitions for the Pattern Builder
  */
 
-import { Edge, MarkerType } from '@xyflow/react';
+import { type Edge, MarkerType } from '@xyflow/react';
 
 // Edge types
 export type PatternEdgeType = 'default' | 'confidence' | 'conditional';
@@ -26,7 +26,10 @@ export interface ConditionalEdgeData extends BaseEdgeData {
 }
 
 // Union type for edge data
-export type PatternEdgeData = BaseEdgeData | ConfidenceEdgeData | ConditionalEdgeData;
+export type PatternEdgeData =
+  | BaseEdgeData
+  | ConfidenceEdgeData
+  | ConditionalEdgeData;
 
 // Typed edge for React Flow
 export type PatternEdge = Edge<PatternEdgeData, PatternEdgeType>;
@@ -56,5 +59,5 @@ export function getEdgeColor(confidence?: number): string {
 // Get edge stroke width based on confidence
 export function getEdgeWidth(confidence?: number): number {
   if (confidence === undefined) return 2;
-  return 2 + (confidence * 3); // 2-5px based on confidence
+  return 2 + confidence * 3; // 2-5px based on confidence
 }

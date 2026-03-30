@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getTracingConfig, PARALLAX_ATTRIBUTES, SPAN_NAMES, EVENT_NAMES } from './config';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  EVENT_NAMES,
+  getTracingConfig,
+  PARALLAX_ATTRIBUTES,
+  SPAN_NAMES,
+} from './config';
 
 describe('getTracingConfig', () => {
   const savedEnv = { ...process.env };
@@ -84,7 +89,9 @@ describe('PARALLAX_ATTRIBUTES', () => {
     expect(PARALLAX_ATTRIBUTES.PATTERN_NAME).toBe('parallax.pattern.name');
     expect(PARALLAX_ATTRIBUTES.AGENT_ID).toBe('parallax.agent.id');
     expect(PARALLAX_ATTRIBUTES.EXECUTION_ID).toBe('parallax.execution.id');
-    expect(PARALLAX_ATTRIBUTES.CONFIDENCE_THRESHOLD).toBe('parallax.confidence.threshold');
+    expect(PARALLAX_ATTRIBUTES.CONFIDENCE_THRESHOLD).toBe(
+      'parallax.confidence.threshold'
+    );
   });
 });
 

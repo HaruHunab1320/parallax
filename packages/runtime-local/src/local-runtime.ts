@@ -5,37 +5,37 @@
  * Delegates to pty-manager for PTY management and coding-agent-adapters for CLI adapters.
  */
 
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
+  type AgentConfig,
+  type AgentFilter,
+  type AgentHandle,
+  type AgentMessage,
+  type AgentMetrics,
+  type AgentStatus,
   BaseRuntimeProvider,
-  AgentConfig,
-  AgentHandle,
-  AgentMessage,
-  AgentMetrics,
-  AgentFilter,
-  AgentStatus,
-  StopOptions,
-  SendOptions,
-  LogOptions,
-  SpawnThreadInput,
-  ThreadCompletion,
-  ThreadEvent,
-  ThreadFilter,
-  ThreadHandle,
-  ThreadInput,
-  ThreadRuntimeProvider,
-  ThreadStatus,
+  type LogOptions,
+  type SendOptions,
+  type SpawnThreadInput,
+  type StopOptions,
+  type ThreadCompletion,
+  type ThreadEvent,
+  type ThreadFilter,
+  type ThreadHandle,
+  type ThreadInput,
+  type ThreadRuntimeProvider,
+  type ThreadStatus,
 } from '@parallaxai/runtime-interface';
+import type { Logger } from 'pino';
 import {
+  type BlockingPromptInfo,
   PTYManager,
+  type PTYManagerConfig,
   type SessionHandle,
   type SessionMessage,
-  type PTYManagerConfig,
-  type BlockingPromptInfo,
 } from 'pty-manager';
-import { Logger } from 'pino';
-import { mkdirSync, existsSync, rmSync, writeFileSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
 import { registerAllAdapters } from './adapters';
 
 export interface LocalRuntimeOptions {
@@ -47,7 +47,10 @@ interface ThreadInfo {
   sessionId?: string;
 }
 
-export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimeProvider {
+export class LocalRuntime
+  extends BaseRuntimeProvider
+  implements ThreadRuntimeProvider
+{
   readonly name = 'local';
   readonly type = 'local' as const;
 
@@ -166,7 +169,9 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
     return info.handle;
   }
 
-  private sessionStatusToThreadStatus(status: SessionHandle['status']): ThreadStatus {
+  private sessionStatusToThreadStatus(
+    status: SessionHandle['status']
+  ): ThreadStatus {
     switch (status) {
       case 'pending':
         return 'pending';
@@ -232,33 +237,71 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
       });
     });
 
-    this.manager.on('session_stopped', (handle: SessionHandle, reason: string) => {
-      this.emit('agent_stopped', this.toAgentHandle(handle), reason);
-      this.emitThreadEvent(handle.id, 'thread_stopped', { reason }, {
-        status: 'stopped',
-      });
-    });
+    this.manager.on(
+      'session_stopped',
+      (handle: SessionHandle, reason: string) => {
+        this.emit('agent_stopped', this.toAgentHandle(handle), reason);
+        this.emitThreadEvent(
+          handle.id,
+          'thread_stopped',
+          { reason },
+          {
+            status: 'stopped',
+          }
+        );
+      }
+    );
 
     this.manager.on('session_error', (handle: SessionHandle, error: string) => {
       this.emit('agent_error', this.toAgentHandle(handle), error);
-      this.emitThreadEvent(handle.id, 'thread_failed', { error }, {
-        status: 'failed',
-      });
+      this.emitThreadEvent(
+        handle.id,
+        'thread_failed',
+        { error },
+        {
+          status: 'failed',
+        }
+      );
     });
 
-    this.manager.on('login_required', (handle: SessionHandle, instructions?: string, url?: string) => {
-      this.emit('login_required', this.toAgentHandle(handle), instructions, url);
-    });
+    this.manager.on(
+      'login_required',
+      (handle: SessionHandle, instructions?: string, url?: string) => {
+        this.emit(
+          'login_required',
+          this.toAgentHandle(handle),
+          instructions,
+          url
+        );
+      }
+    );
 
-    this.manager.on('blocking_prompt', (handle: SessionHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => {
-      this.emit('blocking_prompt', this.toAgentHandle(handle), promptInfo, autoResponded);
-      this.emitThreadEvent(handle.id, 'thread_blocked', {
-        promptInfo,
-        autoResponded,
-      }, {
-        status: 'blocked',
-      });
-    });
+    this.manager.on(
+      'blocking_prompt',
+      (
+        handle: SessionHandle,
+        promptInfo: BlockingPromptInfo,
+        autoResponded: boolean
+      ) => {
+        this.emit(
+          'blocking_prompt',
+          this.toAgentHandle(handle),
+          promptInfo,
+          autoResponded
+        );
+        this.emitThreadEvent(
+          handle.id,
+          'thread_blocked',
+          {
+            promptInfo,
+            autoResponded,
+          },
+          {
+            status: 'blocked',
+          }
+        );
+      }
+    );
 
     this.manager.on('message', (msg: SessionMessage) => {
       this.emit('message', this.toAgentMessage(msg));
@@ -292,11 +335,16 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
     });
 
     this.manager.on('tool_running', (handle: SessionHandle, info: unknown) => {
-      this.emitThreadEvent(handle.id, 'thread_tool_running', {
-        info: info as Record<string, unknown>,
-      }, {
-        status: 'running',
-      });
+      this.emitThreadEvent(
+        handle.id,
+        'thread_tool_running',
+        {
+          info: info as Record<string, unknown>,
+        },
+        {
+          status: 'running',
+        }
+      );
     });
   }
 
@@ -376,7 +424,9 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
     }
 
     // Store config for reverse lookup in toAgentHandle
-    const id = config.id ?? `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const id =
+      config.id ??
+      `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.agentConfigs.set(id, { ...config, id });
 
     // Set up shared auth directory for agents in the same execution
@@ -429,21 +479,23 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
   }
 
   async list(filter?: AgentFilter): Promise<AgentHandle[]> {
-    const sessionFilter = filter ? {
-      status: filter.status,
-      type: filter.type,
-    } : undefined;
+    const sessionFilter = filter
+      ? {
+          status: filter.status,
+          type: filter.type,
+        }
+      : undefined;
 
     const handles = this.manager.list(sessionFilter);
-    let agents = handles.map(h => this.toAgentHandle(h));
+    let agents = handles.map((h) => this.toAgentHandle(h));
 
     // Apply agent-specific filters not supported by pty-manager
     if (filter?.role) {
-      agents = agents.filter(a => a.role === filter.role);
+      agents = agents.filter((a) => a.role === filter.role);
     }
     if (filter?.capabilities) {
-      agents = agents.filter(a =>
-        filter.capabilities!.every(c => a.capabilities.includes(c))
+      agents = agents.filter((a) =>
+        filter.capabilities!.every((c) => a.capabilities.includes(c))
       );
     }
 
@@ -458,7 +510,7 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
     agentId: string,
     message: string,
     options?: SendOptions
-  ): Promise<AgentMessage | void> {
+  ): Promise<AgentMessage | undefined> {
     const sessionMsg = this.manager.send(agentId, message);
     const msg = this.toAgentMessage(sessionMsg);
 
@@ -473,7 +525,10 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
         }, timeout);
 
         const handler = (response: SessionMessage) => {
-          if (response.sessionId === agentId && response.direction === 'outbound') {
+          if (
+            response.sessionId === agentId &&
+            response.direction === 'outbound'
+          ) {
             clearTimeout(timer);
             this.manager.off('message', handler);
             resolve(this.toAgentMessage(response));
@@ -563,14 +618,16 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
 
   async spawnThread(input: SpawnThreadInput): Promise<ThreadHandle> {
     const threadId =
-      input.id || `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      input.id ||
+      `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const workspace = input.preparation?.workspace ?? input.workspace;
     const env = {
       ...(input.preparation?.env ?? input.env),
       PARALLAX_THREAD_ID: threadId,
       PARALLAX_THREAD_OBJECTIVE: input.objective,
       PARALLAX_THREAD_MEMORY_FILE:
-        (input.preparation?.contextFiles ?? input.contextFiles)?.[0]?.path || '',
+        (input.preparation?.contextFiles ?? input.contextFiles)?.[0]?.path ||
+        '',
     };
     const contextFiles = input.preparation?.contextFiles ?? input.contextFiles;
 
@@ -685,13 +742,16 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
 
   async listThreads(filter?: ThreadFilter): Promise<ThreadHandle[]> {
     const threads = await Promise.all(
-      Array.from(this.threads.keys()).map((threadId) => this.getThread(threadId))
+      Array.from(this.threads.keys()).map((threadId) =>
+        this.getThread(threadId)
+      )
     );
 
     return threads
       .filter((thread): thread is ThreadHandle => thread !== null)
       .filter((thread) => {
-        if (filter?.executionId && thread.executionId !== filter.executionId) return false;
+        if (filter?.executionId && thread.executionId !== filter.executionId)
+          return false;
         if (filter?.role && thread.role !== filter.role) return false;
         if (filter?.agentType) {
           const agentTypes = Array.isArray(filter.agentType)
@@ -793,10 +853,16 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
     try {
       if (existsSync(sharedDir)) {
         rmSync(sharedDir, { recursive: true, force: true });
-        this.logger.info({ sharedDir, executionId }, 'Deleted shared auth directory');
+        this.logger.info(
+          { sharedDir, executionId },
+          'Deleted shared auth directory'
+        );
       }
     } catch (error: any) {
-      this.logger.warn({ sharedDir, error: error.message }, 'Failed to delete shared auth directory');
+      this.logger.warn(
+        { sharedDir, error: error.message },
+        'Failed to delete shared auth directory'
+      );
     }
 
     this.sharedAuthDirs.delete(dirName);
@@ -823,7 +889,10 @@ export class LocalRuntime extends BaseRuntimeProvider implements ThreadRuntimePr
       }
 
       this.sharedAuthDirs.add(dirName);
-      this.logger.info({ sharedDir, executionId }, 'Created shared auth directory');
+      this.logger.info(
+        { sharedDir, executionId },
+        'Created shared auth directory'
+      );
     }
 
     return sharedDir;

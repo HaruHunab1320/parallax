@@ -1,6 +1,5 @@
-import { ParallaxAgent } from '@parallaxai/sdk-typescript';
-import { AgentResponse } from '@parallaxai/sdk-typescript';
-import os from 'os';
+import os from 'node:os';
+import { type AgentResponse, ParallaxAgent } from '@parallaxai/sdk-typescript';
 import { TamagotchiDisplay } from './display/tamagotchi';
 import { TamagotchiState } from './display/types';
 
@@ -40,7 +39,9 @@ class Pi5Agent extends ParallaxAgent {
     const isHeavy = lower.includes('compute') || lower.includes('benchmark');
     // Brief pause to show receiving animation
     await new Promise((r) => setTimeout(r, 500));
-    this.display.setState(isHeavy ? TamagotchiState.WORKING : TamagotchiState.THINKING);
+    this.display.setState(
+      isHeavy ? TamagotchiState.WORKING : TamagotchiState.THINKING
+    );
 
     try {
       let result: AgentResponse;
@@ -174,7 +175,10 @@ async function main() {
   let leaseCount = 0;
   const heartbeat = setInterval(() => {
     leaseCount++;
-    agent.display.updateLastMatchingLine('\x03 lease', `\x03 lease x${leaseCount}`);
+    agent.display.updateLastMatchingLine(
+      '\x03 lease',
+      `\x03 lease x${leaseCount}`
+    );
   }, 30_000);
 
   const port = parseInt(process.env.AGENT_PORT || '0', 10);

@@ -5,18 +5,18 @@
  */
 
 export {
-  SchedulerService,
-  ScheduleConfig,
-  RetryPolicy,
   createSchedulerService,
+  RetryPolicy,
+  ScheduleConfig,
+  SchedulerService,
 } from './scheduler-service';
 
 export {
-  TriggerService,
-  WebhookTriggerConfig,
-  EventTriggerConfig,
-  WebhookPayload,
-  TriggerResult,
-  EventTypes,
   createTriggerService,
+  EventTriggerConfig,
+  EventTypes,
+  TriggerResult,
+  TriggerService,
+  WebhookPayload,
+  WebhookTriggerConfig,
 } from './trigger-service';

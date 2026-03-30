@@ -25,9 +25,11 @@ export interface ResourceContents {
 /**
  * List available agent resources
  */
-export async function listAgentResources(manager: AgentManager): Promise<Resource[]> {
+export async function listAgentResources(
+  manager: AgentManager
+): Promise<Resource[]> {
   const agents = await manager.list();
-  return agents.map(agent => ({
+  return agents.map((agent) => ({
     uri: `agents://${agent.id}`,
     name: `Agent: ${agent.name}`,
     description: `${agent.type} agent - ${agent.status}`,
@@ -63,9 +65,11 @@ export async function readAgentResource(
 /**
  * List available logs resources
  */
-export async function listLogsResources(manager: AgentManager): Promise<Resource[]> {
+export async function listLogsResources(
+  manager: AgentManager
+): Promise<Resource[]> {
   const agents = await manager.list();
-  return agents.map(agent => ({
+  return agents.map((agent) => ({
     uri: `logs://${agent.id}`,
     name: `Logs: ${agent.name}`,
     description: `Terminal output from ${agent.name}`,

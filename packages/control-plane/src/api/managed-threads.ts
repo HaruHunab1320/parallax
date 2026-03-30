@@ -4,16 +4,20 @@
  * REST endpoints for listing and supervising long-lived threads through runtime providers.
  */
 
-import { Router, Request, Response } from 'express';
-import { Logger } from 'pino';
-import { AgentRuntimeService } from '../agent-runtime';
-import { SpawnThreadInput, ThreadFilter, ThreadInput } from '@parallaxai/runtime-interface';
-import {
+import type {
+  SpawnThreadInput,
+  ThreadFilter,
+  ThreadInput,
+} from '@parallaxai/runtime-interface';
+import { type Request, type Response, Router } from 'express';
+import type { Logger } from 'pino';
+import type { AgentRuntimeService } from '../agent-runtime';
+import type {
   EpisodicExperienceRepository,
   SharedDecisionRepository,
   ThreadRepository,
 } from '../db/repositories';
-import { ThreadPreparationService } from '../threads';
+import type { ThreadPreparationService } from '../threads';
 
 export function createManagedThreadsRouter(
   agentRuntimeService: AgentRuntimeService,
@@ -82,9 +86,15 @@ export function createManagedThreadsRouter(
       const preparedInput = threadPreparationService
         ? await threadPreparationService.prepareSpawnInput(input)
         : input;
-      const thread = await agentRuntimeService.spawnThread(preparedInput, preferredRuntime);
+      const thread = await agentRuntimeService.spawnThread(
+        preparedInput,
+        preferredRuntime
+      );
       if (threadRepository) {
-        await threadRepository.upsert(thread, preferredRuntime ?? thread.runtimeName);
+        await threadRepository.upsert(
+          thread,
+          preferredRuntime ?? thread.runtimeName
+        );
       }
 
       logger.info(
@@ -100,14 +110,17 @@ export function createManagedThreadsRouter(
     } catch (error) {
       logger.error({ error }, 'Failed to spawn thread');
       res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to spawn thread',
+        error:
+          error instanceof Error ? error.message : 'Failed to spawn thread',
       });
     }
   });
 
   router.post('/prepare', async (req: Request, res: Response) => {
     if (!threadPreparationService) {
-      res.status(501).json({ error: 'Thread preparation service is not available' });
+      res
+        .status(501)
+        .json({ error: 'Thread preparation service is not available' });
       return;
     }
 
@@ -141,51 +154,69 @@ export function createManagedThreadsRouter(
     } catch (error) {
       logger.error({ error }, 'Failed to prepare thread input');
       res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to prepare thread input',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to prepare thread input',
       });
     }
   });
 
-  router.get('/executions/:executionId', async (req: Request, res: Response) => {
-    try {
-      const threads = threadRepository
-        ? await threadRepository.findByExecutionId(req.params.executionId)
-        : await agentRuntimeService.listThreads({
-            executionId: req.params.executionId,
-          });
+  router.get(
+    '/executions/:executionId',
+    async (req: Request, res: Response) => {
+      try {
+        const threads = threadRepository
+          ? await threadRepository.findByExecutionId(req.params.executionId)
+          : await agentRuntimeService.listThreads({
+              executionId: req.params.executionId,
+            });
 
-      res.json({ threads, count: threads.length });
-    } catch (error) {
-      logger.error({ error, executionId: req.params.executionId }, 'Failed to list execution threads');
-      res.status(500).json({ error: 'Failed to list execution threads' });
+        res.json({ threads, count: threads.length });
+      } catch (error) {
+        logger.error(
+          { error, executionId: req.params.executionId },
+          'Failed to list execution threads'
+        );
+        res.status(500).json({ error: 'Failed to list execution threads' });
+      }
     }
-  });
+  );
 
-  router.get('/executions/:executionId/shared-decisions', async (req: Request, res: Response) => {
-    if (!sharedDecisionRepository) {
-      res.status(501).json({ error: 'Shared decisions require persistence' });
-      return;
-    }
+  router.get(
+    '/executions/:executionId/shared-decisions',
+    async (req: Request, res: Response) => {
+      if (!sharedDecisionRepository) {
+        res.status(501).json({ error: 'Shared decisions require persistence' });
+        return;
+      }
 
-    try {
-      const decisions = await sharedDecisionRepository.findAll({
-        executionId: req.params.executionId,
-        category: req.query.category as string | undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
-      });
-      res.json({ decisions, count: decisions.length });
-    } catch (error) {
-      logger.error(
-        { error, executionId: req.params.executionId },
-        'Failed to get shared decisions for execution'
-      );
-      res.status(500).json({ error: 'Failed to get shared decisions for execution' });
+      try {
+        const decisions = await sharedDecisionRepository.findAll({
+          executionId: req.params.executionId,
+          category: req.query.category as string | undefined,
+          limit: req.query.limit
+            ? parseInt(req.query.limit as string, 10)
+            : undefined,
+        });
+        res.json({ decisions, count: decisions.length });
+      } catch (error) {
+        logger.error(
+          { error, executionId: req.params.executionId },
+          'Failed to get shared decisions for execution'
+        );
+        res
+          .status(500)
+          .json({ error: 'Failed to get shared decisions for execution' });
+      }
     }
-  });
+  );
 
   router.get('/experiences', async (req: Request, res: Response) => {
     if (!episodicExperienceRepository) {
-      res.status(501).json({ error: 'Episodic experiences require persistence' });
+      res
+        .status(501)
+        .json({ error: 'Episodic experiences require persistence' });
       return;
     }
 
@@ -196,7 +227,9 @@ export function createManagedThreadsRouter(
         role: req.query.role as string | undefined,
         repo: req.query.repo as string | undefined,
         outcome: req.query.outcome as string | undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+        limit: req.query.limit
+          ? parseInt(req.query.limit as string, 10)
+          : undefined,
       });
       res.json({ experiences, count: experiences.length });
     } catch (error) {
@@ -245,17 +278,29 @@ export function createManagedThreadsRouter(
     try {
       const input: ThreadInput = req.body;
 
-      if (!input.message && !input.raw && (!input.keys || input.keys.length === 0)) {
-        res.status(400).json({ error: 'Thread input requires message, raw, or keys' });
+      if (
+        !input.message &&
+        !input.raw &&
+        (!input.keys || input.keys.length === 0)
+      ) {
+        res
+          .status(400)
+          .json({ error: 'Thread input requires message, raw, or keys' });
         return;
       }
 
       await agentRuntimeService.sendToThread(req.params.id, input);
       res.json({ sent: true });
     } catch (error) {
-      logger.error({ error, threadId: req.params.id }, 'Failed to send input to thread');
+      logger.error(
+        { error, threadId: req.params.id },
+        'Failed to send input to thread'
+      );
       res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to send input to thread',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to send input to thread',
       });
     }
   });
@@ -270,7 +315,10 @@ export function createManagedThreadsRouter(
       const events = await threadRepository.getEvents(req.params.id);
       res.json({ events, count: events.length });
     } catch (error) {
-      logger.error({ error, threadId: req.params.id }, 'Failed to get thread events');
+      logger.error(
+        { error, threadId: req.params.id },
+        'Failed to get thread events'
+      );
       res.status(500).json({ error: 'Failed to get thread events' });
     }
   });
@@ -284,12 +332,19 @@ export function createManagedThreadsRouter(
     try {
       const decisions = await sharedDecisionRepository.findAll({
         threadId: req.params.id,
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+        limit: req.query.limit
+          ? parseInt(req.query.limit as string, 10)
+          : undefined,
       });
       res.json({ decisions, count: decisions.length });
     } catch (error) {
-      logger.error({ error, threadId: req.params.id }, 'Failed to get shared decisions for thread');
-      res.status(500).json({ error: 'Failed to get shared decisions for thread' });
+      logger.error(
+        { error, threadId: req.params.id },
+        'Failed to get shared decisions for thread'
+      );
+      res
+        .status(500)
+        .json({ error: 'Failed to get shared decisions for thread' });
     }
   });
 
@@ -310,7 +365,9 @@ export function createManagedThreadsRouter(
 
       const { category, summary, details } = req.body;
       if (!category || !summary) {
-        res.status(400).json({ error: 'Shared decision category and summary are required' });
+        res
+          .status(400)
+          .json({ error: 'Shared decision category and summary are required' });
         return;
       }
 
@@ -324,7 +381,10 @@ export function createManagedThreadsRouter(
 
       res.status(201).json(decision);
     } catch (error) {
-      logger.error({ error, threadId: req.params.id }, 'Failed to create shared decision');
+      logger.error(
+        { error, threadId: req.params.id },
+        'Failed to create shared decision'
+      );
       res.status(500).json({ error: 'Failed to create shared decision' });
     }
   });

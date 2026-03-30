@@ -106,7 +106,7 @@ export function extractCompletionSummary(raw: string): string {
 
   // PR / issue URLs
   const prUrls = stripped.match(
-    /https?:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/g,
+    /https?:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/g
   );
   if (prUrls) {
     for (const url of [...new Set(prUrls)]) lines.push(url);
@@ -114,7 +114,7 @@ export function extractCompletionSummary(raw: string): string {
 
   // "Created pull request #N" style messages
   const prCreated = stripped.match(
-    /(?:Created|Opened)\s+pull\s+request\s+#\d+[^\n]*/gi,
+    /(?:Created|Opened)\s+pull\s+request\s+#\d+[^\n]*/gi
   );
   if (prCreated && !prUrls) {
     for (const m of prCreated) lines.push(m.trim());
@@ -128,7 +128,7 @@ export function extractCompletionSummary(raw: string): string {
 
   // Files changed summary
   const diffStat = stripped.match(
-    /\d+\s+files?\s+changed.*?(?:insertion|deletion)[^\n]*/gi,
+    /\d+\s+files?\s+changed.*?(?:insertion|deletion)[^\n]*/gi
   );
   if (diffStat) {
     for (const m of diffStat) lines.push(m.trim());
@@ -143,7 +143,7 @@ export function extractCompletionSummary(raw: string): string {
 export function extractDevServerUrl(raw: string): string | null {
   const stripped = applyAnsiStrip(raw);
   const match = stripped.match(
-    /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):\d{1,5}[^\s)}\]'"`,]*/,
+    /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):\d{1,5}[^\s)}\]'"`,]*/
   );
   return match ? match[0] : null;
 }

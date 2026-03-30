@@ -36,152 +36,144 @@
  * ```
  */
 
-// Main server
-export {
-  ParallaxMcpServer,
-  StdioServerTransport,
-  type ParallaxMcpServerOptions,
-} from './mcp-server.js';
-
 // PTY preflight check (re-exported from pty-manager)
 export { ensurePty } from 'pty-manager';
+// Agent manager (for direct usage without MCP)
+export {
+  type AdapterHealth,
+  AgentManager,
+  type AgentManagerEvents,
+  type AgentManagerOptions,
+} from './agent-manager.js';
 
 // Terminal output cleaning utilities
 export {
-  stripAnsi,
   cleanForChat,
   extractCompletionSummary,
   extractDevServerUrl,
+  stripAnsi,
 } from './ansi-utils.js';
-
-// Agent manager (for direct usage without MCP)
-export {
-  AgentManager,
-  type AgentManagerOptions,
-  type AgentManagerEvents,
-  type AdapterHealth,
-} from './agent-manager.js';
-
 // Auth
 export {
-  McpAuthHandler,
-  McpAuthError,
-  type McpAuthConfig,
   type ApiKeyConfig,
   type AuthContext,
   type AuthErrorCode,
+  type McpAuthConfig,
+  McpAuthError,
+  McpAuthHandler,
 } from './auth/index.js';
-
-// Tools
+// Main server
+// Convenient alias
 export {
-  TOOLS,
-  TOOL_PERMISSIONS,
-  executeSpawn,
-  executeStop,
-  executeList,
-  executeGet,
-  executeSend,
-  executeLogs,
-  executeMetrics,
-  executeHealth,
-  executeProvisionWorkspace,
-  executeFinalizeWorkspace,
-  executeCleanupWorkspace,
-  executeGetWorkspaceFiles,
-  executeWriteWorkspaceFile,
-  executeListPresets,
-  executeGetPresetConfig,
-  executeNotifyHookEvent,
-  executeWriteRaw,
-  executeGetHookConfig,
-  executeAddWorktree,
-  executeListWorktrees,
-  executeRemoveWorktree,
-  SpawnInputSchema,
-  StopInputSchema,
-  ListInputSchema,
-  GetInputSchema,
-  SendInputSchema,
-  LogsInputSchema,
-  MetricsInputSchema,
-  HealthInputSchema,
-  ProvisionWorkspaceInputSchema,
-  FinalizeWorkspaceInputSchema,
-  CleanupWorkspaceInputSchema,
-  GetWorkspaceFilesInputSchema,
-  WriteWorkspaceFileInputSchema,
-  ListPresetsInputSchema,
-  GetPresetConfigInputSchema,
-  NotifyHookEventInputSchema,
-  WriteRawInputSchema,
-  GetHookConfigInputSchema,
-  AddWorktreeInputSchema,
-  ListWorktreesInputSchema,
-  RemoveWorktreeInputSchema,
-  ApprovalPresetSchema,
-  type SpawnInput,
-  type StopInput,
-  type ListInput,
-  type GetInput,
-  type SendInput,
-  type LogsInput,
-  type MetricsInput,
-  type HealthInput,
-  type ProvisionWorkspaceInput,
-  type FinalizeWorkspaceInput,
-  type CleanupWorkspaceInput,
-  type GetWorkspaceFilesInput,
-  type WriteWorkspaceFileInput,
-  type ListPresetsInput,
-  type GetPresetConfigInput,
-  type NotifyHookEventInput,
-  type WriteRawInput,
-  type GetHookConfigInput,
-  type AddWorktreeInput,
-  type ListWorktreesInput,
-  type RemoveWorktreeInput,
-} from './tools/index.js';
-
+  ParallaxMcpServer,
+  ParallaxMcpServer as ParallaxAgentRuntime,
+  type ParallaxMcpServerOptions,
+  StdioServerTransport,
+} from './mcp-server.js';
+// Prompts
+export {
+  generateSpawnDevAgentPrompt,
+  generateSpawnReviewTeamPrompt,
+  PROMPTS,
+  type PromptDefinition,
+  type PromptResult,
+  type SpawnDevAgentArgs,
+  type SpawnReviewTeamArgs,
+} from './prompts/index.js';
 // Resources
 export {
   listAgentResources,
-  readAgentResource,
   listLogsResources,
-  readLogsResource,
   type Resource,
   type ResourceContents,
+  readAgentResource,
+  readLogsResource,
 } from './resources/index.js';
-
-// Prompts
+// Tools
 export {
-  PROMPTS,
-  generateSpawnReviewTeamPrompt,
-  generateSpawnDevAgentPrompt,
-  type SpawnReviewTeamArgs,
-  type SpawnDevAgentArgs,
-  type PromptDefinition,
-  type PromptResult,
-} from './prompts/index.js';
-
+  type AddWorktreeInput,
+  AddWorktreeInputSchema,
+  ApprovalPresetSchema,
+  type CleanupWorkspaceInput,
+  CleanupWorkspaceInputSchema,
+  executeAddWorktree,
+  executeCleanupWorkspace,
+  executeFinalizeWorkspace,
+  executeGet,
+  executeGetHookConfig,
+  executeGetPresetConfig,
+  executeGetWorkspaceFiles,
+  executeHealth,
+  executeList,
+  executeListPresets,
+  executeListWorktrees,
+  executeLogs,
+  executeMetrics,
+  executeNotifyHookEvent,
+  executeProvisionWorkspace,
+  executeRemoveWorktree,
+  executeSend,
+  executeSpawn,
+  executeStop,
+  executeWriteRaw,
+  executeWriteWorkspaceFile,
+  type FinalizeWorkspaceInput,
+  FinalizeWorkspaceInputSchema,
+  type GetHookConfigInput,
+  GetHookConfigInputSchema,
+  type GetInput,
+  GetInputSchema,
+  type GetPresetConfigInput,
+  GetPresetConfigInputSchema,
+  type GetWorkspaceFilesInput,
+  GetWorkspaceFilesInputSchema,
+  type HealthInput,
+  HealthInputSchema,
+  type ListInput,
+  ListInputSchema,
+  type ListPresetsInput,
+  ListPresetsInputSchema,
+  type ListWorktreesInput,
+  ListWorktreesInputSchema,
+  type LogsInput,
+  LogsInputSchema,
+  type MetricsInput,
+  MetricsInputSchema,
+  type NotifyHookEventInput,
+  NotifyHookEventInputSchema,
+  type ProvisionWorkspaceInput,
+  ProvisionWorkspaceInputSchema,
+  type RemoveWorktreeInput,
+  RemoveWorktreeInputSchema,
+  type SendInput,
+  SendInputSchema,
+  type SpawnInput,
+  SpawnInputSchema,
+  type StopInput,
+  StopInputSchema,
+  TOOL_PERMISSIONS,
+  TOOLS,
+  type WriteRawInput,
+  WriteRawInputSchema,
+  type WriteWorkspaceFileInput,
+  WriteWorkspaceFileInputSchema,
+} from './tools/index.js';
 // Types
 export type {
-  AgentType,
-  AgentStatus,
   AgentConfig,
+  AgentCredentials,
+  AgentFilter,
   AgentHandle,
   AgentMessage,
-  AgentFilter,
   AgentMetrics,
-  AgentCredentials,
-  BlockingPromptInfo,
+  AgentStatus,
+  AgentType,
   AuthRequiredInfo,
-  RuntimeEvent,
+  BlockingPromptInfo,
+  HookEventType,
   MessageType,
+  RuntimeEvent,
   StallClassification,
   ToolRunningInfo,
-  HookEventType,
   WorkspaceProvisionConfig,
 } from './types.js';
-
-// Convenient alias
-export { ParallaxMcpServer as ParallaxAgentRuntime } from './mcp-server.js';

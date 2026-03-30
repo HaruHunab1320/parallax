@@ -1,14 +1,14 @@
-import { HttpClient } from '../http.js';
-import {
+import type { HttpClient } from '../http.js';
+import type {
+  AgentLogsResponse,
   ManagedAgent,
-  ManagedAgentListResponse,
   ManagedAgentListParams,
-  ManagedAgentSpawnInput,
+  ManagedAgentListResponse,
   ManagedAgentSendInput,
   ManagedAgentSendResponse,
-  RuntimeListResponse,
+  ManagedAgentSpawnInput,
   RuntimeHealthResponse,
-  AgentLogsResponse,
+  RuntimeListResponse,
 } from '../types/managed-agents.js';
 
 export class ManagedAgentsResource {
@@ -27,24 +27,36 @@ export class ManagedAgentsResource {
   }
 
   /** List all managed agents */
-  async list(params?: ManagedAgentListParams): Promise<ManagedAgentListResponse> {
+  async list(
+    params?: ManagedAgentListParams
+  ): Promise<ManagedAgentListResponse> {
     const query: Record<string, string | undefined> = {};
 
     if (params?.status) {
-      query.status = Array.isArray(params.status) ? params.status.join(',') : params.status;
+      query.status = Array.isArray(params.status)
+        ? params.status.join(',')
+        : params.status;
     }
     if (params?.type) {
-      query.type = Array.isArray(params.type) ? params.type.join(',') : params.type;
+      query.type = Array.isArray(params.type)
+        ? params.type.join(',')
+        : params.type;
     }
     if (params?.role) {
       query.role = params.role;
     }
 
-    return this.http.get<ManagedAgentListResponse>('/api/managed-agents', query);
+    return this.http.get<ManagedAgentListResponse>(
+      '/api/managed-agents',
+      query
+    );
   }
 
   /** Spawn a new managed agent */
-  async spawn(input: ManagedAgentSpawnInput, runtime?: string): Promise<ManagedAgent> {
+  async spawn(
+    input: ManagedAgentSpawnInput,
+    runtime?: string
+  ): Promise<ManagedAgent> {
     const query = runtime ? { runtime } : undefined;
     return this.http.request<ManagedAgent>({
       method: 'POST',
@@ -62,18 +74,21 @@ export class ManagedAgentsResource {
   }
 
   /** Stop a managed agent */
-  async stop(id: string, options?: { force?: boolean; timeout?: number }): Promise<void> {
-    await this.http.delete(
-      `/api/managed-agents/${encodeURIComponent(id)}`,
-      {
-        force: options?.force,
-        timeout: options?.timeout,
-      }
-    );
+  async stop(
+    id: string,
+    options?: { force?: boolean; timeout?: number }
+  ): Promise<void> {
+    await this.http.delete(`/api/managed-agents/${encodeURIComponent(id)}`, {
+      force: options?.force,
+      timeout: options?.timeout,
+    });
   }
 
   /** Send a message to a managed agent */
-  async send(id: string, input: ManagedAgentSendInput): Promise<ManagedAgentSendResponse> {
+  async send(
+    id: string,
+    input: ManagedAgentSendInput
+  ): Promise<ManagedAgentSendResponse> {
     return this.http.post<ManagedAgentSendResponse>(
       `/api/managed-agents/${encodeURIComponent(id)}/send`,
       input

@@ -16,51 +16,48 @@
  * Requires GITHUB_PAT in the root .env file.
  */
 
-import { readFileSync } from 'fs';
-import { writeFileSync } from 'fs';
-import { join, resolve } from 'path';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import {
+  CredentialService,
+  type GitCredential,
+  type GitProviderAdapter,
+  type PullRequestInfo,
+} from 'git-workspace-service';
 import pino from 'pino';
 import {
-  // Server
-  ParallaxMcpServer,
-
+  AddWorktreeInputSchema,
   // Manager
   AgentManager,
-
-  // Auth
-  McpAuthHandler,
-  McpAuthError,
-
-  // Tools
-  TOOLS,
-  TOOL_PERMISSIONS,
-  SpawnInputSchema,
-  ProvisionWorkspaceInputSchema,
-  FinalizeWorkspaceInputSchema,
-  CleanupWorkspaceInputSchema,
-  NotifyHookEventInputSchema,
-  WriteRawInputSchema,
   GetHookConfigInputSchema,
-  AddWorktreeInputSchema,
+  generateSpawnDevAgentPrompt,
+  generateSpawnReviewTeamPrompt,
   ListWorktreesInputSchema,
-  RemoveWorktreeInputSchema,
-
   // Resources
   listAgentResources,
-
+  McpAuthError,
+  // Auth
+  McpAuthHandler,
+  NotifyHookEventInputSchema,
+  // Server
+  ParallaxMcpServer,
   // Prompts
   PROMPTS,
-  generateSpawnReviewTeamPrompt,
-  generateSpawnDevAgentPrompt,
+  ProvisionWorkspaceInputSchema,
+  RemoveWorktreeInputSchema,
+  SpawnInputSchema,
+  TOOL_PERMISSIONS,
+  // Tools
+  TOOLS,
+  WriteRawInputSchema,
 } from '../src/index.js';
-
-import { CredentialService, type GitProviderAdapter, type GitCredential, type PullRequestInfo } from 'git-workspace-service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TESTBED_REPO = 'https://github.com/HaruHunab1320/git-workspace-service-testbed';
+const TESTBED_REPO =
+  'https://github.com/HaruHunab1320/git-workspace-service-testbed';
 const ROOT_DIR = resolve(__dirname, '../../..');
 
 // Load PAT from root .env
@@ -71,7 +68,9 @@ function loadPat(): string {
     if (!match) throw new Error('GITHUB_PAT not found in .env');
     return match[1].trim();
   } catch {
-    throw new Error('Cannot read GITHUB_PAT from root .env — needed for integration test');
+    throw new Error(
+      'Cannot read GITHUB_PAT from root .env — needed for integration test'
+    );
   }
 }
 
@@ -82,8 +81,12 @@ function loadPat(): string {
 function createPatGitHubProvider(): GitProviderAdapter {
   return {
     name: 'github' as const,
-    async getCredentials() { throw new Error('Not implemented for PAT provider'); },
-    async revokeCredential() { /* no-op */ },
+    async getCredentials() {
+      throw new Error('Not implemented for PAT provider');
+    },
+    async revokeCredential() {
+      /* no-op */
+    },
     async createPullRequest(opts: {
       repo: string;
       sourceBranch: string;
@@ -98,28 +101,37 @@ function createPatGitHubProvider(): GitProviderAdapter {
       if (!match) throw new Error(`Cannot parse repo: ${opts.repo}`);
       const [, owner, repo] = match;
 
-      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${opts.credential.token}`,
-          Accept: 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: opts.title,
-          body: opts.body,
-          head: opts.sourceBranch,
-          base: opts.targetBranch,
-          draft: opts.draft ?? false,
-        }),
-      });
+      const res = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${opts.credential.token}`,
+            Accept: 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: opts.title,
+            body: opts.body,
+            head: opts.sourceBranch,
+            base: opts.targetBranch,
+            draft: opts.draft ?? false,
+          }),
+        }
+      );
 
       if (!res.ok) {
         const err = await res.text();
         throw new Error(`GitHub API error ${res.status}: ${err}`);
       }
 
-      const data = await res.json() as { number: number; html_url: string; state: string; created_at: string; title: string };
+      const data = (await res.json()) as {
+        number: number;
+        html_url: string;
+        state: string;
+        created_at: string;
+        title: string;
+      };
       return {
         number: data.number,
         url: data.html_url,
@@ -131,8 +143,12 @@ function createPatGitHubProvider(): GitProviderAdapter {
         createdAt: new Date(data.created_at),
       };
     },
-    async branchExists() { return false; },
-    async getDefaultBranch() { return 'main'; },
+    async branchExists() {
+      return false;
+    },
+    async getDefaultBranch() {
+      return 'main';
+    },
   };
 }
 
@@ -144,8 +160,10 @@ const logger = pino({ level: 'silent' });
 const wsLogger = {
   debug: (_d: Record<string, unknown>, _m: string) => {},
   info: (_d: Record<string, unknown>, _m: string) => {},
-  warn: (d: Record<string, unknown>, m: string) => console.log(`    [warn] ${m}`, JSON.stringify(d)),
-  error: (d: Record<string, unknown>, m: string) => console.error(`    [error] ${m}`, JSON.stringify(d)),
+  warn: (d: Record<string, unknown>, m: string) =>
+    console.log(`    [warn] ${m}`, JSON.stringify(d)),
+  error: (d: Record<string, unknown>, m: string) =>
+    console.error(`    [error] ${m}`, JSON.stringify(d)),
 };
 
 let passed = 0;
@@ -161,13 +179,19 @@ function assert(condition: boolean, message: string): void {
   }
 }
 
-function assertEqual(actual: unknown, expected: unknown, message: string): void {
+function assertEqual(
+  actual: unknown,
+  expected: unknown,
+  message: string
+): void {
   if (actual === expected) {
     passed++;
     console.log(`  ✓ ${message}`);
   } else {
     failed++;
-    console.error(`  ✗ ${message} — expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+    console.error(
+      `  ✗ ${message} — expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
+    );
   }
 }
 
@@ -176,9 +200,13 @@ function assertEqual(actual: unknown, expected: unknown, message: string): void 
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('\n═══════════════════════════════════════════════════════════════');
+  console.log(
+    '\n═══════════════════════════════════════════════════════════════'
+  );
   console.log('  parallax-agent-runtime v0.8.5 — Integration Smoke Test');
-  console.log('═══════════════════════════════════════════════════════════════\n');
+  console.log(
+    '═══════════════════════════════════════════════════════════════\n'
+  );
 
   const pat = loadPat();
   console.log(`  Using testbed: ${TESTBED_REPO}`);
@@ -195,28 +223,57 @@ async function main() {
 
   // ─── 2. Tool definitions ─────────────────────────────────────────────────
   console.log('\n2. Tool definitions');
-  const toolNames = TOOLS.map(t => t.name);
+  const toolNames = TOOLS.map((t) => t.name);
   const expectedTools = [
-    'spawn', 'stop', 'list', 'get', 'send', 'logs', 'metrics', 'health',
-    'provision_workspace', 'finalize_workspace', 'cleanup_workspace',
-    'get_workspace_files', 'write_workspace_file',
-    'list_presets', 'get_preset_config',
-    'notify_hook_event', 'write_raw', 'get_hook_config',
-    'add_worktree', 'list_worktrees', 'remove_worktree',
+    'spawn',
+    'stop',
+    'list',
+    'get',
+    'send',
+    'logs',
+    'metrics',
+    'health',
+    'provision_workspace',
+    'finalize_workspace',
+    'cleanup_workspace',
+    'get_workspace_files',
+    'write_workspace_file',
+    'list_presets',
+    'get_preset_config',
+    'notify_hook_event',
+    'write_raw',
+    'get_hook_config',
+    'add_worktree',
+    'list_worktrees',
+    'remove_worktree',
   ];
   for (const name of expectedTools) {
     assert(toolNames.includes(name), `Tool "${name}" defined`);
   }
-  assertEqual(TOOL_PERMISSIONS.provision_workspace, 'workspace:provision', 'workspace permission mapped');
-  assertEqual(TOOL_PERMISSIONS.notify_hook_event, 'agents:hook', 'hook event permission mapped');
-  assertEqual(TOOL_PERMISSIONS.add_worktree, 'workspace:provision', 'worktree permission mapped');
+  assertEqual(
+    TOOL_PERMISSIONS.provision_workspace,
+    'workspace:provision',
+    'workspace permission mapped'
+  );
+  assertEqual(
+    TOOL_PERMISSIONS.notify_hook_event,
+    'agents:hook',
+    'hook event permission mapped'
+  );
+  assertEqual(
+    TOOL_PERMISSIONS.add_worktree,
+    'workspace:provision',
+    'worktree permission mapped'
+  );
 
   // ─── 3. Zod schemas ──────────────────────────────────────────────────────
   console.log('\n3. Zod schema validation');
 
   // Spawn schema — existing fields
   const spawnParsed = SpawnInputSchema.parse({
-    name: 'test', type: 'claude', capabilities: ['code'],
+    name: 'test',
+    type: 'claude',
+    capabilities: ['code'],
     ruleOverrides: { 'trust.*folder': null },
     stallTimeoutMs: 10000,
   });
@@ -226,54 +283,130 @@ async function main() {
 
   // Spawn schema — new fields
   const spawnWithNew = SpawnInputSchema.parse({
-    name: 'isolated', type: 'hermes', capabilities: ['code'],
+    name: 'isolated',
+    type: 'hermes',
+    capabilities: ['code'],
     inheritProcessEnv: false,
     skipAdapterAutoResponse: true,
     readySettleMs: 2000,
     traceTaskCompletion: true,
   });
-  assertEqual(spawnWithNew.type, 'hermes', 'SpawnInputSchema accepts hermes type');
-  assertEqual(spawnWithNew.inheritProcessEnv, false, 'inheritProcessEnv parsed');
-  assertEqual(spawnWithNew.skipAdapterAutoResponse, true, 'skipAdapterAutoResponse parsed');
+  assertEqual(
+    spawnWithNew.type,
+    'hermes',
+    'SpawnInputSchema accepts hermes type'
+  );
+  assertEqual(
+    spawnWithNew.inheritProcessEnv,
+    false,
+    'inheritProcessEnv parsed'
+  );
+  assertEqual(
+    spawnWithNew.skipAdapterAutoResponse,
+    true,
+    'skipAdapterAutoResponse parsed'
+  );
   assertEqual(spawnWithNew.readySettleMs, 2000, 'readySettleMs parsed');
-  assertEqual(spawnWithNew.traceTaskCompletion, true, 'traceTaskCompletion parsed');
+  assertEqual(
+    spawnWithNew.traceTaskCompletion,
+    true,
+    'traceTaskCompletion parsed'
+  );
 
   let schemaRejected = false;
-  try { SpawnInputSchema.parse({ name: 'test', type: 'invalid', capabilities: [] }); }
-  catch { schemaRejected = true; }
+  try {
+    SpawnInputSchema.parse({ name: 'test', type: 'invalid', capabilities: [] });
+  } catch {
+    schemaRejected = true;
+  }
   assert(schemaRejected, 'SpawnInputSchema rejects invalid agent type');
 
   // New tool schemas
-  const hookParsed = NotifyHookEventInputSchema.parse({ agentId: 'agent-1', event: 'task_complete' });
-  assertEqual(hookParsed.event, 'task_complete', 'NotifyHookEventInputSchema parses');
+  const hookParsed = NotifyHookEventInputSchema.parse({
+    agentId: 'agent-1',
+    event: 'task_complete',
+  });
+  assertEqual(
+    hookParsed.event,
+    'task_complete',
+    'NotifyHookEventInputSchema parses'
+  );
 
-  const rawParsed = WriteRawInputSchema.parse({ agentId: 'agent-1', data: '\x1b[A' });
-  assertEqual(rawParsed.data, '\x1b[A', 'WriteRawInputSchema parses escape sequences');
+  const rawParsed = WriteRawInputSchema.parse({
+    agentId: 'agent-1',
+    data: '\x1b[A',
+  });
+  assertEqual(
+    rawParsed.data,
+    '\x1b[A',
+    'WriteRawInputSchema parses escape sequences'
+  );
 
   const hookCfgParsed = GetHookConfigInputSchema.parse({
-    agentType: 'claude', httpUrl: 'http://localhost:8080/hooks', sessionId: 'sess-1',
+    agentType: 'claude',
+    httpUrl: 'http://localhost:8080/hooks',
+    sessionId: 'sess-1',
   });
-  assertEqual(hookCfgParsed.agentType, 'claude', 'GetHookConfigInputSchema parses');
-  assertEqual(hookCfgParsed.httpUrl, 'http://localhost:8080/hooks', 'httpUrl parsed');
+  assertEqual(
+    hookCfgParsed.agentType,
+    'claude',
+    'GetHookConfigInputSchema parses'
+  );
+  assertEqual(
+    hookCfgParsed.httpUrl,
+    'http://localhost:8080/hooks',
+    'httpUrl parsed'
+  );
   assertEqual(hookCfgParsed.sessionId, 'sess-1', 'sessionId parsed');
 
   const worktreeParsed = AddWorktreeInputSchema.parse({
-    parentWorkspaceId: 'ws-1', branch: 'main', executionId: 'exec-1',
+    parentWorkspaceId: 'ws-1',
+    branch: 'main',
+    executionId: 'exec-1',
   });
-  assertEqual(worktreeParsed.parentWorkspaceId, 'ws-1', 'AddWorktreeInputSchema parses');
-  assertEqual(worktreeParsed.patternName, 'mcp-worktree', 'patternName defaults');
+  assertEqual(
+    worktreeParsed.parentWorkspaceId,
+    'ws-1',
+    'AddWorktreeInputSchema parses'
+  );
+  assertEqual(
+    worktreeParsed.patternName,
+    'mcp-worktree',
+    'patternName defaults'
+  );
 
-  const listWtParsed = ListWorktreesInputSchema.parse({ parentWorkspaceId: 'ws-1' });
-  assertEqual(listWtParsed.parentWorkspaceId, 'ws-1', 'ListWorktreesInputSchema parses');
+  const listWtParsed = ListWorktreesInputSchema.parse({
+    parentWorkspaceId: 'ws-1',
+  });
+  assertEqual(
+    listWtParsed.parentWorkspaceId,
+    'ws-1',
+    'ListWorktreesInputSchema parses'
+  );
 
-  const removeWtParsed = RemoveWorktreeInputSchema.parse({ workspaceId: 'wt-1' });
-  assertEqual(removeWtParsed.workspaceId, 'wt-1', 'RemoveWorktreeInputSchema parses');
+  const removeWtParsed = RemoveWorktreeInputSchema.parse({
+    workspaceId: 'wt-1',
+  });
+  assertEqual(
+    removeWtParsed.workspaceId,
+    'wt-1',
+    'RemoveWorktreeInputSchema parses'
+  );
 
   const provisionParsed = ProvisionWorkspaceInputSchema.parse({
-    repo: TESTBED_REPO, executionId: 'exec-1',
+    repo: TESTBED_REPO,
+    executionId: 'exec-1',
   });
-  assertEqual(provisionParsed.baseBranch, 'main', 'ProvisionWorkspace defaults baseBranch=main');
-  assertEqual(provisionParsed.strategy, 'clone', 'ProvisionWorkspace defaults strategy=clone');
+  assertEqual(
+    provisionParsed.baseBranch,
+    'main',
+    'ProvisionWorkspace defaults baseBranch=main'
+  );
+  assertEqual(
+    provisionParsed.strategy,
+    'clone',
+    'ProvisionWorkspace defaults strategy=clone'
+  );
 
   // ─── 4. AgentManager + health check ──────────────────────────────────────
   console.log('\n4. AgentManager + health check');
@@ -299,9 +432,18 @@ async function main() {
   assert(health.healthy === true, 'Health: healthy=true');
   assertEqual(health.maxAgents, 5, 'Health: maxAgents=5');
   assertEqual(health.agentCount, 0, 'Health: 0 agents');
-  assert(health.adapters.length === 5, 'Health: 5 adapters checked (claude, gemini, codex, aider, hermes)');
-  assert(health.stallDetectionEnabled === true, 'Health: stall detection enabled');
-  assert(health.workspaceServiceEnabled === true, 'Health: workspace service enabled');
+  assert(
+    health.adapters.length === 5,
+    'Health: 5 adapters checked (claude, gemini, codex, aider, hermes)'
+  );
+  assert(
+    health.stallDetectionEnabled === true,
+    'Health: stall detection enabled'
+  );
+  assert(
+    health.workspaceServiceEnabled === true,
+    'Health: workspace service enabled'
+  );
 
   console.log('    Adapter status:');
   for (const adapter of health.adapters) {
@@ -316,7 +458,11 @@ async function main() {
   const agents = await manager.list();
   assertEqual(agents.length, 0, 'List returns 0 agents');
   assertEqual(await manager.get('nonexistent'), null, 'Get nonexistent → null');
-  assertEqual(await manager.metrics('nonexistent'), null, 'Metrics nonexistent → null');
+  assertEqual(
+    await manager.metrics('nonexistent'),
+    null,
+    'Metrics nonexistent → null'
+  );
 
   // ─── 6. Hook telemetry config ────────────────────────────────────────────
   console.log('\n6. Hook telemetry config');
@@ -326,15 +472,28 @@ async function main() {
   });
   // Claude adapter supports hooks — should return config
   if (claudeHookCfg) {
-    assert(typeof claudeHookCfg.markerPrefix === 'string', 'Claude hook config has markerPrefix');
-    assert(typeof claudeHookCfg.settingsHooks === 'object', 'Claude hook config has settingsHooks');
+    assert(
+      typeof claudeHookCfg.markerPrefix === 'string',
+      'Claude hook config has markerPrefix'
+    );
+    assert(
+      typeof claudeHookCfg.settingsHooks === 'object',
+      'Claude hook config has settingsHooks'
+    );
     console.log(`    Claude marker prefix: ${claudeHookCfg.markerPrefix}`);
   } else {
-    assert(true, 'Claude hook config returned null (adapter may not support HTTP hooks in this version)');
+    assert(
+      true,
+      'Claude hook config returned null (adapter may not support HTTP hooks in this version)'
+    );
   }
 
   const codexHookCfg = manager.getHookTelemetryConfig('codex');
-  assertEqual(codexHookCfg, null, 'Codex hook config returns null (no hook support)');
+  assertEqual(
+    codexHookCfg,
+    null,
+    'Codex hook config returns null (no hook support)'
+  );
 
   const customHookCfg = manager.getHookTelemetryConfig('custom');
   assertEqual(customHookCfg, null, 'Custom type hook config returns null');
@@ -377,7 +536,10 @@ async function main() {
 
   assert(workspace.id !== undefined, `Workspace provisioned: ${workspace.id}`);
   assert(workspace.path !== undefined, `Workspace path: ${workspace.path}`);
-  assert(workspace.branch.name.includes(execId), `Branch contains execution ID: ${workspace.branch.name}`);
+  assert(
+    workspace.branch.name.includes(execId),
+    `Branch contains execution ID: ${workspace.branch.name}`
+  );
   assertEqual(workspace.status, 'ready', 'Workspace status: ready');
   assertEqual(workspace.strategy, 'clone', 'Workspace strategy: clone');
   console.log(`    Branch: ${workspace.branch.name}`);
@@ -389,12 +551,18 @@ async function main() {
   // Make a change in the workspace
   console.log('    Making a test change...');
   const testFile = join(workspace.path, `smoke-test-${execId}.txt`);
-  writeFileSync(testFile, `Smoke test from parallax-agent-runtime v0.8.5\nExecution: ${execId}\nTimestamp: ${new Date().toISOString()}\n`);
+  writeFileSync(
+    testFile,
+    `Smoke test from parallax-agent-runtime v0.8.5\nExecution: ${execId}\nTimestamp: ${new Date().toISOString()}\n`
+  );
 
   // Stage and commit
-  const { execSync } = await import('child_process');
+  const { execSync } = await import('node:child_process');
   execSync('git add -A', { cwd: workspace.path, stdio: 'pipe' });
-  execSync(`git commit -m "smoke test: ${execId}"`, { cwd: workspace.path, stdio: 'pipe' });
+  execSync(`git commit -m "smoke test: ${execId}"`, {
+    cwd: workspace.path,
+    stdio: 'pipe',
+  });
   assert(true, 'Committed test change');
 
   // Finalize — push + create PR
@@ -411,9 +579,15 @@ async function main() {
     cleanup: false, // We'll clean up separately to test that path
   });
 
-  assert(prResult !== undefined && prResult !== null, 'Finalize returned PR info');
+  assert(
+    prResult !== undefined && prResult !== null,
+    'Finalize returned PR info'
+  );
   if (prResult) {
-    assert(typeof prResult.number === 'number', `PR number: ${prResult.number}`);
+    assert(
+      typeof prResult.number === 'number',
+      `PR number: ${prResult.number}`
+    );
     assert(prResult.url.includes('pull/'), `PR URL: ${prResult.url}`);
     console.log(`    PR created: ${prResult.url}`);
   }
@@ -425,25 +599,47 @@ async function main() {
 
   // ─── 9. Auth module ──────────────────────────────────────────────────────
   console.log('\n9. Auth module');
-  const auth = new McpAuthHandler({
-    apiKeys: [
-      { key: 'admin-key', permissions: ['*'], name: 'admin' },
-      { key: 'limited-key', permissions: ['agents:spawn', 'agents:list', 'agents:hook'], name: 'limited' },
-    ],
-  }, logger);
+  const auth = new McpAuthHandler(
+    {
+      apiKeys: [
+        { key: 'admin-key', permissions: ['*'], name: 'admin' },
+        {
+          key: 'limited-key',
+          permissions: ['agents:spawn', 'agents:list', 'agents:hook'],
+          name: 'limited',
+        },
+      ],
+    },
+    logger
+  );
 
   const adminCtx = await auth.authenticate('admin-key');
   assertEqual(adminCtx.type, 'api_key', 'Admin authenticates');
-  assert(auth.hasPermission(adminCtx, 'workspace:provision'), 'Admin wildcard permission');
+  assert(
+    auth.hasPermission(adminCtx, 'workspace:provision'),
+    'Admin wildcard permission'
+  );
 
   const limitedCtx = await auth.authenticate('limited-key');
-  assert(auth.hasPermission(limitedCtx, 'agents:spawn'), 'Limited has agents:spawn');
-  assert(auth.hasPermission(limitedCtx, 'agents:hook'), 'Limited has agents:hook');
-  assert(!auth.hasPermission(limitedCtx, 'workspace:provision'), 'Limited lacks workspace:provision');
+  assert(
+    auth.hasPermission(limitedCtx, 'agents:spawn'),
+    'Limited has agents:spawn'
+  );
+  assert(
+    auth.hasPermission(limitedCtx, 'agents:hook'),
+    'Limited has agents:hook'
+  );
+  assert(
+    !auth.hasPermission(limitedCtx, 'workspace:provision'),
+    'Limited lacks workspace:provision'
+  );
 
   let authRejected = false;
-  try { await auth.authenticate('bad-key'); }
-  catch (e) { authRejected = e instanceof McpAuthError; }
+  try {
+    await auth.authenticate('bad-key');
+  } catch (e) {
+    authRejected = e instanceof McpAuthError;
+  }
   assert(authRejected, 'Invalid key throws McpAuthError');
 
   assertEqual(auth.extractToken('Bearer tok'), 'tok', 'Extracts Bearer token');
@@ -463,9 +659,18 @@ async function main() {
 
   // ─── 11. Prompt generation ───────────────────────────────────────────────
   console.log('\n11. Prompt generation');
-  const reviewPrompt = generateSpawnReviewTeamPrompt({ repos: ['github.com/test/repo'], prNumbers: [42] });
-  assert(reviewPrompt.messages.length > 0, 'Review team prompt generates messages');
-  const devPrompt = generateSpawnDevAgentPrompt({ task: 'Build a REST API', type: 'claude' });
+  const reviewPrompt = generateSpawnReviewTeamPrompt({
+    repos: ['github.com/test/repo'],
+    prNumbers: [42],
+  });
+  assert(
+    reviewPrompt.messages.length > 0,
+    'Review team prompt generates messages'
+  );
+  const devPrompt = generateSpawnDevAgentPrompt({
+    task: 'Build a REST API',
+    type: 'claude',
+  });
   assert(devPrompt.messages.length > 0, 'Dev agent prompt generates messages');
 
   // ─── 12. Resources (empty state) ─────────────────────────────────────────
@@ -474,14 +679,20 @@ async function main() {
   assertEqual(agentResources.length, 0, 'No agent resources when no agents');
 
   // ─── Results ─────────────────────────────────────────────────────────────
-  console.log('\n═══════════════════════════════════════════════════════════════');
+  console.log(
+    '\n═══════════════════════════════════════════════════════════════'
+  );
   if (failed > 0) {
     console.log(`  Results: ${passed} passed, ${failed} FAILED`);
-    console.log('═══════════════════════════════════════════════════════════════\n');
+    console.log(
+      '═══════════════════════════════════════════════════════════════\n'
+    );
     process.exit(1);
   } else {
     console.log(`  Results: ${passed} passed, 0 failed ✓`);
-    console.log('═══════════════════════════════════════════════════════════════\n');
+    console.log(
+      '═══════════════════════════════════════════════════════════════\n'
+    );
   }
 
   // Clean shutdown

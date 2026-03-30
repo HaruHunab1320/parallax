@@ -4,14 +4,14 @@
  * Built-in adapter for bash/zsh shell sessions.
  */
 
-import type { CLIAdapter } from './adapter-interface';
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from '../types';
+import type { CLIAdapter } from './adapter-interface';
 
 /**
  * Options for the shell adapter
@@ -66,10 +66,18 @@ export class ShellAdapter implements CLIAdapter {
 
   detectReady(output: string): boolean {
     // Ready when we see the prompt or any meaningful output
-    return output.includes(this.promptStr) || output.includes('$') || output.length > 10;
+    return (
+      output.includes(this.promptStr) ||
+      output.includes('$') ||
+      output.length > 10
+    );
   }
 
-  detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     if (output.includes('exit')) {
       return { exited: true, code: 0 };
     }
@@ -98,7 +106,11 @@ export class ShellAdapter implements CLIAdapter {
     return new RegExp(`(?:${escaped}|\\$|#|>)\\s*$`, 'm');
   }
 
-  async validateInstallation(): Promise<{ installed: boolean; version?: string; error?: string }> {
+  async validateInstallation(): Promise<{
+    installed: boolean;
+    version?: string;
+    error?: string;
+  }> {
     // Shell is always installed
     return { installed: true };
   }

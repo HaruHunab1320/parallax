@@ -5,24 +5,24 @@
  * Mirrors PTYSession's API but uses TmuxTransport instead of node-pty.
  */
 
-import { EventEmitter } from 'events';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import type { CLIAdapter } from './adapters/adapter-interface.js';
-import type {
-  SpawnConfig,
-  SessionStatus,
-  SessionHandle,
-  SessionMessage,
-  BlockingPromptInfo,
-  AuthRequiredInfo,
-  LoginDetection,
-  AutoResponseRule,
-  StallClassification,
-  ToolRunningInfo,
-  Logger,
-} from './types.js';
 import { consoleLogger } from './logger.js';
 import { TmuxTransport } from './tmux-transport.js';
+import type {
+  AuthRequiredInfo,
+  AutoResponseRule,
+  BlockingPromptInfo,
+  Logger,
+  LoginDetection,
+  SessionHandle,
+  SessionMessage,
+  SessionStatus,
+  SpawnConfig,
+  StallClassification,
+  ToolRunningInfo,
+} from './types.js';
 
 export interface TmuxSessionEvents {
   output: (data: string) => void;
@@ -45,23 +45,64 @@ export interface TmuxSessionEvents {
  */
 export const SPECIAL_KEYS: Record<string, string> = {
   // Control keys
-  'ctrl+a': '\x01', 'ctrl+b': '\x02', 'ctrl+c': '\x03', 'ctrl+d': '\x04',
-  'ctrl+e': '\x05', 'ctrl+f': '\x06', 'ctrl+g': '\x07', 'ctrl+h': '\x08',
-  'ctrl+i': '\x09', 'ctrl+j': '\x0a', 'ctrl+k': '\x0b', 'ctrl+l': '\x0c',
-  'ctrl+m': '\x0d', 'ctrl+n': '\x0e', 'ctrl+o': '\x0f', 'ctrl+p': '\x10',
-  'ctrl+q': '\x11', 'ctrl+r': '\x12', 'ctrl+s': '\x13', 'ctrl+t': '\x14',
-  'ctrl+u': '\x15', 'ctrl+v': '\x16', 'ctrl+w': '\x17', 'ctrl+x': '\x18',
-  'ctrl+y': '\x19', 'ctrl+z': '\x1a',
+  'ctrl+a': '\x01',
+  'ctrl+b': '\x02',
+  'ctrl+c': '\x03',
+  'ctrl+d': '\x04',
+  'ctrl+e': '\x05',
+  'ctrl+f': '\x06',
+  'ctrl+g': '\x07',
+  'ctrl+h': '\x08',
+  'ctrl+i': '\x09',
+  'ctrl+j': '\x0a',
+  'ctrl+k': '\x0b',
+  'ctrl+l': '\x0c',
+  'ctrl+m': '\x0d',
+  'ctrl+n': '\x0e',
+  'ctrl+o': '\x0f',
+  'ctrl+p': '\x10',
+  'ctrl+q': '\x11',
+  'ctrl+r': '\x12',
+  'ctrl+s': '\x13',
+  'ctrl+t': '\x14',
+  'ctrl+u': '\x15',
+  'ctrl+v': '\x16',
+  'ctrl+w': '\x17',
+  'ctrl+x': '\x18',
+  'ctrl+y': '\x19',
+  'ctrl+z': '\x1a',
   // Navigation
-  'up': '\x1b[A', 'down': '\x1b[B', 'right': '\x1b[C', 'left': '\x1b[D',
-  'home': '\x1b[H', 'end': '\x1b[F', 'pageup': '\x1b[5~', 'pagedown': '\x1b[6~',
+  up: '\x1b[A',
+  down: '\x1b[B',
+  right: '\x1b[C',
+  left: '\x1b[D',
+  home: '\x1b[H',
+  end: '\x1b[F',
+  pageup: '\x1b[5~',
+  pagedown: '\x1b[6~',
   // Editing
-  'enter': '\r', 'return': '\r', 'tab': '\t', 'backspace': '\x7f',
-  'delete': '\x1b[3~', 'insert': '\x1b[2~', 'escape': '\x1b', 'esc': '\x1b', 'space': ' ',
+  enter: '\r',
+  return: '\r',
+  tab: '\t',
+  backspace: '\x7f',
+  delete: '\x1b[3~',
+  insert: '\x1b[2~',
+  escape: '\x1b',
+  esc: '\x1b',
+  space: ' ',
   // Function keys
-  'f1': '\x1bOP', 'f2': '\x1bOQ', 'f3': '\x1bOR', 'f4': '\x1bOS',
-  'f5': '\x1b[15~', 'f6': '\x1b[17~', 'f7': '\x1b[18~', 'f8': '\x1b[19~',
-  'f9': '\x1b[20~', 'f10': '\x1b[21~', 'f11': '\x1b[23~', 'f12': '\x1b[24~',
+  f1: '\x1bOP',
+  f2: '\x1bOQ',
+  f3: '\x1bOR',
+  f4: '\x1bOS',
+  f5: '\x1b[15~',
+  f6: '\x1b[17~',
+  f7: '\x1b[18~',
+  f8: '\x1b[19~',
+  f9: '\x1b[20~',
+  f10: '\x1b[21~',
+  f11: '\x1b[23~',
+  f12: '\x1b[24~',
 };
 
 function generateId(): string {
@@ -130,14 +171,15 @@ export class TmuxSession extends EventEmitter {
     defaultStallTimeoutMs?: number,
     transport?: TmuxTransport,
     sessionPrefix?: string,
-    historyLimit?: number,
+    historyLimit?: number
   ) {
     super();
     this.id = config.id || generateId();
     this.config = { ...config, id: this.id };
     this.logger = logger || consoleLogger;
     this._stallDetectionEnabled = stallDetectionEnabled ?? false;
-    this._stallTimeoutMs = config.stallTimeoutMs ?? defaultStallTimeoutMs ?? 8000;
+    this._stallTimeoutMs =
+      config.stallTimeoutMs ?? defaultStallTimeoutMs ?? 8000;
     this._stallBackoffMs = this._stallTimeoutMs;
     this.transport = transport || new TmuxTransport();
     this.sessionPrefix = sessionPrefix || 'parallax';
@@ -184,7 +226,9 @@ export class TmuxSession extends EventEmitter {
 
   addAutoResponseRule(rule: AutoResponseRule): void {
     const existingIndex = this.sessionRules.findIndex(
-      (r) => r.pattern.source === rule.pattern.source && r.pattern.flags === rule.pattern.flags
+      (r) =>
+        r.pattern.source === rule.pattern.source &&
+        r.pattern.flags === rule.pattern.flags
     );
 
     if (existingIndex >= 0) {
@@ -197,7 +241,11 @@ export class TmuxSession extends EventEmitter {
   removeAutoResponseRule(pattern: RegExp): boolean {
     const initialLength = this.sessionRules.length;
     this.sessionRules = this.sessionRules.filter(
-      (r) => !(r.pattern.source === pattern.source && r.pattern.flags === pattern.flags)
+      (r) =>
+        !(
+          r.pattern.source === pattern.source &&
+          r.pattern.flags === pattern.flags
+        )
     );
     return this.sessionRules.length < initialLength;
   }
@@ -219,7 +267,10 @@ export class TmuxSession extends EventEmitter {
   // ─────────────────────────────────────────────────────────────────────────────
 
   private resetStallTimer(): void {
-    if (!this._stallDetectionEnabled || (this._status !== 'busy' && this._status !== 'authenticating')) {
+    if (
+      !this._stallDetectionEnabled ||
+      (this._status !== 'busy' && this._status !== 'authenticating')
+    ) {
       this.clearStallTimer();
       return;
     }
@@ -264,7 +315,10 @@ export class TmuxSession extends EventEmitter {
     }
 
     // Fast path: adapter task completion
-    if (this._status === 'busy' && this.adapter.detectTaskComplete?.(this.outputBuffer)) {
+    if (
+      this._status === 'busy' &&
+      this.adapter.detectTaskComplete?.(this.outputBuffer)
+    ) {
       this._status = 'ready';
       this._lastBlockingPromptHash = null;
       const completedOutput = this.outputBuffer;
@@ -272,13 +326,19 @@ export class TmuxSession extends EventEmitter {
       this.clearStallTimer();
       this.emit('status_changed', 'ready');
       this.emit('task_complete', { output: completedOutput });
-      this.logger.info({ sessionId: this.id }, 'Task complete (adapter fast-path)');
+      this.logger.info(
+        { sessionId: this.id },
+        'Task complete (adapter fast-path)'
+      );
       return;
     }
 
     // Loading suppression
     if (this.adapter.detectLoading?.(this.outputBuffer)) {
-      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+      this._stallTimer = setTimeout(
+        () => this.onStallTimerFired(),
+        this._stallBackoffMs
+      );
       return;
     }
 
@@ -289,7 +349,10 @@ export class TmuxSession extends EventEmitter {
         this._lastToolRunningName = toolInfo.toolName;
         this.emit('tool_running', toolInfo);
       }
-      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+      this._stallTimer = setTimeout(
+        () => this.onStallTimerFired(),
+        this._stallBackoffMs
+      );
       return;
     }
     if (this._lastToolRunningName) {
@@ -300,7 +363,10 @@ export class TmuxSession extends EventEmitter {
     const tail = this.outputBuffer.slice(-500);
     const hash = this.simpleHash(tail);
     if (hash === this._lastStallHash) {
-      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+      this._stallTimer = setTimeout(
+        () => this.onStallTimerFired(),
+        this._stallBackoffMs
+      );
       return;
     }
     this._lastStallHash = hash;
@@ -319,7 +385,10 @@ export class TmuxSession extends EventEmitter {
       : this._stallTimeoutMs;
 
     this.emit('stall_detected', recentOutput, stallDurationMs);
-    this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+    this._stallTimer = setTimeout(
+      () => this.onStallTimerFired(),
+      this._stallBackoffMs
+    );
   }
 
   handleStallClassification(classification: StallClassification | null): void {
@@ -330,7 +399,7 @@ export class TmuxSession extends EventEmitter {
     if (!classification || classification.state === 'still_working') {
       this._stallBackoffMs = Math.min(
         this._stallBackoffMs * 2,
-        TmuxSession.MAX_STALL_BACKOFF_MS,
+        TmuxSession.MAX_STALL_BACKOFF_MS
       );
       this._lastContentHash = null;
       this._lastStallHash = null;
@@ -338,7 +407,10 @@ export class TmuxSession extends EventEmitter {
         clearTimeout(this._stallTimer);
         this._stallTimer = null;
       }
-      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+      this._stallTimer = setTimeout(
+        () => this.onStallTimerFired(),
+        this._stallBackoffMs
+      );
       return;
     }
 
@@ -353,7 +425,10 @@ export class TmuxSession extends EventEmitter {
         if (classification.suggestedResponse) {
           const resp = classification.suggestedResponse;
           if (resp.startsWith('keys:')) {
-            const keys = resp.slice(5).split(',').map(k => k.trim());
+            const keys = resp
+              .slice(5)
+              .split(',')
+              .map((k) => k.trim());
             this.sendKeySequence(keys);
           } else {
             this.transport.sendText(this.tmuxSessionName, resp);
@@ -377,7 +452,10 @@ export class TmuxSession extends EventEmitter {
 
       case 'error':
         this.clearStallTimer();
-        this.emit('error', new Error(classification.prompt || 'Stall classified as error'));
+        this.emit(
+          'error',
+          new Error(classification.prompt || 'Stall classified as error')
+        );
         break;
     }
   }
@@ -407,7 +485,10 @@ export class TmuxSession extends EventEmitter {
       this.clearStallTimer();
       this.emit('status_changed', 'ready');
       this.emit('task_complete', { output: completedOutput });
-      this.logger.info({ sessionId: this.id }, 'Task complete — agent returned to idle prompt');
+      this.logger.info(
+        { sessionId: this.id },
+        'Task complete — agent returned to idle prompt'
+      );
     }, TmuxSession.TASK_COMPLETE_DEBOUNCE_MS);
   }
 
@@ -435,11 +516,13 @@ export class TmuxSession extends EventEmitter {
     if (this._readySettleTimer) {
       clearTimeout(this._readySettleTimer);
     }
-    const settleMs = this.config.readySettleMs ?? this.adapter.readySettleMs ?? 100;
+    const settleMs =
+      this.config.readySettleMs ?? this.adapter.readySettleMs ?? 100;
     this._readySettleTimer = setTimeout(() => {
       this._readySettleTimer = null;
       this._readySettlePending = false;
-      if (this._status !== 'starting' && this._status !== 'authenticating') return;
+      if (this._status !== 'starting' && this._status !== 'authenticating')
+        return;
       if (!this.adapter.detectReady(this.outputBuffer)) return;
       this._status = 'ready';
       this._lastBlockingPromptHash = null;
@@ -472,7 +555,12 @@ export class TmuxSession extends EventEmitter {
     const env = TmuxSession.buildSpawnEnv(this.config, adapterEnv);
 
     this.logger.info(
-      { sessionId: this.id, command, args: args.join(' '), tmuxSession: this.tmuxSessionName },
+      {
+        sessionId: this.id,
+        command,
+        args: args.join(' '),
+        tmuxSession: this.tmuxSessionName,
+      },
       'Starting tmux session'
     );
 
@@ -493,7 +581,9 @@ export class TmuxSession extends EventEmitter {
         this.outputBuffer += data;
 
         if (this.outputBuffer.length > TmuxSession.MAX_OUTPUT_BUFFER) {
-          this.outputBuffer = this.outputBuffer.slice(-TmuxSession.MAX_OUTPUT_BUFFER);
+          this.outputBuffer = this.outputBuffer.slice(
+            -TmuxSession.MAX_OUTPUT_BUFFER
+          );
         }
 
         this.emit('output', data);
@@ -503,18 +593,26 @@ export class TmuxSession extends EventEmitter {
       // Poll for process exit (tmux remain-on-exit keeps the pane alive)
       this._exitPollTimer = setInterval(() => {
         if (!this.transport.isPaneAlive(this.tmuxSessionName)) {
-          const exitCode = this.transport.getPaneExitStatus(this.tmuxSessionName) ?? 0;
+          const exitCode =
+            this.transport.getPaneExitStatus(this.tmuxSessionName) ?? 0;
           this.handleExit(exitCode);
         }
       }, 1000);
 
       this.logger.info(
-        { sessionId: this.id, pid: this.pid, tmuxSession: this.tmuxSessionName },
+        {
+          sessionId: this.id,
+          pid: this.pid,
+          tmuxSession: this.tmuxSessionName,
+        },
         'Tmux session started'
       );
     } catch (error) {
       this._status = 'error';
-      this.logger.error({ sessionId: this.id, error }, 'Failed to start tmux session');
+      this.logger.error(
+        { sessionId: this.id, error },
+        'Failed to start tmux session'
+      );
       throw error;
     }
   }
@@ -538,7 +636,9 @@ export class TmuxSession extends EventEmitter {
       this.outputBuffer += data;
 
       if (this.outputBuffer.length > TmuxSession.MAX_OUTPUT_BUFFER) {
-        this.outputBuffer = this.outputBuffer.slice(-TmuxSession.MAX_OUTPUT_BUFFER);
+        this.outputBuffer = this.outputBuffer.slice(
+          -TmuxSession.MAX_OUTPUT_BUFFER
+        );
       }
 
       this.emit('output', data);
@@ -546,7 +646,9 @@ export class TmuxSession extends EventEmitter {
     });
 
     // Capture current pane content to seed the output buffer
-    const currentContent = this.transport.capturePane(this.tmuxSessionName, { ansi: true });
+    const currentContent = this.transport.capturePane(this.tmuxSessionName, {
+      ansi: true,
+    });
     if (currentContent) {
       this.outputBuffer = currentContent;
       this.processOutputBuffer();
@@ -555,7 +657,8 @@ export class TmuxSession extends EventEmitter {
     // Start exit polling
     this._exitPollTimer = setInterval(() => {
       if (!this.transport.isPaneAlive(this.tmuxSessionName)) {
-        const exitCode = this.transport.getPaneExitStatus(this.tmuxSessionName) ?? 0;
+        const exitCode =
+          this.transport.getPaneExitStatus(this.tmuxSessionName) ?? 0;
         this.handleExit(exitCode);
       }
     }, 1000);
@@ -639,7 +742,11 @@ export class TmuxSession extends EventEmitter {
     // Auto-response / blocking prompt detection
     // Skip during 'busy' — the agent is processing a task we just sent.
     // Auto-responding during busy state sends stray keys that corrupt input.
-    if (this._status !== 'stopping' && this._status !== 'stopped' && this._status !== 'busy') {
+    if (
+      this._status !== 'stopping' &&
+      this._status !== 'stopped' &&
+      this._status !== 'busy'
+    ) {
       const blockingPrompt = this.detectAndHandleBlockingPrompt();
       if (blockingPrompt) return;
     }
@@ -704,10 +811,17 @@ export class TmuxSession extends EventEmitter {
           url: detection.url,
         };
 
-        if (detection.canAutoRespond && detection.suggestedResponse && !this.config.skipAdapterAutoResponse) {
+        if (
+          detection.canAutoRespond &&
+          detection.suggestedResponse &&
+          !this.config.skipAdapterAutoResponse
+        ) {
           const resp = detection.suggestedResponse;
           if (resp.startsWith('keys:')) {
-            const keys = resp.slice(5).split(',').map(k => k.trim());
+            const keys = resp
+              .slice(5)
+              .split(',')
+              .map((k) => k.trim());
             this.sendKeySequence(keys);
           } else {
             this.transport.sendText(this.tmuxSessionName, resp);
@@ -741,8 +855,8 @@ export class TmuxSession extends EventEmitter {
 
   private tryAutoResponse(): boolean {
     const adapterRules = (this.adapter.autoResponseRules || [])
-      .filter(r => !this._disabledRulePatterns.has(r.pattern.source))
-      .map(r => {
+      .filter((r) => !this._disabledRulePatterns.has(r.pattern.source))
+      .map((r) => {
         const override = this._ruleOverrides.get(r.pattern.source);
         return override ? { ...r, ...override } : r;
       });
@@ -763,7 +877,8 @@ export class TmuxSession extends EventEmitter {
 
         if (safe) {
           const useKeys = rule.keys && rule.keys.length > 0;
-          const isTuiDefault = !rule.responseType && !rule.keys && this.adapter.usesTuiMenus;
+          const isTuiDefault =
+            !rule.responseType && !rule.keys && this.adapter.usesTuiMenus;
 
           if (useKeys) {
             this.sendKeySequence(rule.keys!);
@@ -808,7 +923,7 @@ export class TmuxSession extends EventEmitter {
   private tryParseOutput(): void {
     const parsed = this.adapter.parseOutput(this.outputBuffer);
 
-    if (parsed && parsed.isComplete) {
+    if (parsed?.isComplete) {
       this.outputBuffer = '';
 
       const message: SessionMessage = {
@@ -939,7 +1054,10 @@ export class TmuxSession extends EventEmitter {
 
     if (useBracketedPaste) {
       // Send bracketed paste escape sequences around the text
-      this.transport.sendText(this.tmuxSessionName, '\x1b[200~' + text + '\x1b[201~');
+      this.transport.sendText(
+        this.tmuxSessionName,
+        `\x1b[200~${text}\x1b[201~`
+      );
     } else {
       this.transport.sendText(this.tmuxSessionName, text);
     }
@@ -954,7 +1072,7 @@ export class TmuxSession extends EventEmitter {
         this._lastActivityAt = new Date();
         this.resetStallTimer();
         break;
-      case 'task_complete':
+      case 'task_complete': {
         this._status = 'ready';
         this._lastBlockingPromptHash = null;
         const hookOutput = this.outputBuffer;
@@ -963,6 +1081,7 @@ export class TmuxSession extends EventEmitter {
         this.emit('status_changed', 'ready');
         this.emit('task_complete', { output: hookOutput });
         break;
+      }
       case 'permission_approved':
         this._lastActivityAt = new Date();
         this.outputBuffer = '';
@@ -1037,7 +1156,7 @@ export class TmuxSession extends EventEmitter {
 
   static buildSpawnEnv(
     config: SpawnConfig,
-    adapterEnv: Record<string, string>,
+    adapterEnv: Record<string, string>
   ): Record<string, string> {
     const baseEnv = config.inheritProcessEnv !== false ? process.env : {};
     return {
@@ -1059,7 +1178,10 @@ export class TmuxSession extends EventEmitter {
     };
 
     const MODIFIER_NAMES = new Set([
-      'ctrl', 'alt', 'shift', 'meta',
+      'ctrl',
+      'alt',
+      'shift',
+      'meta',
       ...Object.keys(MODIFIER_MAP),
     ]);
 
@@ -1097,27 +1219,34 @@ export class TmuxSession extends EventEmitter {
   // ─────────────────────────────────────────────────────────────────────────────
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private simpleHash(str: string): string {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash |= 0;
     }
     return hash.toString(36);
   }
 
-  private mapLoginTypeToAuthMethod(type: LoginDetection['type'] | undefined): AuthRequiredInfo['method'] {
+  private mapLoginTypeToAuthMethod(
+    type: LoginDetection['type'] | undefined
+  ): AuthRequiredInfo['method'] {
     switch (type) {
-      case 'api_key': return 'api_key';
-      case 'cli_auth': return 'cli_auth';
-      case 'device_code': return 'device_code';
+      case 'api_key':
+        return 'api_key';
+      case 'cli_auth':
+        return 'cli_auth';
+      case 'device_code':
+        return 'device_code';
       case 'oauth':
-      case 'browser': return 'oauth_browser';
-      default: return 'unknown';
+      case 'browser':
+        return 'oauth_browser';
+      default:
+        return 'unknown';
     }
   }
 
@@ -1146,14 +1275,20 @@ export class TmuxSession extends EventEmitter {
     let result = str.replace(/\x1b\[\d*[CDABGdEF]/g, ' ');
     result = result.replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ');
     result = result.replace(/\x1b\[\d*[JK]/g, ' ');
-    result = result.replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '');
+    result = result.replace(
+      /\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g,
+      ''
+    );
     result = result.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
     // eslint-disable-next-line no-control-regex
     result = result.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
     // eslint-disable-next-line no-control-regex
     result = result.replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '');
     result = result.replace(/\xa0/g, ' ');
-    result = result.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓⬆⬇◆◇▪▫■□▲△▼▽◈⟨⟩⌘⏎⏏⌫⌦⇧⇪⌥]/g, ' ');
+    result = result.replace(
+      /[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓⬆⬇◆◇▪▫■□▲△▼▽◈⟨⟩⌘⏎⏏⌫⌦⇧⇪⌥]/g,
+      ' '
+    );
     result = result.replace(/\d+[hms](?:\s+\d+[hms])*/g, '0s');
     result = result.replace(/ {2,}/g, ' ');
     return result;
@@ -1166,7 +1301,10 @@ export class TmuxSession extends EventEmitter {
     let result = str.replace(/\x1b\[\d*[CDABGdEF]/g, ' ');
     result = result.replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ');
     result = result.replace(/\x1b\[\d*[JK]/g, ' ');
-    result = result.replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '');
+    result = result.replace(
+      /\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g,
+      ''
+    );
     result = result.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
     // eslint-disable-next-line no-control-regex
     result = result.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');

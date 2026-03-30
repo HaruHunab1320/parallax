@@ -7,10 +7,10 @@
  * - Multiple storage backends (file, memory, keychain)
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import type { GitProvider, OAuthToken } from '../types';
 
 export interface TokenStoreOptions {
@@ -112,7 +112,8 @@ export class FileTokenStore extends TokenStore {
 
   constructor(options: TokenStoreOptions = {}) {
     super();
-    this.directory = options.directory || path.join(os.homedir(), '.parallax', 'tokens');
+    this.directory =
+      options.directory || path.join(os.homedir(), '.parallax', 'tokens');
 
     if (options.encryptionKey) {
       // Derive a 32-byte key from the provided key
@@ -136,9 +137,7 @@ export class FileTokenStore extends TokenStore {
     });
 
     // Encrypt if key provided
-    const data = this.encryptionKey
-      ? this.encrypt(serialized)
-      : serialized;
+    const data = this.encryptionKey ? this.encrypt(serialized) : serialized;
 
     await fs.writeFile(filePath, data, 'utf-8');
   }
@@ -150,9 +149,7 @@ export class FileTokenStore extends TokenStore {
       const data = await fs.readFile(filePath, 'utf-8');
 
       // Decrypt if encrypted
-      const serialized = this.encryptionKey
-        ? this.decrypt(data)
-        : data;
+      const serialized = this.encryptionKey ? this.decrypt(data) : data;
 
       const parsed = JSON.parse(serialized);
 
@@ -227,7 +224,7 @@ export class FileTokenStore extends TokenStore {
     encrypted += cipher.final('hex');
 
     // Prepend IV to encrypted data
-    return iv.toString('hex') + ':' + encrypted;
+    return `${iv.toString('hex')}:${encrypted}`;
   }
 
   private decrypt(data: string): string {
@@ -237,7 +234,11 @@ export class FileTokenStore extends TokenStore {
 
     const [ivHex, encrypted] = data.split(':');
     const iv = Buffer.from(ivHex, 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', this.encryptionKey, iv);
+    const decipher = crypto.createDecipheriv(
+      'aes-256-cbc',
+      this.encryptionKey,
+      iv
+    );
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
 

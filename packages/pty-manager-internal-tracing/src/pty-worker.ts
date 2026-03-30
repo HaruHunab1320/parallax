@@ -37,10 +37,19 @@
  *   { "event": "ack", "cmd": string, "id"?: string, "success": boolean, "error"?: string }
  */
 
-import * as readline from 'readline';
-import { PTYManager } from './pty-manager';
+import * as readline from 'node:readline';
 import { ShellAdapter } from './adapters';
-import type { SpawnConfig, SessionHandle, BlockingPromptInfo, SessionMessage, AutoResponseRule, BlockingPromptType, StallClassification, AuthRequiredInfo } from './types';
+import { PTYManager } from './pty-manager';
+import type {
+  AuthRequiredInfo,
+  AutoResponseRule,
+  BlockingPromptInfo,
+  BlockingPromptType,
+  SessionHandle,
+  SessionMessage,
+  SpawnConfig,
+  StallClassification,
+} from './types';
 
 interface SessionInfo {
   id: string;
@@ -107,10 +116,13 @@ const manager = new PTYManager();
 manager.registerAdapter(new ShellAdapter());
 
 // Track terminal attachments for sendKeys/paste
-const attachments = new Map<string, ReturnType<typeof manager.attachTerminal>>();
+const attachments = new Map<
+  string,
+  ReturnType<typeof manager.attachTerminal>
+>();
 
 function emit(event: Event): void {
-  process.stdout.write(JSON.stringify(event) + '\n');
+  process.stdout.write(`${JSON.stringify(event)}\n`);
 }
 
 function ack(cmd: string, id?: string, success = true, error?: string): void {
@@ -126,7 +138,7 @@ manager.on('session_started', (handle: SessionHandle) => {
     type: handle.type,
     pid: handle.pid,
     cols: 120, // Default cols
-    rows: 40,  // Default rows
+    rows: 40, // Default rows
   });
 });
 
@@ -148,23 +160,33 @@ manager.on('session_error', (handle: SessionHandle, error: string) => {
   emit({ event: 'error', id: handle.id, message: error });
 });
 
-manager.on('blocking_prompt', (handle: SessionHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => {
-  emit({
-    event: 'blocking_prompt',
-    id: handle.id,
-    promptInfo,
-    autoResponded,
-  });
-});
+manager.on(
+  'blocking_prompt',
+  (
+    handle: SessionHandle,
+    promptInfo: BlockingPromptInfo,
+    autoResponded: boolean
+  ) => {
+    emit({
+      event: 'blocking_prompt',
+      id: handle.id,
+      promptInfo,
+      autoResponded,
+    });
+  }
+);
 
-manager.on('login_required', (handle: SessionHandle, instructions?: string, url?: string) => {
-  emit({
-    event: 'login_required',
-    id: handle.id,
-    instructions,
-    url,
-  });
-});
+manager.on(
+  'login_required',
+  (handle: SessionHandle, instructions?: string, url?: string) => {
+    emit({
+      event: 'login_required',
+      id: handle.id,
+      instructions,
+      url,
+    });
+  }
+);
 
 manager.on('auth_required', (handle: SessionHandle, info: AuthRequiredInfo) => {
   emit({
@@ -207,14 +229,17 @@ manager.on('task_complete', (handle: SessionHandle) => {
   });
 });
 
-manager.on('stall_detected', (handle: SessionHandle, recentOutput: string, stallDurationMs: number) => {
-  emit({
-    event: 'stall_detected',
-    id: handle.id,
-    recentOutput,
-    stallDurationMs,
-  });
-});
+manager.on(
+  'stall_detected',
+  (handle: SessionHandle, recentOutput: string, stallDurationMs: number) => {
+    emit({
+      event: 'stall_detected',
+      id: handle.id,
+      recentOutput,
+      stallDurationMs,
+    });
+  }
+);
 
 async function handleSpawn(id: string, config: SpawnConfig): Promise<void> {
   try {
@@ -262,7 +287,12 @@ function handleSendKeys(id: string, keys: string | string[]): void {
     session.sendKeys(keys);
     ack('sendKeys', id, true);
   } catch (err) {
-    ack('sendKeys', id, false, err instanceof Error ? err.message : String(err));
+    ack(
+      'sendKeys',
+      id,
+      false,
+      err instanceof Error ? err.message : String(err)
+    );
   }
 }
 
@@ -329,7 +359,12 @@ async function handleShutdown(): Promise<void> {
     await manager.shutdown();
     ack('shutdown', undefined, true);
   } catch (err) {
-    ack('shutdown', undefined, false, err instanceof Error ? err.message : String(err));
+    ack(
+      'shutdown',
+      undefined,
+      false,
+      err instanceof Error ? err.message : String(err)
+    );
   }
 
   // Exit after a brief delay to ensure ack is sent
@@ -358,14 +393,20 @@ function handleRegisterAdapters(modules: string[]): void {
       // Or if default is a single adapter
       else if (mod.default && typeof mod.default.adapterType === 'string') {
         manager.registerAdapter(mod.default);
-      }
-      else {
-        throw new Error(`Module ${modulePath} does not export createAllAdapters() or adapters`);
+      } else {
+        throw new Error(
+          `Module ${modulePath} does not export createAllAdapters() or adapters`
+        );
       }
     }
     ack('registerAdapters', undefined, true);
   } catch (err) {
-    ack('registerAdapters', undefined, false, err instanceof Error ? err.message : String(err));
+    ack(
+      'registerAdapters',
+      undefined,
+      false,
+      err instanceof Error ? err.message : String(err)
+    );
   }
 }
 
@@ -416,7 +457,12 @@ function handleRemoveRule(id: string, pattern: string, flags?: string): void {
     const removed = manager.removeAutoResponseRule(id, regex);
     ack('removeRule', id, removed, removed ? undefined : 'Rule not found');
   } catch (err) {
-    ack('removeRule', id, false, err instanceof Error ? err.message : String(err));
+    ack(
+      'removeRule',
+      id,
+      false,
+      err instanceof Error ? err.message : String(err)
+    );
   }
 }
 
@@ -426,7 +472,12 @@ function handleSetRules(id: string, serializedRules: SerializedRule[]): void {
     manager.setAutoResponseRules(id, rules);
     ack('setRules', id, true);
   } catch (err) {
-    ack('setRules', id, false, err instanceof Error ? err.message : String(err));
+    ack(
+      'setRules',
+      id,
+      false,
+      err instanceof Error ? err.message : String(err)
+    );
   }
 }
 
@@ -436,7 +487,11 @@ function handleGetRules(id: string): void {
     const serialized = rules.map(serializeRule);
     emit({ event: 'rules', id, rules: serialized });
   } catch (err) {
-    emit({ event: 'error', id, message: err instanceof Error ? err.message : String(err) });
+    emit({
+      event: 'error',
+      id,
+      message: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 
@@ -445,7 +500,12 @@ function handleClearRules(id: string): void {
     manager.clearAutoResponseRules(id);
     ack('clearRules', id, true);
   } catch (err) {
-    ack('clearRules', id, false, err instanceof Error ? err.message : String(err));
+    ack(
+      'clearRules',
+      id,
+      false,
+      err instanceof Error ? err.message : String(err)
+    );
   }
 }
 
@@ -453,12 +513,20 @@ function handleClearRules(id: string): void {
 // Stall Detection Commands
 // ─────────────────────────────────────────────────────────────────────────────
 
-function handleConfigureStallDetection(enabled: boolean, timeoutMs?: number): void {
+function handleConfigureStallDetection(
+  enabled: boolean,
+  timeoutMs?: number
+): void {
   try {
     manager.configureStallDetection(enabled, timeoutMs);
     ack('configureStallDetection', undefined, true);
   } catch (err) {
-    ack('configureStallDetection', undefined, false, err instanceof Error ? err.message : String(err));
+    ack(
+      'configureStallDetection',
+      undefined,
+      false,
+      err instanceof Error ? err.message : String(err)
+    );
   }
 }
 
@@ -468,12 +536,23 @@ function handleSelectMenuOption(id: string, optionIndex: number): void {
     ack('selectMenuOption', id, false, `Session ${id} not found`);
     return;
   }
-  session.selectMenuOption(optionIndex)
+  session
+    .selectMenuOption(optionIndex)
     .then(() => ack('selectMenuOption', id, true))
-    .catch(err => ack('selectMenuOption', id, false, err instanceof Error ? err.message : String(err)));
+    .catch((err) =>
+      ack(
+        'selectMenuOption',
+        id,
+        false,
+        err instanceof Error ? err.message : String(err)
+      )
+    );
 }
 
-function handleClassifyStallResult(id: string, classification: StallClassification | null): void {
+function handleClassifyStallResult(
+  id: string,
+  classification: StallClassification | null
+): void {
   try {
     const session = manager.getSession(id);
     if (!session) {
@@ -483,7 +562,12 @@ function handleClassifyStallResult(id: string, classification: StallClassificati
     session.handleStallClassification(classification);
     ack('classifyStallResult', id, true);
   } catch (err) {
-    ack('classifyStallResult', id, false, err instanceof Error ? err.message : String(err));
+    ack(
+      'classifyStallResult',
+      id,
+      false,
+      err instanceof Error ? err.message : String(err)
+    );
   }
 }
 
@@ -611,7 +695,10 @@ function processCommand(line: string): void {
       break;
 
     case 'configureStallDetection':
-      handleConfigureStallDetection(command.enabled ?? false, command.timeoutMs);
+      handleConfigureStallDetection(
+        command.enabled ?? false,
+        command.timeoutMs
+      );
       break;
 
     case 'classifyStallResult':

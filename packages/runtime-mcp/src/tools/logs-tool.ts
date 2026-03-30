@@ -3,7 +3,7 @@
  */
 
 import type { LocalRuntime } from '@parallaxai/runtime-local';
-import { LogsInputSchema, type LogsInput } from './schemas.js';
+import { type LogsInput, LogsInputSchema } from './schemas.js';
 
 export const LOGS_TOOL = {
   name: 'logs',
@@ -14,7 +14,9 @@ export const LOGS_TOOL = {
 export async function executeLogs(
   runtime: LocalRuntime,
   input: LogsInput
-): Promise<{ success: true; logs: string[] } | { success: false; error: string }> {
+): Promise<
+  { success: true; logs: string[] } | { success: false; error: string }
+> {
   try {
     // Check if agent exists
     const agent = await runtime.get(input.agentId);

@@ -1,7 +1,7 @@
-import { Pattern, PatternExecution, ExecutionMetrics } from './types';
-import { WorkspaceService, UserProvidedCredentials } from '../workspace';
-import { AgentRuntimeService } from '../agent-runtime';
-import { ThreadPreparationService } from '../threads';
+import type { AgentRuntimeService } from '../agent-runtime';
+import type { ThreadPreparationService } from '../threads';
+import type { UserProvidedCredentials, WorkspaceService } from '../workspace';
+import type { ExecutionMetrics, Pattern, PatternExecution } from './types';
 
 /**
  * Common interface for pattern engines
@@ -44,10 +44,16 @@ export interface IPatternEngine {
   getPattern(name: string): Pattern | null;
   listPatterns(): PatternWithSource[];
   getExecution(id: string): PatternExecution | undefined;
-  listExecutions(options?: { limit?: number; status?: string }): PatternExecution[];
+  listExecutions(options?: {
+    limit?: number;
+    status?: string;
+  }): PatternExecution[];
   getMetrics(): ExecutionMetrics[];
   reloadPatterns(): Promise<void>;
-  savePattern(pattern: Pattern, options?: { overwrite?: boolean }): Promise<Pattern>;
+  savePattern(
+    pattern: Pattern,
+    options?: { overwrite?: boolean }
+  ): Promise<Pattern>;
   deletePattern(name: string): Promise<void>;
   getPatternVersions(name: string): Promise<PatternVersion[]>;
   hasDatabasePatterns(): boolean;

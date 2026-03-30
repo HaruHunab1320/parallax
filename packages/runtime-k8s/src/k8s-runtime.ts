@@ -5,26 +5,26 @@
  */
 
 import * as k8s from '@kubernetes/client-node';
-import { Logger } from 'pino';
-import { v4 as uuidv4 } from 'uuid';
 import {
-  AgentConfig,
-  AgentHandle,
-  AgentMessage,
-  AgentStatus,
-  AgentType,
-  AgentFilter,
-  AgentMetrics,
+  type AgentConfig,
+  type AgentFilter,
+  type AgentHandle,
+  type AgentMessage,
+  type AgentMetrics,
+  type AgentStatus,
+  type AgentType,
   BaseRuntimeProvider,
-  StopOptions,
-  SendOptions,
-  LogOptions,
-  SpawnThreadInput,
-  ThreadHandle,
-  ThreadFilter,
-  ThreadInput,
-  ThreadStatus,
+  type LogOptions,
+  type SendOptions,
+  type SpawnThreadInput,
+  type StopOptions,
+  type ThreadFilter,
+  type ThreadHandle,
+  type ThreadInput,
+  type ThreadStatus,
 } from '@parallaxai/runtime-interface';
+import type { Logger } from 'pino';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface K8sRuntimeOptions {
   namespace?: string;
@@ -104,13 +104,18 @@ export class K8sRuntime extends BaseRuntimeProvider {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    this.logger.info({ namespace: this.namespace }, 'Initializing Kubernetes runtime');
+    this.logger.info(
+      { namespace: this.namespace },
+      'Initializing Kubernetes runtime'
+    );
 
     // Verify cluster connection
     try {
       await this.coreApi.listNamespace();
-    } catch (error) {
-      throw new Error('Cannot connect to Kubernetes cluster. Check your kubeconfig.');
+    } catch (_error) {
+      throw new Error(
+        'Cannot connect to Kubernetes cluster. Check your kubeconfig.'
+      );
     }
 
     // Ensure namespace exists
@@ -170,7 +175,10 @@ export class K8sRuntime extends BaseRuntimeProvider {
     const agentId = config.id || uuidv4();
     const resourceName = `agent-${agentId.substring(0, 8)}`;
 
-    this.logger.info({ agentId, type: config.type, resourceName }, 'Spawning agent via CRD');
+    this.logger.info(
+      { agentId, type: config.type, resourceName },
+      'Spawning agent via CRD'
+    );
 
     // Ensure shared auth PVC exists for this execution (idempotent)
     if (config.executionId) {
@@ -178,7 +186,11 @@ export class K8sRuntime extends BaseRuntimeProvider {
     }
 
     // Create ParallaxAgent resource
-    const agentResource = this.buildAgentResource(agentId, resourceName, config);
+    const agentResource = this.buildAgentResource(
+      agentId,
+      resourceName,
+      config
+    );
 
     await this.customApi.createNamespacedCustomObject({
       group: CRD_GROUP,
@@ -216,7 +228,10 @@ export class K8sRuntime extends BaseRuntimeProvider {
       throw new Error(`Agent ${agentId} not found`);
     }
 
-    this.logger.info({ agentId, resourceName: info.resourceName }, 'Stopping agent');
+    this.logger.info(
+      { agentId, resourceName: info.resourceName },
+      'Stopping agent'
+    );
 
     info.handle.status = 'stopping';
 
@@ -228,7 +243,11 @@ export class K8sRuntime extends BaseRuntimeProvider {
         namespace: this.namespace,
         plural: CRD_PLURAL,
         name: info.resourceName,
-        gracePeriodSeconds: options?.force ? 0 : options?.timeout ? Math.floor(options.timeout / 1000) : 30,
+        gracePeriodSeconds: options?.force
+          ? 0
+          : options?.timeout
+            ? Math.floor(options.timeout / 1000)
+            : 30,
       });
     } catch (error: any) {
       if (error.statusCode !== 404) {
@@ -291,7 +310,9 @@ export class K8sRuntime extends BaseRuntimeProvider {
     let handles = Array.from(this.agents.values()).map((info) => info.handle);
 
     if (filter?.status) {
-      const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+      const statuses = Array.isArray(filter.status)
+        ? filter.status
+        : [filter.status];
       handles = handles.filter((h) => statuses.includes(h.status));
     }
 
@@ -317,7 +338,7 @@ export class K8sRuntime extends BaseRuntimeProvider {
     agentId: string,
     message: string,
     options?: SendOptions
-  ): Promise<AgentMessage | void> {
+  ): Promise<AgentMessage | undefined> {
     const info = this.agents.get(agentId);
     if (!info) {
       throw new Error(`Agent ${agentId} not found`);
@@ -341,7 +362,7 @@ export class K8sRuntime extends BaseRuntimeProvider {
     }
 
     if (options?.expectResponse) {
-      const data = await response.json() as { response?: AgentMessage };
+      const data = (await response.json()) as { response?: AgentMessage };
       return data.response;
     }
   }
@@ -365,12 +386,14 @@ export class K8sRuntime extends BaseRuntimeProvider {
       // Connect to the agent's streaming endpoint using Server-Sent Events
       const response = await fetch(`${endpoint}/stream`, {
         method: 'GET',
-        headers: { 'Accept': 'text/event-stream' },
+        headers: { Accept: 'text/event-stream' },
         signal: abortController.signal,
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to connect to agent stream: ${response.statusText}`);
+        throw new Error(
+          `Failed to connect to agent stream: ${response.statusText}`
+        );
       }
 
       if (!response.body) {
@@ -400,7 +423,9 @@ export class K8sRuntime extends BaseRuntimeProvider {
                 direction: 'outbound',
                 type: data.type || 'response',
                 content: data.content || data.message || '',
-                timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+                timestamp: data.timestamp
+                  ? new Date(data.timestamp)
+                  : new Date(),
                 metadata: data.metadata,
               };
               yield message;
@@ -509,7 +534,10 @@ export class K8sRuntime extends BaseRuntimeProvider {
       },
     };
 
-    this.logger.info({ threadId, executionId: input.executionId, role: input.role }, 'Spawning thread');
+    this.logger.info(
+      { threadId, executionId: input.executionId, role: input.role },
+      'Spawning thread'
+    );
 
     const agentHandle = await this.spawn(agentConfig);
 
@@ -527,7 +555,10 @@ export class K8sRuntime extends BaseRuntimeProvider {
       metadata: input.metadata,
     };
 
-    this.threads.set(threadId, { handle: threadHandle, agentId: agentHandle.id });
+    this.threads.set(threadId, {
+      handle: threadHandle,
+      agentId: agentHandle.id,
+    });
 
     return threadHandle;
   }
@@ -578,14 +609,19 @@ export class K8sRuntime extends BaseRuntimeProvider {
         info.handle.status = this.agentStatusToThreadStatus(agent.status);
       }
 
-      if (filter?.executionId && info.handle.executionId !== filter.executionId) continue;
+      if (filter?.executionId && info.handle.executionId !== filter.executionId)
+        continue;
       if (filter?.role && info.handle.role !== filter.role) continue;
       if (filter?.agentType) {
-        const types = Array.isArray(filter.agentType) ? filter.agentType : [filter.agentType];
+        const types = Array.isArray(filter.agentType)
+          ? filter.agentType
+          : [filter.agentType];
         if (!types.includes(info.handle.agentType as string)) continue;
       }
       if (filter?.status) {
-        const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+        const statuses = Array.isArray(filter.status)
+          ? filter.status
+          : [filter.status];
         if (!statuses.includes(info.handle.status)) continue;
       }
 
@@ -601,7 +637,10 @@ export class K8sRuntime extends BaseRuntimeProvider {
     const agentId = info?.agentId ?? threadId;
 
     await this.stop(agentId, options).catch((err) => {
-      this.logger.warn({ threadId, error: err.message }, 'Error stopping thread agent');
+      this.logger.warn(
+        { threadId, error: err.message },
+        'Error stopping thread agent'
+      );
     });
 
     if (info) {
@@ -620,7 +659,8 @@ export class K8sRuntime extends BaseRuntimeProvider {
       await this.syncAgents();
     }
 
-    const message = input.message ?? input.raw ?? (input.keys ? input.keys.join('') : '');
+    const message =
+      input.message ?? input.raw ?? (input.keys ? input.keys.join('') : '');
     if (!message) return;
 
     await this.send(agentId, message);
@@ -636,14 +676,22 @@ export class K8sRuntime extends BaseRuntimeProvider {
 
   private agentStatusToThreadStatus(status: AgentStatus): ThreadStatus {
     switch (status) {
-      case 'pending': return 'pending';
-      case 'starting': return 'starting';
-      case 'authenticating': return 'preparing';
-      case 'ready': return 'ready';
-      case 'stopping': return 'completed';
-      case 'stopped': return 'completed';
-      case 'error': return 'completed';
-      default: return 'pending';
+      case 'pending':
+        return 'pending';
+      case 'starting':
+        return 'starting';
+      case 'authenticating':
+        return 'preparing';
+      case 'ready':
+        return 'ready';
+      case 'stopping':
+        return 'completed';
+      case 'stopped':
+        return 'completed';
+      case 'error':
+        return 'completed';
+      default:
+        return 'pending';
     }
   }
 
@@ -778,10 +826,15 @@ export class K8sRuntime extends BaseRuntimeProvider {
     }
   }
 
-  private buildAgentResource(agentId: string, resourceName: string, config: AgentConfig): any {
-    const image = config.type === 'custom' && config.env?.['AGENT_IMAGE']
-      ? config.env['AGENT_IMAGE']
-      : this.getImageForType(config.type);
+  private buildAgentResource(
+    agentId: string,
+    resourceName: string,
+    config: AgentConfig
+  ): any {
+    const image =
+      config.type === 'custom' && config.env?.AGENT_IMAGE
+        ? config.env.AGENT_IMAGE
+        : this.getImageForType(config.type);
 
     return {
       apiVersion: `${CRD_GROUP}/${CRD_VERSION}`,
@@ -793,7 +846,9 @@ export class K8sRuntime extends BaseRuntimeProvider {
           'parallax.ai/managed': 'true',
           'parallax.ai/agent-id': agentId,
           'parallax.ai/agent-type': config.type,
-          ...(config.executionId ? { 'parallax.ai/execution-id': config.executionId } : {}),
+          ...(config.executionId
+            ? { 'parallax.ai/execution-id': config.executionId }
+            : {}),
         },
       },
       spec: {
@@ -805,8 +860,12 @@ export class K8sRuntime extends BaseRuntimeProvider {
         image,
         executionId: config.executionId,
         resources: {
-          cpu: config.resources?.cpu || this.options.defaultResources?.cpu || '1',
-          memory: config.resources?.memory || this.options.defaultResources?.memory || '2Gi',
+          cpu:
+            config.resources?.cpu || this.options.defaultResources?.cpu || '1',
+          memory:
+            config.resources?.memory ||
+            this.options.defaultResources?.memory ||
+            '2Gi',
         },
         env: this.buildEnvArray(config),
         autoRestart: config.autoRestart ?? true,
@@ -820,17 +879,25 @@ export class K8sRuntime extends BaseRuntimeProvider {
     return this.imagePrefix ? `${this.imagePrefix}/${baseImage}` : baseImage;
   }
 
-  private buildEnvArray(config: AgentConfig): Array<{ name: string; value?: string; valueFrom?: any }> {
+  private buildEnvArray(
+    config: AgentConfig
+  ): Array<{ name: string; value?: string; valueFrom?: any }> {
     const env: Array<{ name: string; value?: string; valueFrom?: any }> = [
       { name: 'AGENT_ID', value: config.id },
       { name: 'AGENT_NAME', value: config.name },
       { name: 'AGENT_TYPE', value: config.type },
       { name: 'AGENT_ROLE', value: config.role || '' },
-      { name: 'AGENT_CAPABILITIES', value: JSON.stringify(config.capabilities || []) },
-      ...(config.executionId ? [{ name: 'PARALLAX_EXECUTION_ID', value: config.executionId }] : []),
+      {
+        name: 'AGENT_CAPABILITIES',
+        value: JSON.stringify(config.capabilities || []),
+      },
+      ...(config.executionId
+        ? [{ name: 'PARALLAX_EXECUTION_ID', value: config.executionId }]
+        : []),
     ];
 
-    const registryEndpoint = this.options.registryEndpoint || DEFAULT_REGISTRY_ENDPOINT;
+    const registryEndpoint =
+      this.options.registryEndpoint || DEFAULT_REGISTRY_ENDPOINT;
     if (registryEndpoint) {
       env.push({ name: 'PARALLAX_REGISTRY_ENDPOINT', value: registryEndpoint });
     }
@@ -861,7 +928,10 @@ export class K8sRuntime extends BaseRuntimeProvider {
     } catch (err: any) {
       if (err?.response?.statusCode === 404 || err?.statusCode === 404) {
         // Create the PVC
-        this.logger.info({ pvcName, executionId }, 'Creating shared auth PVC for execution');
+        this.logger.info(
+          { pvcName, executionId },
+          'Creating shared auth PVC for execution'
+        );
         await this.coreApi.createNamespacedPersistentVolumeClaim({
           namespace: this.namespace,
           body: {
@@ -885,7 +955,10 @@ export class K8sRuntime extends BaseRuntimeProvider {
           },
         });
       } else {
-        this.logger.warn({ pvcName, err: err?.message }, 'Failed to check shared auth PVC');
+        this.logger.warn(
+          { pvcName, err: err?.message },
+          'Failed to check shared auth PVC'
+        );
       }
     }
   }
@@ -905,7 +978,10 @@ export class K8sRuntime extends BaseRuntimeProvider {
     } catch (err: any) {
       const status = err?.response?.statusCode ?? err?.statusCode;
       if (status !== 404) {
-        this.logger.warn({ pvcName, error: err?.message }, 'Failed to delete shared auth PVC');
+        this.logger.warn(
+          { pvcName, error: err?.message },
+          'Failed to delete shared auth PVC'
+        );
       }
     }
   }

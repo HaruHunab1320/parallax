@@ -8,9 +8,12 @@
  * Covers 30 common pattern use cases across different categories.
  */
 
-import { describe, it, expect } from 'vitest';
-import { compileYamlToPrism, CompileResult } from '../src/yaml/yaml-to-prism';
 import { Validator } from '@prism-lang/validator';
+import { describe, expect, it } from 'vitest';
+import {
+  type CompileResult,
+  compileYamlToPrism,
+} from '../src/yaml/yaml-to-prism';
 
 const validator = new Validator();
 
@@ -41,8 +44,13 @@ function expectValid(yaml: string, description?: string): CompileResult {
     console.error('Parse errors:', parseResult.errors);
   }
 
-  expect(validation.valid, `${description || 'Pattern'} should be valid`).toBe(true);
-  expect(parseResult.errors, `${description || 'Pattern'} should parse without errors`).toHaveLength(0);
+  expect(validation.valid, `${description || 'Pattern'} should be valid`).toBe(
+    true
+  );
+  expect(
+    parseResult.errors,
+    `${description || 'Pattern'} should parse without errors`
+  ).toHaveLength(0);
 
   return compile;
 }

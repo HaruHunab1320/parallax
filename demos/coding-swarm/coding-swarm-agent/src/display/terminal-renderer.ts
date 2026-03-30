@@ -17,7 +17,7 @@
  * └────────────────────────────────────────────────┘
  */
 
-import { execSync, spawnSync } from 'child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import type { Logger } from 'pino';
 
 export interface TerminalRendererConfig {
@@ -61,7 +61,10 @@ export class TerminalRenderer {
       // Left side: agent identity with type badge
       const typeLabel = agentType.toUpperCase();
       const typeBadge = this.agentTypeBadge(agentType);
-      this.tmuxSet('status-left', ` ${typeBadge} [${typeLabel}] ${this.config.agentName} `);
+      this.tmuxSet(
+        'status-left',
+        ` ${typeBadge} [${typeLabel}] ${this.config.agentName} `
+      );
       this.tmuxSet('status-left-length', '45');
       this.tmuxSet('status-left-style', this.agentTypeStyle(agentType));
 
@@ -152,7 +155,9 @@ export class TerminalRenderer {
   clear(): void {
     if (!this.tmuxSessionExists()) return;
     try {
-      execSync(`tmux send-keys -t ${this.config.tmuxSession} C-l`, { stdio: 'pipe' });
+      execSync(`tmux send-keys -t ${this.config.tmuxSession} C-l`, {
+        stdio: 'pipe',
+      });
     } catch {
       // Best effort
     }
@@ -162,19 +167,27 @@ export class TerminalRenderer {
 
   private agentTypeBadge(agentType: string): string {
     switch (agentType) {
-      case 'claude': return '◆';
-      case 'codex': return '●';
-      case 'gemini': return '★';
-      default: return '▸';
+      case 'claude':
+        return '◆';
+      case 'codex':
+        return '●';
+      case 'gemini':
+        return '★';
+      default:
+        return '▸';
     }
   }
 
   private agentTypeStyle(agentType: string): string {
     switch (agentType) {
-      case 'claude': return 'fg=white,bg=colour166,bold';  // Orange
-      case 'codex': return 'fg=white,bg=colour28,bold';    // Green
-      case 'gemini': return 'fg=white,bg=colour33,bold';   // Blue
-      default: return 'fg=black,bg=green,bold';
+      case 'claude':
+        return 'fg=white,bg=colour166,bold'; // Orange
+      case 'codex':
+        return 'fg=white,bg=colour28,bold'; // Green
+      case 'gemini':
+        return 'fg=white,bg=colour33,bold'; // Blue
+      default:
+        return 'fg=black,bg=green,bold';
     }
   }
 
@@ -182,34 +195,52 @@ export class TerminalRenderer {
 
   private statusToLabel(status: string): string {
     switch (status) {
-      case 'starting': return '◌ STARTING...';
-      case 'running': return '● RUNNING';
-      case 'blocked': return '▲ BLOCKED';
-      case 'prompt_ready': return '◆ READY';
-      case 'completed': return '✓ DONE';
-      case 'failed': return '✗ FAILED';
-      default: return status.toUpperCase();
+      case 'starting':
+        return '◌ STARTING...';
+      case 'running':
+        return '● RUNNING';
+      case 'blocked':
+        return '▲ BLOCKED';
+      case 'prompt_ready':
+        return '◆ READY';
+      case 'completed':
+        return '✓ DONE';
+      case 'failed':
+        return '✗ FAILED';
+      default:
+        return status.toUpperCase();
     }
   }
 
   private statusToStyle(status: string): string {
     switch (status) {
-      case 'starting': return 'fg=black,bg=yellow';
-      case 'running': return 'fg=black,bg=green';
-      case 'blocked': return 'fg=black,bg=yellow,bold';
-      case 'prompt_ready': return 'fg=black,bg=cyan';
-      case 'completed': return 'fg=black,bg=cyan,bold';
-      case 'failed': return 'fg=white,bg=red,bold';
-      default: return 'fg=black,bg=cyan';
+      case 'starting':
+        return 'fg=black,bg=yellow';
+      case 'running':
+        return 'fg=black,bg=green';
+      case 'blocked':
+        return 'fg=black,bg=yellow,bold';
+      case 'prompt_ready':
+        return 'fg=black,bg=cyan';
+      case 'completed':
+        return 'fg=black,bg=cyan,bold';
+      case 'failed':
+        return 'fg=white,bg=red,bold';
+      default:
+        return 'fg=black,bg=cyan';
     }
   }
 
   // ─── Tmux helpers ───
 
   private tmuxSessionExists(): boolean {
-    const result = spawnSync('tmux', ['has-session', '-t', this.config.tmuxSession], {
-      stdio: 'pipe',
-    });
+    const result = spawnSync(
+      'tmux',
+      ['has-session', '-t', this.config.tmuxSession],
+      {
+        stdio: 'pipe',
+      }
+    );
     return result.status === 0;
   }
 

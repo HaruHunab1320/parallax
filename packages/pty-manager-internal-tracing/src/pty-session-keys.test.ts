@@ -2,7 +2,7 @@
  * PTY Session - Special Keys and Paste Tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SPECIAL_KEYS } from './pty-session';
 
 describe('SPECIAL_KEYS', () => {
@@ -59,14 +59,14 @@ describe('SPECIAL_KEYS', () => {
 
   describe('Navigation keys - plain', () => {
     it('should have all basic navigation keys', () => {
-      expect(SPECIAL_KEYS['up']).toBe('\x1b[A');
-      expect(SPECIAL_KEYS['down']).toBe('\x1b[B');
-      expect(SPECIAL_KEYS['right']).toBe('\x1b[C');
-      expect(SPECIAL_KEYS['left']).toBe('\x1b[D');
-      expect(SPECIAL_KEYS['home']).toBe('\x1b[H');
-      expect(SPECIAL_KEYS['end']).toBe('\x1b[F');
-      expect(SPECIAL_KEYS['pageup']).toBe('\x1b[5~');
-      expect(SPECIAL_KEYS['pagedown']).toBe('\x1b[6~');
+      expect(SPECIAL_KEYS.up).toBe('\x1b[A');
+      expect(SPECIAL_KEYS.down).toBe('\x1b[B');
+      expect(SPECIAL_KEYS.right).toBe('\x1b[C');
+      expect(SPECIAL_KEYS.left).toBe('\x1b[D');
+      expect(SPECIAL_KEYS.home).toBe('\x1b[H');
+      expect(SPECIAL_KEYS.end).toBe('\x1b[F');
+      expect(SPECIAL_KEYS.pageup).toBe('\x1b[5~');
+      expect(SPECIAL_KEYS.pagedown).toBe('\x1b[6~');
     });
   });
 
@@ -137,15 +137,15 @@ describe('SPECIAL_KEYS', () => {
 
   describe('Editing keys', () => {
     it('should have basic editing keys', () => {
-      expect(SPECIAL_KEYS['enter']).toBe('\r');
-      expect(SPECIAL_KEYS['return']).toBe('\r');
-      expect(SPECIAL_KEYS['tab']).toBe('\t');
-      expect(SPECIAL_KEYS['backspace']).toBe('\x7f');
-      expect(SPECIAL_KEYS['delete']).toBe('\x1b[3~');
-      expect(SPECIAL_KEYS['insert']).toBe('\x1b[2~');
-      expect(SPECIAL_KEYS['escape']).toBe('\x1b');
-      expect(SPECIAL_KEYS['esc']).toBe('\x1b');
-      expect(SPECIAL_KEYS['space']).toBe(' ');
+      expect(SPECIAL_KEYS.enter).toBe('\r');
+      expect(SPECIAL_KEYS.return).toBe('\r');
+      expect(SPECIAL_KEYS.tab).toBe('\t');
+      expect(SPECIAL_KEYS.backspace).toBe('\x7f');
+      expect(SPECIAL_KEYS.delete).toBe('\x1b[3~');
+      expect(SPECIAL_KEYS.insert).toBe('\x1b[2~');
+      expect(SPECIAL_KEYS.escape).toBe('\x1b');
+      expect(SPECIAL_KEYS.esc).toBe('\x1b');
+      expect(SPECIAL_KEYS.space).toBe(' ');
     });
 
     it('should have Shift+Tab (reverse tab)', () => {
@@ -160,21 +160,21 @@ describe('SPECIAL_KEYS', () => {
 
   describe('Function keys - plain', () => {
     it('should have F1-F4 (special sequences)', () => {
-      expect(SPECIAL_KEYS['f1']).toBe('\x1bOP');
-      expect(SPECIAL_KEYS['f2']).toBe('\x1bOQ');
-      expect(SPECIAL_KEYS['f3']).toBe('\x1bOR');
-      expect(SPECIAL_KEYS['f4']).toBe('\x1bOS');
+      expect(SPECIAL_KEYS.f1).toBe('\x1bOP');
+      expect(SPECIAL_KEYS.f2).toBe('\x1bOQ');
+      expect(SPECIAL_KEYS.f3).toBe('\x1bOR');
+      expect(SPECIAL_KEYS.f4).toBe('\x1bOS');
     });
 
     it('should have F5-F12', () => {
-      expect(SPECIAL_KEYS['f5']).toBe('\x1b[15~');
-      expect(SPECIAL_KEYS['f6']).toBe('\x1b[17~');
-      expect(SPECIAL_KEYS['f7']).toBe('\x1b[18~');
-      expect(SPECIAL_KEYS['f8']).toBe('\x1b[19~');
-      expect(SPECIAL_KEYS['f9']).toBe('\x1b[20~');
-      expect(SPECIAL_KEYS['f10']).toBe('\x1b[21~');
-      expect(SPECIAL_KEYS['f11']).toBe('\x1b[23~');
-      expect(SPECIAL_KEYS['f12']).toBe('\x1b[24~');
+      expect(SPECIAL_KEYS.f5).toBe('\x1b[15~');
+      expect(SPECIAL_KEYS.f6).toBe('\x1b[17~');
+      expect(SPECIAL_KEYS.f7).toBe('\x1b[18~');
+      expect(SPECIAL_KEYS.f8).toBe('\x1b[19~');
+      expect(SPECIAL_KEYS.f9).toBe('\x1b[20~');
+      expect(SPECIAL_KEYS.f10).toBe('\x1b[21~');
+      expect(SPECIAL_KEYS.f11).toBe('\x1b[23~');
+      expect(SPECIAL_KEYS.f12).toBe('\x1b[24~');
     });
   });
 
@@ -226,7 +226,10 @@ describe('SPECIAL_KEYS', () => {
 
     it('should have consistent modifier patterns', () => {
       // Modifier 2 = Shift
-      const shiftKeys = Object.keys(SPECIAL_KEYS).filter(k => k.startsWith('shift+') && !k.includes('ctrl') && !k.includes('alt'));
+      const shiftKeys = Object.keys(SPECIAL_KEYS).filter(
+        (k) =>
+          k.startsWith('shift+') && !k.includes('ctrl') && !k.includes('alt')
+      );
       expect(shiftKeys.length).toBeGreaterThan(0);
 
       // Modifier 3 = Alt (for arrows)
@@ -242,7 +245,12 @@ describe('SPECIAL_KEYS', () => {
       }
 
       // Modifier 6 = Ctrl+Shift
-      const ctrlShiftKeys = ['ctrl+shift+up', 'ctrl+shift+down', 'ctrl+shift+left', 'ctrl+shift+right'];
+      const ctrlShiftKeys = [
+        'ctrl+shift+up',
+        'ctrl+shift+down',
+        'ctrl+shift+left',
+        'ctrl+shift+right',
+      ];
       for (const key of ctrlShiftKeys) {
         expect(SPECIAL_KEYS[key]).toContain(';6');
       }

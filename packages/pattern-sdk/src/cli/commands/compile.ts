@@ -2,11 +2,11 @@
  * Compile Command - Convert YAML patterns to Prism
  */
 
-import { Command } from 'commander';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import chalk from 'chalk';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { compileYamlFile, CompileOptions } from '../../yaml';
+import { Command } from 'commander';
+import { type CompileOptions, compileYamlFile } from '../../yaml';
 
 export const compileCommand = new Command('compile')
   .description('Compile YAML patterns to Prism DSL')
@@ -15,38 +15,46 @@ export const compileCommand = new Command('compile')
   .option('--no-comments', 'Omit explanatory comments from output')
   .option('--watch', 'Watch for changes and recompile')
   .option('--stdout', 'Print to stdout instead of file')
-  .addHelpText('after', `
+  .addHelpText(
+    'after',
+    `
 ${chalk.gray('Examples:')}
   ${chalk.green('$')} parallax-generate compile patterns/document-analysis.yaml
   ${chalk.green('$')} parallax-generate compile patterns/ -o dist/
   ${chalk.green('$')} parallax-generate compile pattern.yaml --stdout
   ${chalk.green('$')} parallax-generate compile patterns/ --watch
-  `)
-  .action(async (input: string, options: {
-    output?: string;
-    comments?: boolean;
-    watch?: boolean;
-    stdout?: boolean;
-  }) => {
-    try {
-      const inputPath = path.resolve(input);
-      const stat = await fs.stat(inputPath);
-
-      if (stat.isDirectory()) {
-        await compileDirectory(inputPath, options);
-      } else {
-        await compileSingleFile(inputPath, options);
+  `
+  )
+  .action(
+    async (
+      input: string,
+      options: {
+        output?: string;
+        comments?: boolean;
+        watch?: boolean;
+        stdout?: boolean;
       }
+    ) => {
+      try {
+        const inputPath = path.resolve(input);
+        const stat = await fs.stat(inputPath);
 
-      if (options.watch) {
-        console.log(chalk.cyan('\nWatching for changes... (Ctrl+C to stop)'));
-        watchForChanges(inputPath, options);
+        if (stat.isDirectory()) {
+          await compileDirectory(inputPath, options);
+        } else {
+          await compileSingleFile(inputPath, options);
+        }
+
+        if (options.watch) {
+          console.log(chalk.cyan('\nWatching for changes... (Ctrl+C to stop)'));
+          watchForChanges(inputPath, options);
+        }
+      } catch (error: any) {
+        console.error(chalk.red('Compilation failed:'), error.message);
+        process.exit(1);
       }
-    } catch (error: any) {
-      console.error(chalk.red('Compilation failed:'), error.message);
-      process.exit(1);
     }
-  });
+  );
 
 /**
  * Compile a single YAML file
@@ -73,7 +81,7 @@ async function compileSingleFile(
   }
 
   if (options.stdout) {
-    console.log('\n' + result.prism);
+    console.log(`\n${result.prism}`);
     return;
   }
 
@@ -84,7 +92,9 @@ async function compileSingleFile(
 
   console.log(chalk.green('✓ Compiled to:'), outputPath);
   console.log(chalk.gray(`  Name: ${result.metadata.name}`));
-  console.log(chalk.gray(`  Groups: ${result.metadata.groups.join(', ') || 'none'}`));
+  console.log(
+    chalk.gray(`  Groups: ${result.metadata.groups.join(', ') || 'none'}`)
+  );
   console.log(chalk.gray(`  Confidence: ${result.metadata.confidenceMethod}`));
 }
 
@@ -96,14 +106,19 @@ async function compileDirectory(
   options: { output?: string; comments?: boolean }
 ) {
   const files = await fs.readdir(inputDir);
-  const yamlFiles = files.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+  const yamlFiles = files.filter(
+    (f) => f.endsWith('.yaml') || f.endsWith('.yml')
+  );
 
   if (yamlFiles.length === 0) {
     console.log(chalk.yellow('No YAML files found in:'), inputDir);
     return;
   }
 
-  console.log(chalk.cyan(`Compiling ${yamlFiles.length} files from:`), inputDir);
+  console.log(
+    chalk.cyan(`Compiling ${yamlFiles.length} files from:`),
+    inputDir
+  );
 
   const outputDir = options.output || inputDir;
   await fs.mkdir(outputDir, { recursive: true });
@@ -138,7 +153,10 @@ async function compileDirectory(
   }
 
   console.log('');
-  console.log(chalk.green(`✓ ${successCount} compiled`), errorCount > 0 ? chalk.red(`✗ ${errorCount} failed`) : '');
+  console.log(
+    chalk.green(`✓ ${successCount} compiled`),
+    errorCount > 0 ? chalk.red(`✗ ${errorCount} failed`) : ''
+  );
 }
 
 /**

@@ -11,13 +11,17 @@
  * input formats.
  */
 
-export * from './types';
 export { MessageRouter, MessageRouterOptions } from './message-router';
-export { WorkflowExecutor, WorkflowExecutorOptions, WorkflowResult } from './workflow-executor';
 export {
+  CompiledPattern,
+  CompilerOptions,
   compileOrgPattern,
   compileOrgPatternFile,
   loadOrgPatternFromFile,
-  CompiledPattern,
-  CompilerOptions,
 } from './org-chart-compiler';
+export * from './types';
+export {
+  WorkflowExecutor,
+  WorkflowExecutorOptions,
+  WorkflowResult,
+} from './workflow-executor';

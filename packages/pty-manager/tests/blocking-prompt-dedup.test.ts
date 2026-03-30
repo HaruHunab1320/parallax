@@ -6,9 +6,9 @@
  * so TUI re-renders with minor text differences don't trigger duplicate events.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PTYSession } from '../src/pty-session';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CLIAdapter } from '../src/adapters/adapter-interface';
+import { PTYSession } from '../src/pty-session';
 
 function createBlockingAdapter(promptText: string): CLIAdapter {
   return {
@@ -61,7 +61,7 @@ function createSessionWithAdapter(adapter: CLIAdapter): PTYSession {
     adapter,
     { name: 'test', type: 'test' },
     silentLogger as never,
-    false, // disable stall detection for these tests
+    false // disable stall detection for these tests
   );
 
   const internals = getInternals(session);
@@ -90,7 +90,9 @@ describe('blocking prompt deduplication', () => {
     // Trigger output processing
     const internals = getInternals(session);
     internals.outputBuffer = 'Allow write to /src/index.ts?';
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
 
     expect(handler).toHaveBeenCalledOnce();
   });
@@ -106,7 +108,9 @@ describe('blocking prompt deduplication', () => {
     internals.outputBuffer = 'Allow write to /src/index.ts?';
 
     const process = () =>
-      (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+      (
+        session as unknown as { processOutputBuffer: () => void }
+      ).processOutputBuffer();
 
     process(); // First detection → emits
     process(); // Same prompt → deduplicated
@@ -125,7 +129,9 @@ describe('blocking prompt deduplication', () => {
     const internals = getInternals(session);
     internals.outputBuffer = 'Allow write to  /src/index.ts?';
 
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
     expect(handler).toHaveBeenCalledOnce();
 
     // Swap adapter to one with different whitespace in the prompt
@@ -134,14 +140,18 @@ describe('blocking prompt deduplication', () => {
       createBlockingAdapter('Allow  write   to /src/index.ts?');
     internals.outputBuffer = 'Allow  write   to /src/index.ts?';
 
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
 
     // Should still be 1 — normalized hash matches
     expect(handler).toHaveBeenCalledOnce();
   });
 
   it('deduplicates prompts with different line numbers', () => {
-    const adapter1 = createBlockingAdapter('Allow write to line 42 of /src/index.ts?');
+    const adapter1 = createBlockingAdapter(
+      'Allow write to line 42 of /src/index.ts?'
+    );
     const session = createSessionWithAdapter(adapter1);
 
     const handler = vi.fn();
@@ -149,14 +159,18 @@ describe('blocking prompt deduplication', () => {
 
     const internals = getInternals(session);
     internals.outputBuffer = 'dummy';
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
     expect(handler).toHaveBeenCalledOnce();
 
     // Same prompt but line number changed (TUI re-render)
     (session as unknown as { adapter: CLIAdapter }).adapter =
       createBlockingAdapter('Allow write to line 99 of /src/index.ts?');
     internals.outputBuffer = 'dummy2';
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
 
     // Numbers normalized to '#' → same hash
     expect(handler).toHaveBeenCalledOnce();
@@ -171,14 +185,18 @@ describe('blocking prompt deduplication', () => {
 
     const internals = getInternals(session);
     internals.outputBuffer = 'dummy';
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
     expect(handler).toHaveBeenCalledOnce();
 
     // Different prompt entirely
     (session as unknown as { adapter: CLIAdapter }).adapter =
       createBlockingAdapter('Allow delete of /src/main.ts?');
     internals.outputBuffer = 'dummy2';
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
 
     expect(handler).toHaveBeenCalledTimes(2);
   });
@@ -192,7 +210,9 @@ describe('blocking prompt deduplication', () => {
 
     const internals = getInternals(session);
     internals.outputBuffer = 'dummy';
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
     expect(handler).toHaveBeenCalledOnce();
 
     // permission_approved preserves the hash to prevent TUI re-render floods
@@ -200,7 +220,9 @@ describe('blocking prompt deduplication', () => {
 
     // Same prompt again — should NOT emit because hash is preserved
     internals.outputBuffer = 'dummy2';
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
     expect(handler).toHaveBeenCalledOnce(); // still 1, not 2
   });
 
@@ -214,7 +236,9 @@ describe('blocking prompt deduplication', () => {
 
     const internals = getInternals(session);
     internals.outputBuffer = 'dummy';
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
     expect(handler).toHaveBeenCalledOnce();
 
     // Same prefix but different tail after 100 chars
@@ -222,7 +246,9 @@ describe('blocking prompt deduplication', () => {
     (session as unknown as { adapter: CLIAdapter }).adapter =
       createBlockingAdapter(samePrefix);
     internals.outputBuffer = 'dummy2';
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
 
     // First 100 chars identical after normalization → same hash
     expect(handler).toHaveBeenCalledOnce();

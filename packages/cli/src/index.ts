@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
 import chalk from 'chalk';
-import { startCommand, stopCommand } from './commands/start';
+import { Command } from 'commander';
 import { agentCommand } from './commands/agent';
-import { runCommand } from './commands/run';
 import { patternCommand } from './commands/pattern';
-import { statusCommand } from './commands/status';
+import { runCommand } from './commands/run';
 import { scenarioCommand } from './commands/scenario';
+import { startCommand, stopCommand } from './commands/start';
+import { statusCommand } from './commands/status';
 
 const program = new Command();
 

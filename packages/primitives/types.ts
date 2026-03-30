@@ -27,7 +27,13 @@ export interface RequirementsAnalysis {
 
 export interface Primitive {
   name: string;
-  type: 'execution' | 'aggregation' | 'confidence' | 'control' | 'coordination' | 'transformation';
+  type:
+    | 'execution'
+    | 'aggregation'
+    | 'confidence'
+    | 'control'
+    | 'coordination'
+    | 'transformation';
   description: string;
   inputs: string[];
   outputs: string[];

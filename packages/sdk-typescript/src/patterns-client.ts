@@ -1,21 +1,21 @@
 import {
-  ExecutePatternRequest,
-  ExecutePatternResponse,
-  GetPatternRequest,
-  ListPatternsRequest,
-  ListPatternsResponse,
-  Pattern,
-  PatternServiceClient,
-  UploadPatternRequest,
-  UploadPatternResponse,
-} from "../generated/patterns";
-import {
-  ChannelCredentials,
-  ClientOptions,
-  ClientReadableStream,
+  type ChannelCredentials,
+  type ClientOptions,
+  type ClientReadableStream,
   Metadata,
-  ServiceError,
-} from "@grpc/grpc-js";
+  type ServiceError,
+} from '@grpc/grpc-js';
+import {
+  type ExecutePatternRequest,
+  type ExecutePatternResponse,
+  type GetPatternRequest,
+  type ListPatternsRequest,
+  type ListPatternsResponse,
+  type Pattern,
+  PatternServiceClient,
+  type UploadPatternRequest,
+  type UploadPatternResponse,
+} from '../generated/patterns';
 
 export type PatternStreamHandlers = {
   onMessage?: (response: ExecutePatternResponse) => void;
@@ -47,7 +47,7 @@ export class PatternClient {
   ): Promise<ExecutePatternResponse> {
     const request: ExecutePatternRequest = {
       patternName,
-      patternVersion: "",
+      patternVersion: '',
       input: input || {},
       options: options
         ? {
@@ -64,12 +64,13 @@ export class PatternClient {
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: ExecutePatternResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 
@@ -87,7 +88,7 @@ export class PatternClient {
   ): ClientReadableStream<ExecutePatternResponse> {
     const request: ExecutePatternRequest = {
       patternName,
-      patternVersion: "",
+      patternVersion: '',
       input: input || {},
       options: options
         ? {
@@ -99,58 +100,74 @@ export class PatternClient {
         : undefined,
     };
 
-    const stream = this.client.streamExecutePattern(request, metadata || new Metadata());
-    stream.on("data", (message: ExecutePatternResponse) => handlers.onMessage?.(message));
-    stream.on("error", (error: ServiceError) => handlers.onError?.(error));
-    stream.on("end", () => handlers.onEnd?.());
+    const stream = this.client.streamExecutePattern(
+      request,
+      metadata || new Metadata()
+    );
+    stream.on('data', (message: ExecutePatternResponse) =>
+      handlers.onMessage?.(message)
+    );
+    stream.on('error', (error: ServiceError) => handlers.onError?.(error));
+    stream.on('end', () => handlers.onEnd?.());
     return stream;
   }
 
-  list(tags: string[] = [], includeScripts = false, metadata?: Metadata): Promise<ListPatternsResponse> {
+  list(
+    tags: string[] = [],
+    includeScripts = false,
+    metadata?: Metadata
+  ): Promise<ListPatternsResponse> {
     const request: ListPatternsRequest = { tags, includeScripts };
     return new Promise((resolve, reject) => {
       this.client.listPatterns(
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: ListPatternsResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 
-  get(name: string, version = "", metadata?: Metadata): Promise<Pattern> {
+  get(name: string, version = '', metadata?: Metadata): Promise<Pattern> {
     const request: GetPatternRequest = { name, version };
     return new Promise((resolve, reject) => {
       this.client.getPattern(
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: Pattern) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 
-  upload(pattern: Pattern, overwrite = false, metadata?: Metadata): Promise<UploadPatternResponse> {
+  upload(
+    pattern: Pattern,
+    overwrite = false,
+    metadata?: Metadata
+  ): Promise<UploadPatternResponse> {
     const request: UploadPatternRequest = { pattern, overwrite };
     return new Promise((resolve, reject) => {
       this.client.uploadPattern(
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: UploadPatternResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 }

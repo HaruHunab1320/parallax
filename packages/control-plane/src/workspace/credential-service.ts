@@ -5,22 +5,23 @@
  * Supports GitHub App, OAuth, deploy keys, and PATs.
  */
 
-import { Logger } from 'pino';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import type {
+  CredentialGrant,
+  CredentialType,
   GitCredential,
   GitCredentialRequest,
-  CredentialGrant,
-  GitProvider,
-  CredentialType,
-  GitHubAppConfig,
   GitHubAppInstallation,
-  UserProvidedCredentials,
+  GitProvider,
   GitProviderAdapter,
   PullRequestInfo,
 } from 'git-workspace-service';
-import { GitHubProvider, GitHubProviderConfig } from './providers/github-provider';
-import { CredentialGrantRepository } from '../db/repositories/credential-grant.repository';
+import type { Logger } from 'pino';
+import type { CredentialGrantRepository } from '../db/repositories/credential-grant.repository';
+import {
+  GitHubProvider,
+  type GitHubProviderConfig,
+} from './providers/github-provider';
 
 export interface CredentialServiceConfig {
   /**
@@ -64,7 +65,7 @@ export class CredentialService {
   private repository?: CredentialGrantRepository;
 
   constructor(
-    private readonly config: CredentialServiceConfig,
+    readonly config: CredentialServiceConfig,
     private readonly logger: Logger
   ) {
     this.defaultTtl = config.defaultTtlSeconds || 3600; // 1 hour
@@ -103,7 +104,7 @@ export class CredentialService {
   getProvider(name: GitProvider): GitProviderAdapter | undefined {
     if (name === 'github' && this.githubProvider) {
       const ghProvider = this.githubProvider;
-      const logger = this.logger;
+      const _logger = this.logger;
       return {
         name: 'github' as const,
         getCredentials: async (request: GitCredentialRequest) => {
@@ -115,7 +116,7 @@ export class CredentialService {
             repoInfo.owner,
             repoInfo.repo,
             request.access,
-            request.ttlSeconds || 3600,
+            request.ttlSeconds || 3600
           );
         },
         revokeCredential: async (_credentialId: string) => {
@@ -145,17 +146,31 @@ export class CredentialService {
               head: options.sourceBranch,
               base: options.targetBranch,
               draft: options.draft,
-            },
+            }
           );
           if (options.labels?.length) {
-            await ghProvider.addLabels(repoInfo.owner, repoInfo.repo, pr.number, options.labels);
+            await ghProvider.addLabels(
+              repoInfo.owner,
+              repoInfo.repo,
+              pr.number,
+              options.labels
+            );
           }
           if (options.reviewers?.length) {
-            await ghProvider.requestReviewers(repoInfo.owner, repoInfo.repo, pr.number, options.reviewers);
+            await ghProvider.requestReviewers(
+              repoInfo.owner,
+              repoInfo.repo,
+              pr.number,
+              options.reviewers
+            );
           }
           return pr;
         },
-        branchExists: async (_repo: string, _branch: string, _credential: GitCredential) => {
+        branchExists: async (
+          _repo: string,
+          _branch: string,
+          _credential: GitCredential
+        ) => {
           // Not used in current control-plane workspace flow
           return false;
         },
@@ -195,7 +210,11 @@ export class CredentialService {
 
     // Priority 1: User-provided credentials (PAT or OAuth token)
     if (request.userProvided) {
-      credential = this.createUserProvidedCredential(request, ttlSeconds, provider);
+      credential = this.createUserProvidedCredential(
+        request,
+        ttlSeconds,
+        provider
+      );
       this.logger.info(
         { repo: request.repo, type: request.userProvided.type },
         'Using user-provided credentials'
@@ -249,7 +268,10 @@ export class CredentialService {
           expiresAt: grant.expiresAt,
         });
       } catch (error) {
-        this.logger.warn({ grantId: grant.id, error }, 'Failed to persist credential grant to database');
+        this.logger.warn(
+          { grantId: grant.id, error },
+          'Failed to persist credential grant to database'
+        );
       }
     }
 
@@ -277,7 +299,10 @@ export class CredentialService {
         try {
           await this.repository.revoke(grantId);
         } catch (error) {
-          this.logger.warn({ grantId, error }, 'Failed to revoke credential in database');
+          this.logger.warn(
+            { grantId, error },
+            'Failed to revoke credential in database'
+          );
         }
       }
       return;
@@ -291,7 +316,10 @@ export class CredentialService {
       try {
         await this.repository.revoke(grantId);
       } catch (error) {
-        this.logger.warn({ grantId, error }, 'Failed to revoke credential in database');
+        this.logger.warn(
+          { grantId, error },
+          'Failed to revoke credential in database'
+        );
       }
     }
 
@@ -320,11 +348,17 @@ export class CredentialService {
         // Use the larger count (database may have grants not in memory)
         count = Math.max(count, dbCount);
       } catch (error) {
-        this.logger.warn({ executionId, error }, 'Failed to revoke credentials in database');
+        this.logger.warn(
+          { executionId, error },
+          'Failed to revoke credentials in database'
+        );
       }
     }
 
-    this.logger.info({ executionId, revokedCount: count }, 'Credentials revoked for execution');
+    this.logger.info(
+      { executionId, revokedCount: count },
+      'Credentials revoked for execution'
+    );
     return count;
   }
 
@@ -372,7 +406,10 @@ export class CredentialService {
           };
         }
       } catch (error) {
-        this.logger.warn({ grantId, error }, 'Failed to get grant from database');
+        this.logger.warn(
+          { grantId, error },
+          'Failed to get grant from database'
+        );
       }
     }
 
@@ -403,7 +440,10 @@ export class CredentialService {
           revokedAt: g.revokedAt || undefined,
         }));
       } catch (error) {
-        this.logger.warn({ executionId, error }, 'Failed to get grants from database');
+        this.logger.warn(
+          { executionId, error },
+          'Failed to get grants from database'
+        );
       }
     }
 
@@ -440,10 +480,16 @@ export class CredentialService {
     if (lowerRepo.includes('gitlab.com') || lowerRepo.startsWith('gitlab:')) {
       return 'gitlab';
     }
-    if (lowerRepo.includes('bitbucket.org') || lowerRepo.startsWith('bitbucket:')) {
+    if (
+      lowerRepo.includes('bitbucket.org') ||
+      lowerRepo.startsWith('bitbucket:')
+    ) {
       return 'bitbucket';
     }
-    if (lowerRepo.includes('dev.azure.com') || lowerRepo.includes('visualstudio.com')) {
+    if (
+      lowerRepo.includes('dev.azure.com') ||
+      lowerRepo.includes('visualstudio.com')
+    ) {
       return 'azure_devops';
     }
 
@@ -483,17 +529,16 @@ export class CredentialService {
     }
   }
 
-  private parseGitHubRepo(repo: string): { owner: string; repo: string } | null {
+  private parseGitHubRepo(
+    repo: string
+  ): { owner: string; repo: string } | null {
     // Handle various formats:
     // - https://github.com/owner/repo
     // - git@github.com:owner/repo.git
     // - github.com/owner/repo
     // - owner/repo
 
-    const patterns = [
-      /github\.com[/:]([^/]+)\/([^/.]+)/,
-      /^([^/]+)\/([^/]+)$/,
-    ];
+    const patterns = [/github\.com[/:]([^/]+)\/([^/.]+)/, /^([^/]+)\/([^/]+)$/];
 
     for (const pattern of patterns) {
       const match = repo.match(pattern);
@@ -530,9 +575,10 @@ export class CredentialService {
 
     // For user-provided credentials, we assume full repo access based on what they provided
     // The actual permissions are determined by the token's scope at the provider level
-    const permissions = request.access === 'write'
-      ? ['contents:read', 'contents:write', 'pull_requests:write']
-      : ['contents:read'];
+    const permissions =
+      request.access === 'write'
+        ? ['contents:read', 'contents:write', 'pull_requests:write']
+        : ['contents:read'];
 
     return {
       id: randomUUID(),
@@ -544,5 +590,4 @@ export class CredentialService {
       provider: userCreds.provider || provider,
     };
   }
-
 }

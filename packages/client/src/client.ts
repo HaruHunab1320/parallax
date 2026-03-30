@@ -1,18 +1,18 @@
-import { ParallaxClientConfig, validateConfig } from './config.js';
+import { type ParallaxClientConfig, validateConfig } from './config.js';
 import { HttpClient } from './http.js';
 import {
-  PatternsResource,
   AgentsResource,
+  AuditResource,
+  AuthResource,
+  BackupResource,
   ExecutionsResource,
-  SchedulesResource,
   LicenseResource,
   ManagedAgentsResource,
   ManagedThreadsResource,
+  PatternsResource,
+  SchedulesResource,
   TriggersResource,
-  AuthResource,
   UsersResource,
-  AuditResource,
-  BackupResource,
 } from './resources/index.js';
 
 export class ParallaxClient {

@@ -5,12 +5,12 @@
  */
 
 import type {
-  CLIAdapter,
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  CLIAdapter,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from 'adapter-types';
 
 /**
@@ -81,11 +81,18 @@ export class ShellAdapter implements CLIAdapter {
 
   private isContinuationPrompt(output: string): boolean {
     const stripped = this.stripAnsi(output);
-    return /(?:quote|dquote|heredoc|bquote|cmdsubst|pipe|then|else|do|loop)>\s*$/.test(stripped)
-      || /(?:quote|dquote|heredoc|bquote)>\s*$/m.test(stripped);
+    return (
+      /(?:quote|dquote|heredoc|bquote|cmdsubst|pipe|then|else|do|loop)>\s*$/.test(
+        stripped
+      ) || /(?:quote|dquote|heredoc|bquote)>\s*$/m.test(stripped)
+    );
   }
 
-  detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     if (output.includes('exit')) {
       return { exited: true, code: 0 };
     }
@@ -110,11 +117,17 @@ export class ShellAdapter implements CLIAdapter {
 
   getPromptPattern(): RegExp {
     // Trim trailing space from prompt for matching — tmux capture-pane strips trailing whitespace
-    const escaped = this.promptStr.trimEnd().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escaped = this.promptStr
+      .trimEnd()
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return new RegExp(`(?:${escaped}|\\$|#)\\s*$`, 'm');
   }
 
-  async validateInstallation(): Promise<{ installed: boolean; version?: string; error?: string }> {
+  async validateInstallation(): Promise<{
+    installed: boolean;
+    version?: string;
+    error?: string;
+  }> {
     return { installed: true };
   }
 

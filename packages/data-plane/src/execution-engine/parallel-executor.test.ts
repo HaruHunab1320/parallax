@@ -1,8 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ParallelExecutor } from './parallel-executor';
-import { ExecutionTask, ExecutionResult, ParallelExecutionPlan } from './types';
+import type {
+  ExecutionResult,
+  ExecutionTask,
+  ParallelExecutionPlan,
+} from './types';
 
-function makeTask(id: string, overrides: Partial<ExecutionTask> = {}): ExecutionTask {
+function makeTask(
+  id: string,
+  overrides: Partial<ExecutionTask> = {}
+): ExecutionTask {
   return {
     id,
     type: 'agent',
@@ -12,7 +19,10 @@ function makeTask(id: string, overrides: Partial<ExecutionTask> = {}): Execution
   };
 }
 
-function makeResult(taskId: string, overrides: Partial<ExecutionResult> = {}): ExecutionResult {
+function makeResult(
+  taskId: string,
+  overrides: Partial<ExecutionResult> = {}
+): ExecutionResult {
   return {
     taskId,
     status: 'success',
@@ -54,7 +64,9 @@ describe('ParallelExecutor', () => {
         tasks: [makeTask('t1')],
         strategy: 'all',
       };
-      await executor.execute(plan, (task) => Promise.resolve(makeResult(task.id)));
+      await executor.execute(plan, (task) =>
+        Promise.resolve(makeResult(task.id))
+      );
       expect(completedHandler).toHaveBeenCalledWith(
         expect.objectContaining({ strategy: 'all', taskCount: 1 })
       );
@@ -168,7 +180,9 @@ describe('ParallelExecutor', () => {
         tasks: [makeTask('t1')],
         strategy: 'unknown' as any,
       };
-      await expect(executor.execute(plan, vi.fn())).rejects.toThrow('Unknown execution strategy');
+      await expect(executor.execute(plan, vi.fn())).rejects.toThrow(
+        'Unknown execution strategy'
+      );
     });
   });
 
@@ -192,11 +206,19 @@ describe('ParallelExecutor', () => {
       const results = await executor.executeDAG(tasks, taskExecutor, 2);
       expect(results.size).toBe(4);
       // t1 must come before t2 and t3
-      expect(executionOrder.indexOf('t1')).toBeLessThan(executionOrder.indexOf('t2'));
-      expect(executionOrder.indexOf('t1')).toBeLessThan(executionOrder.indexOf('t3'));
+      expect(executionOrder.indexOf('t1')).toBeLessThan(
+        executionOrder.indexOf('t2')
+      );
+      expect(executionOrder.indexOf('t1')).toBeLessThan(
+        executionOrder.indexOf('t3')
+      );
       // t2 and t3 must come before t4
-      expect(executionOrder.indexOf('t2')).toBeLessThan(executionOrder.indexOf('t4'));
-      expect(executionOrder.indexOf('t3')).toBeLessThan(executionOrder.indexOf('t4'));
+      expect(executionOrder.indexOf('t2')).toBeLessThan(
+        executionOrder.indexOf('t4')
+      );
+      expect(executionOrder.indexOf('t3')).toBeLessThan(
+        executionOrder.indexOf('t4')
+      );
     });
 
     it('should handle tasks with no dependencies', async () => {

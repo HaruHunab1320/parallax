@@ -4,14 +4,14 @@
  * REST API endpoints for database backup and restore operations.
  */
 
+import type { PrismaClient } from '@prisma/client';
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { Logger } from 'pino';
-import { LicenseEnforcer } from '../licensing/license-enforcer';
-import { AuthService } from '../auth/auth-service';
-import { AuditService } from '../audit/audit-service';
+import type { Logger } from 'pino';
+import type { AuditService } from '../audit/audit-service';
 import { createAuthMiddleware } from '../auth/auth-middleware';
+import type { AuthService } from '../auth/auth-service';
 import { requireAdmin } from '../auth/rbac';
+import type { LicenseEnforcer } from '../licensing/license-enforcer';
 
 export interface BackupData {
   version: string;
@@ -69,67 +69,68 @@ export function createBackupRouter(
       log.info({ userId: req.user?.sub }, 'Starting database backup');
 
       // Fetch all data (excluding sensitive fields)
-      const [patterns, agents, users, schedules, triggers, licenses] = await Promise.all([
-        prisma.pattern.findMany({
-          select: {
-            id: true,
-            name: true,
-            version: true,
-            description: true,
-            script: true,
-            metadata: true,
-            input: true,
-            minAgents: true,
-            maxAgents: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        }),
-        prisma.agent.findMany({
-          select: {
-            id: true,
-            name: true,
-            endpoint: true,
-            capabilities: true,
-            status: true,
-            expertise: true,
-            metadata: true,
-            lastSeen: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        }),
-        prisma.user.findMany({
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true,
-            status: true,
-            ssoProvider: true,
-            ssoSubject: true,
-            metadata: true,
-            createdAt: true,
-            updatedAt: true,
-            // Exclude passwordHash for security
-          },
-        }),
-        prisma.schedule.findMany(),
-        prisma.trigger.findMany(),
-        prisma.license.findMany({
-          select: {
-            id: true,
-            type: true,
-            validFrom: true,
-            validUntil: true,
-            features: true,
-            metadata: true,
-            createdAt: true,
-            updatedAt: true,
-            // Exclude key for security
-          },
-        }),
-      ]);
+      const [patterns, agents, users, schedules, triggers, licenses] =
+        await Promise.all([
+          prisma.pattern.findMany({
+            select: {
+              id: true,
+              name: true,
+              version: true,
+              description: true,
+              script: true,
+              metadata: true,
+              input: true,
+              minAgents: true,
+              maxAgents: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          }),
+          prisma.agent.findMany({
+            select: {
+              id: true,
+              name: true,
+              endpoint: true,
+              capabilities: true,
+              status: true,
+              expertise: true,
+              metadata: true,
+              lastSeen: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          }),
+          prisma.user.findMany({
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              role: true,
+              status: true,
+              ssoProvider: true,
+              ssoSubject: true,
+              metadata: true,
+              createdAt: true,
+              updatedAt: true,
+              // Exclude passwordHash for security
+            },
+          }),
+          prisma.schedule.findMany(),
+          prisma.trigger.findMany(),
+          prisma.license.findMany({
+            select: {
+              id: true,
+              type: true,
+              validFrom: true,
+              validUntil: true,
+              features: true,
+              metadata: true,
+              createdAt: true,
+              updatedAt: true,
+              // Exclude key for security
+            },
+          }),
+        ]);
 
       const backup: BackupData = {
         version: '1.0',
@@ -156,10 +157,17 @@ export function createBackupRouter(
 
       // Log the backup action
       if (auditService) {
-        await auditService.logFromRequest(req, 'create', 'backup', undefined, 'success', {
-          totalRecords: backup.metadata.totalRecords,
-          tables: Object.keys(backup.tables),
-        });
+        await auditService.logFromRequest(
+          req,
+          'create',
+          'backup',
+          undefined,
+          'success',
+          {
+            totalRecords: backup.metadata.totalRecords,
+            tables: Object.keys(backup.tables),
+          }
+        );
       }
 
       log.info(
@@ -170,16 +178,26 @@ export function createBackupRouter(
       // Set headers for file download
       const filename = `parallax-backup-${new Date().toISOString().split('T')[0]}.json`;
       res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${filename}"`
+      );
 
       res.json(backup);
     } catch (error) {
       log.error({ error }, 'Failed to create backup');
 
       if (auditService) {
-        await auditService.logFromRequest(req, 'create', 'backup', undefined, 'failure', {
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        await auditService.logFromRequest(
+          req,
+          'create',
+          'backup',
+          undefined,
+          'failure',
+          {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          }
+        );
       }
 
       res.status(500).json({
@@ -193,7 +211,7 @@ export function createBackupRouter(
    * GET /backup/info
    * Get backup information without downloading
    */
-  router.get('/info', async (req: any, res: any) => {
+  router.get('/info', async (_req: any, res: any) => {
     try {
       const [
         patternCount,
@@ -266,7 +284,10 @@ export function createBackupRouter(
       );
 
       const mode = req.query.mode || 'merge'; // 'merge' or 'replace'
-      const results: Record<string, { created: number; updated: number; skipped: number }> = {};
+      const results: Record<
+        string,
+        { created: number; updated: number; skipped: number }
+      > = {};
 
       // Restore in transaction
       await prisma.$transaction(async (tx) => {
@@ -295,7 +316,10 @@ export function createBackupRouter(
                 }
               }
             } catch (e) {
-              log.warn({ pattern: pattern.name, error: e }, 'Failed to restore pattern');
+              log.warn(
+                { pattern: pattern.name, error: e },
+                'Failed to restore pattern'
+              );
               results.patterns.skipped++;
             }
           }
@@ -325,7 +349,10 @@ export function createBackupRouter(
                 }
               }
             } catch (e) {
-              log.warn({ agentId: agent.id, error: e }, 'Failed to restore agent');
+              log.warn(
+                { agentId: agent.id, error: e },
+                'Failed to restore agent'
+              );
               results.agents.skipped++;
             }
           }
@@ -348,14 +375,19 @@ export function createBackupRouter(
                   where: { email: user.email },
                 });
                 if (!existing) {
-                  await tx.user.create({ data: { ...user, status: 'pending' } });
+                  await tx.user.create({
+                    data: { ...user, status: 'pending' },
+                  });
                   results.users.created++;
                 } else {
                   results.users.skipped++;
                 }
               }
             } catch (e) {
-              log.warn({ userEmail: user.email, error: e }, 'Failed to restore user');
+              log.warn(
+                { userEmail: user.email, error: e },
+                'Failed to restore user'
+              );
               results.users.skipped++;
             }
           }
@@ -385,7 +417,10 @@ export function createBackupRouter(
                 }
               }
             } catch (e) {
-              log.warn({ scheduleId: schedule.id, error: e }, 'Failed to restore schedule');
+              log.warn(
+                { scheduleId: schedule.id, error: e },
+                'Failed to restore schedule'
+              );
               results.schedules.skipped++;
             }
           }
@@ -415,7 +450,10 @@ export function createBackupRouter(
                 }
               }
             } catch (e) {
-              log.warn({ triggerId: trigger.id, error: e }, 'Failed to restore trigger');
+              log.warn(
+                { triggerId: trigger.id, error: e },
+                'Failed to restore trigger'
+              );
               results.triggers.skipped++;
             }
           }
@@ -424,11 +462,18 @@ export function createBackupRouter(
 
       // Log the restore action
       if (auditService) {
-        await auditService.logFromRequest(req, 'update', 'backup', undefined, 'success', {
-          mode,
-          backupTimestamp: backup.timestamp,
-          results,
-        });
+        await auditService.logFromRequest(
+          req,
+          'update',
+          'backup',
+          undefined,
+          'success',
+          {
+            mode,
+            backupTimestamp: backup.timestamp,
+            results,
+          }
+        );
       }
 
       log.info(
@@ -446,9 +491,16 @@ export function createBackupRouter(
       log.error({ error }, 'Failed to restore backup');
 
       if (auditService) {
-        await auditService.logFromRequest(req, 'update', 'backup', undefined, 'failure', {
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        await auditService.logFromRequest(
+          req,
+          'update',
+          'backup',
+          undefined,
+          'failure',
+          {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          }
+        );
       }
 
       res.status(500).json({
@@ -479,7 +531,13 @@ export function createBackupRouter(
       if (!backup.tables) {
         issues.push('Missing tables field');
       } else {
-        const expectedTables = ['patterns', 'agents', 'users', 'schedules', 'triggers'];
+        const expectedTables = [
+          'patterns',
+          'agents',
+          'users',
+          'schedules',
+          'triggers',
+        ];
         for (const table of expectedTables) {
           if (!backup.tables[table as keyof typeof backup.tables]) {
             issues.push(`Missing table: ${table}`);
@@ -492,7 +550,7 @@ export function createBackupRouter(
         issues.push('Missing timestamp');
       } else {
         const date = new Date(backup.timestamp);
-        if (isNaN(date.getTime())) {
+        if (Number.isNaN(date.getTime())) {
           issues.push('Invalid timestamp format');
         }
       }
@@ -508,7 +566,10 @@ export function createBackupRouter(
               timestamp: backup.timestamp,
               records: backup.metadata?.totalRecords,
               tables: Object.fromEntries(
-                Object.entries(backup.tables || {}).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])
+                Object.entries(backup.tables || {}).map(([k, v]) => [
+                  k,
+                  Array.isArray(v) ? v.length : 0,
+                ])
               ),
             }
           : undefined,

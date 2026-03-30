@@ -2,21 +2,23 @@
  * Credential Service Tests
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CredentialService } from '../src/credential-service';
 import { MemoryTokenStore } from '../src/oauth';
 import type {
-  GitProviderAdapter,
+  AgentPermissions,
   GitCredential,
   GitCredentialRequest,
+  GitProviderAdapter,
   OAuthToken,
-  AgentPermissions,
 } from '../src/types';
 
 // Mock provider with unique IDs
 let credentialCounter = 0;
 
-function createMockProvider(name: 'github' | 'gitlab' = 'github'): GitProviderAdapter {
+function createMockProvider(
+  name: 'github' | 'gitlab' = 'github'
+): GitProviderAdapter {
   return {
     name,
     getCredentials: vi.fn().mockImplementation(() => {
@@ -183,7 +185,9 @@ describe('CredentialService', () => {
 
     it('handles revoking non-existent credential', async () => {
       // Should not throw
-      await expect(service.revokeCredential('non-existent')).resolves.not.toThrow();
+      await expect(
+        service.revokeCredential('non-existent')
+      ).resolves.not.toThrow();
     });
   });
 

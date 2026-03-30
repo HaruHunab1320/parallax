@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('PatternsResource', () => {
@@ -137,7 +137,9 @@ describe('PatternsResource', () => {
         status: 204,
       });
 
-      await expect(client.patterns.delete('TestPattern')).resolves.toBeUndefined();
+      await expect(
+        client.patterns.delete('TestPattern')
+      ).resolves.toBeUndefined();
     });
   });
 

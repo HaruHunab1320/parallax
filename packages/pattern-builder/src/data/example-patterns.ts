@@ -4,13 +4,18 @@
  * Pre-built patterns that can be loaded into the canvas
  */
 
-import { PatternNode, PatternEdge } from '../types';
+import type { PatternNode } from '../types';
 
 export interface ExamplePattern {
   id: string;
   name: string;
   description: string;
-  category: 'voting' | 'quality' | 'extraction' | 'verification' | 'performance';
+  category:
+    | 'voting'
+    | 'quality'
+    | 'extraction'
+    | 'verification'
+    | 'performance';
   nodes: Omit<PatternNode, 'id'>[];
   edges: Array<{ source: number; target: number; sourceHandle?: string }>;
 }
@@ -28,9 +33,7 @@ export const EXAMPLE_PATTERNS: ExamplePattern[] = [
         position: { x: 50, y: 200 },
         data: {
           label: 'Content Input',
-          fields: [
-            { name: 'content', type: 'string', required: true },
-          ],
+          fields: [{ name: 'content', type: 'string', required: true }],
         },
       },
       {
@@ -83,7 +86,8 @@ export const EXAMPLE_PATTERNS: ExamplePattern[] = [
   {
     id: 'quality-gated-analysis',
     name: 'Quality-Gated Analysis',
-    description: 'Document analysis with consensus building and quality threshold',
+    description:
+      'Document analysis with consensus building and quality threshold',
     category: 'quality',
     nodes: [
       {
@@ -168,7 +172,8 @@ export const EXAMPLE_PATTERNS: ExamplePattern[] = [
   {
     id: 'specialized-extractors',
     name: 'Specialized Extractors',
-    description: 'Route document parts to specialized extraction agents and merge results',
+    description:
+      'Route document parts to specialized extraction agents and merge results',
     category: 'extraction',
     nodes: [
       {
@@ -242,7 +247,8 @@ export const EXAMPLE_PATTERNS: ExamplePattern[] = [
   {
     id: 'translation-verification',
     name: 'Translation Verification',
-    description: 'Multi-agent translation with consensus check and retry on low confidence',
+    description:
+      'Multi-agent translation with consensus check and retry on low confidence',
     category: 'verification',
     nodes: [
       {
@@ -471,7 +477,8 @@ export const EXAMPLE_PATTERNS: ExamplePattern[] = [
   {
     id: 'rag-quality-gate',
     name: 'RAG Quality Gate',
-    description: 'Retrieval-augmented generation with quality filtering on retrieved chunks',
+    description:
+      'Retrieval-augmented generation with quality filtering on retrieved chunks',
     category: 'quality',
     nodes: [
       {
@@ -912,7 +919,8 @@ export const EXAMPLE_PATTERNS: ExamplePattern[] = [
   {
     id: 'data-validation',
     name: 'Data Validation Pipeline',
-    description: 'Validate data against multiple rule sets with detailed error reporting',
+    description:
+      'Validate data against multiple rule sets with detailed error reporting',
     category: 'quality',
     nodes: [
       {
@@ -1071,7 +1079,8 @@ export const EXAMPLE_PATTERNS: ExamplePattern[] = [
   {
     id: 'classification-confidence',
     name: 'Classification with Confidence',
-    description: 'Multi-class classification with confidence thresholds and human escalation',
+    description:
+      'Multi-class classification with confidence thresholds and human escalation',
     category: 'voting',
     nodes: [
       {
@@ -1152,10 +1161,12 @@ export const EXAMPLE_PATTERNS: ExamplePattern[] = [
   },
 ];
 
-export function getPatternsByCategory(category: ExamplePattern['category']): ExamplePattern[] {
-  return EXAMPLE_PATTERNS.filter(p => p.category === category);
+export function getPatternsByCategory(
+  category: ExamplePattern['category']
+): ExamplePattern[] {
+  return EXAMPLE_PATTERNS.filter((p) => p.category === category);
 }
 
 export function getPatternById(id: string): ExamplePattern | undefined {
-  return EXAMPLE_PATTERNS.find(p => p.id === id);
+  return EXAMPLE_PATTERNS.find((p) => p.id === id);
 }

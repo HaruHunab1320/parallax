@@ -5,8 +5,8 @@
  */
 
 import type {
-  CompileTarget,
   CompileContext,
+  CompileTarget,
   OrgPattern,
   OrgRole,
   OrgWorkflow,
@@ -72,7 +72,11 @@ export const mermaidTarget: CompileTarget = {
     return lines.join('\n');
   },
 
-  emitStep(step: WorkflowStep, stepIndex: number, _ctx: CompileContext): string {
+  emitStep(
+    step: WorkflowStep,
+    stepIndex: number,
+    _ctx: CompileContext
+  ): string {
     const nodeId = `step_${stepIndex}`;
 
     switch (step.type) {
@@ -137,5 +141,5 @@ export const mermaidTarget: CompileTarget = {
 
 function truncate(str: string, maxLen: number): string {
   if (str.length <= maxLen) return str;
-  return str.slice(0, maxLen - 3) + '...';
+  return `${str.slice(0, maxLen - 3)}...`;
 }

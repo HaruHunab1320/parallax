@@ -4,16 +4,15 @@
  * Handles GitHub App authentication and API operations.
  */
 
-import { Octokit } from '@octokit/rest';
+import { randomUUID } from 'node:crypto';
 import { createAppAuth } from '@octokit/auth-app';
-import { Logger } from 'pino';
+import { Octokit } from '@octokit/rest';
 import type {
   GitCredential,
-  GitHubAppConfig,
   GitHubAppInstallation,
   PullRequestInfo,
 } from 'git-workspace-service';
-import { randomUUID } from 'crypto';
+import type { Logger } from 'pino';
 
 export interface GitHubProviderConfig {
   /**
@@ -64,7 +63,8 @@ export class GitHubProvider {
     this.logger.info('Initializing GitHub provider');
 
     try {
-      const { data: installations } = await this.appOctokit.apps.listInstallations();
+      const { data: installations } =
+        await this.appOctokit.apps.listInstallations();
 
       for (const installation of installations) {
         await this.registerInstallation(installation.id);
@@ -83,23 +83,33 @@ export class GitHubProvider {
   /**
    * Register an installation (called on webhook or init)
    */
-  async registerInstallation(installationId: number): Promise<GitHubAppInstallation> {
+  async registerInstallation(
+    installationId: number
+  ): Promise<GitHubAppInstallation> {
     try {
       // Get installation details
-      const { data: installation } = await this.appOctokit.apps.getInstallation({
-        installation_id: installationId,
-      });
+      const { data: installation } = await this.appOctokit.apps.getInstallation(
+        {
+          installation_id: installationId,
+        }
+      );
 
       // Get accessible repositories
       const octokit = await this.getInstallationOctokit(installationId);
-      const { data: repos } = await octokit.apps.listReposAccessibleToInstallation({
-        per_page: 100,
-      });
+      const { data: repos } =
+        await octokit.apps.listReposAccessibleToInstallation({
+          per_page: 100,
+        });
 
       // Handle different account types
-      const account = installation.account as { login?: string; type?: string; slug?: string } | null;
+      const account = installation.account as {
+        login?: string;
+        type?: string;
+        slug?: string;
+      } | null;
       const accountLogin = account?.login || account?.slug || 'unknown';
-      const accountType = account?.type === 'Organization' ? 'Organization' : 'User';
+      const accountType =
+        account?.type === 'Organization' ? 'Organization' : 'User';
 
       const appInstallation: GitHubAppInstallation = {
         installationId,
@@ -122,7 +132,10 @@ export class GitHubProvider {
 
       return appInstallation;
     } catch (error) {
-      this.logger.error({ installationId, error }, 'Failed to register installation');
+      this.logger.error(
+        { installationId, error },
+        'Failed to register installation'
+      );
       throw error;
     }
   }
@@ -130,7 +143,10 @@ export class GitHubProvider {
   /**
    * Get installation for a repository
    */
-  getInstallationForRepo(owner: string, repo: string): GitHubAppInstallation | null {
+  getInstallationForRepo(
+    owner: string,
+    repo: string
+  ): GitHubAppInstallation | null {
     // Check by owner
     const installation = this.installations.get(owner);
     if (!installation) {
@@ -161,7 +177,9 @@ export class GitHubProvider {
     }
 
     // Get installation access token
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const _octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     // The token is already available from the auth strategy
     // For explicit token, we'd use createAppAuth directly
@@ -174,9 +192,10 @@ export class GitHubProvider {
       type: 'installation',
       installationId: installation.installationId,
       repositoryNames: [repo],
-      permissions: access === 'write'
-        ? { contents: 'write', pull_requests: 'write', metadata: 'read' }
-        : { contents: 'read', metadata: 'read' },
+      permissions:
+        access === 'write'
+          ? { contents: 'write', pull_requests: 'write', metadata: 'read' }
+          : { contents: 'read', metadata: 'read' },
     });
 
     return {
@@ -184,10 +203,13 @@ export class GitHubProvider {
       type: 'github_app',
       token,
       repo: `${owner}/${repo}`,
-      permissions: access === 'write'
-        ? ['contents:write', 'pull_requests:write', 'metadata:read']
-        : ['contents:read', 'metadata:read'],
-      expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + ttlSeconds * 1000),
+      permissions:
+        access === 'write'
+          ? ['contents:write', 'pull_requests:write', 'metadata:read']
+          : ['contents:read', 'metadata:read'],
+      expiresAt: expiresAt
+        ? new Date(expiresAt)
+        : new Date(Date.now() + ttlSeconds * 1000),
       provider: 'github',
     };
   }
@@ -211,7 +233,9 @@ export class GitHubProvider {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: pr } = await octokit.pulls.create({
       owner,
@@ -254,7 +278,9 @@ export class GitHubProvider {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     await octokit.issues.addLabels({
       owner,
@@ -278,7 +304,9 @@ export class GitHubProvider {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     await octokit.pulls.requestReviewers({
       owner,
@@ -301,7 +329,9 @@ export class GitHubProvider {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: pr } = await octokit.pulls.get({
       owner,
@@ -325,13 +355,19 @@ export class GitHubProvider {
   /**
    * Delete a branch
    */
-  async deleteBranch(owner: string, repo: string, branch: string): Promise<void> {
+  async deleteBranch(
+    owner: string,
+    repo: string,
+    branch: string
+  ): Promise<void> {
     const installation = this.getInstallationForRepo(owner, repo);
     if (!installation) {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     await octokit.git.deleteRef({
       owner,
@@ -351,7 +387,9 @@ export class GitHubProvider {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const branches: string[] = [];
     let page = 1;
@@ -382,7 +420,9 @@ export class GitHubProvider {
   // Private Methods
   // ─────────────────────────────────────────────────────────────
 
-  private async getInstallationOctokit(installationId: number): Promise<Octokit> {
+  private async getInstallationOctokit(
+    installationId: number
+  ): Promise<Octokit> {
     if (!this.installationOctokits.has(installationId)) {
       const octokit = new Octokit({
         authStrategy: createAppAuth,

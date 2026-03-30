@@ -46,7 +46,7 @@ const result = validator.validateAll(patternCode);
 console.log('Valid:', result.valid ? '✅' : '❌');
 if (!result.valid && result.formattedErrors) {
   console.log('\nErrors:');
-  result.formattedErrors.forEach(err => {
+  result.formattedErrors.forEach((err) => {
     console.log(`  Line ${err.line}: ${err.message}`);
   });
 } else {

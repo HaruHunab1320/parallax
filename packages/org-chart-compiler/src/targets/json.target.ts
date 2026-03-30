@@ -5,8 +5,8 @@
  */
 
 import type {
-  CompileTarget,
   CompileContext,
+  CompileTarget,
   OrgPattern,
   OrgRole,
   OrgWorkflow,
@@ -29,8 +29,8 @@ export const jsonTarget: CompileTarget = {
       capabilities: role.capabilities,
       reportsTo: role.reportsTo,
       instances: {
-        min: role.singleton ? 1 : (role.minInstances || 1),
-        max: role.singleton ? 1 : (role.maxInstances || role.minInstances || 1),
+        min: role.singleton ? 1 : role.minInstances || 1,
+        max: role.singleton ? 1 : role.maxInstances || role.minInstances || 1,
         singleton: role.singleton || false,
       },
     });
@@ -114,7 +114,9 @@ export const jsonTarget: CompileTarget = {
           ...base,
           check: step.check,
           then: JSON.parse(this.emitStep(step.then, 0, ctx)),
-          else: step.else ? JSON.parse(this.emitStep(step.else, 0, ctx)) : undefined,
+          else: step.else
+            ? JSON.parse(this.emitStep(step.else, 0, ctx))
+            : undefined,
         });
 
       case 'wait':
@@ -162,8 +164,10 @@ export function buildJsonPlan(pattern: OrgPattern): object {
             capabilities: role.capabilities,
             reportsTo: role.reportsTo,
             instances: {
-              min: role.singleton ? 1 : (role.minInstances || 1),
-              max: role.singleton ? 1 : (role.maxInstances || role.minInstances || 1),
+              min: role.singleton ? 1 : role.minInstances || 1,
+              max: role.singleton
+                ? 1
+                : role.maxInstances || role.minInstances || 1,
             },
           },
         ])

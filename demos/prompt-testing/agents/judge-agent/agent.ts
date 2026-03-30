@@ -5,8 +5,8 @@
  * Scores on accuracy, clarity, engagement, and appropriateness.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'judge-agent';
@@ -16,16 +16,11 @@ class JudgeAgent extends ParallaxAgent {
   private model: any = null;
 
   constructor() {
-    super(
-      AGENT_ID,
-      AGENT_NAME,
-      ['prompt', 'testing', 'judge', 'evaluation'],
-      {
-        expertise: 0.95,
-        model: MODEL_NAME,
-        description: 'Evaluates and scores prompt variant responses'
-      }
-    );
+    super(AGENT_ID, AGENT_NAME, ['prompt', 'testing', 'judge', 'evaluation'], {
+      expertise: 0.95,
+      model: MODEL_NAME,
+      description: 'Evaluates and scores prompt variant responses',
+    });
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
@@ -37,7 +32,10 @@ class JudgeAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +44,7 @@ class JudgeAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -57,7 +55,7 @@ class JudgeAgent extends ParallaxAgent {
       return {
         value: { error: 'No responses to judge', variantType: 'judge' },
         confidence: 0,
-        reasoning: 'No variant responses provided'
+        reasoning: 'No variant responses provided',
       };
     }
 
@@ -112,7 +110,7 @@ You MUST respond in this exact JSON format:
         return {
           value: { error: 'Could not parse evaluation', variantType: 'judge' },
           confidence: 0.3,
-          reasoning: responseText.substring(0, 200)
+          reasoning: responseText.substring(0, 200),
         };
       }
 
@@ -122,17 +120,17 @@ You MUST respond in this exact JSON format:
         value: {
           ...parsed,
           variantType: 'judge',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: 0.95,
-        reasoning: `Evaluated ${responses.length} variants, winner: ${parsed.winner}`
+        reasoning: `Evaluated ${responses.length} variants, winner: ${parsed.winner}`,
       };
     } catch (error) {
       console.error('Evaluation error:', error);
       return {
         value: { error: String(error), variantType: 'judge' },
         confidence: 0,
-        reasoning: 'Evaluation failed'
+        reasoning: 'Evaluation failed',
       };
     }
   }

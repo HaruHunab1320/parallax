@@ -4,10 +4,10 @@
  * Handles GitHub App webhook events for installation management.
  */
 
-import { Router, Request, Response } from 'express';
-import { Logger } from 'pino';
-import { createHmac, timingSafeEqual } from 'crypto';
-import { GitHubProvider } from './providers/github-provider';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { type Request, type Response, Router } from 'express';
+import type { Logger } from 'pino';
+import type { GitHubProvider } from './providers/github-provider';
 
 export interface GitHubWebhookConfig {
   webhookSecret: string;
@@ -46,7 +46,7 @@ export function createGitHubWebhookRouter(config: GitHubWebhookConfig): Router {
   const { webhookSecret, githubProvider, logger } = config;
 
   // Raw body parser for signature verification
-  router.use((req: Request, res: Response, next) => {
+  router.use((req: Request, _res: Response, next) => {
     // Store raw body for signature verification
     let rawBody = '';
     req.setEncoding('utf8');
@@ -89,7 +89,11 @@ export function createGitHubWebhookRouter(config: GitHubWebhookConfig): Router {
           break;
 
         case 'installation_repositories':
-          await handleInstallationRepositoriesEvent(req.body, githubProvider, logger);
+          await handleInstallationRepositoriesEvent(
+            req.body,
+            githubProvider,
+            logger
+          );
           break;
 
         case 'ping':

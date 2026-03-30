@@ -3,7 +3,8 @@ import { normalizeForMatching, stripAnsiPreserveText } from './normalize';
 
 describe('normalize', () => {
   it('preserves visible text between ansi segments', () => {
-    const raw = '\x1b[38;2;215;119;87m✻\x1b[39m \x1b[38;2;255;255;255mDone.\x1b[39m';
+    const raw =
+      '\x1b[38;2;215;119;87m✻\x1b[39m \x1b[38;2;255;255;255mDone.\x1b[39m';
     const out = stripAnsiPreserveText(raw);
     expect(out).toContain('✻');
     expect(out).toContain('Done.');

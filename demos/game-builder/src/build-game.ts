@@ -16,7 +16,8 @@
 
 import { parseArgs } from 'node:util';
 
-const CONTROL_PLANE_URL = process.env.PARALLAX_API_URL || 'http://localhost:3000';
+const CONTROL_PLANE_URL =
+  process.env.PARALLAX_API_URL || 'http://localhost:3000';
 const POLL_INTERVAL_MS = 2000;
 
 interface ExecutionResponse {
@@ -62,7 +63,9 @@ async function main() {
   }
 
   if (!values.repo) {
-    console.error('Error: --repo is required (e.g., --repo owner/my-game-repo)');
+    console.error(
+      'Error: --repo is required (e.g., --repo owner/my-game-repo)'
+    );
     process.exit(1);
   }
 
@@ -90,7 +93,7 @@ async function main() {
     }
     const health: any = await healthRes.json();
     console.log(`   ✓ Control plane healthy (${health.status})`);
-  } catch (error) {
+  } catch (_error) {
     console.error(`   ✗ Control plane not reachable at ${CONTROL_PLANE_URL}`);
     console.error('   Run: pnpm start:infra && pnpm start:control-plane');
     process.exit(1);
@@ -104,7 +107,12 @@ async function main() {
     input: {
       repo: values.repo,
       gameType: values.game,
-      features: ['basic_gameplay', 'keyboard_controls', 'scoring', 'win_condition'],
+      features: [
+        'basic_gameplay',
+        'keyboard_controls',
+        'scoring',
+        'win_condition',
+      ],
     },
     options: {
       stream: true,
@@ -128,7 +136,7 @@ async function main() {
       throw new Error(error.error || `Request failed: ${res.status}`);
     }
 
-    execution = await res.json() as ExecutionResponse;
+    execution = (await res.json()) as ExecutionResponse;
     console.log(`   ✓ Execution started: ${execution.id}`);
   } catch (error) {
     console.error(`   ✗ Failed to start execution: ${error}`);
@@ -152,23 +160,32 @@ async function pollExecution(executionId: string): Promise<void> {
 
   while (true) {
     try {
-      const res = await fetch(`${CONTROL_PLANE_URL}/api/executions/${executionId}`);
+      const res = await fetch(
+        `${CONTROL_PLANE_URL}/api/executions/${executionId}`
+      );
       if (!res.ok) {
         console.error(`Failed to fetch execution: ${res.status}`);
         break;
       }
 
-      const result = await res.json() as ExecutionResult;
+      const result = (await res.json()) as ExecutionResult;
 
       // Print status changes
       if (result.status !== lastStatus) {
         lastStatus = result.status;
-        const icon = result.status === 'completed' ? '✓' : result.status === 'failed' ? '✗' : '⋯';
+        const icon =
+          result.status === 'completed'
+            ? '✓'
+            : result.status === 'failed'
+              ? '✗'
+              : '⋯';
         console.log(`\n   ${icon} Status: ${result.status}`);
       }
 
       // Fetch and print new events
-      const eventsRes = await fetch(`${CONTROL_PLANE_URL}/api/executions/${executionId}/events`);
+      const eventsRes = await fetch(
+        `${CONTROL_PLANE_URL}/api/executions/${executionId}/events`
+      );
       if (eventsRes.ok) {
         const { events }: any = await eventsRes.json();
         if (events.length > lastEventCount) {
@@ -193,7 +210,10 @@ async function pollExecution(executionId: string): Promise<void> {
   }
 }
 
-async function streamExecution(executionId: string, streamUrl: string): Promise<void> {
+async function streamExecution(
+  executionId: string,
+  streamUrl: string
+): Promise<void> {
   // Use EventSource for SSE streaming
   console.log(`   Streaming from: ${streamUrl}`);
 
@@ -208,10 +228,14 @@ function printEvent(event: any): void {
 
   switch (type) {
     case 'started':
-      console.log(`   [${time}] 🎬 Execution started: ${event.data?.patternName}`);
+      console.log(
+        `   [${time}] 🎬 Execution started: ${event.data?.patternName}`
+      );
       break;
     case 'workspace_provisioning':
-      console.log(`   [${time}] 📁 Provisioning workspace for ${event.data?.repo}...`);
+      console.log(
+        `   [${time}] 📁 Provisioning workspace for ${event.data?.repo}...`
+      );
       break;
     case 'workspace_ready':
       console.log(`   [${time}] 📁 Workspace ready: ${event.data?.branch}`);
@@ -220,17 +244,28 @@ function printEvent(event: any): void {
       console.log(`   [${time}] 🤖 Selected ${event.data?.count} agents`);
       break;
     case 'agent_started':
-      console.log(`   [${time}] 🤖 Agent started: ${event.data?.agentName} (${event.data?.agentId?.slice(0, 8)})`);
+      console.log(
+        `   [${time}] 🤖 Agent started: ${event.data?.agentName} (${event.data?.agentId?.slice(0, 8)})`
+      );
       break;
-    case 'agent_completed':
-      const conf = event.data?.confidence ? ` (${(event.data.confidence * 100).toFixed(0)}% confidence)` : '';
-      console.log(`   [${time}] ✓ Agent completed: ${event.data?.agentName}${conf}`);
+    case 'agent_completed': {
+      const conf = event.data?.confidence
+        ? ` (${(event.data.confidence * 100).toFixed(0)}% confidence)`
+        : '';
+      console.log(
+        `   [${time}] ✓ Agent completed: ${event.data?.agentName}${conf}`
+      );
       break;
+    }
     case 'agent_failed':
-      console.log(`   [${time}] ✗ Agent failed: ${event.data?.agentName} - ${event.data?.error}`);
+      console.log(
+        `   [${time}] ✗ Agent failed: ${event.data?.agentName} - ${event.data?.error}`
+      );
       break;
     case 'runtime_started':
-      console.log(`   [${time}] ⚡ Executing pattern: ${event.data?.patternName}`);
+      console.log(
+        `   [${time}] ⚡ Executing pattern: ${event.data?.patternName}`
+      );
       break;
     case 'runtime_completed':
       console.log(`   [${time}] ⚡ Pattern execution complete`);
@@ -246,13 +281,15 @@ function printEvent(event: any): void {
       break;
     default:
       if (event.data) {
-        console.log(`   [${time}] ${type}: ${JSON.stringify(event.data).slice(0, 60)}`);
+        console.log(
+          `   [${time}] ${type}: ${JSON.stringify(event.data).slice(0, 60)}`
+        );
       }
   }
 }
 
 function printFinalResult(result: ExecutionResult): void {
-  console.log('\n' + '═'.repeat(60));
+  console.log(`\n${'═'.repeat(60)}`);
 
   if (result.status === 'completed') {
     console.log('\n🎉 GAME BUILD COMPLETE!\n');
@@ -262,7 +299,9 @@ function printFinalResult(result: ExecutionResult): void {
     }
 
     if (result.metrics) {
-      console.log(`   ⏱  Duration: ${(result.metrics.durationMs / 1000).toFixed(1)}s`);
+      console.log(
+        `   ⏱  Duration: ${(result.metrics.durationMs / 1000).toFixed(1)}s`
+      );
       console.log(`   🤖 Agents used: ${result.metrics.agentsUsed}`);
       console.log(`   📝 Steps executed: ${result.metrics.stepsExecuted}`);
     }
@@ -279,7 +318,7 @@ function printFinalResult(result: ExecutionResult): void {
     console.log(`   - Jaeger traces: http://localhost:16686`);
   }
 
-  console.log('\n' + '═'.repeat(60));
+  console.log(`\n${'═'.repeat(60)}`);
 }
 
 function printUsage(): void {

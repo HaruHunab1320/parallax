@@ -70,7 +70,7 @@ try {
 
   if (result.warnings.length > 0) {
     console.log('\n=== Warnings ===');
-    result.warnings.forEach(w => console.log(`- ${w}`));
+    result.warnings.forEach((w) => console.log(`- ${w}`));
   }
 
   console.log('\n✅ Compilation successful!');

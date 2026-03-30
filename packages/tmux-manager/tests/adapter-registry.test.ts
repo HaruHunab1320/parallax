@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { AdapterRegistry } from '../src/adapters/adapter-registry.js';
 import { ShellAdapter } from '../src/adapters/shell-adapter.js';
 

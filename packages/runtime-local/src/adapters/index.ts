@@ -4,21 +4,20 @@
  * Re-exports adapters from coding-agent-adapters and provides the local EchoAdapter.
  */
 
-export { EchoAdapter } from './echo-adapter';
-
 // Re-export from coding-agent-adapters for convenience
 export {
-  ClaudeAdapter,
-  GeminiAdapter,
-  CodexAdapter,
   AiderAdapter,
-  createAllAdapters,
-  createAdapter,
+  ClaudeAdapter,
+  CodexAdapter,
   checkAdapters,
+  createAdapter,
+  createAllAdapters,
+  GeminiAdapter,
 } from 'coding-agent-adapters';
+export { EchoAdapter } from './echo-adapter';
 
-import type { PTYManager } from 'pty-manager';
 import { createAllAdapters } from 'coding-agent-adapters';
+import type { PTYManager } from 'pty-manager';
 import { EchoAdapter } from './echo-adapter';
 
 /**

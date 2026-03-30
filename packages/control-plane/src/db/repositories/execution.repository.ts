@@ -1,4 +1,4 @@
-import { Execution, ExecutionEvent, Prisma } from '@prisma/client';
+import type { Execution, ExecutionEvent, Prisma } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 
 export interface ExecutionWithEvents extends Execution {
@@ -16,15 +16,16 @@ export class ExecutionRepository extends BaseRepository {
 
   async findById(id: string): Promise<ExecutionWithEvents | null> {
     return this.executeQuery(
-      () => this.prisma.execution.findFirst({
-        where: { id },
-        include: {
-          events: {
-            orderBy: { time: 'asc' },
+      () =>
+        this.prisma.execution.findFirst({
+          where: { id },
+          include: {
+            events: {
+              orderBy: { time: 'asc' },
+            },
+            pattern: true,
           },
-          pattern: true,
-        },
-      }),
+        }),
       'ExecutionRepository.findById'
     );
   }
@@ -36,25 +37,27 @@ export class ExecutionRepository extends BaseRepository {
     orderBy?: Prisma.ExecutionOrderByWithRelationInput;
   }): Promise<Execution[]> {
     return this.executeQuery(
-      () => this.prisma.execution.findMany({
-        ...options,
-        include: {
-          pattern: true,
-        },
-      }),
+      () =>
+        this.prisma.execution.findMany({
+          ...options,
+          include: {
+            pattern: true,
+          },
+        }),
       'ExecutionRepository.findAll'
     );
   }
 
   async findRecent(limit: number = 10): Promise<Execution[]> {
     return this.executeQuery(
-      () => this.prisma.execution.findMany({
-        take: limit,
-        orderBy: { time: 'desc' },
-        include: {
-          pattern: true,
-        },
-      }),
+      () =>
+        this.prisma.execution.findMany({
+          take: limit,
+          orderBy: { time: 'desc' },
+          include: {
+            pattern: true,
+          },
+        }),
       'ExecutionRepository.findRecent'
     );
   }
@@ -64,19 +67,21 @@ export class ExecutionRepository extends BaseRepository {
     data: Prisma.ExecutionUpdateInput
   ): Promise<Execution> {
     return this.executeQuery(
-      () => this.prisma.execution.update({
-        where: { id },
-        data,
-      }),
+      () =>
+        this.prisma.execution.update({
+          where: { id },
+          data,
+        }),
       'ExecutionRepository.update'
     );
   }
 
   async delete(id: string): Promise<Execution> {
     return this.executeQuery(
-      () => this.prisma.execution.delete({
-        where: { id },
-      }),
+      () =>
+        this.prisma.execution.delete({
+          where: { id },
+        }),
       'ExecutionRepository.delete'
     );
   }
@@ -90,24 +95,26 @@ export class ExecutionRepository extends BaseRepository {
     }
   ): Promise<ExecutionEvent> {
     return this.executeQuery(
-      () => this.prisma.executionEvent.create({
-        data: {
-          executionId,
-          type: event.type,
-          agentId: event.agentId,
-          data: event.data,
-        },
-      }),
+      () =>
+        this.prisma.executionEvent.create({
+          data: {
+            executionId,
+            type: event.type,
+            agentId: event.agentId,
+            data: event.data,
+          },
+        }),
       'ExecutionRepository.addEvent'
     );
   }
 
   async getEvents(executionId: string): Promise<ExecutionEvent[]> {
     return this.executeQuery(
-      () => this.prisma.executionEvent.findMany({
-        where: { executionId },
-        orderBy: { time: 'asc' },
-      }),
+      () =>
+        this.prisma.executionEvent.findMany({
+          where: { executionId },
+          orderBy: { time: 'asc' },
+        }),
       'ExecutionRepository.getEvents'
     );
   }
@@ -123,23 +130,23 @@ export class ExecutionRepository extends BaseRepository {
     }
   ): Promise<Execution> {
     return this.executeQuery(
-      () => this.prisma.execution.update({
-        where: { id },
-        data: {
-          status,
-          ...additionalData,
-        },
-      }),
+      () =>
+        this.prisma.execution.update({
+          where: { id },
+          data: {
+            status,
+            ...additionalData,
+          },
+        }),
       'ExecutionRepository.updateStatus'
     );
   }
 
   async getStats(timeRange?: { start: Date; end: Date }): Promise<any> {
-    return this.executeQuery(
-      async () => {
-        let result;
-        if (timeRange) {
-          result = await this.prisma.$queryRaw<any[]>`
+    return this.executeQuery(async () => {
+      let result;
+      if (timeRange) {
+        result = await this.prisma.$queryRaw<any[]>`
             SELECT 
               COUNT(*) as total_executions,
               COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful,
@@ -151,8 +158,8 @@ export class ExecutionRepository extends BaseRepository {
             FROM "Execution"
             WHERE time >= ${timeRange.start}::timestamptz 
             AND time <= ${timeRange.end}::timestamptz`;
-        } else {
-          result = await this.prisma.$queryRaw<any[]>`
+      } else {
+        result = await this.prisma.$queryRaw<any[]>`
             SELECT 
               COUNT(*) as total_executions,
               COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful,
@@ -162,9 +169,10 @@ export class ExecutionRepository extends BaseRepository {
               AVG("durationMs") as avg_duration_ms,
               AVG(confidence) as avg_confidence
             FROM "Execution"`;
-        }
-        
-        return result[0] || {
+      }
+
+      return (
+        result[0] || {
           total_executions: 0,
           successful: 0,
           failed: 0,
@@ -172,10 +180,9 @@ export class ExecutionRepository extends BaseRepository {
           in_progress: 0,
           avg_duration_ms: null,
           avg_confidence: null,
-        };
-      },
-      'ExecutionRepository.getStats'
-    );
+        }
+      );
+    }, 'ExecutionRepository.getStats');
   }
 
   /**
@@ -184,23 +191,20 @@ export class ExecutionRepository extends BaseRepository {
    * If nodeId is omitted, finds all orphaned executions.
    */
   async findOrphanedExecutions(nodeId?: string): Promise<any[]> {
-    return this.executeQuery(
-      async () => {
-        if (nodeId) {
-          // Use raw query to reference new columns before prisma generate
-          return this.prisma.$queryRaw`
+    return this.executeQuery(async () => {
+      if (nodeId) {
+        // Use raw query to reference new columns before prisma generate
+        return this.prisma.$queryRaw`
             SELECT * FROM "Execution"
             WHERE status IN ('running', 'pending')
             AND ("nodeId" = ${nodeId} OR "nodeId" IS NULL)
           ` as Promise<any[]>;
-        }
-        return this.prisma.$queryRaw`
+      }
+      return this.prisma.$queryRaw`
           SELECT * FROM "Execution"
           WHERE status IN ('running', 'pending')
         ` as Promise<any[]>;
-      },
-      'ExecutionRepository.findOrphanedExecutions'
-    );
+    }, 'ExecutionRepository.findOrphanedExecutions');
   }
 
   /**
@@ -208,9 +212,8 @@ export class ExecutionRepository extends BaseRepository {
    * Uses startedAt + timeoutMs (or defaultTimeoutMs) < NOW().
    */
   async findTimedOutExecutions(defaultTimeoutMs: number): Promise<any[]> {
-    return this.executeQuery(
-      async () => {
-        return this.prisma.$queryRaw`
+    return this.executeQuery(async () => {
+      return this.prisma.$queryRaw`
           SELECT * FROM "Execution"
           WHERE status = 'running'
           AND "startedAt" IS NOT NULL
@@ -220,9 +223,7 @@ export class ExecutionRepository extends BaseRepository {
             ("timeoutMs" IS NULL AND "startedAt" + make_interval(secs => ${defaultTimeoutMs} / 1000.0) < NOW())
           )
         ` as Promise<any[]>;
-      },
-      'ExecutionRepository.findTimedOutExecutions'
-    );
+    }, 'ExecutionRepository.findTimedOutExecutions');
   }
 
   /**
@@ -231,41 +232,38 @@ export class ExecutionRepository extends BaseRepository {
    */
   async markOrphaned(id: string, reason: string): Promise<Execution> {
     return this.executeQuery(
-      () => this.prisma.execution.update({
-        where: { id },
-        data: {
-          status: 'failed',
-          error: reason,
-        },
-      }),
+      () =>
+        this.prisma.execution.update({
+          where: { id },
+          data: {
+            status: 'failed',
+            error: reason,
+          },
+        }),
       'ExecutionRepository.markOrphaned'
     );
   }
 
   async cleanup(olderThan: Date): Promise<number> {
-    return this.executeQuery(
-      async () => {
-        const result = await this.prisma.execution.deleteMany({
-          where: {
-            time: {
-              lt: olderThan,
-            },
-            status: {
-              in: ['completed', 'failed', 'cancelled'],
-            },
+    return this.executeQuery(async () => {
+      const result = await this.prisma.execution.deleteMany({
+        where: {
+          time: {
+            lt: olderThan,
           },
-        });
-        return result.count;
-      },
-      'ExecutionRepository.cleanup'
-    );
+          status: {
+            in: ['completed', 'failed', 'cancelled'],
+          },
+        },
+      });
+      return result.count;
+    }, 'ExecutionRepository.cleanup');
   }
 
   async getHourlyStats(hours: number = 24): Promise<any[]> {
-    return this.executeQuery(
-      async () => {
-        const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-        const result = await this.prisma.$queryRaw<any[]>`
+    return this.executeQuery(async () => {
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+      const result = await this.prisma.$queryRaw<any[]>`
           SELECT
             date_trunc('hour', time) as hour,
             COUNT(*)::int as executions,
@@ -276,17 +274,14 @@ export class ExecutionRepository extends BaseRepository {
           WHERE time >= ${since}
           GROUP BY hour
           ORDER BY hour ASC`;
-        return result;
-      },
-      'ExecutionRepository.getHourlyStats'
-    );
+      return result;
+    }, 'ExecutionRepository.getHourlyStats');
   }
 
   async getDailyStats(days: number = 7): Promise<any[]> {
-    return this.executeQuery(
-      async () => {
-        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-        const result = await this.prisma.$queryRaw<any[]>`
+    return this.executeQuery(async () => {
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const result = await this.prisma.$queryRaw<any[]>`
           SELECT
             date_trunc('day', time) as day,
             COUNT(*)::int as executions,
@@ -298,9 +293,7 @@ export class ExecutionRepository extends BaseRepository {
           WHERE time >= ${since}
           GROUP BY day
           ORDER BY day ASC`;
-        return result;
-      },
-      'ExecutionRepository.getDailyStats'
-    );
+      return result;
+    }, 'ExecutionRepository.getDailyStats');
   }
 }

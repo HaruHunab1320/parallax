@@ -4,12 +4,12 @@
  * REST API for managing Docker-based CLI agent containers.
  */
 
-import express, { Request, Response } from 'express';
-import { WebSocketServer, WebSocket } from 'ws';
-import { createServer, Server } from 'http';
-import { Logger } from 'pino';
-import { DockerRuntime } from './docker-runtime';
-import { AgentConfig, AgentHandle, AgentMessage } from '@parallaxai/runtime-interface';
+import { createServer, type Server } from 'node:http';
+import type { AgentConfig } from '@parallaxai/runtime-interface';
+import express, { type Request, type Response } from 'express';
+import type { Logger } from 'pino';
+import { WebSocket, WebSocketServer } from 'ws';
+import type { DockerRuntime } from './docker-runtime';
 
 export interface RuntimeServerOptions {
   port: number;
@@ -233,7 +233,11 @@ export class RuntimeServer {
   private broadcast(event: string, data: any): void {
     if (!this.wss) return;
 
-    const message = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
+    const message = JSON.stringify({
+      event,
+      data,
+      timestamp: new Date().toISOString(),
+    });
 
     this.wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -246,7 +250,11 @@ export class RuntimeServer {
     const subscribers = this.agentSubscribers.get(agentId);
     if (!subscribers) return;
 
-    const message = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
+    const message = JSON.stringify({
+      event,
+      data,
+      timestamp: new Date().toISOString(),
+    });
 
     subscribers.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {

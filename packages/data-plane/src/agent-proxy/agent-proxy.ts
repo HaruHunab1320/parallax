@@ -1,17 +1,17 @@
-import { 
-  ProxyConfig, 
-  AgentConnection, 
-  ProxyRequest, 
-  ProxyResponse,
-  ConnectionMetrics 
-} from './types';
-import { CircuitBreaker } from './circuit-breaker';
-import { LoadBalancer, LoadBalancingStrategy } from './load-balancer';
-import { Logger } from 'pino';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
+import path from 'node:path';
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
-import path from 'path';
+import type { Logger } from 'pino';
+import { CircuitBreaker } from './circuit-breaker';
+import { LoadBalancer, LoadBalancingStrategy } from './load-balancer';
+import type {
+  AgentConnection,
+  ConnectionMetrics,
+  ProxyConfig,
+  ProxyRequest,
+  ProxyResponse,
+} from './types';
 
 const PROTO_DIR = path.join(__dirname, '../../../../proto');
 
@@ -56,17 +56,28 @@ export class AgentProxy extends EventEmitter {
       enums: String,
       defaults: true,
       oneofs: true,
-      includeDirs: [PROTO_DIR]
+      includeDirs: [PROTO_DIR],
     });
 
-    const protoDescriptor = grpc.loadPackageDefinition(packageDefinition) as any;
+    const protoDescriptor = grpc.loadPackageDefinition(
+      packageDefinition
+    ) as any;
     this.confidenceProto = protoDescriptor.parallax.confidence;
   }
 
-  async registerAgent(id: string, endpoint: string, protocol?: 'grpc' | 'http' | 'gateway'): Promise<void> {
+  async registerAgent(
+    id: string,
+    endpoint: string,
+    protocol?: 'grpc' | 'http' | 'gateway'
+  ): Promise<void> {
     // Auto-detect gateway protocol from endpoint scheme
-    const detectedProtocol = protocol
-      || (endpoint.startsWith('gateway://') ? 'gateway' : endpoint.startsWith('http') ? 'http' : 'grpc');
+    const detectedProtocol =
+      protocol ||
+      (endpoint.startsWith('gateway://')
+        ? 'gateway'
+        : endpoint.startsWith('http')
+          ? 'http'
+          : 'grpc');
 
     const connection: AgentConnection = {
       id,
@@ -83,14 +94,14 @@ export class AgentProxy extends EventEmitter {
     };
 
     this.connections.set(id, connection);
-    
+
     // Create circuit breaker for this agent
     const circuitBreaker = new CircuitBreaker(this.config.circuitBreaker);
     circuitBreaker.on('state-change', (state) => {
       this.logger.warn({ agentId: id, state }, 'Circuit breaker state changed');
       this.emit('circuit-breaker-change', { agentId: id, state });
     });
-    
+
     this.circuitBreakers.set(id, circuitBreaker);
 
     // Initialize rate limiting tracking
@@ -177,7 +188,7 @@ export class AgentProxy extends EventEmitter {
           } catch (error) {
             lastError = error;
             if (i < (request.retries ?? this.config.retries)) {
-              await this.delay(Math.pow(2, i) * 1000); // Exponential backoff
+              await this.delay(2 ** i * 1000); // Exponential backoff
             }
           }
         }
@@ -199,7 +210,7 @@ export class AgentProxy extends EventEmitter {
     } catch (error) {
       // Update metrics
       this.updateMetrics(request.agentId, false, Date.now() - startTime);
-      
+
       throw error;
     } finally {
       // Decrement connection count
@@ -212,7 +223,10 @@ export class AgentProxy extends EventEmitter {
     request: ProxyRequest
   ): Promise<T> {
     if (agent.status !== 'connected') {
-      this.logger.warn({ agentId: agent.id, status: agent.status }, 'Agent not marked as connected, attempting request anyway');
+      this.logger.warn(
+        { agentId: agent.id, status: agent.status },
+        'Agent not marked as connected, attempting request anyway'
+      );
     }
 
     if (agent.protocol === 'gateway') {
@@ -262,10 +276,10 @@ export class AgentProxy extends EventEmitter {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(request.payload ?? {}),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -290,7 +304,7 @@ export class AgentProxy extends EventEmitter {
     const grpcRequest = {
       task_description: taskDescription,
       data,
-      timeout_ms: request.timeout ?? this.config.timeout
+      timeout_ms: request.timeout ?? this.config.timeout,
     };
 
     return new Promise<T>((resolve, reject) => {
@@ -300,10 +314,12 @@ export class AgentProxy extends EventEmitter {
           return;
         }
 
-        const parsed = response?.value_json ? JSON.parse(response.value_json) : response;
+        const parsed = response?.value_json
+          ? JSON.parse(response.value_json)
+          : response;
         resolve({
           value: parsed,
-          confidence: response?.confidence
+          confidence: response?.confidence,
         } as T);
       });
     });
@@ -330,19 +346,19 @@ export class AgentProxy extends EventEmitter {
   private checkRateLimit(agentId: string): boolean {
     const timestamps = this.requestTimestamps.get(agentId) || [];
     const now = Date.now();
-    
+
     // Remove old timestamps
     const recentTimestamps = timestamps.filter(
-      t => now - t < this.config.rateLimit.windowMs
+      (t) => now - t < this.config.rateLimit.windowMs
     );
-    
+
     if (recentTimestamps.length >= this.config.rateLimit.maxRequests) {
       return false;
     }
-    
+
     recentTimestamps.push(now);
     this.requestTimestamps.set(agentId, recentTimestamps);
-    
+
     return true;
   }
 
@@ -355,33 +371,34 @@ export class AgentProxy extends EventEmitter {
     if (!connection) return;
 
     connection.metrics.requestCount++;
-    
+
     if (!success) {
       connection.metrics.errorCount++;
     }
-    
+
     // Update average latency
     const prevAvg = connection.metrics.averageLatency;
     const count = connection.metrics.requestCount;
-    connection.metrics.averageLatency = (prevAvg * (count - 1) + latency) / count;
-    
+    connection.metrics.averageLatency =
+      (prevAvg * (count - 1) + latency) / count;
+
     // Update success rate
-    connection.metrics.successRate = 
-      (connection.metrics.requestCount - connection.metrics.errorCount) / 
+    connection.metrics.successRate =
+      (connection.metrics.requestCount - connection.metrics.errorCount) /
       connection.metrics.requestCount;
   }
 
   selectAgent(agentIds?: string[]): string | null {
     let agents: AgentConnection[];
-    
+
     if (agentIds) {
       agents = agentIds
-        .map(id => this.connections.get(id))
+        .map((id) => this.connections.get(id))
         .filter((a): a is AgentConnection => a !== undefined);
     } else {
       agents = Array.from(this.connections.values());
     }
-    
+
     const selected = this.loadBalancer.selectAgent(agents);
     return selected?.id || null;
   }
@@ -393,16 +410,16 @@ export class AgentProxy extends EventEmitter {
 
   getAllMetrics(): Map<string, ConnectionMetrics> {
     const metrics = new Map<string, ConnectionMetrics>();
-    
+
     for (const [id, connection] of this.connections) {
       metrics.set(id, connection.metrics);
     }
-    
+
     return metrics;
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async disconnect(): Promise<void> {
@@ -411,7 +428,7 @@ export class AgentProxy extends EventEmitter {
       connection.status = 'disconnected';
       this.emit('agent-disconnected', id);
     }
-    
+
     this.connections.clear();
     this.circuitBreakers.clear();
     this.requestTimestamps.clear();

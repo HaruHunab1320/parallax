@@ -13,12 +13,12 @@
  * Message types for session communication
  */
 export type MessageType =
-  | 'task'           // A task/instruction for the session
-  | 'response'       // Session's response to a task
-  | 'question'       // Session asking for clarification
-  | 'answer'         // Answer to a session's question
-  | 'status'         // Status update
-  | 'error';         // Error message
+  | 'task' // A task/instruction for the session
+  | 'response' // Session's response to a task
+  | 'question' // Session asking for clarification
+  | 'answer' // Answer to a session's question
+  | 'status' // Status update
+  | 'error'; // Error message
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Spawn Configuration
@@ -70,7 +70,10 @@ export interface SpawnConfig {
    *  Keys are regex source strings (from rule.pattern.source).
    *  - null value disables that rule entirely
    *  - Object value merges fields into the matching adapter rule */
-  ruleOverrides?: Record<string, Partial<Omit<AutoResponseRule, 'pattern'>> | null>;
+  ruleOverrides?: Record<
+    string,
+    Partial<Omit<AutoResponseRule, 'pattern'>> | null
+  >;
 
   /** When true, adapter detectBlockingPrompt() results with suggestedResponse
    *  are emitted as autoResponded=false instead of being auto-responded.
@@ -124,15 +127,15 @@ export interface LoginDetection {
  * Types of blocking prompts that can occur
  */
 export type BlockingPromptType =
-  | 'login'          // Authentication required
-  | 'update'         // Update/upgrade available
-  | 'config'         // Configuration choice needed
-  | 'tos'            // Terms of service acceptance
-  | 'model_select'   // Model/version selection
+  | 'login' // Authentication required
+  | 'update' // Update/upgrade available
+  | 'config' // Configuration choice needed
+  | 'tos' // Terms of service acceptance
+  | 'model_select' // Model/version selection
   | 'project_select' // Project/workspace selection
-  | 'permission'     // Permission request
-  | 'tool_wait'      // Agent waiting on tool/shell interaction
-  | 'unknown';       // Unrecognized blocking prompt
+  | 'permission' // Permission request
+  | 'tool_wait' // Agent waiting on tool/shell interaction
+  | 'unknown'; // Unrecognized blocking prompt
 
 /**
  * Blocking prompt detection result
@@ -223,7 +226,9 @@ export interface AdapterFactoryConfig {
   args?: string[] | ((config: SpawnConfig) => string[]);
 
   /** Environment variables */
-  env?: Record<string, string> | ((config: SpawnConfig) => Record<string, string>);
+  env?:
+    | Record<string, string>
+    | ((config: SpawnConfig) => Record<string, string>);
 
   /** Login detection configuration */
   loginDetection?: {

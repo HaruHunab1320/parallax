@@ -4,9 +4,9 @@
  * Tracks all user actions for compliance and security monitoring.
  */
 
-import { PrismaClient } from '@prisma/client';
-import { Logger } from 'pino';
-import { Request } from 'express';
+import type { PrismaClient } from '@prisma/client';
+import type { Request } from 'express';
+import type { Logger } from 'pino';
 
 export type AuditAction =
   | 'create'
@@ -231,39 +231,42 @@ export class AuditService {
   }> {
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
 
-    const [total, byAction, byResource, failedLogins, uniqueUsers] = await Promise.all([
-      this.prisma.auditLog.count({
-        where: { timestamp: { gte: since } },
-      }),
-      this.prisma.auditLog.groupBy({
-        by: ['action'],
-        where: { timestamp: { gte: since } },
-        _count: true,
-      }),
-      this.prisma.auditLog.groupBy({
-        by: ['resource'],
-        where: { timestamp: { gte: since } },
-        _count: true,
-      }),
-      this.prisma.auditLog.count({
-        where: {
-          action: 'login_failed',
-          timestamp: { gte: since },
-        },
-      }),
-      this.prisma.auditLog.groupBy({
-        by: ['userId'],
-        where: {
-          timestamp: { gte: since },
-          userId: { not: null },
-        },
-      }),
-    ]);
+    const [total, byAction, byResource, failedLogins, uniqueUsers] =
+      await Promise.all([
+        this.prisma.auditLog.count({
+          where: { timestamp: { gte: since } },
+        }),
+        this.prisma.auditLog.groupBy({
+          by: ['action'],
+          where: { timestamp: { gte: since } },
+          _count: true,
+        }),
+        this.prisma.auditLog.groupBy({
+          by: ['resource'],
+          where: { timestamp: { gte: since } },
+          _count: true,
+        }),
+        this.prisma.auditLog.count({
+          where: {
+            action: 'login_failed',
+            timestamp: { gte: since },
+          },
+        }),
+        this.prisma.auditLog.groupBy({
+          by: ['userId'],
+          where: {
+            timestamp: { gte: since },
+            userId: { not: null },
+          },
+        }),
+      ]);
 
     return {
       totalEvents: total,
       byAction: Object.fromEntries(byAction.map((r) => [r.action, r._count])),
-      byResource: Object.fromEntries(byResource.map((r) => [r.resource, r._count])),
+      byResource: Object.fromEntries(
+        byResource.map((r) => [r.resource, r._count])
+      ),
       failedLogins,
       uniqueUsers: uniqueUsers.length,
     };

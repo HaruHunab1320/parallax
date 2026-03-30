@@ -5,9 +5,9 @@
  */
 
 import { Router } from 'express';
-import { Logger } from 'pino';
-import { SchedulerService } from '../scheduler';
-import { LicenseEnforcer } from '../licensing/license-enforcer';
+import type { Logger } from 'pino';
+import type { LicenseEnforcer } from '../licensing/license-enforcer';
+import type { SchedulerService } from '../scheduler';
 
 export function createSchedulesRouter(
   schedulerService: SchedulerService,
@@ -20,7 +20,10 @@ export function createSchedulesRouter(
   // Middleware to check enterprise license
   const requireScheduling = (_req: any, res: any, next: any) => {
     try {
-      licenseEnforcer.requireFeature('scheduled_patterns', 'Scheduled Patterns');
+      licenseEnforcer.requireFeature(
+        'scheduled_patterns',
+        'Scheduled Patterns'
+      );
       next();
     } catch (error: any) {
       log.warn('Scheduled patterns feature not available');
@@ -56,7 +59,8 @@ export function createSchedulesRouter(
     } catch (error) {
       log.error({ error }, 'Failed to list schedules');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to list schedules',
+        error:
+          error instanceof Error ? error.message : 'Failed to list schedules',
       });
     }
   });
@@ -120,7 +124,8 @@ export function createSchedulesRouter(
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to create schedule',
+        error:
+          error instanceof Error ? error.message : 'Failed to create schedule',
       });
     }
   });
@@ -142,7 +147,8 @@ export function createSchedulesRouter(
     } catch (error) {
       log.error({ error, scheduleId: req.params.id }, 'Failed to get schedule');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to get schedule',
+        error:
+          error instanceof Error ? error.message : 'Failed to get schedule',
       });
     }
   });
@@ -188,14 +194,18 @@ export function createSchedulesRouter(
 
       return res.json(schedule);
     } catch (error) {
-      log.error({ error, scheduleId: req.params.id }, 'Failed to update schedule');
+      log.error(
+        { error, scheduleId: req.params.id },
+        'Failed to update schedule'
+      );
 
       if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: error.message });
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to update schedule',
+        error:
+          error instanceof Error ? error.message : 'Failed to update schedule',
       });
     }
   });
@@ -213,14 +223,18 @@ export function createSchedulesRouter(
 
       return res.status(204).send();
     } catch (error) {
-      log.error({ error, scheduleId: req.params.id }, 'Failed to delete schedule');
+      log.error(
+        { error, scheduleId: req.params.id },
+        'Failed to delete schedule'
+      );
 
       if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: error.message });
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to delete schedule',
+        error:
+          error instanceof Error ? error.message : 'Failed to delete schedule',
       });
     }
   });
@@ -238,14 +252,18 @@ export function createSchedulesRouter(
 
       return res.json(schedule);
     } catch (error) {
-      log.error({ error, scheduleId: req.params.id }, 'Failed to pause schedule');
+      log.error(
+        { error, scheduleId: req.params.id },
+        'Failed to pause schedule'
+      );
 
       if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: error.message });
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to pause schedule',
+        error:
+          error instanceof Error ? error.message : 'Failed to pause schedule',
       });
     }
   });
@@ -263,14 +281,18 @@ export function createSchedulesRouter(
 
       return res.json(schedule);
     } catch (error) {
-      log.error({ error, scheduleId: req.params.id }, 'Failed to resume schedule');
+      log.error(
+        { error, scheduleId: req.params.id },
+        'Failed to resume schedule'
+      );
 
       if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: error.message });
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to resume schedule',
+        error:
+          error instanceof Error ? error.message : 'Failed to resume schedule',
       });
     }
   });
@@ -284,18 +306,25 @@ export function createSchedulesRouter(
       const { id } = req.params;
       const run = await schedulerService.triggerSchedule(id);
 
-      log.info({ scheduleId: id, runId: run.id }, 'Schedule manually triggered via API');
+      log.info(
+        { scheduleId: id, runId: run.id },
+        'Schedule manually triggered via API'
+      );
 
       return res.json(run);
     } catch (error) {
-      log.error({ error, scheduleId: req.params.id }, 'Failed to trigger schedule');
+      log.error(
+        { error, scheduleId: req.params.id },
+        'Failed to trigger schedule'
+      );
 
       if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: error.message });
       }
 
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to trigger schedule',
+        error:
+          error instanceof Error ? error.message : 'Failed to trigger schedule',
       });
     }
   });
@@ -319,9 +348,15 @@ export function createSchedulesRouter(
         count: runs.length,
       });
     } catch (error) {
-      log.error({ error, scheduleId: req.params.id }, 'Failed to get schedule runs');
+      log.error(
+        { error, scheduleId: req.params.id },
+        'Failed to get schedule runs'
+      );
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to get schedule runs',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to get schedule runs',
       });
     }
   });

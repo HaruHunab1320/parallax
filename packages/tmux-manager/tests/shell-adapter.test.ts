@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ShellAdapter } from '../src/adapters/shell-adapter.js';
 import type { SpawnConfig } from '../src/types.js';
 
@@ -13,13 +13,19 @@ describe('ShellAdapter', () => {
     // Args depend on the default shell (zsh gets -f, bash gets --norc --noprofile)
     const args = adapter.getArgs(dummyConfig);
     expect(Array.isArray(args)).toBe(true);
-    expect(adapter.getEnv(dummyConfig)).toEqual({ PS1: 'pty> ', PROMPT: 'pty> ' });
+    expect(adapter.getEnv(dummyConfig)).toEqual({
+      PS1: 'pty> ',
+      PROMPT: 'pty> ',
+    });
   });
 
   it('should accept custom shell and prompt', () => {
     const adapter = new ShellAdapter({ shell: '/bin/zsh', prompt: 'test$ ' });
     expect(adapter.getCommand()).toBe('/bin/zsh');
-    expect(adapter.getEnv(dummyConfig)).toEqual({ PS1: 'test$ ', PROMPT: 'test$ ' });
+    expect(adapter.getEnv(dummyConfig)).toEqual({
+      PS1: 'test$ ',
+      PROMPT: 'test$ ',
+    });
     expect(adapter.getArgs(dummyConfig)).toEqual(['-f']); // zsh gets -f flag
   });
 

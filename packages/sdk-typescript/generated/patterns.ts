@@ -6,35 +6,33 @@
 // source: patterns.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf";
+import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf';
 import {
   type CallOptions,
   type ChannelCredentials,
-  Client,
+  type Client,
   type ClientOptions,
   type ClientReadableStream,
   type ClientUnaryCall,
   type handleServerStreamingCall,
   type handleUnaryCall,
-  makeGenericClientConstructor,
   type Metadata,
+  makeGenericClientConstructor,
   type ServiceError,
   type UntypedServiceImplementation,
-} from "@grpc/grpc-js";
-import { ConfidenceResult } from "./confidence";
-import { Struct } from "./google/protobuf/struct";
-import { Timestamp } from "./google/protobuf/timestamp";
+} from '@grpc/grpc-js';
+import { ConfidenceResult } from './confidence';
+import { Struct } from './google/protobuf/struct';
+import { Timestamp } from './google/protobuf/timestamp';
 
-export const protobufPackage = "parallax.patterns";
+export const protobufPackage = 'parallax.patterns';
 
 /** Pattern definition */
 export interface Pattern {
   name: string;
   version: string;
   description: string;
-  requirements:
-    | Pattern_Requirements
-    | undefined;
+  requirements: Pattern_Requirements | undefined;
   /** The actual Prism code */
   prismScript: string;
   /** Additional metadata */
@@ -76,9 +74,7 @@ export interface ExecutePatternResponse {
   patternName: string;
   status: ExecutePatternResponse_Status;
   /** Pattern execution result */
-  result:
-    | { [key: string]: any }
-    | undefined;
+  result: { [key: string]: any } | undefined;
   /** Overall confidence */
   confidence: number;
   metrics: ExecutePatternResponse_ExecutionMetrics | undefined;
@@ -95,45 +91,46 @@ export enum ExecutePatternResponse_Status {
   UNRECOGNIZED = -1,
 }
 
-export function executePatternResponse_StatusFromJSON(object: any): ExecutePatternResponse_Status {
+export function executePatternResponse_StatusFromJSON(
+  object: any
+): ExecutePatternResponse_Status {
   switch (object) {
     case 0:
-    case "UNKNOWN":
+    case 'UNKNOWN':
       return ExecutePatternResponse_Status.UNKNOWN;
     case 1:
-    case "SUCCESS":
+    case 'SUCCESS':
       return ExecutePatternResponse_Status.SUCCESS;
     case 2:
-    case "FAILURE":
+    case 'FAILURE':
       return ExecutePatternResponse_Status.FAILURE;
     case 3:
-    case "TIMEOUT":
+    case 'TIMEOUT':
       return ExecutePatternResponse_Status.TIMEOUT;
     case 4:
-    case "CANCELLED":
+    case 'CANCELLED':
       return ExecutePatternResponse_Status.CANCELLED;
-    case -1:
-    case "UNRECOGNIZED":
     default:
       return ExecutePatternResponse_Status.UNRECOGNIZED;
   }
 }
 
-export function executePatternResponse_StatusToJSON(object: ExecutePatternResponse_Status): string {
+export function executePatternResponse_StatusToJSON(
+  object: ExecutePatternResponse_Status
+): string {
   switch (object) {
     case ExecutePatternResponse_Status.UNKNOWN:
-      return "UNKNOWN";
+      return 'UNKNOWN';
     case ExecutePatternResponse_Status.SUCCESS:
-      return "SUCCESS";
+      return 'SUCCESS';
     case ExecutePatternResponse_Status.FAILURE:
-      return "FAILURE";
+      return 'FAILURE';
     case ExecutePatternResponse_Status.TIMEOUT:
-      return "TIMEOUT";
+      return 'TIMEOUT';
     case ExecutePatternResponse_Status.CANCELLED:
-      return "CANCELLED";
-    case ExecutePatternResponse_Status.UNRECOGNIZED:
+      return 'CANCELLED';
     default:
-      return "UNRECOGNIZED";
+      return 'UNRECOGNIZED';
   }
 }
 
@@ -179,34 +176,51 @@ export interface UploadPatternResponse {
 }
 
 function createBasePattern(): Pattern {
-  return { name: "", version: "", description: "", requirements: undefined, prismScript: "", metadata: undefined };
+  return {
+    name: '',
+    version: '',
+    description: '',
+    requirements: undefined,
+    prismScript: '',
+    metadata: undefined,
+  };
 }
 
 export const Pattern: MessageFns<Pattern> = {
-  encode(message: Pattern, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.name !== "") {
+  encode(
+    message: Pattern,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.name !== '') {
       writer.uint32(10).string(message.name);
     }
-    if (message.version !== "") {
+    if (message.version !== '') {
       writer.uint32(18).string(message.version);
     }
-    if (message.description !== "") {
+    if (message.description !== '') {
       writer.uint32(26).string(message.description);
     }
     if (message.requirements !== undefined) {
-      Pattern_Requirements.encode(message.requirements, writer.uint32(34).fork()).join();
+      Pattern_Requirements.encode(
+        message.requirements,
+        writer.uint32(34).fork()
+      ).join();
     }
-    if (message.prismScript !== "") {
+    if (message.prismScript !== '') {
       writer.uint32(42).string(message.prismScript);
     }
     if (message.metadata !== undefined) {
-      Struct.encode(Struct.wrap(message.metadata), writer.uint32(50).fork()).join();
+      Struct.encode(
+        Struct.wrap(message.metadata),
+        writer.uint32(50).fork()
+      ).join();
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): Pattern {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBasePattern();
     while (reader.pos < end) {
@@ -241,7 +255,10 @@ export const Pattern: MessageFns<Pattern> = {
             break;
           }
 
-          message.requirements = Pattern_Requirements.decode(reader, reader.uint32());
+          message.requirements = Pattern_Requirements.decode(
+            reader,
+            reader.uint32()
+          );
           continue;
         }
         case 5: {
@@ -257,7 +274,9 @@ export const Pattern: MessageFns<Pattern> = {
             break;
           }
 
-          message.metadata = Struct.unwrap(Struct.decode(reader, reader.uint32()));
+          message.metadata = Struct.unwrap(
+            Struct.decode(reader, reader.uint32())
+          );
           continue;
         }
       }
@@ -271,30 +290,36 @@ export const Pattern: MessageFns<Pattern> = {
 
   fromJSON(object: any): Pattern {
     return {
-      name: isSet(object.name) ? globalThis.String(object.name) : "",
-      version: isSet(object.version) ? globalThis.String(object.version) : "",
-      description: isSet(object.description) ? globalThis.String(object.description) : "",
-      requirements: isSet(object.requirements) ? Pattern_Requirements.fromJSON(object.requirements) : undefined,
-      prismScript: isSet(object.prismScript) ? globalThis.String(object.prismScript) : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : '',
+      version: isSet(object.version) ? globalThis.String(object.version) : '',
+      description: isSet(object.description)
+        ? globalThis.String(object.description)
+        : '',
+      requirements: isSet(object.requirements)
+        ? Pattern_Requirements.fromJSON(object.requirements)
+        : undefined,
+      prismScript: isSet(object.prismScript)
+        ? globalThis.String(object.prismScript)
+        : '',
       metadata: isObject(object.metadata) ? object.metadata : undefined,
     };
   },
 
   toJSON(message: Pattern): unknown {
     const obj: any = {};
-    if (message.name !== "") {
+    if (message.name !== '') {
       obj.name = message.name;
     }
-    if (message.version !== "") {
+    if (message.version !== '') {
       obj.version = message.version;
     }
-    if (message.description !== "") {
+    if (message.description !== '') {
       obj.description = message.description;
     }
     if (message.requirements !== undefined) {
       obj.requirements = Pattern_Requirements.toJSON(message.requirements);
     }
-    if (message.prismScript !== "") {
+    if (message.prismScript !== '') {
       obj.prismScript = message.prismScript;
     }
     if (message.metadata !== undefined) {
@@ -308,13 +333,14 @@ export const Pattern: MessageFns<Pattern> = {
   },
   fromPartial<I extends Exact<DeepPartial<Pattern>, I>>(object: I): Pattern {
     const message = createBasePattern();
-    message.name = object.name ?? "";
-    message.version = object.version ?? "";
-    message.description = object.description ?? "";
-    message.requirements = (object.requirements !== undefined && object.requirements !== null)
-      ? Pattern_Requirements.fromPartial(object.requirements)
-      : undefined;
-    message.prismScript = object.prismScript ?? "";
+    message.name = object.name ?? '';
+    message.version = object.version ?? '';
+    message.description = object.description ?? '';
+    message.requirements =
+      object.requirements !== undefined && object.requirements !== null
+        ? Pattern_Requirements.fromPartial(object.requirements)
+        : undefined;
+    message.prismScript = object.prismScript ?? '';
     message.metadata = object.metadata ?? undefined;
     return message;
   },
@@ -325,7 +351,10 @@ function createBasePattern_Requirements(): Pattern_Requirements {
 }
 
 export const Pattern_Requirements: MessageFns<Pattern_Requirements> = {
-  encode(message: Pattern_Requirements, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: Pattern_Requirements,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.capabilities) {
       writer.uint32(10).string(v!);
     }
@@ -341,8 +370,12 @@ export const Pattern_Requirements: MessageFns<Pattern_Requirements> = {
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): Pattern_Requirements {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): Pattern_Requirements {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBasePattern_Requirements();
     while (reader.pos < end) {
@@ -394,9 +427,15 @@ export const Pattern_Requirements: MessageFns<Pattern_Requirements> = {
       capabilities: globalThis.Array.isArray(object?.capabilities)
         ? object.capabilities.map((e: any) => globalThis.String(e))
         : [],
-      minAgents: isSet(object.minAgents) ? globalThis.Number(object.minAgents) : 0,
-      maxAgents: isSet(object.maxAgents) ? globalThis.Number(object.maxAgents) : 0,
-      minConfidence: isSet(object.minConfidence) ? globalThis.Number(object.minConfidence) : 0,
+      minAgents: isSet(object.minAgents)
+        ? globalThis.Number(object.minAgents)
+        : 0,
+      maxAgents: isSet(object.maxAgents)
+        ? globalThis.Number(object.maxAgents)
+        : 0,
+      minConfidence: isSet(object.minConfidence)
+        ? globalThis.Number(object.minConfidence)
+        : 0,
     };
   },
 
@@ -417,10 +456,14 @@ export const Pattern_Requirements: MessageFns<Pattern_Requirements> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<Pattern_Requirements>, I>>(base?: I): Pattern_Requirements {
+  create<I extends Exact<DeepPartial<Pattern_Requirements>, I>>(
+    base?: I
+  ): Pattern_Requirements {
     return Pattern_Requirements.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<Pattern_Requirements>, I>>(object: I): Pattern_Requirements {
+  fromPartial<I extends Exact<DeepPartial<Pattern_Requirements>, I>>(
+    object: I
+  ): Pattern_Requirements {
     const message = createBasePattern_Requirements();
     message.capabilities = object.capabilities?.map((e) => e) || [];
     message.minAgents = object.minAgents ?? 0;
@@ -431,28 +474,46 @@ export const Pattern_Requirements: MessageFns<Pattern_Requirements> = {
 };
 
 function createBaseExecutePatternRequest(): ExecutePatternRequest {
-  return { patternName: "", patternVersion: "", input: undefined, options: undefined };
+  return {
+    patternName: '',
+    patternVersion: '',
+    input: undefined,
+    options: undefined,
+  };
 }
 
 export const ExecutePatternRequest: MessageFns<ExecutePatternRequest> = {
-  encode(message: ExecutePatternRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.patternName !== "") {
+  encode(
+    message: ExecutePatternRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.patternName !== '') {
       writer.uint32(10).string(message.patternName);
     }
-    if (message.patternVersion !== "") {
+    if (message.patternVersion !== '') {
       writer.uint32(18).string(message.patternVersion);
     }
     if (message.input !== undefined) {
-      Struct.encode(Struct.wrap(message.input), writer.uint32(26).fork()).join();
+      Struct.encode(
+        Struct.wrap(message.input),
+        writer.uint32(26).fork()
+      ).join();
     }
     if (message.options !== undefined) {
-      ExecutePatternRequest_Options.encode(message.options, writer.uint32(34).fork()).join();
+      ExecutePatternRequest_Options.encode(
+        message.options,
+        writer.uint32(34).fork()
+      ).join();
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): ExecutePatternRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): ExecutePatternRequest {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseExecutePatternRequest();
     while (reader.pos < end) {
@@ -487,7 +548,10 @@ export const ExecutePatternRequest: MessageFns<ExecutePatternRequest> = {
             break;
           }
 
-          message.options = ExecutePatternRequest_Options.decode(reader, reader.uint32());
+          message.options = ExecutePatternRequest_Options.decode(
+            reader,
+            reader.uint32()
+          );
           continue;
         }
       }
@@ -501,19 +565,25 @@ export const ExecutePatternRequest: MessageFns<ExecutePatternRequest> = {
 
   fromJSON(object: any): ExecutePatternRequest {
     return {
-      patternName: isSet(object.patternName) ? globalThis.String(object.patternName) : "",
-      patternVersion: isSet(object.patternVersion) ? globalThis.String(object.patternVersion) : "",
+      patternName: isSet(object.patternName)
+        ? globalThis.String(object.patternName)
+        : '',
+      patternVersion: isSet(object.patternVersion)
+        ? globalThis.String(object.patternVersion)
+        : '',
       input: isObject(object.input) ? object.input : undefined,
-      options: isSet(object.options) ? ExecutePatternRequest_Options.fromJSON(object.options) : undefined,
+      options: isSet(object.options)
+        ? ExecutePatternRequest_Options.fromJSON(object.options)
+        : undefined,
     };
   },
 
   toJSON(message: ExecutePatternRequest): unknown {
     const obj: any = {};
-    if (message.patternName !== "") {
+    if (message.patternName !== '') {
       obj.patternName = message.patternName;
     }
-    if (message.patternVersion !== "") {
+    if (message.patternVersion !== '') {
       obj.patternVersion = message.patternVersion;
     }
     if (message.input !== undefined) {
@@ -525,17 +595,22 @@ export const ExecutePatternRequest: MessageFns<ExecutePatternRequest> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ExecutePatternRequest>, I>>(base?: I): ExecutePatternRequest {
+  create<I extends Exact<DeepPartial<ExecutePatternRequest>, I>>(
+    base?: I
+  ): ExecutePatternRequest {
     return ExecutePatternRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<ExecutePatternRequest>, I>>(object: I): ExecutePatternRequest {
+  fromPartial<I extends Exact<DeepPartial<ExecutePatternRequest>, I>>(
+    object: I
+  ): ExecutePatternRequest {
     const message = createBaseExecutePatternRequest();
-    message.patternName = object.patternName ?? "";
-    message.patternVersion = object.patternVersion ?? "";
+    message.patternName = object.patternName ?? '';
+    message.patternVersion = object.patternVersion ?? '';
     message.input = object.input ?? undefined;
-    message.options = (object.options !== undefined && object.options !== null)
-      ? ExecutePatternRequest_Options.fromPartial(object.options)
-      : undefined;
+    message.options =
+      object.options !== undefined && object.options !== null
+        ? ExecutePatternRequest_Options.fromPartial(object.options)
+        : undefined;
     return message;
   },
 };
@@ -544,255 +619,311 @@ function createBaseExecutePatternRequest_Options(): ExecutePatternRequest_Option
   return { timeoutMs: 0, maxParallel: 0, cacheResults: false, context: {} };
 }
 
-export const ExecutePatternRequest_Options: MessageFns<ExecutePatternRequest_Options> = {
-  encode(message: ExecutePatternRequest_Options, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.timeoutMs !== 0) {
-      writer.uint32(8).int32(message.timeoutMs);
-    }
-    if (message.maxParallel !== 0) {
-      writer.uint32(16).int32(message.maxParallel);
-    }
-    if (message.cacheResults !== false) {
-      writer.uint32(24).bool(message.cacheResults);
-    }
-    Object.entries(message.context).forEach(([key, value]) => {
-      ExecutePatternRequest_Options_ContextEntry.encode({ key: key as any, value }, writer.uint32(34).fork()).join();
-    });
-    return writer;
-  },
+export const ExecutePatternRequest_Options: MessageFns<ExecutePatternRequest_Options> =
+  {
+    encode(
+      message: ExecutePatternRequest_Options,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.timeoutMs !== 0) {
+        writer.uint32(8).int32(message.timeoutMs);
+      }
+      if (message.maxParallel !== 0) {
+        writer.uint32(16).int32(message.maxParallel);
+      }
+      if (message.cacheResults !== false) {
+        writer.uint32(24).bool(message.cacheResults);
+      }
+      Object.entries(message.context).forEach(([key, value]) => {
+        ExecutePatternRequest_Options_ContextEntry.encode(
+          { key: key as any, value },
+          writer.uint32(34).fork()
+        ).join();
+      });
+      return writer;
+    },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): ExecutePatternRequest_Options {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseExecutePatternRequest_Options();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 8) {
-            break;
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): ExecutePatternRequest_Options {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseExecutePatternRequest_Options();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.timeoutMs = reader.int32();
+            continue;
           }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
 
-          message.timeoutMs = reader.int32();
-          continue;
+            message.maxParallel = reader.int32();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.cacheResults = reader.bool();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            const entry4 = ExecutePatternRequest_Options_ContextEntry.decode(
+              reader,
+              reader.uint32()
+            );
+            if (entry4.value !== undefined) {
+              message.context[entry4.key] = entry4.value;
+            }
+            continue;
+          }
         }
-        case 2: {
-          if (tag !== 16) {
-            break;
-          }
-
-          message.maxParallel = reader.int32();
-          continue;
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
         }
-        case 3: {
-          if (tag !== 24) {
-            break;
-          }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
 
-          message.cacheResults = reader.bool();
-          continue;
-        }
-        case 4: {
-          if (tag !== 34) {
-            break;
-          }
+    fromJSON(object: any): ExecutePatternRequest_Options {
+      return {
+        timeoutMs: isSet(object.timeoutMs)
+          ? globalThis.Number(object.timeoutMs)
+          : 0,
+        maxParallel: isSet(object.maxParallel)
+          ? globalThis.Number(object.maxParallel)
+          : 0,
+        cacheResults: isSet(object.cacheResults)
+          ? globalThis.Boolean(object.cacheResults)
+          : false,
+        context: isObject(object.context)
+          ? Object.entries(object.context).reduce<{ [key: string]: string }>(
+              (acc, [key, value]) => {
+                acc[key] = String(value);
+                return acc;
+              },
+              {}
+            )
+          : {},
+      };
+    },
 
-          const entry4 = ExecutePatternRequest_Options_ContextEntry.decode(reader, reader.uint32());
-          if (entry4.value !== undefined) {
-            message.context[entry4.key] = entry4.value;
-          }
-          continue;
+    toJSON(message: ExecutePatternRequest_Options): unknown {
+      const obj: any = {};
+      if (message.timeoutMs !== 0) {
+        obj.timeoutMs = Math.round(message.timeoutMs);
+      }
+      if (message.maxParallel !== 0) {
+        obj.maxParallel = Math.round(message.maxParallel);
+      }
+      if (message.cacheResults !== false) {
+        obj.cacheResults = message.cacheResults;
+      }
+      if (message.context) {
+        const entries = Object.entries(message.context);
+        if (entries.length > 0) {
+          obj.context = {};
+          entries.forEach(([k, v]) => {
+            obj.context[k] = v;
+          });
         }
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
-      }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      return obj;
+    },
 
-  fromJSON(object: any): ExecutePatternRequest_Options {
-    return {
-      timeoutMs: isSet(object.timeoutMs) ? globalThis.Number(object.timeoutMs) : 0,
-      maxParallel: isSet(object.maxParallel) ? globalThis.Number(object.maxParallel) : 0,
-      cacheResults: isSet(object.cacheResults) ? globalThis.Boolean(object.cacheResults) : false,
-      context: isObject(object.context)
-        ? Object.entries(object.context).reduce<{ [key: string]: string }>((acc, [key, value]) => {
-          acc[key] = String(value);
-          return acc;
-        }, {})
-        : {},
-    };
-  },
-
-  toJSON(message: ExecutePatternRequest_Options): unknown {
-    const obj: any = {};
-    if (message.timeoutMs !== 0) {
-      obj.timeoutMs = Math.round(message.timeoutMs);
-    }
-    if (message.maxParallel !== 0) {
-      obj.maxParallel = Math.round(message.maxParallel);
-    }
-    if (message.cacheResults !== false) {
-      obj.cacheResults = message.cacheResults;
-    }
-    if (message.context) {
-      const entries = Object.entries(message.context);
-      if (entries.length > 0) {
-        obj.context = {};
-        entries.forEach(([k, v]) => {
-          obj.context[k] = v;
-        });
-      }
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<ExecutePatternRequest_Options>, I>>(base?: I): ExecutePatternRequest_Options {
-    return ExecutePatternRequest_Options.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<ExecutePatternRequest_Options>, I>>(
-    object: I,
-  ): ExecutePatternRequest_Options {
-    const message = createBaseExecutePatternRequest_Options();
-    message.timeoutMs = object.timeoutMs ?? 0;
-    message.maxParallel = object.maxParallel ?? 0;
-    message.cacheResults = object.cacheResults ?? false;
-    message.context = Object.entries(object.context ?? {}).reduce<{ [key: string]: string }>((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = globalThis.String(value);
-      }
-      return acc;
-    }, {});
-    return message;
-  },
-};
+    create<I extends Exact<DeepPartial<ExecutePatternRequest_Options>, I>>(
+      base?: I
+    ): ExecutePatternRequest_Options {
+      return ExecutePatternRequest_Options.fromPartial(base ?? ({} as any));
+    },
+    fromPartial<I extends Exact<DeepPartial<ExecutePatternRequest_Options>, I>>(
+      object: I
+    ): ExecutePatternRequest_Options {
+      const message = createBaseExecutePatternRequest_Options();
+      message.timeoutMs = object.timeoutMs ?? 0;
+      message.maxParallel = object.maxParallel ?? 0;
+      message.cacheResults = object.cacheResults ?? false;
+      message.context = Object.entries(object.context ?? {}).reduce<{
+        [key: string]: string;
+      }>((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = globalThis.String(value);
+        }
+        return acc;
+      }, {});
+      return message;
+    },
+  };
 
 function createBaseExecutePatternRequest_Options_ContextEntry(): ExecutePatternRequest_Options_ContextEntry {
-  return { key: "", value: "" };
+  return { key: '', value: '' };
 }
 
-export const ExecutePatternRequest_Options_ContextEntry: MessageFns<ExecutePatternRequest_Options_ContextEntry> = {
-  encode(message: ExecutePatternRequest_Options_ContextEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.key !== "") {
-      writer.uint32(10).string(message.key);
-    }
-    if (message.value !== "") {
-      writer.uint32(18).string(message.value);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): ExecutePatternRequest_Options_ContextEntry {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseExecutePatternRequest_Options_ContextEntry();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.key = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.value = reader.string();
-          continue;
-        }
+export const ExecutePatternRequest_Options_ContextEntry: MessageFns<ExecutePatternRequest_Options_ContextEntry> =
+  {
+    encode(
+      message: ExecutePatternRequest_Options_ContextEntry,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.key !== '') {
+        writer.uint32(10).string(message.key);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.value !== '') {
+        writer.uint32(18).string(message.value);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      return writer;
+    },
 
-  fromJSON(object: any): ExecutePatternRequest_Options_ContextEntry {
-    return {
-      key: isSet(object.key) ? globalThis.String(object.key) : "",
-      value: isSet(object.value) ? globalThis.String(object.value) : "",
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): ExecutePatternRequest_Options_ContextEntry {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseExecutePatternRequest_Options_ContextEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: ExecutePatternRequest_Options_ContextEntry): unknown {
-    const obj: any = {};
-    if (message.key !== "") {
-      obj.key = message.key;
-    }
-    if (message.value !== "") {
-      obj.value = message.value;
-    }
-    return obj;
-  },
+            message.key = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<ExecutePatternRequest_Options_ContextEntry>, I>>(
-    base?: I,
-  ): ExecutePatternRequest_Options_ContextEntry {
-    return ExecutePatternRequest_Options_ContextEntry.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<ExecutePatternRequest_Options_ContextEntry>, I>>(
-    object: I,
-  ): ExecutePatternRequest_Options_ContextEntry {
-    const message = createBaseExecutePatternRequest_Options_ContextEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
-  },
-};
+            message.value = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): ExecutePatternRequest_Options_ContextEntry {
+      return {
+        key: isSet(object.key) ? globalThis.String(object.key) : '',
+        value: isSet(object.value) ? globalThis.String(object.value) : '',
+      };
+    },
+
+    toJSON(message: ExecutePatternRequest_Options_ContextEntry): unknown {
+      const obj: any = {};
+      if (message.key !== '') {
+        obj.key = message.key;
+      }
+      if (message.value !== '') {
+        obj.value = message.value;
+      }
+      return obj;
+    },
+
+    create<
+      I extends Exact<
+        DeepPartial<ExecutePatternRequest_Options_ContextEntry>,
+        I
+      >,
+    >(base?: I): ExecutePatternRequest_Options_ContextEntry {
+      return ExecutePatternRequest_Options_ContextEntry.fromPartial(
+        base ?? ({} as any)
+      );
+    },
+    fromPartial<
+      I extends Exact<
+        DeepPartial<ExecutePatternRequest_Options_ContextEntry>,
+        I
+      >,
+    >(object: I): ExecutePatternRequest_Options_ContextEntry {
+      const message = createBaseExecutePatternRequest_Options_ContextEntry();
+      message.key = object.key ?? '';
+      message.value = object.value ?? '';
+      return message;
+    },
+  };
 
 function createBaseExecutePatternResponse(): ExecutePatternResponse {
   return {
-    executionId: "",
-    patternName: "",
+    executionId: '',
+    patternName: '',
     status: 0,
     result: undefined,
     confidence: 0,
     metrics: undefined,
     agentResults: [],
-    errorMessage: "",
+    errorMessage: '',
   };
 }
 
 export const ExecutePatternResponse: MessageFns<ExecutePatternResponse> = {
-  encode(message: ExecutePatternResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.executionId !== "") {
+  encode(
+    message: ExecutePatternResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.executionId !== '') {
       writer.uint32(10).string(message.executionId);
     }
-    if (message.patternName !== "") {
+    if (message.patternName !== '') {
       writer.uint32(18).string(message.patternName);
     }
     if (message.status !== 0) {
       writer.uint32(24).int32(message.status);
     }
     if (message.result !== undefined) {
-      Struct.encode(Struct.wrap(message.result), writer.uint32(34).fork()).join();
+      Struct.encode(
+        Struct.wrap(message.result),
+        writer.uint32(34).fork()
+      ).join();
     }
     if (message.confidence !== 0) {
       writer.uint32(41).double(message.confidence);
     }
     if (message.metrics !== undefined) {
-      ExecutePatternResponse_ExecutionMetrics.encode(message.metrics, writer.uint32(50).fork()).join();
+      ExecutePatternResponse_ExecutionMetrics.encode(
+        message.metrics,
+        writer.uint32(50).fork()
+      ).join();
     }
     for (const v of message.agentResults) {
       ConfidenceResult.encode(v!, writer.uint32(58).fork()).join();
     }
-    if (message.errorMessage !== "") {
+    if (message.errorMessage !== '') {
       writer.uint32(66).string(message.errorMessage);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): ExecutePatternResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): ExecutePatternResponse {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseExecutePatternResponse();
     while (reader.pos < end) {
@@ -827,7 +958,9 @@ export const ExecutePatternResponse: MessageFns<ExecutePatternResponse> = {
             break;
           }
 
-          message.result = Struct.unwrap(Struct.decode(reader, reader.uint32()));
+          message.result = Struct.unwrap(
+            Struct.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 5: {
@@ -843,7 +976,10 @@ export const ExecutePatternResponse: MessageFns<ExecutePatternResponse> = {
             break;
           }
 
-          message.metrics = ExecutePatternResponse_ExecutionMetrics.decode(reader, reader.uint32());
+          message.metrics = ExecutePatternResponse_ExecutionMetrics.decode(
+            reader,
+            reader.uint32()
+          );
           continue;
         }
         case 7: {
@@ -851,7 +987,9 @@ export const ExecutePatternResponse: MessageFns<ExecutePatternResponse> = {
             break;
           }
 
-          message.agentResults.push(ConfidenceResult.decode(reader, reader.uint32()));
+          message.agentResults.push(
+            ConfidenceResult.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 8: {
@@ -873,25 +1011,37 @@ export const ExecutePatternResponse: MessageFns<ExecutePatternResponse> = {
 
   fromJSON(object: any): ExecutePatternResponse {
     return {
-      executionId: isSet(object.executionId) ? globalThis.String(object.executionId) : "",
-      patternName: isSet(object.patternName) ? globalThis.String(object.patternName) : "",
-      status: isSet(object.status) ? executePatternResponse_StatusFromJSON(object.status) : 0,
+      executionId: isSet(object.executionId)
+        ? globalThis.String(object.executionId)
+        : '',
+      patternName: isSet(object.patternName)
+        ? globalThis.String(object.patternName)
+        : '',
+      status: isSet(object.status)
+        ? executePatternResponse_StatusFromJSON(object.status)
+        : 0,
       result: isObject(object.result) ? object.result : undefined,
-      confidence: isSet(object.confidence) ? globalThis.Number(object.confidence) : 0,
-      metrics: isSet(object.metrics) ? ExecutePatternResponse_ExecutionMetrics.fromJSON(object.metrics) : undefined,
+      confidence: isSet(object.confidence)
+        ? globalThis.Number(object.confidence)
+        : 0,
+      metrics: isSet(object.metrics)
+        ? ExecutePatternResponse_ExecutionMetrics.fromJSON(object.metrics)
+        : undefined,
       agentResults: globalThis.Array.isArray(object?.agentResults)
         ? object.agentResults.map((e: any) => ConfidenceResult.fromJSON(e))
         : [],
-      errorMessage: isSet(object.errorMessage) ? globalThis.String(object.errorMessage) : "",
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : '',
     };
   },
 
   toJSON(message: ExecutePatternResponse): unknown {
     const obj: any = {};
-    if (message.executionId !== "") {
+    if (message.executionId !== '') {
       obj.executionId = message.executionId;
     }
-    if (message.patternName !== "") {
+    if (message.patternName !== '') {
       obj.patternName = message.patternName;
     }
     if (message.status !== 0) {
@@ -904,170 +1054,219 @@ export const ExecutePatternResponse: MessageFns<ExecutePatternResponse> = {
       obj.confidence = message.confidence;
     }
     if (message.metrics !== undefined) {
-      obj.metrics = ExecutePatternResponse_ExecutionMetrics.toJSON(message.metrics);
+      obj.metrics = ExecutePatternResponse_ExecutionMetrics.toJSON(
+        message.metrics
+      );
     }
     if (message.agentResults?.length) {
-      obj.agentResults = message.agentResults.map((e) => ConfidenceResult.toJSON(e));
+      obj.agentResults = message.agentResults.map((e) =>
+        ConfidenceResult.toJSON(e)
+      );
     }
-    if (message.errorMessage !== "") {
+    if (message.errorMessage !== '') {
       obj.errorMessage = message.errorMessage;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ExecutePatternResponse>, I>>(base?: I): ExecutePatternResponse {
+  create<I extends Exact<DeepPartial<ExecutePatternResponse>, I>>(
+    base?: I
+  ): ExecutePatternResponse {
     return ExecutePatternResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<ExecutePatternResponse>, I>>(object: I): ExecutePatternResponse {
+  fromPartial<I extends Exact<DeepPartial<ExecutePatternResponse>, I>>(
+    object: I
+  ): ExecutePatternResponse {
     const message = createBaseExecutePatternResponse();
-    message.executionId = object.executionId ?? "";
-    message.patternName = object.patternName ?? "";
+    message.executionId = object.executionId ?? '';
+    message.patternName = object.patternName ?? '';
     message.status = object.status ?? 0;
     message.result = object.result ?? undefined;
     message.confidence = object.confidence ?? 0;
-    message.metrics = (object.metrics !== undefined && object.metrics !== null)
-      ? ExecutePatternResponse_ExecutionMetrics.fromPartial(object.metrics)
-      : undefined;
-    message.agentResults = object.agentResults?.map((e) => ConfidenceResult.fromPartial(e)) || [];
-    message.errorMessage = object.errorMessage ?? "";
+    message.metrics =
+      object.metrics !== undefined && object.metrics !== null
+        ? ExecutePatternResponse_ExecutionMetrics.fromPartial(object.metrics)
+        : undefined;
+    message.agentResults =
+      object.agentResults?.map((e) => ConfidenceResult.fromPartial(e)) || [];
+    message.errorMessage = object.errorMessage ?? '';
     return message;
   },
 };
 
 function createBaseExecutePatternResponse_ExecutionMetrics(): ExecutePatternResponse_ExecutionMetrics {
-  return { startTime: undefined, endTime: undefined, agentsUsed: 0, parallelPaths: 0, averageConfidence: 0 };
+  return {
+    startTime: undefined,
+    endTime: undefined,
+    agentsUsed: 0,
+    parallelPaths: 0,
+    averageConfidence: 0,
+  };
 }
 
-export const ExecutePatternResponse_ExecutionMetrics: MessageFns<ExecutePatternResponse_ExecutionMetrics> = {
-  encode(message: ExecutePatternResponse_ExecutionMetrics, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.startTime !== undefined) {
-      Timestamp.encode(toTimestamp(message.startTime), writer.uint32(10).fork()).join();
-    }
-    if (message.endTime !== undefined) {
-      Timestamp.encode(toTimestamp(message.endTime), writer.uint32(18).fork()).join();
-    }
-    if (message.agentsUsed !== 0) {
-      writer.uint32(24).int32(message.agentsUsed);
-    }
-    if (message.parallelPaths !== 0) {
-      writer.uint32(32).int32(message.parallelPaths);
-    }
-    if (message.averageConfidence !== 0) {
-      writer.uint32(41).double(message.averageConfidence);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): ExecutePatternResponse_ExecutionMetrics {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseExecutePatternResponse_ExecutionMetrics();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.startTime = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.endTime = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
-          continue;
-        }
-        case 3: {
-          if (tag !== 24) {
-            break;
-          }
-
-          message.agentsUsed = reader.int32();
-          continue;
-        }
-        case 4: {
-          if (tag !== 32) {
-            break;
-          }
-
-          message.parallelPaths = reader.int32();
-          continue;
-        }
-        case 5: {
-          if (tag !== 41) {
-            break;
-          }
-
-          message.averageConfidence = reader.double();
-          continue;
-        }
+export const ExecutePatternResponse_ExecutionMetrics: MessageFns<ExecutePatternResponse_ExecutionMetrics> =
+  {
+    encode(
+      message: ExecutePatternResponse_ExecutionMetrics,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.startTime !== undefined) {
+        Timestamp.encode(
+          toTimestamp(message.startTime),
+          writer.uint32(10).fork()
+        ).join();
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.endTime !== undefined) {
+        Timestamp.encode(
+          toTimestamp(message.endTime),
+          writer.uint32(18).fork()
+        ).join();
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      if (message.agentsUsed !== 0) {
+        writer.uint32(24).int32(message.agentsUsed);
+      }
+      if (message.parallelPaths !== 0) {
+        writer.uint32(32).int32(message.parallelPaths);
+      }
+      if (message.averageConfidence !== 0) {
+        writer.uint32(41).double(message.averageConfidence);
+      }
+      return writer;
+    },
 
-  fromJSON(object: any): ExecutePatternResponse_ExecutionMetrics {
-    return {
-      startTime: isSet(object.startTime) ? fromJsonTimestamp(object.startTime) : undefined,
-      endTime: isSet(object.endTime) ? fromJsonTimestamp(object.endTime) : undefined,
-      agentsUsed: isSet(object.agentsUsed) ? globalThis.Number(object.agentsUsed) : 0,
-      parallelPaths: isSet(object.parallelPaths) ? globalThis.Number(object.parallelPaths) : 0,
-      averageConfidence: isSet(object.averageConfidence) ? globalThis.Number(object.averageConfidence) : 0,
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): ExecutePatternResponse_ExecutionMetrics {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseExecutePatternResponse_ExecutionMetrics();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: ExecutePatternResponse_ExecutionMetrics): unknown {
-    const obj: any = {};
-    if (message.startTime !== undefined) {
-      obj.startTime = message.startTime.toISOString();
-    }
-    if (message.endTime !== undefined) {
-      obj.endTime = message.endTime.toISOString();
-    }
-    if (message.agentsUsed !== 0) {
-      obj.agentsUsed = Math.round(message.agentsUsed);
-    }
-    if (message.parallelPaths !== 0) {
-      obj.parallelPaths = Math.round(message.parallelPaths);
-    }
-    if (message.averageConfidence !== 0) {
-      obj.averageConfidence = message.averageConfidence;
-    }
-    return obj;
-  },
+            message.startTime = fromTimestamp(
+              Timestamp.decode(reader, reader.uint32())
+            );
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<ExecutePatternResponse_ExecutionMetrics>, I>>(
-    base?: I,
-  ): ExecutePatternResponse_ExecutionMetrics {
-    return ExecutePatternResponse_ExecutionMetrics.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<ExecutePatternResponse_ExecutionMetrics>, I>>(
-    object: I,
-  ): ExecutePatternResponse_ExecutionMetrics {
-    const message = createBaseExecutePatternResponse_ExecutionMetrics();
-    message.startTime = object.startTime ?? undefined;
-    message.endTime = object.endTime ?? undefined;
-    message.agentsUsed = object.agentsUsed ?? 0;
-    message.parallelPaths = object.parallelPaths ?? 0;
-    message.averageConfidence = object.averageConfidence ?? 0;
-    return message;
-  },
-};
+            message.endTime = fromTimestamp(
+              Timestamp.decode(reader, reader.uint32())
+            );
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.agentsUsed = reader.int32();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.parallelPaths = reader.int32();
+            continue;
+          }
+          case 5: {
+            if (tag !== 41) {
+              break;
+            }
+
+            message.averageConfidence = reader.double();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): ExecutePatternResponse_ExecutionMetrics {
+      return {
+        startTime: isSet(object.startTime)
+          ? fromJsonTimestamp(object.startTime)
+          : undefined,
+        endTime: isSet(object.endTime)
+          ? fromJsonTimestamp(object.endTime)
+          : undefined,
+        agentsUsed: isSet(object.agentsUsed)
+          ? globalThis.Number(object.agentsUsed)
+          : 0,
+        parallelPaths: isSet(object.parallelPaths)
+          ? globalThis.Number(object.parallelPaths)
+          : 0,
+        averageConfidence: isSet(object.averageConfidence)
+          ? globalThis.Number(object.averageConfidence)
+          : 0,
+      };
+    },
+
+    toJSON(message: ExecutePatternResponse_ExecutionMetrics): unknown {
+      const obj: any = {};
+      if (message.startTime !== undefined) {
+        obj.startTime = message.startTime.toISOString();
+      }
+      if (message.endTime !== undefined) {
+        obj.endTime = message.endTime.toISOString();
+      }
+      if (message.agentsUsed !== 0) {
+        obj.agentsUsed = Math.round(message.agentsUsed);
+      }
+      if (message.parallelPaths !== 0) {
+        obj.parallelPaths = Math.round(message.parallelPaths);
+      }
+      if (message.averageConfidence !== 0) {
+        obj.averageConfidence = message.averageConfidence;
+      }
+      return obj;
+    },
+
+    create<
+      I extends Exact<DeepPartial<ExecutePatternResponse_ExecutionMetrics>, I>,
+    >(base?: I): ExecutePatternResponse_ExecutionMetrics {
+      return ExecutePatternResponse_ExecutionMetrics.fromPartial(
+        base ?? ({} as any)
+      );
+    },
+    fromPartial<
+      I extends Exact<DeepPartial<ExecutePatternResponse_ExecutionMetrics>, I>,
+    >(object: I): ExecutePatternResponse_ExecutionMetrics {
+      const message = createBaseExecutePatternResponse_ExecutionMetrics();
+      message.startTime = object.startTime ?? undefined;
+      message.endTime = object.endTime ?? undefined;
+      message.agentsUsed = object.agentsUsed ?? 0;
+      message.parallelPaths = object.parallelPaths ?? 0;
+      message.averageConfidence = object.averageConfidence ?? 0;
+      return message;
+    },
+  };
 
 function createBaseListPatternsRequest(): ListPatternsRequest {
   return { tags: [], includeScripts: false };
 }
 
 export const ListPatternsRequest: MessageFns<ListPatternsRequest> = {
-  encode(message: ListPatternsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: ListPatternsRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.tags) {
       writer.uint32(10).string(v!);
     }
@@ -1077,8 +1276,12 @@ export const ListPatternsRequest: MessageFns<ListPatternsRequest> = {
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): ListPatternsRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): ListPatternsRequest {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseListPatternsRequest();
     while (reader.pos < end) {
@@ -1111,8 +1314,12 @@ export const ListPatternsRequest: MessageFns<ListPatternsRequest> = {
 
   fromJSON(object: any): ListPatternsRequest {
     return {
-      tags: globalThis.Array.isArray(object?.tags) ? object.tags.map((e: any) => globalThis.String(e)) : [],
-      includeScripts: isSet(object.includeScripts) ? globalThis.Boolean(object.includeScripts) : false,
+      tags: globalThis.Array.isArray(object?.tags)
+        ? object.tags.map((e: any) => globalThis.String(e))
+        : [],
+      includeScripts: isSet(object.includeScripts)
+        ? globalThis.Boolean(object.includeScripts)
+        : false,
     };
   },
 
@@ -1127,10 +1334,14 @@ export const ListPatternsRequest: MessageFns<ListPatternsRequest> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ListPatternsRequest>, I>>(base?: I): ListPatternsRequest {
+  create<I extends Exact<DeepPartial<ListPatternsRequest>, I>>(
+    base?: I
+  ): ListPatternsRequest {
     return ListPatternsRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<ListPatternsRequest>, I>>(object: I): ListPatternsRequest {
+  fromPartial<I extends Exact<DeepPartial<ListPatternsRequest>, I>>(
+    object: I
+  ): ListPatternsRequest {
     const message = createBaseListPatternsRequest();
     message.tags = object.tags?.map((e) => e) || [];
     message.includeScripts = object.includeScripts ?? false;
@@ -1143,15 +1354,22 @@ function createBaseListPatternsResponse(): ListPatternsResponse {
 }
 
 export const ListPatternsResponse: MessageFns<ListPatternsResponse> = {
-  encode(message: ListPatternsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: ListPatternsResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.patterns) {
       Pattern.encode(v!, writer.uint32(10).fork()).join();
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): ListPatternsResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): ListPatternsResponse {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseListPatternsResponse();
     while (reader.pos < end) {
@@ -1176,7 +1394,9 @@ export const ListPatternsResponse: MessageFns<ListPatternsResponse> = {
 
   fromJSON(object: any): ListPatternsResponse {
     return {
-      patterns: globalThis.Array.isArray(object?.patterns) ? object.patterns.map((e: any) => Pattern.fromJSON(e)) : [],
+      patterns: globalThis.Array.isArray(object?.patterns)
+        ? object.patterns.map((e: any) => Pattern.fromJSON(e))
+        : [],
     };
   },
 
@@ -1188,33 +1408,42 @@ export const ListPatternsResponse: MessageFns<ListPatternsResponse> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ListPatternsResponse>, I>>(base?: I): ListPatternsResponse {
+  create<I extends Exact<DeepPartial<ListPatternsResponse>, I>>(
+    base?: I
+  ): ListPatternsResponse {
     return ListPatternsResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<ListPatternsResponse>, I>>(object: I): ListPatternsResponse {
+  fromPartial<I extends Exact<DeepPartial<ListPatternsResponse>, I>>(
+    object: I
+  ): ListPatternsResponse {
     const message = createBaseListPatternsResponse();
-    message.patterns = object.patterns?.map((e) => Pattern.fromPartial(e)) || [];
+    message.patterns =
+      object.patterns?.map((e) => Pattern.fromPartial(e)) || [];
     return message;
   },
 };
 
 function createBaseGetPatternRequest(): GetPatternRequest {
-  return { name: "", version: "" };
+  return { name: '', version: '' };
 }
 
 export const GetPatternRequest: MessageFns<GetPatternRequest> = {
-  encode(message: GetPatternRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.name !== "") {
+  encode(
+    message: GetPatternRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.name !== '') {
       writer.uint32(10).string(message.name);
     }
-    if (message.version !== "") {
+    if (message.version !== '') {
       writer.uint32(18).string(message.version);
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): GetPatternRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseGetPatternRequest();
     while (reader.pos < end) {
@@ -1247,29 +1476,33 @@ export const GetPatternRequest: MessageFns<GetPatternRequest> = {
 
   fromJSON(object: any): GetPatternRequest {
     return {
-      name: isSet(object.name) ? globalThis.String(object.name) : "",
-      version: isSet(object.version) ? globalThis.String(object.version) : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : '',
+      version: isSet(object.version) ? globalThis.String(object.version) : '',
     };
   },
 
   toJSON(message: GetPatternRequest): unknown {
     const obj: any = {};
-    if (message.name !== "") {
+    if (message.name !== '') {
       obj.name = message.name;
     }
-    if (message.version !== "") {
+    if (message.version !== '') {
       obj.version = message.version;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<GetPatternRequest>, I>>(base?: I): GetPatternRequest {
+  create<I extends Exact<DeepPartial<GetPatternRequest>, I>>(
+    base?: I
+  ): GetPatternRequest {
     return GetPatternRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<GetPatternRequest>, I>>(object: I): GetPatternRequest {
+  fromPartial<I extends Exact<DeepPartial<GetPatternRequest>, I>>(
+    object: I
+  ): GetPatternRequest {
     const message = createBaseGetPatternRequest();
-    message.name = object.name ?? "";
-    message.version = object.version ?? "";
+    message.name = object.name ?? '';
+    message.version = object.version ?? '';
     return message;
   },
 };
@@ -1279,7 +1512,10 @@ function createBaseUploadPatternRequest(): UploadPatternRequest {
 }
 
 export const UploadPatternRequest: MessageFns<UploadPatternRequest> = {
-  encode(message: UploadPatternRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: UploadPatternRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.pattern !== undefined) {
       Pattern.encode(message.pattern, writer.uint32(10).fork()).join();
     }
@@ -1289,8 +1525,12 @@ export const UploadPatternRequest: MessageFns<UploadPatternRequest> = {
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): UploadPatternRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): UploadPatternRequest {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseUploadPatternRequest();
     while (reader.pos < end) {
@@ -1323,8 +1563,12 @@ export const UploadPatternRequest: MessageFns<UploadPatternRequest> = {
 
   fromJSON(object: any): UploadPatternRequest {
     return {
-      pattern: isSet(object.pattern) ? Pattern.fromJSON(object.pattern) : undefined,
-      overwrite: isSet(object.overwrite) ? globalThis.Boolean(object.overwrite) : false,
+      pattern: isSet(object.pattern)
+        ? Pattern.fromJSON(object.pattern)
+        : undefined,
+      overwrite: isSet(object.overwrite)
+        ? globalThis.Boolean(object.overwrite)
+        : false,
     };
   },
 
@@ -1339,39 +1583,51 @@ export const UploadPatternRequest: MessageFns<UploadPatternRequest> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<UploadPatternRequest>, I>>(base?: I): UploadPatternRequest {
+  create<I extends Exact<DeepPartial<UploadPatternRequest>, I>>(
+    base?: I
+  ): UploadPatternRequest {
     return UploadPatternRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<UploadPatternRequest>, I>>(object: I): UploadPatternRequest {
+  fromPartial<I extends Exact<DeepPartial<UploadPatternRequest>, I>>(
+    object: I
+  ): UploadPatternRequest {
     const message = createBaseUploadPatternRequest();
-    message.pattern = (object.pattern !== undefined && object.pattern !== null)
-      ? Pattern.fromPartial(object.pattern)
-      : undefined;
+    message.pattern =
+      object.pattern !== undefined && object.pattern !== null
+        ? Pattern.fromPartial(object.pattern)
+        : undefined;
     message.overwrite = object.overwrite ?? false;
     return message;
   },
 };
 
 function createBaseUploadPatternResponse(): UploadPatternResponse {
-  return { success: false, message: "", patternId: "" };
+  return { success: false, message: '', patternId: '' };
 }
 
 export const UploadPatternResponse: MessageFns<UploadPatternResponse> = {
-  encode(message: UploadPatternResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: UploadPatternResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.success !== false) {
       writer.uint32(8).bool(message.success);
     }
-    if (message.message !== "") {
+    if (message.message !== '') {
       writer.uint32(18).string(message.message);
     }
-    if (message.patternId !== "") {
+    if (message.patternId !== '') {
       writer.uint32(26).string(message.patternId);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): UploadPatternResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): UploadPatternResponse {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseUploadPatternResponse();
     while (reader.pos < end) {
@@ -1412,9 +1668,13 @@ export const UploadPatternResponse: MessageFns<UploadPatternResponse> = {
 
   fromJSON(object: any): UploadPatternResponse {
     return {
-      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
-      message: isSet(object.message) ? globalThis.String(object.message) : "",
-      patternId: isSet(object.patternId) ? globalThis.String(object.patternId) : "",
+      success: isSet(object.success)
+        ? globalThis.Boolean(object.success)
+        : false,
+      message: isSet(object.message) ? globalThis.String(object.message) : '',
+      patternId: isSet(object.patternId)
+        ? globalThis.String(object.patternId)
+        : '',
     };
   },
 
@@ -1423,23 +1683,27 @@ export const UploadPatternResponse: MessageFns<UploadPatternResponse> = {
     if (message.success !== false) {
       obj.success = message.success;
     }
-    if (message.message !== "") {
+    if (message.message !== '') {
       obj.message = message.message;
     }
-    if (message.patternId !== "") {
+    if (message.patternId !== '') {
       obj.patternId = message.patternId;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<UploadPatternResponse>, I>>(base?: I): UploadPatternResponse {
+  create<I extends Exact<DeepPartial<UploadPatternResponse>, I>>(
+    base?: I
+  ): UploadPatternResponse {
     return UploadPatternResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<UploadPatternResponse>, I>>(object: I): UploadPatternResponse {
+  fromPartial<I extends Exact<DeepPartial<UploadPatternResponse>, I>>(
+    object: I
+  ): UploadPatternResponse {
     const message = createBaseUploadPatternResponse();
     message.success = object.success ?? false;
-    message.message = object.message ?? "";
-    message.patternId = object.patternId ?? "";
+    message.message = object.message ?? '';
+    message.patternId = object.patternId ?? '';
     return message;
   },
 };
@@ -1449,67 +1713,86 @@ export type PatternServiceService = typeof PatternServiceService;
 export const PatternServiceService = {
   /** Execute a pattern */
   executePattern: {
-    path: "/parallax.patterns.PatternService/ExecutePattern",
+    path: '/parallax.patterns.PatternService/ExecutePattern',
     requestStream: false,
     responseStream: false,
     requestSerialize: (value: ExecutePatternRequest): Buffer =>
       Buffer.from(ExecutePatternRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): ExecutePatternRequest => ExecutePatternRequest.decode(value),
+    requestDeserialize: (value: Buffer): ExecutePatternRequest =>
+      ExecutePatternRequest.decode(value),
     responseSerialize: (value: ExecutePatternResponse): Buffer =>
       Buffer.from(ExecutePatternResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): ExecutePatternResponse => ExecutePatternResponse.decode(value),
+    responseDeserialize: (value: Buffer): ExecutePatternResponse =>
+      ExecutePatternResponse.decode(value),
   },
   /** Stream pattern execution for long-running patterns */
   streamExecutePattern: {
-    path: "/parallax.patterns.PatternService/StreamExecutePattern",
+    path: '/parallax.patterns.PatternService/StreamExecutePattern',
     requestStream: false,
     responseStream: true,
     requestSerialize: (value: ExecutePatternRequest): Buffer =>
       Buffer.from(ExecutePatternRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): ExecutePatternRequest => ExecutePatternRequest.decode(value),
+    requestDeserialize: (value: Buffer): ExecutePatternRequest =>
+      ExecutePatternRequest.decode(value),
     responseSerialize: (value: ExecutePatternResponse): Buffer =>
       Buffer.from(ExecutePatternResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): ExecutePatternResponse => ExecutePatternResponse.decode(value),
+    responseDeserialize: (value: Buffer): ExecutePatternResponse =>
+      ExecutePatternResponse.decode(value),
   },
   /** List available patterns */
   listPatterns: {
-    path: "/parallax.patterns.PatternService/ListPatterns",
+    path: '/parallax.patterns.PatternService/ListPatterns',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: ListPatternsRequest): Buffer => Buffer.from(ListPatternsRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): ListPatternsRequest => ListPatternsRequest.decode(value),
+    requestSerialize: (value: ListPatternsRequest): Buffer =>
+      Buffer.from(ListPatternsRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): ListPatternsRequest =>
+      ListPatternsRequest.decode(value),
     responseSerialize: (value: ListPatternsResponse): Buffer =>
       Buffer.from(ListPatternsResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): ListPatternsResponse => ListPatternsResponse.decode(value),
+    responseDeserialize: (value: Buffer): ListPatternsResponse =>
+      ListPatternsResponse.decode(value),
   },
   /** Get specific pattern */
   getPattern: {
-    path: "/parallax.patterns.PatternService/GetPattern",
+    path: '/parallax.patterns.PatternService/GetPattern',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: GetPatternRequest): Buffer => Buffer.from(GetPatternRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): GetPatternRequest => GetPatternRequest.decode(value),
-    responseSerialize: (value: Pattern): Buffer => Buffer.from(Pattern.encode(value).finish()),
+    requestSerialize: (value: GetPatternRequest): Buffer =>
+      Buffer.from(GetPatternRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): GetPatternRequest =>
+      GetPatternRequest.decode(value),
+    responseSerialize: (value: Pattern): Buffer =>
+      Buffer.from(Pattern.encode(value).finish()),
     responseDeserialize: (value: Buffer): Pattern => Pattern.decode(value),
   },
   /** Upload new pattern */
   uploadPattern: {
-    path: "/parallax.patterns.PatternService/UploadPattern",
+    path: '/parallax.patterns.PatternService/UploadPattern',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: UploadPatternRequest): Buffer => Buffer.from(UploadPatternRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): UploadPatternRequest => UploadPatternRequest.decode(value),
+    requestSerialize: (value: UploadPatternRequest): Buffer =>
+      Buffer.from(UploadPatternRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): UploadPatternRequest =>
+      UploadPatternRequest.decode(value),
     responseSerialize: (value: UploadPatternResponse): Buffer =>
       Buffer.from(UploadPatternResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): UploadPatternResponse => UploadPatternResponse.decode(value),
+    responseDeserialize: (value: Buffer): UploadPatternResponse =>
+      UploadPatternResponse.decode(value),
   },
 } as const;
 
 export interface PatternServiceServer extends UntypedServiceImplementation {
   /** Execute a pattern */
-  executePattern: handleUnaryCall<ExecutePatternRequest, ExecutePatternResponse>;
+  executePattern: handleUnaryCall<
+    ExecutePatternRequest,
+    ExecutePatternResponse
+  >;
   /** Stream pattern execution for long-running patterns */
-  streamExecutePattern: handleServerStreamingCall<ExecutePatternRequest, ExecutePatternResponse>;
+  streamExecutePattern: handleServerStreamingCall<
+    ExecutePatternRequest,
+    ExecutePatternResponse
+  >;
   /** List available patterns */
   listPatterns: handleUnaryCall<ListPatternsRequest, ListPatternsResponse>;
   /** Get specific pattern */
@@ -1522,99 +1805,144 @@ export interface PatternServiceClient extends Client {
   /** Execute a pattern */
   executePattern(
     request: ExecutePatternRequest,
-    callback: (error: ServiceError | null, response: ExecutePatternResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: ExecutePatternResponse
+    ) => void
   ): ClientUnaryCall;
   executePattern(
     request: ExecutePatternRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: ExecutePatternResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: ExecutePatternResponse
+    ) => void
   ): ClientUnaryCall;
   executePattern(
     request: ExecutePatternRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: ExecutePatternResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: ExecutePatternResponse
+    ) => void
   ): ClientUnaryCall;
   /** Stream pattern execution for long-running patterns */
   streamExecutePattern(
     request: ExecutePatternRequest,
-    options?: Partial<CallOptions>,
+    options?: Partial<CallOptions>
   ): ClientReadableStream<ExecutePatternResponse>;
   streamExecutePattern(
     request: ExecutePatternRequest,
     metadata?: Metadata,
-    options?: Partial<CallOptions>,
+    options?: Partial<CallOptions>
   ): ClientReadableStream<ExecutePatternResponse>;
   /** List available patterns */
   listPatterns(
     request: ListPatternsRequest,
-    callback: (error: ServiceError | null, response: ListPatternsResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: ListPatternsResponse
+    ) => void
   ): ClientUnaryCall;
   listPatterns(
     request: ListPatternsRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: ListPatternsResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: ListPatternsResponse
+    ) => void
   ): ClientUnaryCall;
   listPatterns(
     request: ListPatternsRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: ListPatternsResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: ListPatternsResponse
+    ) => void
   ): ClientUnaryCall;
   /** Get specific pattern */
   getPattern(
     request: GetPatternRequest,
-    callback: (error: ServiceError | null, response: Pattern) => void,
+    callback: (error: ServiceError | null, response: Pattern) => void
   ): ClientUnaryCall;
   getPattern(
     request: GetPatternRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Pattern) => void,
+    callback: (error: ServiceError | null, response: Pattern) => void
   ): ClientUnaryCall;
   getPattern(
     request: GetPatternRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Pattern) => void,
+    callback: (error: ServiceError | null, response: Pattern) => void
   ): ClientUnaryCall;
   /** Upload new pattern */
   uploadPattern(
     request: UploadPatternRequest,
-    callback: (error: ServiceError | null, response: UploadPatternResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: UploadPatternResponse
+    ) => void
   ): ClientUnaryCall;
   uploadPattern(
     request: UploadPatternRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: UploadPatternResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: UploadPatternResponse
+    ) => void
   ): ClientUnaryCall;
   uploadPattern(
     request: UploadPatternRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: UploadPatternResponse) => void,
+    callback: (
+      error: ServiceError | null,
+      response: UploadPatternResponse
+    ) => void
   ): ClientUnaryCall;
 }
 
 export const PatternServiceClient = makeGenericClientConstructor(
   PatternServiceService,
-  "parallax.patterns.PatternService",
+  'parallax.patterns.PatternService'
 ) as unknown as {
-  new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): PatternServiceClient;
+  new (
+    address: string,
+    credentials: ChannelCredentials,
+    options?: Partial<ClientOptions>
+  ): PatternServiceClient;
   service: typeof PatternServiceService;
   serviceName: string;
 };
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : Partial<T>;
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends globalThis.Array<infer U>
+    ? globalThis.Array<DeepPartial<U>>
+    : T extends ReadonlyArray<infer U>
+      ? ReadonlyArray<DeepPartial<U>>
+      : T extends {}
+        ? { [K in keyof T]?: DeepPartial<T[K]> }
+        : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+      [K in Exclude<keyof I, KeysOfUnion<P>>]: never;
+    };
 
 function toTimestamp(date: Date): Timestamp {
   const seconds = Math.trunc(date.getTime() / 1_000);
@@ -1631,7 +1959,7 @@ function fromTimestamp(t: Timestamp): Date {
 function fromJsonTimestamp(o: any): Date {
   if (o instanceof globalThis.Date) {
     return o;
-  } else if (typeof o === "string") {
+  } else if (typeof o === 'string') {
     return new globalThis.Date(o);
   } else {
     return fromTimestamp(Timestamp.fromJSON(o));
@@ -1639,7 +1967,7 @@ function fromJsonTimestamp(o: any): Date {
 }
 
 function isObject(value: any): boolean {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function isSet(value: any): boolean {

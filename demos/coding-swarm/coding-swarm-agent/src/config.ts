@@ -35,7 +35,7 @@ export function loadConfig(): SwarmAgentConfig {
     device: process.env.AGENT_DEVICE || 'unknown',
     gatewayEndpoint,
     tmuxPrefix: process.env.TMUX_PREFIX || 'swarm',
-    terminalCols: parseInt(process.env.TERMINAL_COLS || '100'),
-    terminalRows: parseInt(process.env.TERMINAL_ROWS || '28'),
+    terminalCols: parseInt(process.env.TERMINAL_COLS || '100', 10),
+    terminalRows: parseInt(process.env.TERMINAL_ROWS || '28', 10),
   };
 }

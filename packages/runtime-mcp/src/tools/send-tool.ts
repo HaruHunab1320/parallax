@@ -2,9 +2,9 @@
  * Send Tool - Send message to an agent
  */
 
-import type { LocalRuntime } from '@parallaxai/runtime-local';
 import type { AgentMessage } from '@parallaxai/runtime-interface';
-import { SendInputSchema, type SendInput } from './schemas.js';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import { type SendInput, SendInputSchema } from './schemas.js';
 
 export const SEND_TOOL = {
   name: 'send',

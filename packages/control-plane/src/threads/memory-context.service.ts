@@ -1,9 +1,12 @@
-import { Logger } from 'pino';
-import {
+import type {
+  ThreadPreparationSpec,
+  ThreadWorkspaceRef,
+} from '@parallaxai/runtime-interface';
+import type { Logger } from 'pino';
+import type {
   EpisodicExperienceRepository,
   SharedDecisionRepository,
 } from '../db/repositories';
-import { ThreadPreparationSpec, ThreadWorkspaceRef } from '@parallaxai/runtime-interface';
 
 export class MemoryContextService {
   constructor(
@@ -67,12 +70,14 @@ export class MemoryContextService {
       lines.push('## Relevant Prior Experiences', '');
       for (const experience of experiences) {
         const roleText = experience.role ? ` (${experience.role})` : '';
-        lines.push(`- [${experience.outcome}] ${experience.summary}${roleText}`);
+        lines.push(
+          `- [${experience.outcome}] ${experience.summary}${roleText}`
+        );
       }
       lines.push('');
     }
 
-    const content = lines.join('\n').trim() + '\n';
+    const content = `${lines.join('\n').trim()}\n`;
 
     this.logger.debug(
       {
@@ -116,16 +121,14 @@ export class MemoryContextService {
       thread_summary: 2,
     };
 
-    return decisions
-      .slice()
-      .sort((left, right) => {
-        const priorityDelta =
-          (priority[right.category] ?? 0) - (priority[left.category] ?? 0);
-        if (priorityDelta !== 0) {
-          return priorityDelta;
-        }
-        return right.createdAt.getTime() - left.createdAt.getTime();
-      });
+    return decisions.slice().sort((left, right) => {
+      const priorityDelta =
+        (priority[right.category] ?? 0) - (priority[left.category] ?? 0);
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+      return right.createdAt.getTime() - left.createdAt.getTime();
+    });
   }
 
   private rankExperiences(
@@ -154,13 +157,18 @@ export class MemoryContextService {
         if (right.score !== left.score) {
           return right.score - left.score;
         }
-        return right.experience.createdAt.getTime() - left.experience.createdAt.getTime();
+        return (
+          right.experience.createdAt.getTime() -
+          left.experience.createdAt.getTime()
+        );
       })
       .map(({ experience }) => experience);
   }
 
   private scoreExperience(
-    experience: Awaited<ReturnType<EpisodicExperienceRepository['findAll']>>[number],
+    experience: Awaited<
+      ReturnType<EpisodicExperienceRepository['findAll']>
+    >[number],
     objectiveTokens: Set<string>,
     role?: string,
     repo?: string
@@ -173,7 +181,9 @@ export class MemoryContextService {
     if (experience.outcome === 'partial') score += 2;
     if (experience.outcome === 'failed') score -= 2;
 
-    const summaryTokens = this.tokenize(`${experience.objective} ${experience.summary}`);
+    const summaryTokens = this.tokenize(
+      `${experience.objective} ${experience.summary}`
+    );
     for (const token of objectiveTokens) {
       if (summaryTokens.has(token)) {
         score += 1;

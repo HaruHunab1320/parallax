@@ -28,34 +28,76 @@ export const WATCHED_FILES: Record<AdapterType, WatchedFileConfig> = {
       { path: 'packages/cli/src/ui/auth/ApiAuthDialog.tsx', category: 'auth' },
       { path: 'packages/cli/src/ui/auth/AuthInProgress.tsx', category: 'auth' },
       { path: 'packages/cli/src/config/auth.ts', category: 'auth' },
-      { path: 'packages/cli/src/validateNonInterActiveAuth.ts', category: 'auth' },
+      {
+        path: 'packages/cli/src/validateNonInterActiveAuth.ts',
+        category: 'auth',
+      },
 
       // Blocking prompts
-      { path: 'packages/cli/src/ui/components/FolderTrustDialog.tsx', category: 'blocking_prompt' },
-      { path: 'packages/cli/src/ui/components/MultiFolderTrustDialog.tsx', category: 'blocking_prompt' },
-      { path: 'packages/cli/src/ui/components/messages/ToolConfirmationMessage.tsx', category: 'blocking_prompt' },
-      { path: 'packages/cli/src/ui/components/ValidationDialog.tsx', category: 'blocking_prompt' },
-      { path: 'packages/cli/src/ui/utils/updateCheck.ts', category: 'blocking_prompt' },
-      { path: 'packages/cli/src/ui/privacy/CloudFreePrivacyNotice.tsx', category: 'blocking_prompt' },
+      {
+        path: 'packages/cli/src/ui/components/FolderTrustDialog.tsx',
+        category: 'blocking_prompt',
+      },
+      {
+        path: 'packages/cli/src/ui/components/MultiFolderTrustDialog.tsx',
+        category: 'blocking_prompt',
+      },
+      {
+        path: 'packages/cli/src/ui/components/messages/ToolConfirmationMessage.tsx',
+        category: 'blocking_prompt',
+      },
+      {
+        path: 'packages/cli/src/ui/components/ValidationDialog.tsx',
+        category: 'blocking_prompt',
+      },
+      {
+        path: 'packages/cli/src/ui/utils/updateCheck.ts',
+        category: 'blocking_prompt',
+      },
+      {
+        path: 'packages/cli/src/ui/privacy/CloudFreePrivacyNotice.tsx',
+        category: 'blocking_prompt',
+      },
 
       // Ready detection
-      { path: 'packages/cli/src/ui/components/InputPrompt.tsx', category: 'ready_detection' },
-      { path: 'packages/cli/src/ui/components/Composer.tsx', category: 'ready_detection' },
+      {
+        path: 'packages/cli/src/ui/components/InputPrompt.tsx',
+        category: 'ready_detection',
+      },
+      {
+        path: 'packages/cli/src/ui/components/Composer.tsx',
+        category: 'ready_detection',
+      },
 
       // Exit detection
-      { path: 'packages/cli/src/ui/components/LogoutConfirmationDialog.tsx', category: 'exit_detection' },
+      {
+        path: 'packages/cli/src/ui/components/LogoutConfirmationDialog.tsx',
+        category: 'exit_detection',
+      },
 
       // Loading indicators
-      { path: 'packages/cli/src/ui/components/LoadingIndicator.tsx', category: 'loading' },
-      { path: 'packages/cli/src/ui/hooks/usePhraseCycler.ts', category: 'loading' },
+      {
+        path: 'packages/cli/src/ui/components/LoadingIndicator.tsx',
+        category: 'loading',
+      },
+      {
+        path: 'packages/cli/src/ui/hooks/usePhraseCycler.ts',
+        category: 'loading',
+      },
 
       // Framework / rendering
       { path: 'packages/cli/src/gemini.tsx', category: 'framework' },
-      { path: 'packages/cli/src/ui/components/CliSpinner.tsx', category: 'framework' },
+      {
+        path: 'packages/cli/src/ui/components/CliSpinner.tsx',
+        category: 'framework',
+      },
 
       // Startup
       { path: 'packages/cli/src/ui/components/Tips.tsx', category: 'startup' },
-      { path: 'packages/cli/src/utils/userStartupWarnings.ts', category: 'startup' },
+      {
+        path: 'packages/cli/src/utils/userStartupWarnings.ts',
+        category: 'startup',
+      },
     ],
   },
 
@@ -65,24 +107,48 @@ export const WATCHED_FILES: Record<AdapterType, WatchedFileConfig> = {
     watchedFiles: [
       // Auth
       { path: 'codex-rs/tui/src/onboarding/auth.rs', category: 'auth' },
-      { path: 'codex-rs/tui/src/onboarding/auth/headless_chatgpt_login.rs', category: 'auth' },
+      {
+        path: 'codex-rs/tui/src/onboarding/auth/headless_chatgpt_login.rs',
+        category: 'auth',
+      },
       { path: 'codex-rs/cli/src/login.rs', category: 'auth' },
 
       // Blocking prompts
-      { path: 'codex-rs/tui/src/onboarding/trust_directory.rs', category: 'blocking_prompt' },
-      { path: 'codex-rs/tui/src/bottom_pane/approval_overlay.rs', category: 'blocking_prompt' },
-      { path: 'codex-rs/tui/src/update_prompt.rs', category: 'blocking_prompt' },
+      {
+        path: 'codex-rs/tui/src/onboarding/trust_directory.rs',
+        category: 'blocking_prompt',
+      },
+      {
+        path: 'codex-rs/tui/src/bottom_pane/approval_overlay.rs',
+        category: 'blocking_prompt',
+      },
+      {
+        path: 'codex-rs/tui/src/update_prompt.rs',
+        category: 'blocking_prompt',
+      },
       { path: 'codex-rs/tui/src/cwd_prompt.rs', category: 'blocking_prompt' },
-      { path: 'codex-rs/tui/src/model_migration.rs', category: 'blocking_prompt' },
+      {
+        path: 'codex-rs/tui/src/model_migration.rs',
+        category: 'blocking_prompt',
+      },
       { path: 'codex-rs/tui/src/chatwidget.rs', category: 'blocking_prompt' },
-      { path: 'codex-rs/tui/src/bottom_pane/request_user_input/mod.rs', category: 'blocking_prompt' },
+      {
+        path: 'codex-rs/tui/src/bottom_pane/request_user_input/mod.rs',
+        category: 'blocking_prompt',
+      },
       { path: 'codex-rs/cli/src/main.rs', category: 'blocking_prompt' },
 
       // Ready detection
-      { path: 'codex-rs/tui/src/bottom_pane/chat_composer.rs', category: 'ready_detection' },
+      {
+        path: 'codex-rs/tui/src/bottom_pane/chat_composer.rs',
+        category: 'ready_detection',
+      },
 
       // Loading indicators
-      { path: 'codex-rs/tui/src/status_indicator_widget.rs', category: 'loading' },
+      {
+        path: 'codex-rs/tui/src/status_indicator_widget.rs',
+        category: 'loading',
+      },
       { path: 'codex-rs/tui/src/history_cell.rs', category: 'loading' },
 
       // Startup
@@ -144,9 +210,16 @@ export function getWatchedFiles(adapter: AdapterType): WatchedFileConfig {
  */
 export function getWatchedFilesByCategory(
   adapter: AdapterType,
-  category: 'blocking_prompt' | 'ready_detection' | 'exit_detection' | 'auth' | 'framework' | 'startup' | 'loading',
+  category:
+    | 'blocking_prompt'
+    | 'ready_detection'
+    | 'exit_detection'
+    | 'auth'
+    | 'framework'
+    | 'startup'
+    | 'loading'
 ): string[] {
   return WATCHED_FILES[adapter].watchedFiles
-    .filter(f => f.category === category)
-    .map(f => f.path);
+    .filter((f) => f.category === category)
+    .map((f) => f.path);
 }

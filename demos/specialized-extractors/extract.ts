@@ -8,10 +8,11 @@
  *   pnpm extract "John Smith paid $500 on January 15, 2024"
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
-const CONTROL_PLANE_URL = process.env.CONTROL_PLANE_URL || 'http://localhost:8080';
+const CONTROL_PLANE_URL =
+  process.env.CONTROL_PLANE_URL || 'http://localhost:8080';
 
 interface ExtractionResult {
   extractions: {
@@ -72,7 +73,9 @@ interface ExtractionResult {
   };
 }
 
-async function submitExtraction(text: string): Promise<{ executionId: string }> {
+async function submitExtraction(
+  text: string
+): Promise<{ executionId: string }> {
   const response = await fetch(`${CONTROL_PLANE_URL}/api/executions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -80,9 +83,9 @@ async function submitExtraction(text: string): Promise<{ executionId: string }> 
       patternName: 'DocumentExtraction',
       input: {
         task: 'Extract structured data from document',
-        data: { text, document: text }
-      }
-    })
+        data: { text, document: text },
+      },
+    }),
   });
 
   if (!response.ok) {
@@ -94,12 +97,17 @@ async function submitExtraction(text: string): Promise<{ executionId: string }> 
   return { executionId: execution.id };
 }
 
-async function pollForResult(executionId: string, maxWaitMs = 60000): Promise<ExtractionResult> {
+async function pollForResult(
+  executionId: string,
+  maxWaitMs = 60000
+): Promise<ExtractionResult> {
   const startTime = Date.now();
   const pollInterval = 1000;
 
   while (Date.now() - startTime < maxWaitMs) {
-    const response = await fetch(`${CONTROL_PLANE_URL}/api/executions/${executionId}`);
+    const response = await fetch(
+      `${CONTROL_PLANE_URL}/api/executions/${executionId}`
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to get execution status: ${response.statusText}`);
@@ -110,23 +118,31 @@ async function pollForResult(executionId: string, maxWaitMs = 60000): Promise<Ex
     if (execution.status === 'completed') {
       // Debug: log the actual result structure
       if (process.env.DEBUG) {
-        console.log('\n\nDEBUG - execution.result:', JSON.stringify(execution.result, null, 2).substring(0, 500));
+        console.log(
+          '\n\nDEBUG - execution.result:',
+          JSON.stringify(execution.result, null, 2).substring(0, 500)
+        );
       }
       // Unwrap ConfidenceValue if present (result may be wrapped in {value, confidence})
       const result = execution.result?.value || execution.result;
       return result;
     } else if (execution.status === 'failed') {
-      throw new Error(`Extraction failed: ${execution.error || 'Unknown error'}`);
+      throw new Error(
+        `Extraction failed: ${execution.error || 'Unknown error'}`
+      );
     }
 
     process.stdout.write('.');
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
   throw new Error('Extraction timed out');
 }
 
-function formatResults(result: ExtractionResult, documentPreview: string): void {
+function formatResults(
+  result: ExtractionResult,
+  documentPreview: string
+): void {
   // Debug: show what we received
   if (process.env.DEBUG) {
     console.log('\n\nDEBUG - Full result object:');
@@ -141,7 +157,9 @@ function formatResults(result: ExtractionResult, documentPreview: string): void 
   console.log();
 
   // Document preview
-  console.log(`Document: "${documentPreview.substring(0, 60)}${documentPreview.length > 60 ? '...' : ''}"`);
+  console.log(
+    `Document: "${documentPreview.substring(0, 60)}${documentPreview.length > 60 ? '...' : ''}"`
+  );
   console.log();
 
   // Summary
@@ -160,7 +178,9 @@ function formatResults(result: ExtractionResult, documentPreview: string): void 
     console.log('─'.repeat(70));
     for (const date of dates) {
       console.log(`    "${date.original}" → ${date.normalized}`);
-      console.log(`      Type: ${date.type}, Confidence: ${Math.round((date.confidence || 0) * 100)}%`);
+      console.log(
+        `      Type: ${date.type}, Confidence: ${Math.round((date.confidence || 0) * 100)}%`
+      );
     }
     console.log();
   }
@@ -172,8 +192,12 @@ function formatResults(result: ExtractionResult, documentPreview: string): void 
     console.log(`  AMOUNTS (${amounts.length} found)`);
     console.log('─'.repeat(70));
     for (const amount of amounts) {
-      console.log(`    "${amount.original}" → ${amount.currency} ${amount.value.toLocaleString()}`);
-      console.log(`      Type: ${amount.type}, Confidence: ${Math.round((amount.confidence || 0) * 100)}%`);
+      console.log(
+        `    "${amount.original}" → ${amount.currency} ${amount.value.toLocaleString()}`
+      );
+      console.log(
+        `      Type: ${amount.type}, Confidence: ${Math.round((amount.confidence || 0) * 100)}%`
+      );
     }
     console.log();
   }
@@ -196,9 +220,13 @@ function formatResults(result: ExtractionResult, documentPreview: string): void 
     for (const entity of entities) {
       console.log(`    "${entity.name}" (${entity.type})`);
       if (entity.role) {
-        console.log(`      Role: ${entity.role}, Confidence: ${Math.round((entity.confidence || 0) * 100)}%`);
+        console.log(
+          `      Role: ${entity.role}, Confidence: ${Math.round((entity.confidence || 0) * 100)}%`
+        );
       } else {
-        console.log(`      Confidence: ${Math.round((entity.confidence || 0) * 100)}%`);
+        console.log(
+          `      Confidence: ${Math.round((entity.confidence || 0) * 100)}%`
+        );
       }
     }
     console.log();
@@ -214,7 +242,9 @@ function formatResults(result: ExtractionResult, documentPreview: string): void 
       console.log(`    ${addr.street}`);
       console.log(`    ${addr.city}, ${addr.state} ${addr.postalCode}`);
       console.log(`    ${addr.country}`);
-      console.log(`      Type: ${addr.type}, Confidence: ${Math.round((addr.confidence || 0) * 100)}%`);
+      console.log(
+        `      Type: ${addr.type}, Confidence: ${Math.round((addr.confidence || 0) * 100)}%`
+      );
       console.log();
     }
   }
@@ -226,10 +256,14 @@ function formatResults(result: ExtractionResult, documentPreview: string): void 
     console.log('─'.repeat(70));
     for (const agent of result.agents.details) {
       console.log(`    ${agent.agent}`);
-      console.log(`      Items: ${agent.itemsExtracted}, Confidence: ${Math.round((agent.confidence || 0) * 100)}%`);
+      console.log(
+        `      Items: ${agent.itemsExtracted}, Confidence: ${Math.round((agent.confidence || 0) * 100)}%`
+      );
       if (agent.reasoning) {
         const shortReasoning = agent.reasoning.substring(0, 60);
-        console.log(`      ${shortReasoning}${agent.reasoning.length > 60 ? '...' : ''}`);
+        console.log(
+          `      ${shortReasoning}${agent.reasoning.length > 60 ? '...' : ''}`
+        );
       }
     }
     console.log();
@@ -257,7 +291,10 @@ async function main() {
   if (fs.existsSync(potentialPath)) {
     text = fs.readFileSync(potentialPath, 'utf-8');
     console.log(`\n📄 Extracting from file: ${potentialPath}`);
-  } else if (potentialPath.endsWith('.txt') || potentialPath.endsWith('.json')) {
+  } else if (
+    potentialPath.endsWith('.txt') ||
+    potentialPath.endsWith('.json')
+  ) {
     // Try relative to examples directory
     const examplesPath = path.join(__dirname, potentialPath);
     if (fs.existsSync(examplesPath)) {
@@ -267,7 +304,9 @@ async function main() {
   }
 
   console.log('\n🔍 Submitting document to extraction agents...');
-  console.log(`\n   Document preview: "${text.substring(0, 80)}${text.length > 80 ? '...' : ''}"`);
+  console.log(
+    `\n   Document preview: "${text.substring(0, 80)}${text.length > 80 ? '...' : ''}"`
+  );
 
   try {
     const { executionId } = await submitExtraction(text);

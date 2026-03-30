@@ -2,22 +2,22 @@
  * Pattern Generator - Core logic for generating patterns from requirements
  */
 
+import * as path from 'node:path';
 import * as fs from 'fs-extra';
-import * as path from 'path';
-import {
-  OrchestrationRequirements,
-  OrchestrationRequirementsSchema,
-  Pattern,
-  GeneratorOptions,
-  LLMProvider,
-  RequirementsAnalysisSchema,
-  PrimitiveSelectionSchema,
-  PrimitiveDefinition
-} from '../types';
 import { loadPrimitivesSync as loadPrimitives } from '../primitives/primitive-loader';
-import { PatternAssembler } from './pattern-assembler';
-import { PatternValidator } from '../validator/pattern-validator';
+import {
+  type GeneratorOptions,
+  type LLMProvider,
+  type OrchestrationRequirements,
+  OrchestrationRequirementsSchema,
+  type Pattern,
+  type PrimitiveDefinition,
+  PrimitiveSelectionSchema,
+  RequirementsAnalysisSchema,
+} from '../types';
 import { formatPatternName } from '../utils/naming';
+import { PatternValidator } from '../validator/pattern-validator';
+import { PatternAssembler } from './pattern-assembler';
 
 export class PatternGenerator {
   private llm: LLMProvider;
@@ -39,7 +39,7 @@ export class PatternGenerator {
       this.outputDir = llmOrOptions.outputDir || './patterns';
       this.primitives = loadPrimitives(llmOrOptions.primitivesPath);
     }
-    
+
     this.assembler = new PatternAssembler(this.primitives);
     this.validator = new PatternValidator();
   }
@@ -47,17 +47,23 @@ export class PatternGenerator {
   /**
    * Generate a pattern from requirements string (CLI-friendly interface)
    */
-  async generatePattern(requirementsText: string, options?: {
-    template?: string;
-    maxTokens?: number;
-    temperature?: number;
-  }): Promise<string> {
+  async generatePattern(
+    requirementsText: string,
+    options?: {
+      template?: string;
+      maxTokens?: number;
+      temperature?: number;
+    }
+  ): Promise<string> {
     // Parse requirements from text
-    const requirements = await this.parseRequirements(requirementsText, options?.template);
-    
+    const requirements = await this.parseRequirements(
+      requirementsText,
+      options?.template
+    );
+
     // Generate the pattern
     const pattern = await this.generate(requirements);
-    
+
     // Return the pattern code as YAML
     return this.formatPatternAsYAML(pattern);
   }
@@ -67,24 +73,24 @@ export class PatternGenerator {
    */
   async generate(requirements: OrchestrationRequirements): Promise<Pattern> {
     console.log('🎯 Analyzing orchestration requirements...');
-    
+
     // 1. Analyze requirements
     const analysis = await this.analyzeRequirements(requirements);
-    
+
     console.log('🔍 Selecting appropriate primitives...');
-    
+
     // 2. Select primitives based on analysis
     const selection = await this.selectPrimitives(requirements, analysis);
-    
+
     console.log('🔨 Assembling pattern...');
-    
+
     // 3. Assemble pattern from selected primitives
     const code = await this.assembler.assemble(
       requirements,
       selection.selected || [],
       selection.order || []
     );
-    
+
     // 4. Create pattern object
     const pattern: Pattern = {
       name: formatPatternName(requirements.goal),
@@ -94,15 +100,15 @@ export class PatternGenerator {
       metadata: {
         generated: new Date().toISOString(),
         generator: '@parallaxai/pattern-sdk',
-        primitives: (selection.selected || []).map(s => s.name),
+        primitives: (selection.selected || []).map((s) => s.name),
         complexity: this.calculateComplexity(selection.selected || []),
-        estimatedAgents: this.estimateAgentCount(requirements)
+        estimatedAgents: this.estimateAgentCount(requirements),
       },
-      requirements
+      requirements,
     };
-    
+
     console.log('✅ Pattern generated successfully!');
-    
+
     return pattern;
   }
 
@@ -111,12 +117,10 @@ export class PatternGenerator {
    */
   async save(pattern: Pattern, customPath?: string): Promise<string> {
     await fs.ensureDir(this.outputDir);
-    
-    const filename = customPath || path.join(
-      this.outputDir,
-      `${pattern.name}.prism`
-    );
-    
+
+    const filename =
+      customPath || path.join(this.outputDir, `${pattern.name}.prism`);
+
     // Add metadata as comments - using // format for Prism
     const fileContent = `// Pattern: ${pattern.name}
 // Version: ${pattern.version}
@@ -126,10 +130,10 @@ export class PatternGenerator {
 // Primitives: ${pattern.metadata.primitives.join(', ')}
 
 ${pattern.code}`;
-    
+
     await fs.writeFile(filename, fileContent, 'utf8');
     console.log(`💾 Pattern saved to: ${filename}`);
-    
+
     return filename;
   }
 
@@ -139,7 +143,7 @@ ${pattern.code}`;
   async validate(pattern: Pattern) {
     return this.validator.validate(pattern);
   }
-  
+
   /**
    * Auto-fix common validation issues
    */
@@ -173,7 +177,8 @@ Analyze what primitives would be needed.`;
     const result = await this.llm.generateObject({
       schema: RequirementsAnalysisSchema,
       prompt,
-      system: 'You are an expert at analyzing orchestration requirements and determining what primitives are needed.'
+      system:
+        'You are an expert at analyzing orchestration requirements and determining what primitives are needed.',
     });
 
     return result.object;
@@ -187,7 +192,7 @@ Analyze what primitives would be needed.`;
     analysis: any
   ) {
     const availablePrimitives = Array.from(this.primitives.values())
-      .map(p => `${p.name}: ${p.description}`)
+      .map((p) => `${p.name}: ${p.description}`)
       .join('\n');
 
     const prompt = `
@@ -204,7 +209,8 @@ Select the minimal set of primitives needed and specify their execution order.`;
     const result = await this.llm.generateObject({
       schema: PrimitiveSelectionSchema,
       prompt,
-      system: 'You are an expert at composing orchestration patterns from primitives.'
+      system:
+        'You are an expert at composing orchestration patterns from primitives.',
     });
 
     return result.object;
@@ -218,9 +224,9 @@ Select the minimal set of primitives needed and specify their execution order.`;
       execution: 1,
       aggregation: 2,
       confidence: 1.5,
-      control: 2
+      control: 2,
     };
-    
+
     return primitives.reduce((total, prim) => {
       const primitive = this.primitives.get(prim.name);
       const category = primitive?.category || 'execution';
@@ -233,21 +239,21 @@ Select the minimal set of primitives needed and specify their execution order.`;
    */
   private estimateAgentCount(requirements: OrchestrationRequirements): number {
     let count = 0;
-    
+
     // Count from agent requirements
     if (requirements.agents) {
       count += requirements.agents.reduce((sum, a) => sum + (a.count || 1), 0);
     }
-    
+
     // Count from stages
     if (requirements.stages) {
-      requirements.stages.forEach(stage => {
+      requirements.stages.forEach((stage) => {
         if (stage.agents) {
           count += stage.agents.reduce((sum, a) => sum + (a.count || 1), 0);
         }
       });
     }
-    
+
     return count || 3; // Default to 3 if not specified
   }
 
@@ -276,7 +282,7 @@ Extract:
     const result = await this.llm.generateObject({
       schema: OrchestrationRequirementsSchema as any,
       prompt,
-      system: 'You are an expert at parsing orchestration requirements.'
+      system: 'You are an expert at parsing orchestration requirements.',
     });
 
     return result.object as OrchestrationRequirements;
@@ -312,6 +318,9 @@ ${this.formatStepsAsYAML(pattern.code)}
   private formatStepsAsYAML(code: string): string {
     // This is a simplified version - in a real implementation,
     // we'd parse the code and format it properly
-    return code.split('\n').map(line => `  ${line}`).join('\n');
+    return code
+      .split('\n')
+      .map((line) => `  ${line}`)
+      .join('\n');
   }
 }

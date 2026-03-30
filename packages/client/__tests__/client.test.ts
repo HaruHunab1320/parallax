@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { ParallaxClient, ParallaxClientConfig } from '../src/index';
+import { describe, expect, it } from 'vitest';
+import { ParallaxClient, type ParallaxClientConfig } from '../src/index';
 
 describe('ParallaxClient', () => {
   it('should create a client with baseUrl', () => {

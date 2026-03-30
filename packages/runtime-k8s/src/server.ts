@@ -4,12 +4,16 @@
  * REST API for managing K8s-based CLI agents.
  */
 
-import express, { Request, Response } from 'express';
-import { WebSocketServer, WebSocket } from 'ws';
-import { createServer, Server } from 'http';
-import { Logger } from 'pino';
-import { K8sRuntime } from './k8s-runtime';
-import { AgentConfig, SpawnThreadInput, ThreadInput } from '@parallaxai/runtime-interface';
+import { createServer, type Server } from 'node:http';
+import type {
+  AgentConfig,
+  SpawnThreadInput,
+  ThreadInput,
+} from '@parallaxai/runtime-interface';
+import express, { type Request, type Response } from 'express';
+import type { Logger } from 'pino';
+import { WebSocket, WebSocketServer } from 'ws';
+import type { K8sRuntime } from './k8s-runtime';
 
 export interface RuntimeServerOptions {
   port: number;
@@ -325,7 +329,11 @@ export class RuntimeServer {
   private broadcast(event: string, data: any): void {
     if (!this.wss) return;
 
-    const message = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
+    const message = JSON.stringify({
+      event,
+      data,
+      timestamp: new Date().toISOString(),
+    });
 
     this.wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -338,7 +346,11 @@ export class RuntimeServer {
     const subscribers = this.agentSubscribers.get(agentId);
     if (!subscribers) return;
 
-    const message = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
+    const message = JSON.stringify({
+      event,
+      data,
+      timestamp: new Date().toISOString(),
+    });
 
     subscribers.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {

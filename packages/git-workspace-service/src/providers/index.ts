@@ -2,6 +2,9 @@
  * Git Providers
  */
 
-export { GitHubProvider } from './github-provider';
-export type { GitHubProviderConfig, GitHubProviderLogger } from './github-provider';
 export { GitHubPatClient } from './github-pat-client';
+export type {
+  GitHubProviderConfig,
+  GitHubProviderLogger,
+} from './github-provider';
+export { GitHubProvider } from './github-provider';

@@ -2,13 +2,13 @@
 
 /**
  * Battle Test Runner Script
- * 
+ *
  * Orchestrates the battle testing process
  */
 
+import * as path from 'node:path';
 import { program } from 'commander';
 import * as fs from 'fs-extra';
-import * as path from 'path';
 
 program
   .name('battle-test')
@@ -23,13 +23,13 @@ const options = program.opts();
 
 async function main() {
   const resultsDir = path.join(__dirname, 'battle-test-results');
-  
+
   // Clean if requested
   if (options.clean) {
     console.log('🧹 Cleaning previous results...');
     await fs.remove(resultsDir);
   }
-  
+
   // Run tests or analyze
   if (options.analyze) {
     // Just analyze existing results
@@ -44,20 +44,22 @@ async function main() {
       await import('./mini-battle-test');
     } else {
       console.log('🚀 Running full battle test suite...\n');
-      console.log('⚠️  This will make many API calls and may take several minutes.\n');
-      
+      console.log(
+        '⚠️  This will make many API calls and may take several minutes.\n'
+      );
+
       // Confirm before running full suite
-      const readline = await import('readline');
+      const readline = await import('node:readline');
       const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
       });
-      
-      const answer = await new Promise<string>(resolve => {
+
+      const answer = await new Promise<string>((resolve) => {
         rl.question('Continue with full test? (y/N): ', resolve);
       });
       rl.close();
-      
+
       if (answer.toLowerCase() === 'y') {
         const { BattleTestRunner } = await import('./battle-test-suite');
         const runner = new BattleTestRunner();
@@ -67,20 +69,19 @@ async function main() {
         process.exit(0);
       }
     }
-    
+
     // Auto-analyze after tests
     console.log('\n📊 Analyzing results...\n');
     const { ResultAnalyzer } = await import('./analyze-results');
     const analyzer = new ResultAnalyzer();
     await analyzer.analyze();
-    
   } else {
     // Show help if no options
     program.help();
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('❌ Error:', error);
   process.exit(1);
 });

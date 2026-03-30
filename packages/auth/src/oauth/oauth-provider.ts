@@ -1,6 +1,6 @@
-import { Issuer, Client, generators, TokenSet } from 'openid-client';
-import { Logger } from 'pino';
-import { OAuthConfig, User } from '../types';
+import { type Client, generators, Issuer, type TokenSet } from 'openid-client';
+import type { Logger } from 'pino';
+import type { OAuthConfig, User } from '../types';
 
 export interface OAuthTokens {
   accessToken: string;
@@ -36,7 +36,7 @@ export class OAuthProvider {
   async initialize(): Promise<void> {
     try {
       const issuer = await Issuer.discover(this.config.authorizationUrl);
-      
+
       this.client = new issuer.Client({
         client_id: this.config.clientId,
         client_secret: this.config.clientSecret,
@@ -46,7 +46,10 @@ export class OAuthProvider {
 
       this.logger.info({ provider: this.name }, 'OAuth provider initialized');
     } catch (error) {
-      this.logger.error({ error, provider: this.name }, 'Failed to initialize OAuth provider');
+      this.logger.error(
+        { error, provider: this.name },
+        'Failed to initialize OAuth provider'
+      );
       throw error;
     }
   }
@@ -54,7 +57,9 @@ export class OAuthProvider {
   /**
    * Get authorization URL for OAuth flow
    */
-  getAuthorizationUrl(options: { state?: string; nonce?: string } = {}): string {
+  getAuthorizationUrl(
+    options: { state?: string; nonce?: string } = {}
+  ): string {
     if (!this.client) {
       throw new Error('OAuth client not initialized');
     }
@@ -105,7 +110,10 @@ export class OAuthProvider {
 
       return this.tokenSetToOAuthTokens(tokenSet);
     } catch (error) {
-      this.logger.error({ error, provider: this.name }, 'Failed to exchange code for tokens');
+      this.logger.error(
+        { error, provider: this.name },
+        'Failed to exchange code for tokens'
+      );
       throw error;
     }
   }
@@ -120,11 +128,11 @@ export class OAuthProvider {
 
     try {
       const userInfo = await this.client.userinfo(accessToken);
-      
+
       return {
         id: userInfo.sub,
         email: userInfo.email as string,
-        name: userInfo.name as string || userInfo.email as string,
+        name: (userInfo.name as string) || (userInfo.email as string),
         picture: userInfo.picture as string,
         emailVerified: userInfo.email_verified as boolean,
         metadata: {
@@ -133,7 +141,10 @@ export class OAuthProvider {
         },
       };
     } catch (error) {
-      this.logger.error({ error, provider: this.name }, 'Failed to get user info');
+      this.logger.error(
+        { error, provider: this.name },
+        'Failed to get user info'
+      );
       throw error;
     }
   }
@@ -150,7 +161,10 @@ export class OAuthProvider {
       const tokenSet = await this.client.refresh(refreshToken);
       return this.tokenSetToOAuthTokens(tokenSet);
     } catch (error) {
-      this.logger.error({ error, provider: this.name }, 'Failed to refresh tokens');
+      this.logger.error(
+        { error, provider: this.name },
+        'Failed to refresh tokens'
+      );
       throw error;
     }
   }
@@ -158,7 +172,10 @@ export class OAuthProvider {
   /**
    * Revoke tokens
    */
-  async revokeToken(token: string, tokenType: 'access_token' | 'refresh_token' = 'access_token'): Promise<void> {
+  async revokeToken(
+    token: string,
+    tokenType: 'access_token' | 'refresh_token' = 'access_token'
+  ): Promise<void> {
     if (!this.client) {
       throw new Error('OAuth client not initialized');
     }
@@ -167,7 +184,10 @@ export class OAuthProvider {
       await this.client.revoke(token, tokenType);
       this.logger.info({ provider: this.name, tokenType }, 'Token revoked');
     } catch (error) {
-      this.logger.error({ error, provider: this.name }, 'Failed to revoke token');
+      this.logger.error(
+        { error, provider: this.name },
+        'Failed to revoke token'
+      );
       throw error;
     }
   }
@@ -175,7 +195,10 @@ export class OAuthProvider {
   /**
    * Convert user info to User object
    */
-  async oauthUserToUser(oauthUser: OAuthUserInfo, tenantId?: string): Promise<User> {
+  async oauthUserToUser(
+    oauthUser: OAuthUserInfo,
+    tenantId?: string
+  ): Promise<User> {
     return {
       id: `${this.name}:${oauthUser.id}`,
       email: oauthUser.email,
@@ -200,7 +223,9 @@ export class OAuthProvider {
       accessToken: tokenSet.access_token!,
       refreshToken: tokenSet.refresh_token,
       idToken: tokenSet.id_token,
-      expiresAt: tokenSet.expires_at ? new Date(tokenSet.expires_at * 1000) : undefined,
+      expiresAt: tokenSet.expires_at
+        ? new Date(tokenSet.expires_at * 1000)
+        : undefined,
       scope: tokenSet.scope,
     };
   }

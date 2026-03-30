@@ -11,19 +11,19 @@
  * 4. OAuth device flow (interactive)
  */
 
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
+import { MemoryTokenStore, OAuthDeviceFlow, type TokenStore } from './oauth';
 import type {
+  AgentPermissions,
+  AuthPromptEmitter,
+  CredentialGrant,
+  CredentialType,
   GitCredential,
   GitCredentialRequest,
-  CredentialGrant,
   GitProvider,
-  CredentialType,
   GitProviderAdapter,
   OAuthToken,
-  AuthPromptEmitter,
-  AgentPermissions,
 } from './types';
-import { OAuthDeviceFlow, TokenStore, MemoryTokenStore } from './oauth';
 
 export interface CredentialServiceLogger {
   info(data: Record<string, unknown>, message: string): void;
@@ -147,7 +147,9 @@ export class CredentialService {
    * If request.optional is true, returns null when no credentials available.
    * Otherwise throws an error.
    */
-  async getCredentials(request: GitCredentialRequest): Promise<GitCredential | null> {
+  async getCredentials(
+    request: GitCredentialRequest
+  ): Promise<GitCredential | null> {
     const provider = this.detectProvider(request.repo);
 
     this.log(
@@ -172,7 +174,11 @@ export class CredentialService {
 
     // Priority 1: User-provided credentials (PAT, OAuth token, or SSH)
     if (request.userProvided) {
-      credential = this.createUserProvidedCredential(request, ttlSeconds, provider);
+      credential = this.createUserProvidedCredential(
+        request,
+        ttlSeconds,
+        provider
+      );
       this.log(
         'info',
         { repo: request.repo, type: request.userProvided.type },
@@ -182,7 +188,11 @@ export class CredentialService {
 
     // Priority 2: Cached OAuth token
     if (!credential) {
-      credential = await this.getCachedOAuthCredential(provider, request, ttlSeconds);
+      credential = await this.getCachedOAuthCredential(
+        provider,
+        request,
+        ttlSeconds
+      );
     }
 
     // Priority 3: Provider-specific credentials (GitHub App, etc.)
@@ -203,7 +213,11 @@ export class CredentialService {
 
     // Priority 4: Interactive OAuth device flow
     if (!credential && this.oauthConfig) {
-      credential = await this.getOAuthCredentialViaDeviceFlow(provider, request, ttlSeconds);
+      credential = await this.getOAuthCredentialViaDeviceFlow(
+        provider,
+        request,
+        ttlSeconds
+      );
     }
 
     if (!credential) {
@@ -285,7 +299,11 @@ export class CredentialService {
         try {
           await this.grantStore.revoke(grantId);
         } catch (error) {
-          this.log('warn', { grantId, error }, 'Failed to revoke credential in store');
+          this.log(
+            'warn',
+            { grantId, error },
+            'Failed to revoke credential in store'
+          );
         }
       }
       return;
@@ -300,7 +318,11 @@ export class CredentialService {
       try {
         await provider.revokeCredential(grantId);
       } catch (error) {
-        this.log('warn', { grantId, error }, 'Failed to revoke credential via provider');
+        this.log(
+          'warn',
+          { grantId, error },
+          'Failed to revoke credential via provider'
+        );
       }
     }
 
@@ -309,7 +331,11 @@ export class CredentialService {
       try {
         await this.grantStore.revoke(grantId);
       } catch (error) {
-        this.log('warn', { grantId, error }, 'Failed to revoke credential in store');
+        this.log(
+          'warn',
+          { grantId, error },
+          'Failed to revoke credential in store'
+        );
       }
     }
 
@@ -334,15 +360,24 @@ export class CredentialService {
     // Revoke in store
     if (this.grantStore) {
       try {
-        const storeCount = await this.grantStore.revokeForExecution(executionId);
+        const storeCount =
+          await this.grantStore.revokeForExecution(executionId);
         // Use the larger count (store may have grants not in memory)
         count = Math.max(count, storeCount);
       } catch (error) {
-        this.log('warn', { executionId, error }, 'Failed to revoke credentials in store');
+        this.log(
+          'warn',
+          { executionId, error },
+          'Failed to revoke credentials in store'
+        );
       }
     }
 
-    this.log('info', { executionId, revokedCount: count }, 'Credentials revoked for execution');
+    this.log(
+      'info',
+      { executionId, revokedCount: count },
+      'Credentials revoked for execution'
+    );
     return count;
   }
 
@@ -388,7 +423,11 @@ export class CredentialService {
       try {
         return await this.grantStore.findByExecutionId(executionId);
       } catch (error) {
-        this.log('warn', { executionId, error }, 'Failed to get grants from store');
+        this.log(
+          'warn',
+          { executionId, error },
+          'Failed to get grants from store'
+        );
       }
     }
 
@@ -411,10 +450,16 @@ export class CredentialService {
     if (lowerRepo.includes('gitlab.com') || lowerRepo.startsWith('gitlab:')) {
       return 'gitlab';
     }
-    if (lowerRepo.includes('bitbucket.org') || lowerRepo.startsWith('bitbucket:')) {
+    if (
+      lowerRepo.includes('bitbucket.org') ||
+      lowerRepo.startsWith('bitbucket:')
+    ) {
       return 'bitbucket';
     }
-    if (lowerRepo.includes('dev.azure.com') || lowerRepo.includes('visualstudio.com')) {
+    if (
+      lowerRepo.includes('dev.azure.com') ||
+      lowerRepo.includes('visualstudio.com')
+    ) {
       return 'azure_devops';
     }
 
@@ -482,9 +527,16 @@ export class CredentialService {
       if (this.tokenStore.isExpired(cachedToken)) {
         // Try to refresh if we have a refresh token
         if (cachedToken.refreshToken && this.oauthConfig) {
-          const refreshedToken = await this.refreshOAuthToken(provider, cachedToken.refreshToken);
+          const refreshedToken = await this.refreshOAuthToken(
+            provider,
+            cachedToken.refreshToken
+          );
           if (refreshedToken) {
-            return this.createOAuthCredential(refreshedToken, request, ttlSeconds);
+            return this.createOAuthCredential(
+              refreshedToken,
+              request,
+              ttlSeconds
+            );
           }
         }
         // Token expired and can't refresh
@@ -493,10 +545,21 @@ export class CredentialService {
       }
 
       // Check if token needs refresh (close to expiry)
-      if (this.tokenStore.needsRefresh(cachedToken) && cachedToken.refreshToken && this.oauthConfig) {
-        const refreshedToken = await this.refreshOAuthToken(provider, cachedToken.refreshToken);
+      if (
+        this.tokenStore.needsRefresh(cachedToken) &&
+        cachedToken.refreshToken &&
+        this.oauthConfig
+      ) {
+        const refreshedToken = await this.refreshOAuthToken(
+          provider,
+          cachedToken.refreshToken
+        );
         if (refreshedToken) {
-          return this.createOAuthCredential(refreshedToken, request, ttlSeconds);
+          return this.createOAuthCredential(
+            refreshedToken,
+            request,
+            ttlSeconds
+          );
         }
         // If refresh fails, continue with existing token if still valid
       }
@@ -523,11 +586,19 @@ export class CredentialService {
 
     // Only GitHub is supported for now
     if (provider !== 'github') {
-      this.log('warn', { provider }, 'OAuth device flow only supported for GitHub');
+      this.log(
+        'warn',
+        { provider },
+        'OAuth device flow only supported for GitHub'
+      );
       return null;
     }
 
-    this.log('info', { repo: request.repo }, 'Starting OAuth device flow for authentication');
+    this.log(
+      'info',
+      { repo: request.repo },
+      'Starting OAuth device flow for authentication'
+    );
 
     try {
       const deviceFlow = new OAuthDeviceFlow({
@@ -543,7 +614,11 @@ export class CredentialService {
       // Cache the token for future use
       await this.tokenStore.save(provider, token);
 
-      this.log('info', { provider }, 'OAuth device flow completed successfully');
+      this.log(
+        'info',
+        { provider },
+        'OAuth device flow completed successfully'
+      );
       return this.createOAuthCredential(token, request, ttlSeconds);
     } catch (error) {
       this.log('error', { provider, error }, 'OAuth device flow failed');
@@ -595,19 +670,28 @@ export class CredentialService {
 
     // Map permissions to string array
     const permissions: string[] = [];
-    if (token.permissions.contents === 'read' || token.permissions.contents === 'write') {
+    if (
+      token.permissions.contents === 'read' ||
+      token.permissions.contents === 'write'
+    ) {
       permissions.push('contents:read');
     }
     if (token.permissions.contents === 'write') {
       permissions.push('contents:write');
     }
-    if (token.permissions.pullRequests === 'read' || token.permissions.pullRequests === 'write') {
+    if (
+      token.permissions.pullRequests === 'read' ||
+      token.permissions.pullRequests === 'write'
+    ) {
       permissions.push('pull_requests:read');
     }
     if (token.permissions.pullRequests === 'write') {
       permissions.push('pull_requests:write');
     }
-    if (token.permissions.issues === 'read' || token.permissions.issues === 'write') {
+    if (
+      token.permissions.issues === 'read' ||
+      token.permissions.issues === 'write'
+    ) {
       permissions.push('issues:read');
     }
     if (token.permissions.issues === 'write') {

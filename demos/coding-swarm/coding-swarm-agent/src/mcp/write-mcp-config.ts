@@ -6,8 +6,8 @@
  * coordination server.
  */
 
-import { writeFileSync, mkdirSync } from 'fs';
-import path from 'path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 export interface McpConfigOptions {
   workspaceDir: string;
@@ -23,13 +23,8 @@ export interface McpConfigOptions {
  * coordination tools (ask_architect, share_decision, etc.)
  */
 export function writeMcpConfig(options: McpConfigOptions): void {
-  const {
-    workspaceDir,
-    threadId,
-    executionId,
-    role,
-    controlPlaneUrl,
-  } = options;
+  const { workspaceDir, threadId, executionId, role, controlPlaneUrl } =
+    options;
 
   // Claude Code reads MCP config from .claude/settings.local.json
   const claudeDir = path.join(workspaceDir, '.claude');
@@ -39,10 +34,7 @@ export function writeMcpConfig(options: McpConfigOptions): void {
     mcpServers: {
       'parallax-swarm': {
         command: 'npx',
-        args: [
-          'tsx',
-          path.join(__dirname, 'swarm-mcp-entrypoint.ts'),
-        ],
+        args: ['tsx', path.join(__dirname, 'swarm-mcp-entrypoint.ts')],
         env: {
           PARALLAX_THREAD_ID: threadId,
           PARALLAX_EXECUTION_ID: executionId,

@@ -45,7 +45,16 @@ export interface CLIVersionSource {
  */
 export interface DetectedPattern {
   /** Pattern type */
-  type: 'ready' | 'auth' | 'blocking' | 'update' | 'prompt' | 'loading' | 'turn_complete' | 'tool_wait' | 'exit';
+  type:
+    | 'ready'
+    | 'auth'
+    | 'blocking'
+    | 'update'
+    | 'prompt'
+    | 'loading'
+    | 'turn_complete'
+    | 'tool_wait'
+    | 'exit';
 
   /** The actual text/pattern detected */
   text: string;
@@ -267,7 +276,14 @@ export interface WatchedFile {
   path: string;
 
   /** What this file controls */
-  category: 'blocking_prompt' | 'ready_detection' | 'exit_detection' | 'auth' | 'framework' | 'startup' | 'loading';
+  category:
+    | 'blocking_prompt'
+    | 'ready_detection'
+    | 'exit_detection'
+    | 'auth'
+    | 'framework'
+    | 'startup'
+    | 'loading';
 }
 
 /**

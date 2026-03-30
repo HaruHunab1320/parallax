@@ -47,7 +47,6 @@ export class McpAuthHandler {
   private apiKeys: Map<string, ApiKeyConfig> = new Map();
   private jwtSecret?: string;
   private jwtIssuer?: string;
-  private logger: Logger;
 
   constructor(config: McpAuthConfig, logger: Logger) {
     this.logger = logger;
@@ -135,11 +134,11 @@ export class McpAuthHandler {
     }
 
     // Check prefix match (e.g., 'agents:*' matches 'agents:spawn')
-    const permissionParts = permission.split(':');
+    const _permissionParts = permission.split(':');
     for (const p of context.permissions) {
       if (p.endsWith(':*')) {
         const prefix = p.slice(0, -2);
-        if (permission.startsWith(prefix + ':')) {
+        if (permission.startsWith(`${prefix}:`)) {
           return true;
         }
       }

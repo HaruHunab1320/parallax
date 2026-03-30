@@ -5,8 +5,8 @@
  * Captures the main topic, key conclusions, and overall message.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'summary-agent';
@@ -21,9 +21,9 @@ class SummaryAgent extends ParallaxAgent {
       AGENT_NAME,
       ['document', 'analysis', 'summary', 'overview'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Creates executive summaries of documents'
+        description: 'Creates executive summaries of documents',
       }
     );
 
@@ -37,7 +37,10 @@ class SummaryAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +49,7 @@ class SummaryAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -92,29 +95,32 @@ You MUST respond in this exact JSON format:
         return {
           value: { error: 'Could not parse response', analysisType: 'summary' },
           confidence: 0.3,
-          reasoning: responseText.substring(0, 200)
+          reasoning: responseText.substring(0, 200),
         };
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
 
-      const confidence = Math.max(0, Math.min(1, (parsed.confidence || 80) / 100));
+      const confidence = Math.max(
+        0,
+        Math.min(1, (parsed.confidence || 80) / 100)
+      );
 
       return {
         value: {
           ...parsed,
           analysisType: 'summary',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: confidence,
-        reasoning: `Created executive summary for ${parsed.documentType || 'document'} (${Math.round(confidence * 100)}% confident)`
+        reasoning: `Created executive summary for ${parsed.documentType || 'document'} (${Math.round(confidence * 100)}% confident)`,
       };
     } catch (error) {
       console.error('Summary error:', error);
       return {
         value: { error: String(error), analysisType: 'summary' },
         confidence: 0,
-        reasoning: 'Summary generation failed'
+        reasoning: 'Summary generation failed',
       };
     }
   }

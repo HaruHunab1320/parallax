@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('SchedulesResource', () => {
@@ -47,7 +47,10 @@ describe('SchedulesResource', () => {
     });
     globalThis.fetch = fetchMock;
 
-    await client.schedules.list({ status: 'active', patternName: 'SignalNoiseConversation' });
+    await client.schedules.list({
+      status: 'active',
+      patternName: 'SignalNoiseConversation',
+    });
 
     const [url] = fetchMock.mock.calls[0];
     expect(url).toContain('status=active');
@@ -142,9 +145,16 @@ describe('SchedulesResource', () => {
   });
 
   it('should update a schedule', async () => {
-    mockFetch({ id: 'sched-1', intervalMs: 60000, status: 'active', runCount: 5 });
+    mockFetch({
+      id: 'sched-1',
+      intervalMs: 60000,
+      status: 'active',
+      runCount: 5,
+    });
 
-    const result = await client.schedules.update('sched-1', { intervalMs: 60000 });
+    const result = await client.schedules.update('sched-1', {
+      intervalMs: 60000,
+    });
 
     expect(result.intervalMs).toBe(60000);
   });

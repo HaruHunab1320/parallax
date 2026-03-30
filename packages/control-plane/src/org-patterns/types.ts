@@ -4,7 +4,12 @@
  * Types for organizational structure orchestration of multi-agent systems.
  */
 
-import { AgentType, AgentConfig, ThreadPolicy, ThreadWorkspaceRef } from '@parallaxai/runtime-interface';
+import type {
+  AgentConfig,
+  AgentType,
+  ThreadPolicy,
+  ThreadWorkspaceRef,
+} from '@parallaxai/runtime-interface';
 
 export interface OrgThreadConfig {
   /** Opt this role into thread-backed execution instead of raw agent spawning */
@@ -140,11 +145,20 @@ export type WorkflowStep =
   | { type: 'assign'; role: string; task: string; input?: any }
   | { type: 'parallel'; steps: WorkflowStep[] }
   | { type: 'sequential'; steps: WorkflowStep[] }
-  | { type: 'select'; role: string; criteria?: 'availability' | 'expertise' | 'round_robin' }
+  | {
+      type: 'select';
+      role: string;
+      criteria?: 'availability' | 'expertise' | 'round_robin';
+    }
   | { type: 'review'; reviewer: string; subject: any }
   | { type: 'approve'; approver: string; subject: any }
   | { type: 'aggregate'; method: 'consensus' | 'majority' | 'merge' | 'best' }
-  | { type: 'condition'; check: string; then: WorkflowStep; else?: WorkflowStep };
+  | {
+      type: 'condition';
+      check: string;
+      then: WorkflowStep;
+      else?: WorkflowStep;
+    };
 
 /**
  * Workflow definition

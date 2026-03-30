@@ -2,9 +2,9 @@
  * Hermes Adapter Tests
  */
 
-import { describe, it, expect } from 'vitest';
-import { HermesAdapter } from '../src/hermes-adapter';
 import type { SpawnConfig } from 'pty-manager';
+import { describe, expect, it } from 'vitest';
+import { HermesAdapter } from '../src/hermes-adapter';
 
 describe('HermesAdapter', () => {
   const adapter = new HermesAdapter();
@@ -61,7 +61,9 @@ describe('HermesAdapter', () => {
 
   describe('detectLogin()', () => {
     it('should detect first-run setup gate', () => {
-      const result = adapter.detectLogin("Hermes isn't configured yet -- no API keys or providers found.");
+      const result = adapter.detectLogin(
+        "Hermes isn't configured yet -- no API keys or providers found."
+      );
       expect(result.required).toBe(true);
       expect(result.type).toBe('api_key');
     });
@@ -79,7 +81,9 @@ describe('HermesAdapter', () => {
 
   describe('detectBlockingPrompt()', () => {
     it('should detect clarify panel', () => {
-      const result = adapter.detectBlockingPrompt('╭─ Hermes needs your input ─╮\nOther (type your answer)');
+      const result = adapter.detectBlockingPrompt(
+        '╭─ Hermes needs your input ─╮\nOther (type your answer)'
+      );
       expect(result.detected).toBe(true);
       expect(result.type).toBe('tool_wait');
       expect(result.canAutoRespond).toBe(false);
@@ -92,7 +96,9 @@ describe('HermesAdapter', () => {
     });
 
     it('should detect dangerous command approval panel', () => {
-      const result = adapter.detectBlockingPrompt('⚠️  Dangerous Command\nAllow once\nDeny');
+      const result = adapter.detectBlockingPrompt(
+        '⚠️  Dangerous Command\nAllow once\nDeny'
+      );
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
     });

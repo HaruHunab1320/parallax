@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import pino from 'pino';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock proto-loader and grpc before importing AgentProxy
 vi.mock('@grpc/proto-loader', () => ({
@@ -25,11 +25,16 @@ vi.mock('@grpc/grpc-js', () => ({
 }));
 
 import { AgentProxy } from '@/grpc/agent-proxy';
-import type { GatewayService, GatewayDispatchResult } from '@/grpc/services/gateway-service';
+import type {
+  GatewayDispatchResult,
+  GatewayService,
+} from '@/grpc/services/gateway-service';
 
 const logger = pino({ level: 'silent' });
 
-function createMockGatewayService(overrides: Partial<GatewayService> = {}): GatewayService {
+function createMockGatewayService(
+  overrides: Partial<GatewayService> = {}
+): GatewayService {
   return {
     dispatchTask: vi.fn<any>().mockResolvedValue({
       value: { result: 'ok' },

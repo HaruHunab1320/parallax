@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
-import { Logger } from 'pino';
-import { JWTService } from './jwt-service';
-import { AuthRequest } from '../types';
+import type { NextFunction, Request, Response } from 'express';
+import type { Logger } from 'pino';
+import type { AuthRequest } from '../types';
+import type { JWTService } from './jwt-service';
 
 export interface JWTMiddlewareOptions {
   credentialsRequired?: boolean;
@@ -18,9 +18,9 @@ export class JWTMiddleware {
    * Create Express middleware for JWT authentication
    */
   authenticate(options: JWTMiddlewareOptions = {}) {
-    const { 
+    const {
       credentialsRequired = true,
-      extractToken = this.defaultTokenExtractor
+      extractToken = this.defaultTokenExtractor,
     } = options;
 
     return async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -46,7 +46,10 @@ export class JWTMiddleware {
           this.logger.warn({ error }, 'Invalid token');
           return res.status(401).json({
             error: 'Invalid token',
-            message: error instanceof Error ? error.message : 'Token verification failed',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Token verification failed',
           });
         }
       } catch (error) {
@@ -71,14 +74,17 @@ export class JWTMiddleware {
         });
       }
 
-      const hasRole = roles.some(role => req.user!.roles.includes(role));
-      
+      const hasRole = roles.some((role) => req.user!.roles.includes(role));
+
       if (!hasRole) {
-        this.logger.warn({
-          userId: req.user.sub,
-          requiredRoles: roles,
-          userRoles: req.user.roles,
-        }, 'Access denied - insufficient roles');
+        this.logger.warn(
+          {
+            userId: req.user.sub,
+            requiredRoles: roles,
+            userRoles: req.user.roles,
+          },
+          'Access denied - insufficient roles'
+        );
 
         return res.status(403).json({
           error: 'Access denied',
@@ -103,9 +109,9 @@ export class JWTMiddleware {
         });
       }
 
-      const requestedTenantId = tenantIdExtractor 
+      const requestedTenantId = tenantIdExtractor
         ? tenantIdExtractor(req)
-        : req.params.tenantId || req.query.tenantId as string;
+        : req.params.tenantId || (req.query.tenantId as string);
 
       if (!requestedTenantId) {
         return res.status(400).json({
@@ -115,12 +121,18 @@ export class JWTMiddleware {
       }
 
       // Check if user has access to the tenant
-      if (req.user.tenantId !== requestedTenantId && !req.user.roles.includes('admin')) {
-        this.logger.warn({
-          userId: req.user.sub,
-          userTenantId: req.user.tenantId,
-          requestedTenantId,
-        }, 'Access denied - tenant mismatch');
+      if (
+        req.user.tenantId !== requestedTenantId &&
+        !req.user.roles.includes('admin')
+      ) {
+        this.logger.warn(
+          {
+            userId: req.user.sub,
+            userTenantId: req.user.tenantId,
+            requestedTenantId,
+          },
+          'Access denied - tenant mismatch'
+        );
 
         return res.status(403).json({
           error: 'Access denied',
@@ -137,13 +149,13 @@ export class JWTMiddleware {
    */
   private defaultTokenExtractor(req: Request): string | null {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
       return null;
     }
 
     const parts = authHeader.split(' ');
-    
+
     if (parts.length !== 2 || parts[0] !== 'Bearer') {
       return null;
     }

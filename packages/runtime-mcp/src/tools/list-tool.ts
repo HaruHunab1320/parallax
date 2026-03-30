@@ -2,20 +2,23 @@
  * List Tool - Query running agents
  */
 
+import type { AgentFilter, AgentHandle } from '@parallaxai/runtime-interface';
 import type { LocalRuntime } from '@parallaxai/runtime-local';
-import type { AgentHandle, AgentFilter } from '@parallaxai/runtime-interface';
-import { ListInputSchema, type ListInput } from './schemas.js';
+import { type ListInput, ListInputSchema } from './schemas.js';
 
 export const LIST_TOOL = {
   name: 'list',
-  description: 'List agents with optional filtering by status, type, role, or capabilities.',
+  description:
+    'List agents with optional filtering by status, type, role, or capabilities.',
   inputSchema: ListInputSchema,
 };
 
 export async function executeList(
   runtime: LocalRuntime,
   input: ListInput
-): Promise<{ success: true; agents: AgentHandle[] } | { success: false; error: string }> {
+): Promise<
+  { success: true; agents: AgentHandle[] } | { success: false; error: string }
+> {
   try {
     const filter: AgentFilter = {};
 

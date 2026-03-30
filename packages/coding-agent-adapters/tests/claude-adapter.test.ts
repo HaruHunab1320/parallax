@@ -2,9 +2,9 @@
  * Claude Adapter Tests
  */
 
-import { describe, it, expect } from 'vitest';
-import { ClaudeAdapter } from '../src/claude-adapter';
 import type { SpawnConfig } from 'pty-manager';
+import { describe, expect, it } from 'vitest';
+import { ClaudeAdapter } from '../src/claude-adapter';
 
 describe('ClaudeAdapter', () => {
   const adapter = new ClaudeAdapter();
@@ -21,15 +21,21 @@ describe('ClaudeAdapter', () => {
 
   describe('installation', () => {
     it('should have npm install command', () => {
-      expect(adapter.installation.command).toBe('npm install -g @anthropic-ai/claude-code');
+      expect(adapter.installation.command).toBe(
+        'npm install -g @anthropic-ai/claude-code'
+      );
     });
 
     it('should have npx alternative', () => {
-      expect(adapter.installation.alternatives).toContain('npx @anthropic-ai/claude-code (run without installing)');
+      expect(adapter.installation.alternatives).toContain(
+        'npx @anthropic-ai/claude-code (run without installing)'
+      );
     });
 
     it('should have brew alternative', () => {
-      expect(adapter.installation.alternatives?.some(a => a.includes('brew'))).toBe(true);
+      expect(
+        adapter.installation.alternatives?.some((a) => a.includes('brew'))
+      ).toBe(true);
     });
 
     it('should have docs URL', () => {
@@ -171,7 +177,9 @@ describe('ClaudeAdapter', () => {
       const env = adapter.getEnv(config);
 
       expect(env.PARALLAX_CLAUDE_HOOK_TELEMETRY).toBe('1');
-      expect(env.PARALLAX_CLAUDE_HOOK_MARKER_PREFIX).toBe('PARALLAX_CLAUDE_HOOK');
+      expect(env.PARALLAX_CLAUDE_HOOK_MARKER_PREFIX).toBe(
+        'PARALLAX_CLAUDE_HOOK'
+      );
     });
   });
 
@@ -210,7 +218,9 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should detect browser auth with URL', () => {
-      const result = adapter.detectLogin('Open this URL to authenticate: https://auth.anthropic.com/login');
+      const result = adapter.detectLogin(
+        'Open this URL to authenticate: https://auth.anthropic.com/login'
+      );
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('browser');
@@ -234,28 +244,36 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should detect model selection prompt', () => {
-      const result = adapter.detectBlockingPrompt('Please choose a model:\n1) claude-3-opus\n2) claude-3-sonnet');
+      const result = adapter.detectBlockingPrompt(
+        'Please choose a model:\n1) claude-3-opus\n2) claude-3-sonnet'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('model_select');
     });
 
     it('should detect API tier selection', () => {
-      const result = adapter.detectBlockingPrompt('Which API tier would you like to use?');
+      const result = adapter.detectBlockingPrompt(
+        'Which API tier would you like to use?'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('config');
     });
 
     it('should detect first-time setup', () => {
-      const result = adapter.detectBlockingPrompt('Welcome to Claude Code! First time setup required.');
+      const result = adapter.detectBlockingPrompt(
+        'Welcome to Claude Code! First time setup required.'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('config');
     });
 
     it('should detect file access permission with auto-respond', () => {
-      const result = adapter.detectBlockingPrompt('Allow access to project files? [y/n]');
+      const result = adapter.detectBlockingPrompt(
+        'Allow access to project files? [y/n]'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -270,7 +288,9 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should detect optional survey with dismiss response', () => {
-      const result = adapter.detectBlockingPrompt('How is Claude doing this session? (optional) 1: Bad 2: Fine 3: Good 0: Dismiss');
+      const result = adapter.detectBlockingPrompt(
+        'How is Claude doing this session? (optional) 1: Bad 2: Fine 3: Good 0: Dismiss'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('config');
@@ -279,7 +299,9 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should detect dialog navigation state and suggest Esc', () => {
-      const result = adapter.detectBlockingPrompt('Enter to confirm · Esc to cancel');
+      const result = adapter.detectBlockingPrompt(
+        'Enter to confirm · Esc to cancel'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('config');
@@ -288,7 +310,9 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should detect slash menu navigation state and suggest key navigation', () => {
-      const result = adapter.detectBlockingPrompt('/agents Manage agent configurations Press ↑↓ to navigate · Enter to select · Esc to go back');
+      const result = adapter.detectBlockingPrompt(
+        '/agents Manage agent configurations Press ↑↓ to navigate · Enter to select · Esc to go back'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('config');
@@ -380,11 +404,17 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should NOT detect ready when trust prompt is present', () => {
-      expect(adapter.detectReady('Claude Code\nDo you want to trust this directory?')).toBe(false);
+      expect(
+        adapter.detectReady('Claude Code\nDo you want to trust this directory?')
+      ).toBe(false);
     });
 
     it('should NOT detect ready when permission prompt is present', () => {
-      expect(adapter.detectReady('How can I help\nClaude needs your permission to write file.txt')).toBe(false);
+      expect(
+        adapter.detectReady(
+          'How can I help\nClaude needs your permission to write file.txt'
+        )
+      ).toBe(false);
     });
 
     it('should return false for loading output', () => {
@@ -392,24 +422,32 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should return false for active spinner output', () => {
-      expect(adapter.detectReady('• Working (12s • esc to interrupt)')).toBe(false);
+      expect(adapter.detectReady('• Working (12s • esc to interrupt)')).toBe(
+        false
+      );
     });
 
     it('should detect ready from idle_prompt hook marker', () => {
       expect(
-        adapter.detectReady('PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"idle_prompt"}')
+        adapter.detectReady(
+          'PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"idle_prompt"}'
+        )
       ).toBe(true);
     });
 
     it('should detect ready from custom hook marker prefix', () => {
       expect(
-        adapter.detectReady('TEAM_CLAUDE_HOOK_MARKER {"event":"Notification","notification_type":"idle_prompt"}')
+        adapter.detectReady(
+          'TEAM_CLAUDE_HOOK_MARKER {"event":"Notification","notification_type":"idle_prompt"}'
+        )
       ).toBe(true);
     });
 
     it('should not detect ready for permission_prompt hook marker', () => {
       expect(
-        adapter.detectReady('PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"permission_prompt"}')
+        adapter.detectReady(
+          'PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"permission_prompt"}'
+        )
       ).toBe(false);
     });
   });
@@ -469,7 +507,7 @@ describe('ClaudeAdapter', () => {
 
   describe('autoResponseRules', () => {
     it('should have trust prompt rule with keys: ["enter"]', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust')
       );
 
@@ -480,49 +518,49 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should have once: true to prevent thrashing', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust')
       );
       expect(rule?.once).toBe(true);
     });
 
     it('should match trust folder prompt', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust')
       );
       expect(rule?.pattern.test('Do you trust this folder?')).toBe(true);
     });
 
     it('should match safety check prompt (with space)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust')
       );
       expect(rule?.pattern.test('Running safety check...')).toBe(true);
     });
 
     it('should match safetycheck (without space, from stripped cursor codes)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust')
       );
       expect(rule?.pattern.test('Running safetycheck...')).toBe(true);
     });
 
     it('should match "project you created" prompt', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust')
       );
       expect(rule?.pattern.test('This is a project you created')).toBe(true);
     });
 
     it('should match "trust directory" prompt', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust')
       );
       expect(rule?.pattern.test('Do you trust this directory?')).toBe(true);
     });
 
     it('should match TUI menu options when question has scrolled off', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust')
       );
       // When the trust question scrolls off, only the menu options remain visible
@@ -531,7 +569,7 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should have update decline rule with responseType text', () => {
-      const rule = adapter.autoResponseRules.find(r => r.type === 'update');
+      const rule = adapter.autoResponseRules.find((r) => r.type === 'update');
 
       expect(rule).toBeDefined();
       expect(rule?.response).toBe('n');
@@ -540,7 +578,7 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should have telemetry decline rule with responseType text', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('telemetry')
       );
 
@@ -550,7 +588,9 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should have all text rules with explicit responseType text', () => {
-      const textRules = adapter.autoResponseRules.filter(r => r.responseType === 'text');
+      const textRules = adapter.autoResponseRules.filter(
+        (r) => r.responseType === 'text'
+      );
       expect(textRules.length).toBeGreaterThanOrEqual(5);
       for (const rule of textRules) {
         expect(rule.responseType).toBe('text');
@@ -558,12 +598,12 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should match update prompt', () => {
-      const rule = adapter.autoResponseRules.find(r => r.type === 'update');
+      const rule = adapter.autoResponseRules.find((r) => r.type === 'update');
       expect(rule?.pattern.test('A new update available! [y/n]')).toBe(true);
     });
 
     it('should include survey auto-dismiss rule (0)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('session survey')
       );
       expect(rule).toBeDefined();
@@ -575,7 +615,9 @@ describe('ClaudeAdapter', () => {
 
   describe('detectBlockingPrompt() permission with keys:enter', () => {
     it('should return keys:enter suggestedResponse for tool permission prompt', () => {
-      const result = adapter.detectBlockingPrompt('Claude wants permission to read file.txt');
+      const result = adapter.detectBlockingPrompt(
+        'Claude wants permission to read file.txt'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -584,7 +626,9 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should return keys:enter for "Do you want to" prompt', () => {
-      const result = adapter.detectBlockingPrompt('Do you want to allow this action?');
+      const result = adapter.detectBlockingPrompt(
+        'Do you want to allow this action?'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.suggestedResponse).toBe('keys:enter');
@@ -601,7 +645,9 @@ describe('ClaudeAdapter', () => {
     it('should return a default marker protocol and script path', () => {
       const protocol = adapter.getHookTelemetryProtocol();
       expect(protocol.markerPrefix).toBe('PARALLAX_CLAUDE_HOOK');
-      expect(protocol.scriptPath).toBe('.claude/hooks/parallax-hook-telemetry.sh');
+      expect(protocol.scriptPath).toBe(
+        '.claude/hooks/parallax-hook-telemetry.sh'
+      );
       expect(protocol.settingsHooks).toHaveProperty('Notification');
       expect(protocol.settingsHooks).toHaveProperty('PreToolUse');
       expect(protocol.settingsHooks).toHaveProperty('TaskCompleted');
@@ -612,7 +658,7 @@ describe('ClaudeAdapter', () => {
   describe('getWorkspaceFiles()', () => {
     it('should return CLAUDE.md as primary memory file', () => {
       const files = adapter.getWorkspaceFiles();
-      const memory = files.find(f => f.type === 'memory');
+      const memory = files.find((f) => f.type === 'memory');
       expect(memory).toBeDefined();
       expect(memory!.relativePath).toBe('CLAUDE.md');
       expect(memory!.autoLoaded).toBe(true);
@@ -621,7 +667,9 @@ describe('ClaudeAdapter', () => {
 
     it('should include settings.json config', () => {
       const files = adapter.getWorkspaceFiles();
-      const config = files.find(f => f.relativePath === '.claude/settings.json');
+      const config = files.find(
+        (f) => f.relativePath === '.claude/settings.json'
+      );
       expect(config).toBeDefined();
       expect(config!.type).toBe('config');
       expect(config!.format).toBe('json');
@@ -629,7 +677,7 @@ describe('ClaudeAdapter', () => {
 
     it('should include custom commands directory', () => {
       const files = adapter.getWorkspaceFiles();
-      const commands = files.find(f => f.relativePath === '.claude/commands');
+      const commands = files.find((f) => f.relativePath === '.claude/commands');
       expect(commands).toBeDefined();
       expect(commands!.autoLoaded).toBe(false);
     });
@@ -672,7 +720,8 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should NOT match startup status line "Claude in Chrome enabled"', () => {
-      const output = 'Claude in Chrome enabled · /chrome   for shortcuts   Update available!';
+      const output =
+        'Claude in Chrome enabled · /chrome   for shortcuts   Update available!';
       const result = adapter.detectToolRunning!(output);
       expect(result).toBeNull();
     });
@@ -684,7 +733,9 @@ describe('ClaudeAdapter', () => {
     });
 
     it('should return null for normal output', () => {
-      const result = adapter.detectToolRunning!('Here is some code:\nfunction foo() {}');
+      const result = adapter.detectToolRunning!(
+        'Here is some code:\nfunction foo() {}'
+      );
       expect(result).toBeNull();
     });
 
@@ -709,15 +760,25 @@ describe('ClaudeAdapter', () => {
 
   describe('hook-marker lifecycle helpers', () => {
     it('should detect loading from PreToolUse hook marker', () => {
-      expect(adapter.detectLoading('PARALLAX_CLAUDE_HOOK {"event":"PreToolUse","tool_name":"Read"}')).toBe(true);
+      expect(
+        adapter.detectLoading(
+          'PARALLAX_CLAUDE_HOOK {"event":"PreToolUse","tool_name":"Read"}'
+        )
+      ).toBe(true);
     });
 
     it('should detect task completion from TaskCompleted hook marker', () => {
-      expect(adapter.detectTaskComplete('PARALLAX_CLAUDE_HOOK {"event":"TaskCompleted"}')).toBe(true);
+      expect(
+        adapter.detectTaskComplete(
+          'PARALLAX_CLAUDE_HOOK {"event":"TaskCompleted"}'
+        )
+      ).toBe(true);
     });
 
     it('should detect exit from SessionEnd hook marker', () => {
-      const result = adapter.detectExit('PARALLAX_CLAUDE_HOOK {"event":"SessionEnd"}');
+      const result = adapter.detectExit(
+        'PARALLAX_CLAUDE_HOOK {"event":"SessionEnd"}'
+      );
       expect(result.exited).toBe(true);
       expect(result.code).toBe(0);
     });

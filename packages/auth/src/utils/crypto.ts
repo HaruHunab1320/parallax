@@ -1,5 +1,5 @@
+import * as crypto from 'node:crypto';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
 
 export class CryptoUtils {
   /**
@@ -12,7 +12,10 @@ export class CryptoUtils {
   /**
    * Compare a plain password with a hashed password
    */
-  static async comparePassword(password: string, hash: string): Promise<boolean> {
+  static async comparePassword(
+    password: string,
+    hash: string
+  ): Promise<boolean> {
     return bcrypt.compare(password, hash);
   }
 
@@ -27,14 +30,15 @@ export class CryptoUtils {
    * Generate a secure random string
    */
   static generateSecureRandom(length = 16): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const chars =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const bytes = crypto.randomBytes(length);
     const result = new Array(length);
-    
+
     for (let i = 0; i < length; i++) {
       result[i] = chars[bytes[i] % chars.length];
     }
-    
+
     return result.join('');
   }
 
@@ -63,7 +67,7 @@ export class CryptoUtils {
    * Verify an HMAC signature
    */
   static verifyHMAC(data: string, signature: string, secret: string): boolean {
-    const expectedSignature = this.createHMAC(data, secret);
+    const expectedSignature = CryptoUtils.createHMAC(data, secret);
     return crypto.timingSafeEqual(
       Buffer.from(signature),
       Buffer.from(expectedSignature)

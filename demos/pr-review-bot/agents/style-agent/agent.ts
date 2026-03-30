@@ -5,8 +5,8 @@
  * Demonstrates a TypeScript agent in the Parallax multi-language ecosystem.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 // Style patterns to check (fallback when no LLM)
 const STYLE_PATTERNS = [
@@ -14,44 +14,46 @@ const STYLE_PATTERNS = [
     pattern: /if\s*\([^)]+\)\s*\{\s*if\s*\([^)]+\)\s*\{\s*if/g,
     severity: 'high',
     issue: 'Deeply nested conditionals (3+ levels)',
-    suggestion: 'Extract conditions into separate functions or use early returns'
+    suggestion:
+      'Extract conditions into separate functions or use early returns',
   },
   {
     pattern: /function\s+\w+\s*\([^)]{100,}\)/g,
     severity: 'medium',
     issue: 'Function has too many parameters',
-    suggestion: 'Consider using an options object or breaking into smaller functions'
+    suggestion:
+      'Consider using an options object or breaking into smaller functions',
   },
   {
     pattern: /\bany\b/g,
     severity: 'medium',
     issue: 'Use of "any" type reduces type safety',
-    suggestion: 'Define proper types or use "unknown" with type guards'
+    suggestion: 'Define proper types or use "unknown" with type guards',
   },
   {
     pattern: /console\.(log|warn|error)\s*\(/g,
     severity: 'low',
     issue: 'Console statements should be removed in production',
-    suggestion: 'Use a proper logging library or remove before merging'
+    suggestion: 'Use a proper logging library or remove before merging',
   },
   {
     pattern: /TODO|FIXME|HACK|XXX/gi,
     severity: 'low',
     issue: 'Unresolved TODO/FIXME comment',
-    suggestion: 'Address the TODO or create a tracking issue'
+    suggestion: 'Address the TODO or create a tracking issue',
   },
   {
     pattern: /^\s{40,}/gm,
     severity: 'medium',
     issue: 'Excessive indentation suggests complex nesting',
-    suggestion: 'Refactor to reduce nesting depth'
+    suggestion: 'Refactor to reduce nesting depth',
   },
   {
     pattern: /\bvar\b/g,
     severity: 'medium',
     issue: 'Use of "var" instead of "let" or "const"',
-    suggestion: 'Prefer "const" for immutable values, "let" for mutable'
-  }
+    suggestion: 'Prefer "const" for immutable values, "let" for mutable',
+  },
 ];
 
 class StyleAgent extends ParallaxAgent {
@@ -66,7 +68,7 @@ class StyleAgent extends ParallaxAgent {
       {
         expertise: 0.85,
         language: 'typescript',
-        description: 'Analyzes code for style, quality, and complexity issues'
+        description: 'Analyzes code for style, quality, and complexity issues',
       }
     );
 
@@ -74,14 +76,19 @@ class StyleAgent extends ParallaxAgent {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       this.gemini = new GoogleGenerativeAI(apiKey);
-      this.model = this.gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      this.model = this.gemini.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+      });
       console.log('Gemini LLM initialized for style analysis');
     } else {
       console.warn('GEMINI_API_KEY not set - using pattern-based analysis');
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -96,7 +103,7 @@ class StyleAgent extends ParallaxAgent {
           quality_score: 0,
         },
         confidence: 0.5,
-        reasoning: 'Empty input'
+        reasoning: 'Empty input',
       };
     }
 
@@ -168,7 +175,7 @@ ${code}
       return {
         value: parsed,
         confidence,
-        reasoning: parsed.reasoning || 'LLM analysis completed'
+        reasoning: parsed.reasoning || 'LLM analysis completed',
       };
     } catch {
       return {
@@ -178,7 +185,7 @@ ${code}
           quality_score: 50,
         },
         confidence: 0.5,
-        reasoning: 'Could not parse structured response'
+        reasoning: 'Could not parse structured response',
       };
     }
   }
@@ -203,7 +210,7 @@ ${code}
           severity: pattern.severity,
           issue: pattern.issue,
           line_hint: `Line ${lineNum}`,
-          suggestion: pattern.suggestion
+          suggestion: pattern.suggestion,
         });
       }
     }
@@ -219,21 +226,23 @@ ${code}
 
     // Confidence based on analysis coverage
     const baseConfidence = 0.65;
-    const confidence = findings.length > 0
-      ? Math.min(0.8, baseConfidence + findings.length * 0.02)
-      : 0.55; // Lower confidence when no issues found (might have missed some)
+    const confidence =
+      findings.length > 0
+        ? Math.min(0.8, baseConfidence + findings.length * 0.02)
+        : 0.55; // Lower confidence when no issues found (might have missed some)
 
     return {
       value: {
         findings,
-        summary: findings.length > 0
-          ? `Found ${findings.length} style issue(s)`
-          : 'No obvious style issues detected',
+        summary:
+          findings.length > 0
+            ? `Found ${findings.length} style issue(s)`
+            : 'No obvious style issues detected',
         quality_score: qualityScore,
-        analysis_method: 'pattern_matching'
+        analysis_method: 'pattern_matching',
       },
       confidence,
-      reasoning: 'Pattern-based analysis (LLM not available)'
+      reasoning: 'Pattern-based analysis (LLM not available)',
     };
   }
 }

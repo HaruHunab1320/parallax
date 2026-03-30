@@ -14,15 +14,11 @@
  *   - @octokit/rest installed
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
-import { execSync } from 'child_process';
-import {
-  WorkspaceService,
-  CredentialService,
-  GitHubPatClient,
-} from '../src';
+import { execSync } from 'node:child_process';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { CredentialService, GitHubPatClient, WorkspaceService } from '../src';
 
 const TEST_REPO = 'HaruHunab1320/git-workspace-service-testbed';
 const TEST_REPO_SSH = `git@github.com:${TEST_REPO}.git`;
@@ -55,9 +51,9 @@ async function main() {
     },
     credentialService,
     logger: {
-      info: (data, msg) => console.log(`  [INFO] ${msg}`),
-      warn: (data, msg) => console.log(`  [WARN] ${msg}`),
-      error: (data, msg) => console.log(`  [ERROR] ${msg}`),
+      info: (_data, msg) => console.log(`  [INFO] ${msg}`),
+      warn: (_data, msg) => console.log(`  [WARN] ${msg}`),
+      error: (_data, msg) => console.log(`  [ERROR] ${msg}`),
       debug: () => {},
     },
   });
@@ -65,9 +61,9 @@ async function main() {
   const github = new GitHubPatClient(
     { token },
     {
-      info: (data, msg) => console.log(`  [GITHUB] ${msg}`),
-      warn: (data, msg) => console.log(`  [GITHUB WARN] ${msg}`),
-      error: (data, msg) => console.log(`  [GITHUB ERROR] ${msg}`),
+      info: (_data, msg) => console.log(`  [GITHUB] ${msg}`),
+      warn: (_data, msg) => console.log(`  [GITHUB WARN] ${msg}`),
+      error: (_data, msg) => console.log(`  [GITHUB ERROR] ${msg}`),
     }
   );
 
@@ -294,7 +290,6 @@ This issue tracks the progress of the feature implementation.
     console.log(`  Removed temp directory`);
 
     console.log('\n=== Workflow Complete ===\n');
-
   } catch (error) {
     console.error('\nWorkflow failed:', error);
 

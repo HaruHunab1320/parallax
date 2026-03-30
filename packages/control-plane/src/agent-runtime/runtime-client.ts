@@ -4,14 +4,12 @@
  * HTTP/WebSocket client for communicating with runtime servers (local, docker, k8s).
  */
 
-import { Logger } from 'pino';
-import { EventEmitter } from 'events';
-import WebSocket from 'ws';
-import {
+import { EventEmitter } from 'node:events';
+import type {
   AgentConfig,
+  AgentFilter,
   AgentHandle,
   AgentMessage,
-  AgentFilter,
   AgentMetrics,
   SpawnThreadInput,
   ThreadEvent,
@@ -19,6 +17,8 @@ import {
   ThreadHandle,
   ThreadInput,
 } from '@parallaxai/runtime-interface';
+import type { Logger } from 'pino';
+import WebSocket from 'ws';
 
 export interface RuntimeClientOptions {
   baseUrl: string;
@@ -48,16 +48,18 @@ export class RuntimeClient extends EventEmitter {
   private ws: WebSocket | null = null;
   private wsReconnectTimer: NodeJS.Timeout | null = null;
   private connected = false;
-  private subscriptions: Map<string, Set<(message: AgentMessage) => void>> = new Map();
-  private threadSubscriptions: Map<string, Set<(event: ThreadEvent) => void>> = new Map();
+  private subscriptions: Map<string, Set<(message: AgentMessage) => void>> =
+    new Map();
+  private threadSubscriptions: Map<string, Set<(event: ThreadEvent) => void>> =
+    new Map();
 
   constructor(
     private logger: Logger,
-    private options: RuntimeClientOptions
+    options: RuntimeClientOptions
   ) {
     super();
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
-    this.wsUrl = options.wsUrl || this.baseUrl.replace(/^http/, 'ws') + '/ws';
+    this.wsUrl = options.wsUrl || `${this.baseUrl.replace(/^http/, 'ws')}/ws`;
     this.timeout = options.timeout || 30000;
     this.reconnectInterval = options.reconnectInterval || 5000;
   }
@@ -72,7 +74,10 @@ export class RuntimeClient extends EventEmitter {
 
         this.ws.on('open', () => {
           this.connected = true;
-          this.logger.info({ url: this.wsUrl }, 'Connected to runtime WebSocket');
+          this.logger.info(
+            { url: this.wsUrl },
+            'Connected to runtime WebSocket'
+          );
           this.emit('connected');
           resolve();
         });
@@ -127,7 +132,10 @@ export class RuntimeClient extends EventEmitter {
    * Check runtime health
    */
   async healthCheck(): Promise<RuntimeHealthStatus> {
-    const response = await this.request<RuntimeHealthStatus>('GET', '/api/health');
+    const response = await this.request<RuntimeHealthStatus>(
+      'GET',
+      '/api/health'
+    );
     return response;
   }
 
@@ -141,13 +149,19 @@ export class RuntimeClient extends EventEmitter {
   /**
    * Stop an agent
    */
-  async stop(agentId: string, options?: { force?: boolean; timeout?: number }): Promise<void> {
+  async stop(
+    agentId: string,
+    options?: { force?: boolean; timeout?: number }
+  ): Promise<void> {
     const query = new URLSearchParams();
     if (options?.force) query.set('force', 'true');
     if (options?.timeout) query.set('timeout', options.timeout.toString());
 
     const queryString = query.toString();
-    await this.request('DELETE', `/api/agents/${agentId}${queryString ? '?' + queryString : ''}`);
+    await this.request(
+      'DELETE',
+      `/api/agents/${agentId}${queryString ? `?${queryString}` : ''}`
+    );
   }
 
   /**
@@ -170,20 +184,22 @@ export class RuntimeClient extends EventEmitter {
   async list(filter?: AgentFilter): Promise<AgentHandle[]> {
     const query = new URLSearchParams();
     if (filter?.status) {
-      const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
-      statuses.forEach(s => query.append('status', s));
+      const statuses = Array.isArray(filter.status)
+        ? filter.status
+        : [filter.status];
+      statuses.forEach((s) => query.append('status', s));
     }
     if (filter?.role) query.set('role', filter.role);
     if (filter?.type) {
       const types = Array.isArray(filter.type) ? filter.type : [filter.type];
-      types.forEach(t => query.append('type', t));
+      types.forEach((t) => query.append('type', t));
     }
 
     const queryString = query.toString();
-    const response = await this.request<{ agents: AgentHandle[]; count: number }>(
-      'GET',
-      `/api/agents${queryString ? '?' + queryString : ''}`
-    );
+    const response = await this.request<{
+      agents: AgentHandle[];
+      count: number;
+    }>('GET', `/api/agents${queryString ? `?${queryString}` : ''}`);
     return response.agents;
   }
 
@@ -194,12 +210,11 @@ export class RuntimeClient extends EventEmitter {
     agentId: string,
     message: string,
     options?: { expectResponse?: boolean; timeout?: number }
-  ): Promise<AgentMessage | void> {
-    const response = await this.request<{ sent: boolean; response?: AgentMessage }>(
-      'POST',
-      `/api/agents/${agentId}/send`,
-      { message, ...options }
-    );
+  ): Promise<AgentMessage | undefined> {
+    const response = await this.request<{
+      sent: boolean;
+      response?: AgentMessage;
+    }>('POST', `/api/agents/${agentId}/send`, { message, ...options });
     return response.response;
   }
 
@@ -213,7 +228,7 @@ export class RuntimeClient extends EventEmitter {
     const queryString = query.toString();
     const response = await this.request<{ logs: string[]; count: number }>(
       'GET',
-      `/api/agents/${agentId}/logs${queryString ? '?' + queryString : ''}`
+      `/api/agents/${agentId}/logs${queryString ? `?${queryString}` : ''}`
     );
     return response.logs;
   }
@@ -223,7 +238,10 @@ export class RuntimeClient extends EventEmitter {
    */
   async metrics(agentId: string): Promise<AgentMetrics | null> {
     try {
-      return await this.request<AgentMetrics>('GET', `/api/agents/${agentId}/metrics`);
+      return await this.request<AgentMetrics>(
+        'GET',
+        `/api/agents/${agentId}/metrics`
+      );
     } catch (error: any) {
       if (error.status === 404) {
         return null;
@@ -251,20 +269,30 @@ export class RuntimeClient extends EventEmitter {
    * Spawn a new thread
    */
   async spawnThread(input: SpawnThreadInput): Promise<ThreadHandle> {
-    const thread = await this.request<ThreadHandle>('POST', '/api/threads', input);
+    const thread = await this.request<ThreadHandle>(
+      'POST',
+      '/api/threads',
+      input
+    );
     return this.normalizeThreadHandle(thread);
   }
 
   /**
    * Stop a thread
    */
-  async stopThread(threadId: string, options?: { force?: boolean; timeout?: number }): Promise<void> {
+  async stopThread(
+    threadId: string,
+    options?: { force?: boolean; timeout?: number }
+  ): Promise<void> {
     const query = new URLSearchParams();
     if (options?.force) query.set('force', 'true');
     if (options?.timeout) query.set('timeout', options.timeout.toString());
 
     const queryString = query.toString();
-    await this.request('DELETE', `/api/threads/${threadId}${queryString ? '?' + queryString : ''}`);
+    await this.request(
+      'DELETE',
+      `/api/threads/${threadId}${queryString ? `?${queryString}` : ''}`
+    );
   }
 
   /**
@@ -272,7 +300,10 @@ export class RuntimeClient extends EventEmitter {
    */
   async getThread(threadId: string): Promise<ThreadHandle | null> {
     try {
-      const thread = await this.request<ThreadHandle>('GET', `/api/threads/${threadId}`);
+      const thread = await this.request<ThreadHandle>(
+        'GET',
+        `/api/threads/${threadId}`
+      );
       return this.normalizeThreadHandle(thread);
     } catch (error: any) {
       if (error.status === 404) {
@@ -290,19 +321,23 @@ export class RuntimeClient extends EventEmitter {
     if (filter?.executionId) query.set('executionId', filter.executionId);
     if (filter?.role) query.set('role', filter.role);
     if (filter?.status) {
-      const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+      const statuses = Array.isArray(filter.status)
+        ? filter.status
+        : [filter.status];
       statuses.forEach((s) => query.append('status', s));
     }
     if (filter?.agentType) {
-      const agentTypes = Array.isArray(filter.agentType) ? filter.agentType : [filter.agentType];
+      const agentTypes = Array.isArray(filter.agentType)
+        ? filter.agentType
+        : [filter.agentType];
       agentTypes.forEach((t) => query.append('agentType', t));
     }
 
     const queryString = query.toString();
-    const response = await this.request<{ threads: ThreadHandle[]; count: number }>(
-      'GET',
-      `/api/threads${queryString ? '?' + queryString : ''}`
-    );
+    const response = await this.request<{
+      threads: ThreadHandle[];
+      count: number;
+    }>('GET', `/api/threads${queryString ? `?${queryString}` : ''}`);
     return response.threads.map((thread) => this.normalizeThreadHandle(thread));
   }
 
@@ -310,13 +345,20 @@ export class RuntimeClient extends EventEmitter {
    * Send input to a thread
    */
   async sendToThread(threadId: string, input: ThreadInput): Promise<void> {
-    await this.request<{ sent: boolean }>('POST', `/api/threads/${threadId}/send`, input);
+    await this.request<{ sent: boolean }>(
+      'POST',
+      `/api/threads/${threadId}/send`,
+      input
+    );
   }
 
   /**
    * Subscribe to thread events via WebSocket
    */
-  subscribeThread(threadId: string, callback: (event: ThreadEvent) => void): () => void {
+  subscribeThread(
+    threadId: string,
+    callback: (event: ThreadEvent) => void
+  ): () => void {
     if (!this.threadSubscriptions.has(threadId)) {
       this.threadSubscriptions.set(threadId, new Set());
     }
@@ -330,7 +372,10 @@ export class RuntimeClient extends EventEmitter {
   /**
    * Subscribe to agent messages via WebSocket
    */
-  subscribe(agentId: string, callback: (message: AgentMessage) => void): () => void {
+  subscribe(
+    agentId: string,
+    callback: (message: AgentMessage) => void
+  ): () => void {
     if (!this.subscriptions.has(agentId)) {
       this.subscriptions.set(agentId, new Set());
     }
@@ -354,7 +399,11 @@ export class RuntimeClient extends EventEmitter {
     return this.connected;
   }
 
-  private handleMessage(msg: { event: string; data: any; timestamp: string }): void {
+  private handleMessage(msg: {
+    event: string;
+    data: any;
+    timestamp: string;
+  }): void {
     const normalizedData = this.normalizeEventPayload(msg.event, msg.data);
     this.emit(msg.event, normalizedData);
 
@@ -363,7 +412,7 @@ export class RuntimeClient extends EventEmitter {
       const agentId = normalizedData.message.agentId;
       const callbacks = this.subscriptions.get(agentId);
       if (callbacks) {
-        callbacks.forEach(cb => cb(normalizedData.message));
+        callbacks.forEach((cb) => cb(normalizedData.message));
       }
     }
 
@@ -390,7 +439,11 @@ export class RuntimeClient extends EventEmitter {
     }, this.reconnectInterval);
   }
 
-  private async request<T>(method: string, path: string, body?: any): Promise<T> {
+  private async request<T>(
+    method: string,
+    path: string,
+    body?: any
+  ): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
@@ -409,7 +462,7 @@ export class RuntimeClient extends EventEmitter {
         const error: any = new Error(`Request failed: ${response.statusText}`);
         error.status = response.status;
         try {
-          const errorBody = await response.json() as { error?: string };
+          const errorBody = (await response.json()) as { error?: string };
           error.message = errorBody.error || error.message;
         } catch {
           // Ignore JSON parse errors
@@ -421,7 +474,7 @@ export class RuntimeClient extends EventEmitter {
         return undefined as T;
       }
 
-      return await response.json() as T;
+      return (await response.json()) as T;
     } finally {
       clearTimeout(timeoutId);
     }
@@ -432,7 +485,9 @@ export class RuntimeClient extends EventEmitter {
       ...thread,
       createdAt: new Date(thread.createdAt),
       updatedAt: new Date(thread.updatedAt),
-      lastActivityAt: thread.lastActivityAt ? new Date(thread.lastActivityAt) : undefined,
+      lastActivityAt: thread.lastActivityAt
+        ? new Date(thread.lastActivityAt)
+        : undefined,
     };
   }
 

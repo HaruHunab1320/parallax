@@ -1,15 +1,29 @@
-import { mkdir } from 'node:fs/promises';
-import { resolve, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { SessionHandle } from '../../../packages/pty-manager-internal-tracing/src/types.ts';
-import * as InternalPTYManagerModule from '../../../packages/pty-manager-internal-tracing/src/pty-manager.ts';
+import { mkdir } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { ClaudeAdapter } from '../../../packages/coding-agent-adapters/src/claude-adapter.ts';
+import * as InternalPTYManagerModule from '../../../packages/pty-manager-internal-tracing/src/pty-manager.ts';
+import type { SessionHandle } from '../../../packages/pty-manager-internal-tracing/src/types.ts';
 
-const PTYManager = (InternalPTYManagerModule as { PTYManager?: typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager'] }).PTYManager
-  ?? ((InternalPTYManagerModule as { default?: { PTYManager?: typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager'] } }).default?.PTYManager as typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager']);
+const PTYManager =
+  (
+    InternalPTYManagerModule as {
+      PTYManager?: typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager'];
+    }
+  ).PTYManager ??
+  ((
+    InternalPTYManagerModule as {
+      default?: {
+        PTYManager?: typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager'];
+      };
+    }
+  ).default
+    ?.PTYManager as typeof import('../../../packages/pty-manager-internal-tracing/src/pty-manager.ts')['PTYManager']);
 
 if (!PTYManager) {
-  throw new Error('Failed to resolve PTYManager from pty-manager-internal-tracing');
+  throw new Error(
+    'Failed to resolve PTYManager from pty-manager-internal-tracing'
+  );
 }
 
 interface CliArgs {
@@ -21,8 +35,13 @@ interface CliArgs {
 
 function parseArgs(argv: string[]): CliArgs {
   const out: CliArgs = {
-    timeoutMs: Number.parseInt(process.env.CLAUDE_CAPTURE_TIMEOUT_MS ?? '120000', 10),
-    outputDir: resolve(process.env.CLAUDE_CAPTURE_OUTPUT_DIR ?? '.parallax/pty-captures'),
+    timeoutMs: Number.parseInt(
+      process.env.CLAUDE_CAPTURE_TIMEOUT_MS ?? '120000',
+      10
+    ),
+    outputDir: resolve(
+      process.env.CLAUDE_CAPTURE_OUTPUT_DIR ?? '.parallax/pty-captures'
+    ),
     workdir: resolve(process.env.CLAUDE_CAPTURE_WORKDIR ?? process.cwd()),
   };
 
@@ -114,17 +133,23 @@ async function main(): Promise<void> {
 
   manager.on('interaction_state_changed', (session, info) => {
     const rule = info.ruleId ? ` rule=${info.ruleId}` : '';
-    const edge = info.transition ? ` ${info.transition.from}->${info.transition.to}` : '';
-    console.log(`[state] ${session.id}${edge} state=${info.state} conf=${info.confidence.toFixed(2)}${rule}`);
+    const edge = info.transition
+      ? ` ${info.transition.from}->${info.transition.to}`
+      : '';
+    console.log(
+      `[state] ${session.id}${edge} state=${info.state} conf=${info.confidence.toFixed(2)}${rule}`
+    );
   });
 
   manager.on('auth_required', (session, info) => {
-    console.log(`[auth_required] ${session.id} method=${info.method} ${info.url ?? ''}`.trim());
+    console.log(
+      `[auth_required] ${session.id} method=${info.method} ${info.url ?? ''}`.trim()
+    );
   });
 
   manager.on('blocking_prompt', (session, prompt, autoResponded) => {
     console.log(
-      `[blocking_prompt] ${session.id} type=${prompt.type} autoResponded=${autoResponded} prompt=${truncate(prompt.prompt ?? '', 120)}`,
+      `[blocking_prompt] ${session.id} type=${prompt.type} autoResponded=${autoResponded} prompt=${truncate(prompt.prompt ?? '', 120)}`
     );
   });
 
@@ -150,14 +175,18 @@ async function main(): Promise<void> {
     setTimeout(resolvePromise, args.timeoutMs);
   });
 
-  const snapshot = currentSession ? manager.getCaptureSnapshot(currentSession.id) : null;
+  const snapshot = currentSession
+    ? manager.getCaptureSnapshot(currentSession.id)
+    : null;
   if (snapshot) {
     console.log('\nCapture artifacts:');
     console.log(`- raw: ${snapshot.paths.rawEventsPath}`);
     console.log(`- states: ${snapshot.paths.statesPath}`);
     console.log(`- transitions: ${snapshot.paths.transitionsPath}`);
     console.log(`- lifecycle: ${snapshot.paths.lifecyclePath}`);
-    console.log(`- finalState: ${snapshot.state.state} (${snapshot.state.ruleId ?? 'no-rule'})`);
+    console.log(
+      `- finalState: ${snapshot.state.state} (${snapshot.state.ruleId ?? 'no-rule'})`
+    );
   }
 
   await manager.stopAll({ force: true, timeout: 2000 });

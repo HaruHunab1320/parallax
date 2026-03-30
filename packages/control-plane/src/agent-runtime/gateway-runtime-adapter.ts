@@ -8,21 +8,21 @@
  * HTTP runtime server.
  */
 
-import { EventEmitter } from 'events';
-import { Logger } from 'pino';
-import { v4 as uuidv4 } from 'uuid';
-import {
-  SpawnThreadInput,
-  ThreadHandle,
-  ThreadInput,
-  ThreadFilter,
-  ThreadStatus,
+import { EventEmitter } from 'node:events';
+import type {
   AgentConfig,
-  AgentHandle,
   AgentFilter,
+  AgentHandle,
   AgentMessage,
   AgentMetrics,
+  SpawnThreadInput,
+  ThreadFilter,
+  ThreadHandle,
+  ThreadInput,
+  ThreadStatus,
 } from '@parallaxai/runtime-interface';
+import type { Logger } from 'pino';
+import { v4 as uuidv4 } from 'uuid';
 import type { RuntimeHealthStatus } from './runtime-client';
 
 /**
@@ -30,16 +30,19 @@ import type { RuntimeHealthStatus } from './runtime-client';
  * Avoids circular dependency by not importing the full GatewayService class.
  */
 export interface GatewayServiceAdapter {
-  getConnectedAgents(): Map<string, {
-    agentId: string;
-    agentName: string;
-    capabilities: string[];
-    metadata: Record<string, string>;
-    connectedAt: Date;
-    lastHeartbeat: Date;
-    status: string;
-    activeThreads: Map<string, { executionId: string; status: string }>;
-  }>;
+  getConnectedAgents(): Map<
+    string,
+    {
+      agentId: string;
+      agentName: string;
+      capabilities: string[];
+      metadata: Record<string, string>;
+      connectedAt: Date;
+      lastHeartbeat: Date;
+      status: string;
+      activeThreads: Map<string, { executionId: string; status: string }>;
+    }
+  >;
 
   dispatchThreadSpawn(
     agentId: string,
@@ -80,10 +83,13 @@ export interface GatewayServiceAdapter {
 }
 
 export class GatewayRuntimeAdapter extends EventEmitter {
-  private threads: Map<string, {
-    handle: ThreadHandle;
-    gatewayAgentId: string;
-  }> = new Map();
+  private threads: Map<
+    string,
+    {
+      handle: ThreadHandle;
+      gatewayAgentId: string;
+    }
+  > = new Map();
 
   constructor(
     private logger: Logger,
@@ -125,7 +131,7 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     if (!agentId) {
       throw new Error(
         `No gateway-connected agent found for type=${input.agentType}` +
-        (input.metadata?.agentId ? ` agentId=${input.metadata.agentId}` : '')
+          (input.metadata?.agentId ? ` agentId=${input.metadata.agentId}` : '')
       );
     }
 
@@ -152,7 +158,9 @@ export class GatewayRuntimeAdapter extends EventEmitter {
       agentId,
       agentType: input.agentType,
       role: input.role,
-      status: result?.success ? 'running' as ThreadStatus : 'failed' as ThreadStatus,
+      status: result?.success
+        ? ('running' as ThreadStatus)
+        : ('failed' as ThreadStatus),
       objective: input.objective,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -182,11 +190,9 @@ export class GatewayRuntimeAdapter extends EventEmitter {
       throw new Error(`Thread ${threadId} not found in gateway runtime`);
     }
 
-    await this.gateway.dispatchThreadStop(
-      info.gatewayAgentId,
-      threadId,
-      { force: options?.force }
-    );
+    await this.gateway.dispatchThreadStop(info.gatewayAgentId, threadId, {
+      force: options?.force,
+    });
 
     info.handle.status = 'completed' as ThreadStatus;
     info.handle.updatedAt = new Date();
@@ -198,21 +204,25 @@ export class GatewayRuntimeAdapter extends EventEmitter {
   }
 
   async listThreads(filter?: ThreadFilter): Promise<ThreadHandle[]> {
-    let threads = Array.from(this.threads.values()).map(t => t.handle);
+    let threads = Array.from(this.threads.values()).map((t) => t.handle);
 
     if (filter?.executionId) {
-      threads = threads.filter(t => t.executionId === filter.executionId);
+      threads = threads.filter((t) => t.executionId === filter.executionId);
     }
     if (filter?.status) {
-      const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
-      threads = threads.filter(t => statuses.includes(t.status));
+      const statuses = Array.isArray(filter.status)
+        ? filter.status
+        : [filter.status];
+      threads = threads.filter((t) => statuses.includes(t.status));
     }
     if (filter?.role) {
-      threads = threads.filter(t => t.role === filter.role);
+      threads = threads.filter((t) => t.role === filter.role);
     }
     if (filter?.agentType) {
-      const types = Array.isArray(filter.agentType) ? filter.agentType : [filter.agentType];
-      threads = threads.filter(t => types.includes(t.agentType as string));
+      const types = Array.isArray(filter.agentType)
+        ? filter.agentType
+        : [filter.agentType];
+      threads = threads.filter((t) => types.includes(t.agentType as string));
     }
 
     return threads;
@@ -221,12 +231,18 @@ export class GatewayRuntimeAdapter extends EventEmitter {
   async sendToThread(threadId: string, input: ThreadInput): Promise<void> {
     const info = this.threads.get(threadId);
     if (!info) {
-      this.logger.error({ threadId, knownThreads: Array.from(this.threads.keys()) }, 'Thread not found in gateway runtime for sendToThread');
+      this.logger.error(
+        { threadId, knownThreads: Array.from(this.threads.keys()) },
+        'Thread not found in gateway runtime for sendToThread'
+      );
       throw new Error(`Thread ${threadId} not found in gateway runtime`);
     }
 
     const message = input.message || input.raw || input.keys?.join('') || '';
-    this.logger.info({ threadId, agentId: info.gatewayAgentId, messageLength: message.length }, 'Sending input to thread via gateway');
+    this.logger.info(
+      { threadId, agentId: info.gatewayAgentId, messageLength: message.length },
+      'Sending input to thread via gateway'
+    );
 
     this.gateway.dispatchThreadInput(
       info.gatewayAgentId,
@@ -239,7 +255,10 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     info.handle.lastActivityAt = new Date();
   }
 
-  subscribeThread(threadId: string, callback: (event: any) => void): () => void {
+  subscribeThread(
+    threadId: string,
+    callback: (event: any) => void
+  ): () => void {
     return this.gateway.subscribeThreadEvents(threadId, callback);
   }
 
@@ -259,7 +278,9 @@ export class GatewayRuntimeAdapter extends EventEmitter {
   // ─── Agent-level methods (minimal implementation) ───
 
   async spawn(_config: AgentConfig): Promise<AgentHandle> {
-    throw new Error('Gateway runtime does not spawn agents — agents connect themselves');
+    throw new Error(
+      'Gateway runtime does not spawn agents — agents connect themselves'
+    );
   }
 
   async stop(_agentId: string): Promise<void> {
@@ -282,7 +303,7 @@ export class GatewayRuntimeAdapter extends EventEmitter {
 
   async list(_filter?: AgentFilter): Promise<AgentHandle[]> {
     const agents = this.gateway.getConnectedAgents();
-    return Array.from(agents.values()).map(session => ({
+    return Array.from(agents.values()).map((session) => ({
       id: session.agentId,
       name: session.agentName,
       type: (session.metadata?.agentType as any) || 'unknown',
@@ -295,12 +316,16 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     agentId: string,
     message: string,
     options?: { expectResponse?: boolean; timeout?: number }
-  ): Promise<AgentMessage | void> {
+  ): Promise<AgentMessage | undefined> {
     const taskId = uuidv4();
-    const result = await this.gateway.dispatchTask(agentId, {
-      task_id: taskId,
-      task_description: message,
-    }, options?.timeout);
+    const result = await this.gateway.dispatchTask(
+      agentId,
+      {
+        task_id: taskId,
+        task_description: message,
+      },
+      options?.timeout
+    );
     return result;
   }
 
@@ -312,7 +337,10 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     return null;
   }
 
-  subscribe(_agentId: string, _callback: (message: AgentMessage) => void): () => void {
+  subscribe(
+    _agentId: string,
+    _callback: (message: AgentMessage) => void
+  ): () => void {
     return () => {};
   }
 
@@ -327,27 +355,46 @@ export class GatewayRuntimeAdapter extends EventEmitter {
 
     // Match by agent type, with optional metadata constraints
     const agentType = input.agentType as string;
-    const requiredMetadata = input.metadata as Record<string, any> || {};
+    const requiredMetadata = (input.metadata as Record<string, any>) || {};
     this.logger.info(
-      { agentType, role: input.role, requiredMetadata: Object.keys(requiredMetadata), connectedAgents: Array.from(agents.entries()).map(([id, s]) => ({ id, type: s.metadata?.agentType, device: s.metadata?.device })) },
+      {
+        agentType,
+        role: input.role,
+        requiredMetadata: Object.keys(requiredMetadata),
+        connectedAgents: Array.from(agents.entries()).map(([id, s]) => ({
+          id,
+          type: s.metadata?.agentType,
+          device: s.metadata?.device,
+        })),
+      },
       'Finding gateway agent for thread'
     );
 
     // First pass: match by type AND metadata constraints (e.g., device: mac)
-    const metadataKeys = Object.keys(requiredMetadata).filter(k =>
-      !['roleName', 'orgPattern', 'capabilities', 'patternName', 'threadIndex'].includes(k)
+    const metadataKeys = Object.keys(requiredMetadata).filter(
+      (k) =>
+        ![
+          'roleName',
+          'orgPattern',
+          'capabilities',
+          'patternName',
+          'threadIndex',
+        ].includes(k)
     );
 
     if (metadataKeys.length > 0) {
       for (const [id, session] of agents) {
         const sessionType = session.metadata?.agentType;
         if (sessionType !== agentType) continue;
-        const hasThread = Array.from(this.threads.values())
-          .some(t => t.gatewayAgentId === id && t.handle.executionId === input.executionId);
+        const hasThread = Array.from(this.threads.values()).some(
+          (t) =>
+            t.gatewayAgentId === id &&
+            t.handle.executionId === input.executionId
+        );
         if (hasThread) continue;
         // Check metadata constraints
-        const matches = metadataKeys.every(key =>
-          session.metadata?.[key] === requiredMetadata[key]
+        const matches = metadataKeys.every(
+          (key) => session.metadata?.[key] === requiredMetadata[key]
         );
         if (matches) return id;
       }
@@ -357,8 +404,11 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     for (const [id, session] of agents) {
       const sessionType = session.metadata?.agentType;
       if (sessionType === agentType) {
-        const hasThread = Array.from(this.threads.values())
-          .some(t => t.gatewayAgentId === id && t.handle.executionId === input.executionId);
+        const hasThread = Array.from(this.threads.values()).some(
+          (t) =>
+            t.gatewayAgentId === id &&
+            t.handle.executionId === input.executionId
+        );
         if (!hasThread) return id;
       }
     }
@@ -366,8 +416,11 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     // Match by capabilities (agent type is often in capabilities list)
     for (const [id, session] of agents) {
       if (session.capabilities.includes(agentType)) {
-        const hasThread = Array.from(this.threads.values())
-          .some(t => t.gatewayAgentId === id && t.handle.executionId === input.executionId);
+        const hasThread = Array.from(this.threads.values()).some(
+          (t) =>
+            t.gatewayAgentId === id &&
+            t.handle.executionId === input.executionId
+        );
         if (!hasThread) return id;
       }
     }
@@ -375,8 +428,11 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     // No type-specific match — fall back to first available only if no type was specified
     if (!agentType) {
       for (const [id] of agents) {
-        const hasThread = Array.from(this.threads.values())
-          .some(t => t.gatewayAgentId === id && t.handle.executionId === input.executionId);
+        const hasThread = Array.from(this.threads.values()).some(
+          (t) =>
+            t.gatewayAgentId === id &&
+            t.handle.executionId === input.executionId
+        );
         if (!hasThread) return id;
       }
     }

@@ -4,8 +4,8 @@
  * Defines roles, permissions, and middleware for authorization.
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { Logger } from 'pino';
+import type { NextFunction, Request, Response } from 'express';
+import type { Logger } from 'pino';
 
 // Available roles in the system (hierarchical from most to least privileged)
 export const ROLES = {
@@ -102,7 +102,11 @@ const PERMISSION_MATRIX: Record<Role, Partial<Record<Resource, Action[]>>> = {
 /**
  * Check if a role has permission to perform an action on a resource
  */
-export function hasPermission(role: Role, resource: Resource, action: Action): boolean {
+export function hasPermission(
+  role: Role,
+  resource: Resource,
+  action: Action
+): boolean {
   const rolePermissions = PERMISSION_MATRIX[role];
   if (!rolePermissions) return false;
 
@@ -119,7 +123,9 @@ export function hasAnyPermission(
   role: Role,
   permissions: Array<{ resource: Resource; action: Action }>
 ): boolean {
-  return permissions.some(({ resource, action }) => hasPermission(role, resource, action));
+  return permissions.some(({ resource, action }) =>
+    hasPermission(role, resource, action)
+  );
 }
 
 /**
@@ -129,13 +135,17 @@ export function hasAllPermissions(
   role: Role,
   permissions: Array<{ resource: Resource; action: Action }>
 ): boolean {
-  return permissions.every(({ resource, action }) => hasPermission(role, resource, action));
+  return permissions.every(({ resource, action }) =>
+    hasPermission(role, resource, action)
+  );
 }
 
 /**
  * Get all permissions for a role
  */
-export function getRolePermissions(role: Role): Array<{ resource: Resource; action: Action }> {
+export function getRolePermissions(
+  role: Role
+): Array<{ resource: Resource; action: Action }> {
   const rolePermissions = PERMISSION_MATRIX[role];
   if (!rolePermissions) return [];
 
@@ -143,7 +153,10 @@ export function getRolePermissions(role: Role): Array<{ resource: Resource; acti
 
   for (const [resource, actions] of Object.entries(rolePermissions)) {
     for (const action of actions || []) {
-      permissions.push({ resource: resource as Resource, action: action as Action });
+      permissions.push({
+        resource: resource as Resource,
+        action: action as Action,
+      });
     }
   }
 
@@ -168,7 +181,8 @@ export function checkApiKeyPermission(
     const globalWildcard = '*:*';
 
     return apiKeyPermissions.some(
-      (p: string) => p === exactMatch || p === wildcardMatch || p === globalWildcard
+      (p: string) =>
+        p === exactMatch || p === wildcardMatch || p === globalWildcard
     );
   }
 
@@ -194,7 +208,10 @@ export interface RBACMiddlewareOptions {
 /**
  * Create RBAC middleware that checks permissions
  */
-export function createRBACMiddleware(logger: Logger, options: RBACMiddlewareOptions) {
+export function createRBACMiddleware(
+  logger: Logger,
+  options: RBACMiddlewareOptions
+) {
   const log = logger.child({ component: 'RBAC' });
 
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -224,7 +241,11 @@ export function createRBACMiddleware(logger: Logger, options: RBACMiddlewareOpti
     }
 
     if (req.apiKey?.permissions) {
-      const apiKeyHasPermission = checkApiKeyPermission(req.apiKey.permissions, resource, action);
+      const apiKeyHasPermission = checkApiKeyPermission(
+        req.apiKey.permissions,
+        resource,
+        action
+      );
       if (!apiKeyHasPermission) {
         log.warn(
           { userId: req.user.sub, resource, action, apiKeyId: req.apiKey.id },

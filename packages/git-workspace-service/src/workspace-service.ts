@@ -5,30 +5,30 @@
  * Handles cloning, branching, and PR creation.
  */
 
-import { randomUUID } from 'crypto';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import { exec } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import { promisify } from 'node:util';
+import type { CredentialService } from './credential-service';
 import type {
   BranchInfo,
+  PullRequestInfo,
   Workspace,
   WorkspaceConfig,
-  WorkspaceFinalization,
-  PullRequestInfo,
-  WorkspaceServiceConfig,
   WorkspaceEvent,
   WorkspaceEventHandler,
-  WorkspaceStrategy,
+  WorkspaceFinalization,
   WorkspacePhase,
+  WorkspaceServiceConfig,
+  WorkspaceStrategy,
 } from './types';
-import { CredentialService } from './credential-service';
 import { createBranchInfo } from './utils/branch-naming';
 import {
-  configureCredentialHelper,
-  cleanupCredentialFiles,
-  getGitCredentialConfig,
   type CredentialHelperContext,
+  cleanupCredentialFiles,
+  configureCredentialHelper,
+  getGitCredentialConfig,
 } from './utils/git-credential-helper';
 
 const execAsync = promisify(exec);
@@ -77,7 +77,11 @@ export class WorkspaceService {
    */
   async initialize(): Promise<void> {
     await fs.mkdir(this.baseDir, { recursive: true });
-    this.log('info', { baseDir: this.baseDir }, 'Workspace service initialized');
+    this.log(
+      'info',
+      { baseDir: this.baseDir },
+      'Workspace service initialized'
+    );
   }
 
   /**
@@ -97,11 +101,15 @@ export class WorkspaceService {
     // Validate worktree config
     if (strategy === 'worktree') {
       if (!config.parentWorkspace) {
-        throw new Error('parentWorkspace is required when strategy is "worktree"');
+        throw new Error(
+          'parentWorkspace is required when strategy is "worktree"'
+        );
       }
       const parent = this.workspaces.get(config.parentWorkspace);
       if (!parent) {
-        throw new Error(`Parent workspace not found: ${config.parentWorkspace}`);
+        throw new Error(
+          `Parent workspace not found: ${config.parentWorkspace}`
+        );
       }
       if (parent.strategy !== 'clone') {
         throw new Error('Parent workspace must be a clone, not a worktree');
@@ -207,7 +215,7 @@ export class WorkspaceService {
       path: workspacePath,
       repo: config.repo,
       branch: branchInfo,
-      credential: credential ?? undefined,  // Optional for public repos
+      credential: credential ?? undefined, // Optional for public repos
       provisionedAt: new Date(),
       status: 'provisioning',
       strategy,
@@ -239,7 +247,11 @@ export class WorkspaceService {
             );
           }
           // Unauthenticated clone succeeded - this is a public repo
-          this.log('info', { workspaceId }, 'Cloned public repository without authentication');
+          this.log(
+            'info',
+            { workspaceId },
+            'Cloned public repository without authentication'
+          );
         } else {
           // We have credentials - clone with them
           await this.cloneRepo(workspace, credential.token);
@@ -302,11 +314,16 @@ export class WorkspaceService {
       return workspace;
     } catch (error) {
       workspace.status = 'error';
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.updateProgress(workspace, 'error', errorMessage);
       this.workspaces.set(workspaceId, workspace);
 
-      this.log('error', { workspaceId, error: errorMessage }, 'Failed to provision workspace');
+      this.log(
+        'error',
+        { workspaceId, error: errorMessage },
+        'Failed to provision workspace'
+      );
 
       await this.emitEvent({
         type: 'workspace:error',
@@ -390,7 +407,7 @@ export class WorkspaceService {
   async finalize(
     workspaceId: string,
     options: WorkspaceFinalization
-  ): Promise<PullRequestInfo | void> {
+  ): Promise<PullRequestInfo | undefined> {
     const workspace = this.workspaces.get(workspaceId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${workspaceId}`);
@@ -448,8 +465,13 @@ export class WorkspaceService {
 
       return pr;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log('error', { workspaceId, error: errorMessage }, 'Failed to finalize workspace');
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log(
+        'error',
+        { workspaceId, error: errorMessage },
+        'Failed to finalize workspace'
+      );
       throw error;
     }
   }
@@ -479,7 +501,11 @@ export class WorkspaceService {
       return;
     }
 
-    this.log('info', { workspaceId, strategy: workspace.strategy }, 'Cleaning up workspace');
+    this.log(
+      'info',
+      { workspaceId, strategy: workspace.strategy },
+      'Cleaning up workspace'
+    );
 
     // If this is a clone with worktrees, clean up worktrees first
     if (workspace.strategy === 'clone' && workspace.worktreeIds?.length) {
@@ -497,8 +523,13 @@ export class WorkspaceService {
     try {
       await cleanupCredentialFiles(workspace.path);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log('warn', { workspaceId, error: errorMessage }, 'Failed to clean up credential files');
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log(
+        'warn',
+        { workspaceId, error: errorMessage },
+        'Failed to clean up credential files'
+      );
     }
 
     // Handle worktree removal via git
@@ -507,15 +538,25 @@ export class WorkspaceService {
       if (parent) {
         try {
           // Remove worktree using git command from parent
-          await this.execInDir(parent.path, `git worktree remove "${workspace.path}" --force`);
+          await this.execInDir(
+            parent.path,
+            `git worktree remove "${workspace.path}" --force`
+          );
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          this.log('warn', { workspaceId, error: errorMessage }, 'Failed to remove worktree via git');
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          this.log(
+            'warn',
+            { workspaceId, error: errorMessage },
+            'Failed to remove worktree via git'
+          );
         }
 
         // Remove from parent's worktreeIds
         if (parent.worktreeIds) {
-          parent.worktreeIds = parent.worktreeIds.filter((id) => id !== workspaceId);
+          parent.worktreeIds = parent.worktreeIds.filter(
+            (id) => id !== workspaceId
+          );
           this.workspaces.set(parent.id, parent);
         }
 
@@ -548,13 +589,22 @@ export class WorkspaceService {
       const realPath = await fs.realpath(workspace.path);
       const realBase = await fs.realpath(this.baseDir);
       if (!realPath.startsWith(realBase + path.sep) && realPath !== realBase) {
-        this.log('error', { workspaceId, realPath, realBase }, 'Workspace path resolves outside baseDir — refusing to delete');
+        this.log(
+          'error',
+          { workspaceId, realPath, realBase },
+          'Workspace path resolves outside baseDir — refusing to delete'
+        );
       } else {
         await fs.rm(workspace.path, { recursive: true, force: true });
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log('warn', { workspaceId, error: errorMessage }, 'Failed to remove workspace directory');
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log(
+        'warn',
+        { workspaceId, error: errorMessage },
+        'Failed to remove workspace directory'
+      );
     }
 
     workspace.status = 'cleaned_up';
@@ -615,10 +665,15 @@ export class WorkspaceService {
         workspace.path,
         `git clone --branch ${workspace.branch.baseBranch} ${cloneUrl} .`
       );
-      this.log('info', { workspaceId: workspace.id }, 'Public repository cloned without authentication');
+      this.log(
+        'info',
+        { workspaceId: workspace.id },
+        'Public repository cloned without authentication'
+      );
       return { success: true };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
 
       // Check if it's an auth error (401/403) or repo not found
       const isAuthError =
@@ -653,13 +708,22 @@ export class WorkspaceService {
 
   private async createBranch(workspace: Workspace): Promise<void> {
     // Create and checkout the new branch
-    await this.execInDir(workspace.path, `git checkout -b ${workspace.branch.name}`);
+    await this.execInDir(
+      workspace.path,
+      `git checkout -b ${workspace.branch.name}`
+    );
   }
 
-  private async addWorktreeFromParent(parent: Workspace, workspace: Workspace): Promise<void> {
+  private async addWorktreeFromParent(
+    parent: Workspace,
+    workspace: Workspace
+  ): Promise<void> {
     // Fetch the base branch first to ensure it's up to date
     try {
-      await this.execInDir(parent.path, `git fetch origin ${workspace.branch.baseBranch}`);
+      await this.execInDir(
+        parent.path,
+        `git fetch origin ${workspace.branch.baseBranch}`
+      );
     } catch {
       // May fail if already fetched or in shallow clone, continue anyway
     }
@@ -674,11 +738,17 @@ export class WorkspaceService {
 
   private async configureGit(workspace: Workspace): Promise<void> {
     // Configure git identity
-    await this.execInDir(workspace.path, 'git config user.name "Workspace Agent"');
-    await this.execInDir(workspace.path, 'git config user.email "agent@workspace.local"');
+    await this.execInDir(
+      workspace.path,
+      'git config user.name "Workspace Agent"'
+    );
+    await this.execInDir(
+      workspace.path,
+      'git config user.email "agent@workspace.local"'
+    );
 
     // Skip credential helper if no credentials (public repo) or SSH-based auth (no token)
-    if (!workspace.credential || !workspace.credential.token) {
+    if (!workspace.credential?.token) {
       this.log(
         'debug',
         { workspaceId: workspace.id },
@@ -725,7 +795,10 @@ export class WorkspaceService {
     }
 
     // Push using origin remote - credentials provided by helper
-    await this.execInDir(workspace.path, `git push -u origin ${workspace.branch.name}`);
+    await this.execInDir(
+      workspace.path,
+      `git push -u origin ${workspace.branch.name}`
+    );
   }
 
   private async createPullRequest(
@@ -746,9 +819,13 @@ export class WorkspaceService {
     }
 
     // Get provider from credential service
-    const provider = this.credentialService?.getProvider(workspace.credential.provider);
+    const provider = this.credentialService?.getProvider(
+      workspace.credential.provider
+    );
     if (!provider) {
-      throw new Error(`Provider not configured: ${workspace.credential.provider}`);
+      throw new Error(
+        `Provider not configured: ${workspace.credential.provider}`
+      );
     }
 
     // Create the PR
@@ -823,7 +900,10 @@ export class WorkspaceService {
 
   private async execInDir(dir: string, command: string): Promise<string> {
     // Mask tokens in logs
-    const safeCommand = command.replace(/x-access-token:[^@]+@/g, 'x-access-token:***@');
+    const safeCommand = command.replace(
+      /x-access-token:[^@]+@/g,
+      'x-access-token:***@'
+    );
     this.log('debug', { dir, command: safeCommand }, 'Executing git command');
 
     const { stdout, stderr } = await execAsync(command, { cwd: dir });
@@ -850,8 +930,13 @@ export class WorkspaceService {
       try {
         await handler(event);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.log('warn', { event: event.type, error: errorMessage }, 'Event handler error');
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.log(
+          'warn',
+          { event: event.type, error: errorMessage },
+          'Event handler error'
+        );
       }
     }
   }
@@ -859,7 +944,11 @@ export class WorkspaceService {
   /**
    * Update workspace progress
    */
-  private updateProgress(workspace: Workspace, phase: WorkspacePhase, message?: string): void {
+  private updateProgress(
+    workspace: Workspace,
+    phase: WorkspacePhase,
+    message?: string
+  ): void {
     workspace.progress = {
       phase,
       message,
@@ -902,18 +991,31 @@ export class WorkspaceService {
     // Execute command if configured
     if (hook.command) {
       try {
-        this.log('info', { workspaceId: workspace.id, command: hook.command }, 'Executing completion hook command');
+        this.log(
+          'info',
+          { workspaceId: workspace.id, command: hook.command },
+          'Executing completion hook command'
+        );
         await execAsync(hook.command, { env });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.log('warn', { workspaceId: workspace.id, error: errorMessage }, 'Completion hook command failed');
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.log(
+          'warn',
+          { workspaceId: workspace.id, error: errorMessage },
+          'Completion hook command failed'
+        );
       }
     }
 
     // Call webhook if configured
     if (hook.webhook) {
       try {
-        this.log('info', { workspaceId: workspace.id, webhook: hook.webhook }, 'Calling completion webhook');
+        this.log(
+          'info',
+          { workspaceId: workspace.id, webhook: hook.webhook },
+          'Calling completion webhook'
+        );
         const payload = {
           workspaceId: workspace.id,
           repo: workspace.repo,
@@ -931,8 +1033,13 @@ export class WorkspaceService {
           body: JSON.stringify(payload),
         });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.log('warn', { workspaceId: workspace.id, error: errorMessage }, 'Completion webhook failed');
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.log(
+          'warn',
+          { workspaceId: workspace.id, error: errorMessage },
+          'Completion webhook failed'
+        );
       }
     }
   }

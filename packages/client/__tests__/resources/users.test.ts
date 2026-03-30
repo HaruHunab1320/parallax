@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('UsersResource', () => {
@@ -7,7 +7,10 @@ describe('UsersResource', () => {
 
   beforeEach(() => {
     originalFetch = globalThis.fetch;
-    client = new ParallaxClient({ baseUrl: 'http://localhost:8081', apiKey: 'plx_test' });
+    client = new ParallaxClient({
+      baseUrl: 'http://localhost:8081',
+      apiKey: 'plx_test',
+    });
   });
 
   afterEach(() => {
@@ -24,7 +27,14 @@ describe('UsersResource', () => {
 
   it('should list users', async () => {
     mockFetch({
-      users: [{ id: 'user-1', email: 'admin@test.com', role: 'admin', status: 'active' }],
+      users: [
+        {
+          id: 'user-1',
+          email: 'admin@test.com',
+          role: 'admin',
+          status: 'active',
+        },
+      ],
       count: 1,
     });
 
@@ -34,7 +44,8 @@ describe('UsersResource', () => {
 
   it('should list users with filters', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      ok: true, status: 200,
+      ok: true,
+      status: 200,
       json: async () => ({ users: [], count: 0 }),
     });
     globalThis.fetch = fetchMock;
@@ -47,27 +58,43 @@ describe('UsersResource', () => {
   });
 
   it('should create a user', async () => {
-    mockFetch({
-      id: 'user-new',
-      email: 'new@test.com',
-      role: 'viewer',
-      status: 'pending',
-    }, 201);
+    mockFetch(
+      {
+        id: 'user-new',
+        email: 'new@test.com',
+        role: 'viewer',
+        status: 'pending',
+      },
+      201
+    );
 
-    const result = await client.users.create({ email: 'new@test.com', name: 'New User' });
+    const result = await client.users.create({
+      email: 'new@test.com',
+      name: 'New User',
+    });
     expect(result.id).toBe('user-new');
     expect(result.status).toBe('pending');
   });
 
   it('should get current user', async () => {
-    mockFetch({ id: 'user-1', email: 'me@test.com', role: 'admin', status: 'active' });
+    mockFetch({
+      id: 'user-1',
+      email: 'me@test.com',
+      role: 'admin',
+      status: 'active',
+    });
 
     const result = await client.users.me();
     expect(result.email).toBe('me@test.com');
   });
 
   it('should get a user by ID', async () => {
-    mockFetch({ id: 'user-1', email: 'test@test.com', role: 'editor', status: 'active' });
+    mockFetch({
+      id: 'user-1',
+      email: 'test@test.com',
+      role: 'editor',
+      status: 'active',
+    });
 
     const result = await client.users.get('user-1');
     expect(result.role).toBe('editor');
@@ -86,28 +113,37 @@ describe('UsersResource', () => {
   });
 
   it('should create an API key', async () => {
-    mockFetch({
-      id: 'key-1',
-      name: 'my-key',
-      keyPrefix: 'plx_abc12345',
-      key: 'plx_abc123456789full',
-      warning: 'Save this key securely. It will not be shown again.',
-    }, 201);
+    mockFetch(
+      {
+        id: 'key-1',
+        name: 'my-key',
+        keyPrefix: 'plx_abc12345',
+        key: 'plx_abc123456789full',
+        warning: 'Save this key securely. It will not be shown again.',
+      },
+      201
+    );
 
-    const result = await client.users.createApiKey('user-1', { name: 'my-key' });
+    const result = await client.users.createApiKey('user-1', {
+      name: 'my-key',
+    });
     expect(result.key).toContain('plx_');
     expect(result.warning).toBeDefined();
   });
 
   it('should create an API key with expiry Date', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      ok: true, status: 201,
+      ok: true,
+      status: 201,
       json: async () => ({ id: 'key-1', name: 'temp', key: 'plx_temp' }),
     });
     globalThis.fetch = fetchMock;
 
     const expires = new Date('2026-12-31');
-    await client.users.createApiKey('user-1', { name: 'temp', expiresAt: expires });
+    await client.users.createApiKey('user-1', {
+      name: 'temp',
+      expiresAt: expires,
+    });
 
     const [, init] = fetchMock.mock.calls[0];
     const body = JSON.parse(init.body);
@@ -116,9 +152,7 @@ describe('UsersResource', () => {
 
   it('should list API keys', async () => {
     mockFetch({
-      apiKeys: [
-        { id: 'key-1', name: 'production', keyPrefix: 'plx_abc' },
-      ],
+      apiKeys: [{ id: 'key-1', name: 'production', keyPrefix: 'plx_abc' }],
       count: 1,
     });
 
@@ -128,6 +162,8 @@ describe('UsersResource', () => {
 
   it('should revoke an API key', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
-    await expect(client.users.revokeApiKey('user-1', 'key-1')).resolves.toBeUndefined();
+    await expect(
+      client.users.revokeApiKey('user-1', 'key-1')
+    ).resolves.toBeUndefined();
   });
 });

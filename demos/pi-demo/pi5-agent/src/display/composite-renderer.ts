@@ -1,7 +1,7 @@
-import { DisplayRenderer } from './types';
-import { TerminalRenderer } from './terminal-renderer';
-import { WebRenderer } from './web-renderer';
 import { createOledRenderer } from './oled-renderer';
+import { TerminalRenderer } from './terminal-renderer';
+import type { DisplayRenderer } from './types';
+import { WebRenderer } from './web-renderer';
 
 /**
  * Fans out render calls to multiple backends.

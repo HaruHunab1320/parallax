@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { ThreadEvent, ThreadHandle } from '@parallaxai/runtime-interface';
 import pino from 'pino';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EpisodicExperienceService } from '../episodic-experience.service';
 import { MemoryContextService } from '../memory-context.service';
 import { ThreadPreparationService } from '../thread-preparation.service';
-import { ThreadEvent, ThreadHandle } from '@parallaxai/runtime-interface';
 
 const logger = pino({ level: 'silent' });
 
@@ -60,7 +60,9 @@ describe('EpisodicExperienceService', () => {
       expect.objectContaining({
         outcome: 'failed',
         repo: 'acme/auth-service',
-        summary: expect.stringContaining('Failed on objective: Refactor auth controller.'),
+        summary: expect.stringContaining(
+          'Failed on objective: Refactor auth controller.'
+        ),
       })
     );
   });
@@ -86,7 +88,9 @@ describe('EpisodicExperienceService', () => {
       executionId: thread.executionId,
       type: 'thread_failed',
       timestamp: new Date(),
-      data: { summary: 'Stopped on merge conflict while extracting controller.' },
+      data: {
+        summary: 'Stopped on merge conflict while extracting controller.',
+      },
     };
 
     await service.projectThreadEvent(thread, event);
@@ -115,7 +119,8 @@ describe('MemoryContextService', () => {
         executionId: 'exec-1',
         threadId: 'thread-1',
         category: 'failure_recovery',
-        summary: 'Avoid rewriting the session middleware until the conflict is resolved.',
+        summary:
+          'Avoid rewriting the session middleware until the conflict is resolved.',
         details: null,
         createdAt: new Date('2026-03-12T01:00:00Z'),
       },
@@ -129,7 +134,8 @@ describe('MemoryContextService', () => {
         role: 'engineer',
         repo: 'acme/auth-service',
         objective: 'Refactor auth controller and callback handling',
-        summary: 'Succeeded on auth controller refactor with callback coverage.',
+        summary:
+          'Succeeded on auth controller refactor with callback coverage.',
         outcome: 'successful',
         details: null,
         createdAt: new Date('2026-03-12T10:00:00Z'),
@@ -153,7 +159,8 @@ describe('MemoryContextService', () => {
         role: 'engineer',
         repo: 'acme/auth-service',
         objective: 'Refactor auth controller and callback handling',
-        summary: 'Succeeded on auth controller refactor with callback coverage.',
+        summary:
+          'Succeeded on auth controller refactor with callback coverage.',
         outcome: 'successful',
         details: null,
         createdAt: new Date('2026-03-12T12:00:00Z'),
@@ -165,7 +172,8 @@ describe('MemoryContextService', () => {
         role: 'engineer',
         repo: 'acme/auth-service',
         objective: 'Refactor auth controller',
-        summary: 'Failed on auth controller refactor because of merge conflict.',
+        summary:
+          'Failed on auth controller refactor because of merge conflict.',
         outcome: 'failed',
         details: null,
         createdAt: new Date('2026-03-12T13:00:00Z'),
@@ -187,11 +195,19 @@ describe('MemoryContextService', () => {
 
     const content = result.preparation?.contextFiles?.[0]?.content ?? '';
     expect(content).toContain('Avoid rewriting the session middleware');
-    expect(content).toContain('Succeeded on auth controller refactor with callback coverage.');
-    expect(content.indexOf('Succeeded on auth controller refactor with callback coverage.')).toBeLessThan(
-      content.indexOf('Succeeded on billing change.')
+    expect(content).toContain(
+      'Succeeded on auth controller refactor with callback coverage.'
     );
-    expect(content.match(/Succeeded on auth controller refactor with callback coverage\./g)?.length).toBe(1);
+    expect(
+      content.indexOf(
+        'Succeeded on auth controller refactor with callback coverage.'
+      )
+    ).toBeLessThan(content.indexOf('Succeeded on billing change.'));
+    expect(
+      content.match(
+        /Succeeded on auth controller refactor with callback coverage\./g
+      )?.length
+    ).toBe(1);
   });
 });
 
@@ -205,7 +221,9 @@ describe('ThreadPreparationService', () => {
       buildThreadMemory: vi.fn().mockResolvedValue({
         preparation: {
           workspace: { repo: 'acme/auth-service' },
-          contextFiles: [{ path: '.parallax/thread-memory.md', content: 'memory' }],
+          contextFiles: [
+            { path: '.parallax/thread-memory.md', content: 'memory' },
+          ],
         },
         metadata: {
           memoryContext: { sharedDecisionCount: 1 },
@@ -213,7 +231,10 @@ describe('ThreadPreparationService', () => {
       }),
     };
 
-    const service = new ThreadPreparationService(memoryContextService as any, logger);
+    const service = new ThreadPreparationService(
+      memoryContextService as any,
+      logger
+    );
     const prepared = await service.prepareSpawnInput({
       executionId: 'exec-1',
       name: 'auth-thread',
@@ -251,7 +272,10 @@ describe('ThreadPreparationService', () => {
       }),
     };
 
-    const service = new ThreadPreparationService(memoryContextService as any, logger);
+    const service = new ThreadPreparationService(
+      memoryContextService as any,
+      logger
+    );
     service.setWorkspaceService(workspaceService as any);
 
     const prepared = await service.prepare({

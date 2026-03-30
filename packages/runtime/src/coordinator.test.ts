@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxCoordinator } from './coordinator';
-import { Agent, AgentResult, CoordinationPattern } from './types';
+import type { Agent, AgentResult, CoordinationPattern } from './types';
 
 function createMockAgent(id: string, overrides: Partial<Agent> = {}): Agent {
   return {
@@ -18,7 +18,9 @@ function createMockAgent(id: string, overrides: Partial<Agent> = {}): Agent {
   };
 }
 
-function createMockPattern(overrides: Partial<CoordinationPattern> = {}): CoordinationPattern {
+function createMockPattern(
+  overrides: Partial<CoordinationPattern> = {}
+): CoordinationPattern {
   return {
     name: 'test-pattern',
     description: 'Test pattern',
@@ -57,23 +59,36 @@ describe('ParallaxCoordinator', () => {
       coordinator.registerAgent(agent);
       coordinator.registerPattern(pattern);
 
-      const result = await coordinator.coordinate('test-pattern', 'analyze code');
+      const result = await coordinator.coordinate(
+        'test-pattern',
+        'analyze code'
+      );
       expect(result).toBe('pattern-result');
-      expect(pattern.execute).toHaveBeenCalledWith([agent], 'analyze code', undefined);
+      expect(pattern.execute).toHaveBeenCalledWith(
+        [agent],
+        'analyze code',
+        undefined
+      );
     });
 
     it('should throw for unknown pattern', async () => {
       const agent = createMockAgent('a1');
       coordinator.registerAgent(agent);
-      await expect(coordinator.coordinate('unknown', 'task')).rejects.toThrow('Pattern unknown not found');
+      await expect(coordinator.coordinate('unknown', 'task')).rejects.toThrow(
+        'Pattern unknown not found'
+      );
     });
 
     it('should throw when no agents available', async () => {
-      const agent = createMockAgent('a1', { isAvailable: vi.fn().mockResolvedValue(false) });
+      const agent = createMockAgent('a1', {
+        isAvailable: vi.fn().mockResolvedValue(false),
+      });
       const pattern = createMockPattern();
       coordinator.registerAgent(agent);
       coordinator.registerPattern(pattern);
-      await expect(coordinator.coordinate('test-pattern', 'task')).rejects.toThrow('No available agents');
+      await expect(
+        coordinator.coordinate('test-pattern', 'task')
+      ).rejects.toThrow('No available agents');
     });
   });
 

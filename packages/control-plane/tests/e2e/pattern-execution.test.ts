@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import request from 'supertest';
-import express from 'express';
+import type express from 'express';
 import jwt from 'jsonwebtoken';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer } from '@/server';
 
 describe('Pattern Execution E2E', () => {
@@ -17,7 +17,12 @@ describe('Pattern Execution E2E', () => {
     // Generate a valid JWT for authenticated test requests
     const secret = process.env.JWT_SECRET || 'test-secret';
     authToken = jwt.sign(
-      { sub: 'test-user', email: 'test@test.com', role: 'admin', type: 'access' },
+      {
+        sub: 'test-user',
+        email: 'test@test.com',
+        role: 'admin',
+        type: 'access',
+      },
       secret,
       { expiresIn: 3600 }
     );
@@ -38,9 +43,9 @@ describe('Pattern Execution E2E', () => {
       .send({
         input: {
           task: 'analyze test data',
-          data: { test: true, value: 42 }
+          data: { test: true, value: 42 },
         },
-        options: { timeout: 10000 }
+        options: { timeout: 10000 },
       });
 
     // Pattern execution succeeds (200) even without agents — produces weak consensus
@@ -64,7 +69,7 @@ describe('Pattern Execution E2E', () => {
       .post('/api/patterns/non-existent-pattern/execute')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
-        input: { task: 'test' }
+        input: { task: 'test' },
       })
       .expect(404);
 
@@ -80,7 +85,7 @@ describe('Pattern Execution E2E', () => {
       .send({
         patternName: 'ConsensusBuilder',
         input: { task: 'async test', data: {} },
-        options: { stream: false }
+        options: { stream: false },
       })
       .expect(202);
 
@@ -99,14 +104,16 @@ describe('Pattern Execution E2E', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      if (statusResponse.body.status === 'completed' ||
-          statusResponse.body.status === 'failed') {
+      if (
+        statusResponse.body.status === 'completed' ||
+        statusResponse.body.status === 'failed'
+      ) {
         completed = true;
         expect(['completed', 'failed']).toContain(statusResponse.body.status);
       }
 
       attempts++;
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     expect(completed).toBe(true);

@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 
 export type ExecutionEvent = {
   executionId: string;
@@ -17,7 +17,10 @@ export class ExecutionEventBus extends EventEmitter {
     return () => this.off('execution', handler);
   }
 
-  onExecutionId(executionId: string, handler: (event: ExecutionEvent) => void): () => void {
+  onExecutionId(
+    executionId: string,
+    handler: (event: ExecutionEvent) => void
+  ): () => void {
     const wrapped = (event: ExecutionEvent) => {
       if (event.executionId === executionId) {
         handler(event);

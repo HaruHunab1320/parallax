@@ -4,16 +4,16 @@
  * Stores and retrieves snapshots with version history.
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import { SNAPSHOT_PATHS } from './config';
 import type {
   AdapterType,
-  StartupSnapshot,
-  VersionPatternMapping,
   AdapterVersionHistory,
   PatternDiff,
+  StartupSnapshot,
+  VersionPatternMapping,
 } from './types';
-import { SNAPSHOT_PATHS } from './config';
 
 /**
  * Ensure directory exists
@@ -29,14 +29,20 @@ export async function saveSnapshot(
   snapshot: StartupSnapshot,
   baseDir: string = '.'
 ): Promise<string> {
-  const filePath = path.join(baseDir, SNAPSHOT_PATHS.snapshot(snapshot.adapter, snapshot.version));
+  const filePath = path.join(
+    baseDir,
+    SNAPSHOT_PATHS.snapshot(snapshot.adapter, snapshot.version)
+  );
   const dir = path.dirname(filePath);
 
   await ensureDir(dir);
   await fs.writeFile(filePath, JSON.stringify(snapshot, null, 2));
 
   // Update latest symlink (or copy for Windows compatibility)
-  const latestPath = path.join(baseDir, SNAPSHOT_PATHS.latest(snapshot.adapter));
+  const latestPath = path.join(
+    baseDir,
+    SNAPSHOT_PATHS.latest(snapshot.adapter)
+  );
   try {
     await fs.unlink(latestPath).catch(() => {});
     await fs.writeFile(latestPath, JSON.stringify(snapshot, null, 2));
@@ -55,7 +61,10 @@ export async function loadSnapshot(
   version: string,
   baseDir: string = '.'
 ): Promise<StartupSnapshot | null> {
-  const filePath = path.join(baseDir, SNAPSHOT_PATHS.snapshot(adapter, version));
+  const filePath = path.join(
+    baseDir,
+    SNAPSHOT_PATHS.snapshot(adapter, version)
+  );
 
   try {
     const content = await fs.readFile(filePath, 'utf-8');
@@ -85,7 +94,9 @@ export async function loadLatestSnapshot(
 /**
  * Extract patterns from a snapshot
  */
-export function extractPatterns(snapshot: StartupSnapshot): VersionPatternMapping {
+export function extractPatterns(
+  snapshot: StartupSnapshot
+): VersionPatternMapping {
   const readyPatterns: string[] = [];
   const authPatterns: string[] = [];
   const blockingPatterns: string[] = [];
@@ -188,7 +199,10 @@ export async function saveVersionHistory(
   history: AdapterVersionHistory,
   baseDir: string = '.'
 ): Promise<void> {
-  const historyPath = path.join(baseDir, SNAPSHOT_PATHS.history(history.adapter));
+  const historyPath = path.join(
+    baseDir,
+    SNAPSHOT_PATHS.history(history.adapter)
+  );
   const dir = path.dirname(historyPath);
 
   await ensureDir(dir);
@@ -225,8 +239,24 @@ export function comparePatterns(
     adapter,
     oldVersion: oldMapping.version,
     newVersion: newMapping.version,
-    added: { ready: [], auth: [], blocking: [], loading: [], turn_complete: [], tool_wait: [], exit: [] },
-    removed: { ready: [], auth: [], blocking: [], loading: [], turn_complete: [], tool_wait: [], exit: [] },
+    added: {
+      ready: [],
+      auth: [],
+      blocking: [],
+      loading: [],
+      turn_complete: [],
+      tool_wait: [],
+      exit: [],
+    },
+    removed: {
+      ready: [],
+      auth: [],
+      blocking: [],
+      loading: [],
+      turn_complete: [],
+      tool_wait: [],
+      exit: [],
+    },
     isBreaking: false,
     summary: '',
   };
@@ -236,7 +266,7 @@ export function comparePatterns(
     oldArr: string[],
     newArr: string[],
     addedTarget: string[],
-    removedTarget: string[],
+    removedTarget: string[]
   ): void {
     for (const pattern of newArr) {
       if (!oldArr.includes(pattern)) {
@@ -250,37 +280,76 @@ export function comparePatterns(
     }
   }
 
-  comparePair(oldMapping.readyPatterns, newMapping.readyPatterns, diff.added.ready, diff.removed.ready);
-  comparePair(oldMapping.authPatterns, newMapping.authPatterns, diff.added.auth, diff.removed.auth);
-  comparePair(oldMapping.blockingPatterns, newMapping.blockingPatterns, diff.added.blocking, diff.removed.blocking);
-  comparePair(oldMapping.loadingPatterns || [], newMapping.loadingPatterns || [], diff.added.loading, diff.removed.loading);
-  comparePair(oldMapping.turnCompletePatterns || [], newMapping.turnCompletePatterns || [], diff.added.turn_complete, diff.removed.turn_complete);
-  comparePair(oldMapping.toolWaitPatterns || [], newMapping.toolWaitPatterns || [], diff.added.tool_wait, diff.removed.tool_wait);
-  comparePair(oldMapping.exitPatterns || [], newMapping.exitPatterns || [], diff.added.exit, diff.removed.exit);
+  comparePair(
+    oldMapping.readyPatterns,
+    newMapping.readyPatterns,
+    diff.added.ready,
+    diff.removed.ready
+  );
+  comparePair(
+    oldMapping.authPatterns,
+    newMapping.authPatterns,
+    diff.added.auth,
+    diff.removed.auth
+  );
+  comparePair(
+    oldMapping.blockingPatterns,
+    newMapping.blockingPatterns,
+    diff.added.blocking,
+    diff.removed.blocking
+  );
+  comparePair(
+    oldMapping.loadingPatterns || [],
+    newMapping.loadingPatterns || [],
+    diff.added.loading,
+    diff.removed.loading
+  );
+  comparePair(
+    oldMapping.turnCompletePatterns || [],
+    newMapping.turnCompletePatterns || [],
+    diff.added.turn_complete,
+    diff.removed.turn_complete
+  );
+  comparePair(
+    oldMapping.toolWaitPatterns || [],
+    newMapping.toolWaitPatterns || [],
+    diff.added.tool_wait,
+    diff.removed.tool_wait
+  );
+  comparePair(
+    oldMapping.exitPatterns || [],
+    newMapping.exitPatterns || [],
+    diff.added.exit,
+    diff.removed.exit
+  );
 
   // Determine if breaking (removed ready patterns could break detection)
   diff.isBreaking = diff.removed.ready.length > 0;
 
   // Generate summary
   const changes: string[] = [];
-  const categories: Array<{ key: keyof PatternDiff['added']; label: string }> = [
-    { key: 'ready', label: 'ready' },
-    { key: 'auth', label: 'auth' },
-    { key: 'blocking', label: 'blocking' },
-    { key: 'loading', label: 'loading' },
-    { key: 'turn_complete', label: 'turn_complete' },
-    { key: 'tool_wait', label: 'tool_wait' },
-    { key: 'exit', label: 'exit' },
-  ];
+  const categories: Array<{ key: keyof PatternDiff['added']; label: string }> =
+    [
+      { key: 'ready', label: 'ready' },
+      { key: 'auth', label: 'auth' },
+      { key: 'blocking', label: 'blocking' },
+      { key: 'loading', label: 'loading' },
+      { key: 'turn_complete', label: 'turn_complete' },
+      { key: 'tool_wait', label: 'tool_wait' },
+      { key: 'exit', label: 'exit' },
+    ];
 
   for (const { key, label } of categories) {
-    if (diff.added[key].length) changes.push(`+${diff.added[key].length} ${label} patterns`);
-    if (diff.removed[key].length) changes.push(`-${diff.removed[key].length} ${label} patterns`);
+    if (diff.added[key].length)
+      changes.push(`+${diff.added[key].length} ${label} patterns`);
+    if (diff.removed[key].length)
+      changes.push(`-${diff.removed[key].length} ${label} patterns`);
   }
 
-  diff.summary = changes.length > 0
-    ? `${adapter} ${oldMapping.version} → ${newMapping.version}: ${changes.join(', ')}`
-    : `${adapter} ${oldMapping.version} → ${newMapping.version}: No pattern changes`;
+  diff.summary =
+    changes.length > 0
+      ? `${adapter} ${oldMapping.version} → ${newMapping.version}: ${changes.join(', ')}`
+      : `${adapter} ${oldMapping.version} → ${newMapping.version}: No pattern changes`;
 
   return diff;
 }

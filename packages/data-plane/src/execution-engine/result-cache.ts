@@ -1,5 +1,5 @@
-import { ExecutionResult, CachePolicy } from './types';
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
+import type { CachePolicy, ExecutionResult } from './types';
 
 interface CacheEntry {
   result: ExecutionResult;
@@ -50,7 +50,10 @@ export class ResultCache {
     if (!this.policy.enabled) return;
 
     // Only cache high confidence results
-    if (result.confidence && result.confidence < this.policy.confidenceThreshold) {
+    if (
+      result.confidence &&
+      result.confidence < this.policy.confidenceThreshold
+    ) {
       return;
     }
 
@@ -123,15 +126,17 @@ export class ResultCache {
 
   getStats() {
     const entries = Array.from(this.cache.values());
-    
+
     return {
       totalEntries: this.cache.size,
       totalHits: entries.reduce((sum, e) => sum + e.accessCount, 0),
-      averageConfidence: entries
-        .filter(e => e.result.confidence !== undefined)
-        .reduce((sum, e) => sum + (e.result.confidence || 0), 0) / entries.length || 0,
-      oldestEntry: entries.reduce((oldest, e) => 
-        e.lastAccessed < oldest.lastAccessed ? e : oldest, 
+      averageConfidence:
+        entries
+          .filter((e) => e.result.confidence !== undefined)
+          .reduce((sum, e) => sum + (e.result.confidence || 0), 0) /
+          entries.length || 0,
+      oldestEntry: entries.reduce(
+        (oldest, e) => (e.lastAccessed < oldest.lastAccessed ? e : oldest),
         entries[0] || { lastAccessed: new Date() }
       ).lastAccessed,
     };

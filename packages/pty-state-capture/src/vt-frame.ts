@@ -187,7 +187,10 @@ export class VTFrame {
     }
 
     const normalized = paramRaw.startsWith('?') ? paramRaw.slice(1) : paramRaw;
-    const params = normalized.split(';').filter(Boolean).map((p) => Number.parseInt(p, 10));
+    const params = normalized
+      .split(';')
+      .filter(Boolean)
+      .map((p) => Number.parseInt(p, 10));
 
     const p1 = Number.isFinite(params[0]) ? params[0] : 1;
     switch (final) {
@@ -230,7 +233,8 @@ export class VTFrame {
         if (mode === 2) {
           this.lines[this.cursorRow] = '';
         } else if (mode === 1) {
-          this.lines[this.cursorRow] = ' '.repeat(this.cursorCol) + line.slice(this.cursorCol);
+          this.lines[this.cursorRow] =
+            ' '.repeat(this.cursorCol) + line.slice(this.cursorCol);
         } else {
           this.lines[this.cursorRow] = line.slice(0, this.cursorCol);
         }

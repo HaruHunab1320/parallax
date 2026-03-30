@@ -5,8 +5,8 @@
  * Good for quick answers, mobile interfaces, or busy users.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'concise-agent';
@@ -17,17 +17,12 @@ class ConciseAgent extends ParallaxAgent {
   private model: any = null;
 
   constructor() {
-    super(
-      AGENT_ID,
-      AGENT_NAME,
-      ['prompt', 'testing', 'variant', 'concise'],
-      {
-        expertise: 0.90,
-        model: MODEL_NAME,
-        promptStyle: PROMPT_STYLE,
-        description: 'Generates brief, to-the-point responses'
-      }
-    );
+    super(AGENT_ID, AGENT_NAME, ['prompt', 'testing', 'variant', 'concise'], {
+      expertise: 0.9,
+      model: MODEL_NAME,
+      promptStyle: PROMPT_STYLE,
+      description: 'Generates brief, to-the-point responses',
+    });
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
@@ -39,7 +34,10 @@ class ConciseAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(task: string, data?: any): Promise<{
+  async analyze(
+    task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -48,7 +46,7 @@ class ConciseAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -74,13 +72,16 @@ Respond in JSON format:
 
       // Try to parse JSON, fallback to raw text
       let response = responseText;
-      let confidence = 0.80;
+      let confidence = 0.8;
       try {
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
           response = parsed.answer || responseText;
-          confidence = Math.max(0, Math.min(1, (parsed.confidence || 80) / 100));
+          confidence = Math.max(
+            0,
+            Math.min(1, (parsed.confidence || 80) / 100)
+          );
         }
       } catch {
         // Use raw response if JSON parsing fails
@@ -94,17 +95,17 @@ Respond in JSON format:
           responseLength: response.length,
           latencyMs: latencyMs,
           variantType: 'concise',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: confidence,
-        reasoning: `Concise response: ${response.length} chars in ${latencyMs}ms (${Math.round(confidence * 100)}% confident)`
+        reasoning: `Concise response: ${response.length} chars in ${latencyMs}ms (${Math.round(confidence * 100)}% confident)`,
       };
     } catch (error) {
       console.error('Generation error:', error);
       return {
         value: { error: String(error), variantType: 'concise' },
         confidence: 0,
-        reasoning: 'Generation failed'
+        reasoning: 'Generation failed',
       };
     }
   }

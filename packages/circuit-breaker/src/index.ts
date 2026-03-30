@@ -27,9 +27,9 @@
  */
 
 export { CircuitBreaker } from './circuit-breaker';
-export { CircuitState, CircuitOpenError } from './types';
 export type {
-  CircuitBreakerOptions,
-  CircuitBreakerMetrics,
   CircuitBreakerEvents,
+  CircuitBreakerMetrics,
+  CircuitBreakerOptions,
 } from './types';
+export { CircuitOpenError, CircuitState } from './types';

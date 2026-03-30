@@ -4,10 +4,10 @@
  * Handles user authentication, JWT token management, and password operations.
  */
 
-import { PrismaClient, User } from '@prisma/client';
-import { Logger } from 'pino';
-import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import type { PrismaClient, User } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import type { Logger } from 'pino';
 
 export interface TokenPayload {
   sub: string; // User ID
@@ -49,12 +49,12 @@ export class AuthService {
       if (isProduction) {
         throw new Error(
           'JWT_SECRET environment variable is required in production. ' +
-          'Generate a secure secret with: openssl rand -base64 32'
+            'Generate a secure secret with: openssl rand -base64 32'
         );
       }
       this.logger.warn(
         'JWT_SECRET not set - using insecure default for development only. ' +
-        'Set JWT_SECRET environment variable before deploying to production.'
+          'Set JWT_SECRET environment variable before deploying to production.'
       );
     }
 
@@ -80,7 +80,10 @@ export class AuthService {
     });
 
     if (existing) {
-      throw new AuthError('User with this email already exists', 'EMAIL_EXISTS');
+      throw new AuthError(
+        'User with this email already exists',
+        'EMAIL_EXISTS'
+      );
     }
 
     // Validate password strength
@@ -177,7 +180,10 @@ export class AuthService {
    */
   async refreshTokens(refreshToken: string): Promise<AuthTokens> {
     try {
-      const payload = jwt.verify(refreshToken, this.config.jwtSecret) as TokenPayload;
+      const payload = jwt.verify(
+        refreshToken,
+        this.config.jwtSecret
+      ) as TokenPayload;
 
       if (payload.type !== 'refresh') {
         throw new AuthError('Invalid token type', 'INVALID_TOKEN');
@@ -265,7 +271,7 @@ export class AuthService {
       where: { id: userId },
     });
 
-    if (!user || !user.passwordHash) {
+    if (!user?.passwordHash) {
       throw new AuthError('User not found', 'USER_NOT_FOUND');
     }
 
@@ -293,7 +299,10 @@ export class AuthService {
 
     if (!user) {
       // Don't reveal if user exists
-      this.logger.info({ email }, 'Password reset requested for non-existent user');
+      this.logger.info(
+        { email },
+        'Password reset requested for non-existent user'
+      );
       return '';
     }
 
@@ -305,7 +314,7 @@ export class AuthService {
       where: { id: user.id },
       data: {
         metadata: {
-          ...(user.metadata as object || {}),
+          ...((user.metadata as object) || {}),
           passwordResetToken: tokenHash,
           passwordResetExpires: expiresAt.toISOString(),
         },
@@ -339,7 +348,10 @@ export class AuthService {
     const user = users[0];
     const metadata = user.metadata as any;
 
-    if (!metadata?.passwordResetExpires || new Date(metadata.passwordResetExpires) < new Date()) {
+    if (
+      !metadata?.passwordResetExpires ||
+      new Date(metadata.passwordResetExpires) < new Date()
+    ) {
       throw new AuthError('Reset token has expired', 'TOKEN_EXPIRED');
     }
 
@@ -363,7 +375,9 @@ export class AuthService {
   /**
    * Get user by ID
    */
-  async getUserById(userId: string): Promise<Omit<User, 'passwordHash'> | null> {
+  async getUserById(
+    userId: string
+  ): Promise<Omit<User, 'passwordHash'> | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -393,7 +407,9 @@ export class AuthService {
 
     // Convert expiry strings to seconds for jwt.sign
     const accessExpirySeconds = this.parseExpiry(this.config.accessTokenExpiry);
-    const refreshExpirySeconds = this.parseExpiry(this.config.refreshTokenExpiry);
+    const refreshExpirySeconds = this.parseExpiry(
+      this.config.refreshTokenExpiry
+    );
 
     const accessToken = jwt.sign(accessPayload, this.config.jwtSecret, {
       expiresIn: accessExpirySeconds,
@@ -414,17 +430,24 @@ export class AuthService {
     const unit = match[2];
 
     switch (unit) {
-      case 's': return value;
-      case 'm': return value * 60;
-      case 'h': return value * 60 * 60;
-      case 'd': return value * 60 * 60 * 24;
-      default: return 900;
+      case 's':
+        return value;
+      case 'm':
+        return value * 60;
+      case 'h':
+        return value * 60 * 60;
+      case 'd':
+        return value * 60 * 60 * 24;
+      default:
+        return 900;
     }
   }
 
   private hashPassword(password: string): string {
     const salt = randomBytes(16).toString('hex');
-    const hash = createHash('sha256').update(salt + password).digest('hex');
+    const hash = createHash('sha256')
+      .update(salt + password)
+      .digest('hex');
     return `${salt}:${hash}`;
   }
 
@@ -432,7 +455,9 @@ export class AuthService {
     const [salt, hash] = storedHash.split(':');
     if (!salt || !hash) return false;
 
-    const inputHash = createHash('sha256').update(salt + password).digest('hex');
+    const inputHash = createHash('sha256')
+      .update(salt + password)
+      .digest('hex');
 
     // Use timing-safe comparison to prevent timing attacks
     try {
@@ -444,12 +469,18 @@ export class AuthService {
 
   private validatePassword(password: string): void {
     if (password.length < 8) {
-      throw new AuthError('Password must be at least 8 characters', 'WEAK_PASSWORD');
+      throw new AuthError(
+        'Password must be at least 8 characters',
+        'WEAK_PASSWORD'
+      );
     }
 
     // Check for at least one number and one letter
     if (!/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
-      throw new AuthError('Password must contain at least one letter and one number', 'WEAK_PASSWORD');
+      throw new AuthError(
+        'Password must contain at least one letter and one number',
+        'WEAK_PASSWORD'
+      );
     }
   }
 }

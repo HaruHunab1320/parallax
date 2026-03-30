@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import pino from 'pino';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock proto-loader and grpc
 vi.mock('@grpc/proto-loader', () => ({
@@ -11,7 +11,9 @@ vi.mock('@grpc/grpc-js', () => ({
     parallax: {
       confidence: {
         ConfidenceAgent: vi.fn(() => ({
-          healthCheck: vi.fn((_req: any, cb: any) => cb(null, { status: 'HEALTHY' })),
+          healthCheck: vi.fn((_req: any, cb: any) =>
+            cb(null, { status: 'HEALTHY' })
+          ),
           analyze: vi.fn(),
         })),
       },
@@ -22,7 +24,7 @@ vi.mock('@grpc/grpc-js', () => ({
   },
 }));
 
-import { AgentProxy, GatewayDispatcher } from './agent-proxy';
+import { AgentProxy, type GatewayDispatcher } from './agent-proxy';
 import type { ProxyConfig } from './types';
 
 const logger = pino({ level: 'silent' });
@@ -89,7 +91,10 @@ describe('AgentProxy gateway protocol', () => {
         expect.objectContaining({ description: 'test task' }),
         expect.any(Number)
       );
-      expect(response.data).toEqual({ value: { analyzed: true }, confidence: 0.9 });
+      expect(response.data).toEqual({
+        value: { analyzed: true },
+        confidence: 0.9,
+      });
     });
 
     it('throws error when no dispatcher set for gateway request', async () => {

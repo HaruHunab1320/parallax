@@ -11,21 +11,23 @@
  * Test repo: git@github.com:HaruHunab1320/git-workspace-service-testbed.git
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
-import { execSync, exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from 'node:child_process';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { promisify } from 'node:util';
 import {
-  WorkspaceService,
   CredentialService,
   generateBranchName,
+  WorkspaceService,
 } from '../src';
 
 const execAsync = promisify(exec);
 
-const TEST_REPO_SSH = 'git@github.com:HaruHunab1320/git-workspace-service-testbed.git';
-const TEST_REPO_HTTPS = 'https://github.com/HaruHunab1320/git-workspace-service-testbed.git';
+const TEST_REPO_SSH =
+  'git@github.com:HaruHunab1320/git-workspace-service-testbed.git';
+const TEST_REPO_HTTPS =
+  'https://github.com/HaruHunab1320/git-workspace-service-testbed.git';
 
 interface TestResult {
   name: string;
@@ -54,9 +56,12 @@ async function runTest(name: string, fn: () => Promise<void>): Promise<void> {
   }
 }
 
-async function checkGitConfig(): Promise<{ useSsh: boolean; hasToken: boolean }> {
+async function checkGitConfig(): Promise<{
+  useSsh: boolean;
+  hasToken: boolean;
+}> {
   let useSsh = false;
-  let hasToken = !!process.env.GITHUB_TOKEN;
+  const hasToken = !!process.env.GITHUB_TOKEN;
 
   // Check for SSH key
   try {
@@ -79,7 +84,9 @@ async function main() {
   console.log(`  GITHUB_TOKEN: ${hasToken ? 'set' : 'not set'}`);
 
   if (!useSsh && !hasToken) {
-    console.log('\n\x1b[33mWarning: No authentication method available.\x1b[0m');
+    console.log(
+      '\n\x1b[33mWarning: No authentication method available.\x1b[0m'
+    );
     console.log('Set GITHUB_TOKEN or configure SSH key for GitHub.\n');
   }
 
@@ -87,7 +94,9 @@ async function main() {
   console.log(`\nUsing repo: ${repoUrl}\n`);
 
   // Create temp directory
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'git-ws-integration-'));
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), 'git-ws-integration-')
+  );
   console.log(`Workspace directory: ${tempDir}\n`);
 
   // Set up services
@@ -103,8 +112,8 @@ async function main() {
     credentialService,
     logger: {
       info: () => {},
-      warn: (data, msg) => console.log(`    [WARN] ${msg}`),
-      error: (data, msg) => console.log(`    [ERROR] ${msg}`),
+      warn: (_data, msg) => console.log(`    [WARN] ${msg}`),
+      error: (_data, msg) => console.log(`    [ERROR] ${msg}`),
       debug: () => {},
     },
   });
@@ -129,7 +138,8 @@ async function main() {
 
   console.log('Running tests...\n');
 
-  let workspace: Awaited<ReturnType<typeof workspaceService.provision>> | null = null;
+  let workspace: Awaited<ReturnType<typeof workspaceService.provision>> | null =
+    null;
 
   // Test 1: Provision workspace
   await runTest('Provision workspace (clone repo)', async () => {
@@ -141,7 +151,9 @@ async function main() {
         : undefined;
 
     if (!userCredentials) {
-      throw new Error('No authentication method available (SSH or GITHUB_TOKEN)');
+      throw new Error(
+        'No authentication method available (SSH or GITHUB_TOKEN)'
+      );
     }
 
     workspace = await workspaceService.provision({
@@ -161,7 +173,8 @@ async function main() {
     });
 
     if (!workspace) throw new Error('Workspace not created');
-    if (workspace.status !== 'ready') throw new Error(`Unexpected status: ${workspace.status}`);
+    if (workspace.status !== 'ready')
+      throw new Error(`Unexpected status: ${workspace.status}`);
   });
 
   // Test 2: Verify workspace structure
@@ -177,7 +190,9 @@ async function main() {
       cwd: workspace.path,
     });
     if (stdout.trim() !== workspace.branch.name) {
-      throw new Error(`Branch mismatch: expected ${workspace.branch.name}, got ${stdout.trim()}`);
+      throw new Error(
+        `Branch mismatch: expected ${workspace.branch.name}, got ${stdout.trim()}`
+      );
     }
   });
 
@@ -191,7 +206,9 @@ async function main() {
 
     // Stage and commit
     await execAsync('git add test-output.txt', { cwd: workspace.path });
-    await execAsync('git commit -m "Integration test commit"', { cwd: workspace.path });
+    await execAsync('git commit -m "Integration test commit"', {
+      cwd: workspace.path,
+    });
   });
 
   // Test 4: Push changes
@@ -207,9 +224,12 @@ async function main() {
   await runTest('Verify branch exists on remote', async () => {
     if (!workspace) throw new Error('No workspace');
 
-    const { stdout } = await execAsync(`git ls-remote --heads origin ${workspace.branch.name}`, {
-      cwd: workspace.path,
-    });
+    const { stdout } = await execAsync(
+      `git ls-remote --heads origin ${workspace.branch.name}`,
+      {
+        cwd: workspace.path,
+      }
+    );
     if (!stdout.includes(workspace.branch.name)) {
       throw new Error('Branch not found on remote');
     }
@@ -227,12 +247,17 @@ async function main() {
   // Test 7: Get workspaces for execution
   await runTest('Get workspaces for execution', async () => {
     const workspaces = workspaceService.getForExecution(executionId);
-    if (workspaces.length !== 1) throw new Error(`Expected 1 workspace, got ${workspaces.length}`);
+    if (workspaces.length !== 1)
+      throw new Error(`Expected 1 workspace, got ${workspaces.length}`);
   });
 
   // Test 8: Events fired correctly
   await runTest('Events fired correctly', async () => {
-    const expected = ['workspace:provisioning', 'credential:granted', 'workspace:ready'];
+    const expected = [
+      'workspace:provisioning',
+      'credential:granted',
+      'workspace:ready',
+    ];
     for (const event of expected) {
       if (!events.includes(event)) {
         throw new Error(`Missing event: ${event}`);

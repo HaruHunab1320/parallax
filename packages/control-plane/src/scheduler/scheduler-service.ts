@@ -5,13 +5,21 @@
  * Only the leader node executes schedules in an HA cluster.
  */
 
-import { PrismaClient, Prisma, Schedule, ScheduleRun } from '@prisma/client';
-import { Logger } from 'pino';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
+import type {
+  Prisma,
+  PrismaClient,
+  Schedule,
+  ScheduleRun,
+} from '@prisma/client';
 import { parseExpression } from 'cron-parser';
-import { LeaderElectionService } from '../ha/leader-election';
-import { DistributedLockService, LockResources } from '../ha/distributed-lock';
-import { IPatternEngine } from '../pattern-engine/interfaces';
+import type { Logger } from 'pino';
+import {
+  type DistributedLockService,
+  LockResources,
+} from '../ha/distributed-lock';
+import type { LeaderElectionService } from '../ha/leader-election';
+import type { IPatternEngine } from '../pattern-engine/interfaces';
 
 export interface ScheduleConfig {
   name: string;
@@ -40,12 +48,18 @@ export interface SchedulerEvents {
   'schedule-deleted': (scheduleId: string) => void;
   'schedule-executed': (schedule: Schedule, run: ScheduleRun) => void;
   'schedule-failed': (schedule: Schedule, error: Error) => void;
-  'error': (error: Error) => void;
+  error: (error: Error) => void;
 }
 
 export declare interface SchedulerService {
-  on<E extends keyof SchedulerEvents>(event: E, listener: SchedulerEvents[E]): this;
-  emit<E extends keyof SchedulerEvents>(event: E, ...args: Parameters<SchedulerEvents[E]>): boolean;
+  on<E extends keyof SchedulerEvents>(
+    event: E,
+    listener: SchedulerEvents[E]
+  ): this;
+  emit<E extends keyof SchedulerEvents>(
+    event: E,
+    ...args: Parameters<SchedulerEvents[E]>
+  ): boolean;
 }
 
 export class SchedulerService extends EventEmitter {
@@ -115,7 +129,11 @@ export class SchedulerService extends EventEmitter {
   async createSchedule(config: ScheduleConfig): Promise<Schedule> {
     this.validateScheduleConfig(config);
 
-    const nextRunAt = this.calculateNextRun(config.cron, config.intervalMs, config.timezone);
+    const nextRunAt = this.calculateNextRun(
+      config.cron,
+      config.intervalMs,
+      config.timezone
+    );
 
     const schedule = await this.prisma.schedule.create({
       data: {
@@ -131,12 +149,18 @@ export class SchedulerService extends EventEmitter {
         maxRuns: config.maxRuns,
         retryPolicy: config.retryPolicy ? { ...config.retryPolicy } : undefined,
         metadata: config.metadata,
-        nextRunAt: config.startAt && config.startAt > new Date() ? config.startAt : nextRunAt,
+        nextRunAt:
+          config.startAt && config.startAt > new Date()
+            ? config.startAt
+            : nextRunAt,
         status: 'active',
       },
     });
 
-    this.logger.info({ scheduleId: schedule.id, name: schedule.name }, 'Schedule created');
+    this.logger.info(
+      { scheduleId: schedule.id, name: schedule.name },
+      'Schedule created'
+    );
     this.emit('schedule-created', schedule);
 
     return schedule;
@@ -160,8 +184,10 @@ export class SchedulerService extends EventEmitter {
     const data: any = {};
 
     if (updates.name !== undefined) data.name = updates.name;
-    if (updates.patternName !== undefined) data.patternName = updates.patternName;
-    if (updates.description !== undefined) data.description = updates.description;
+    if (updates.patternName !== undefined)
+      data.patternName = updates.patternName;
+    if (updates.description !== undefined)
+      data.description = updates.description;
     if (updates.cron !== undefined) data.cronExpression = updates.cron;
     if (updates.intervalMs !== undefined) data.intervalMs = updates.intervalMs;
     if (updates.timezone !== undefined) data.timezone = updates.timezone;
@@ -169,11 +195,16 @@ export class SchedulerService extends EventEmitter {
     if (updates.startAt !== undefined) data.startAt = updates.startAt;
     if (updates.endAt !== undefined) data.endAt = updates.endAt;
     if (updates.maxRuns !== undefined) data.maxRuns = updates.maxRuns;
-    if (updates.retryPolicy !== undefined) data.retryPolicy = updates.retryPolicy;
+    if (updates.retryPolicy !== undefined)
+      data.retryPolicy = updates.retryPolicy;
     if (updates.metadata !== undefined) data.metadata = updates.metadata;
 
     // Recalculate next run if schedule changed
-    if (updates.cron !== undefined || updates.intervalMs !== undefined || updates.timezone !== undefined) {
+    if (
+      updates.cron !== undefined ||
+      updates.intervalMs !== undefined ||
+      updates.timezone !== undefined
+    ) {
       data.nextRunAt = this.calculateNextRun(
         updates.cron ?? existing.cronExpression ?? undefined,
         updates.intervalMs ?? existing.intervalMs ?? undefined,
@@ -335,10 +366,7 @@ export class SchedulerService extends EventEmitter {
           where: {
             status: 'active',
             nextRunAt: { lte: now },
-            OR: [
-              { endAt: null },
-              { endAt: { gt: now } },
-            ],
+            OR: [{ endAt: null }, { endAt: { gt: now } }],
           },
         });
 
@@ -355,16 +383,23 @@ export class SchedulerService extends EventEmitter {
           try {
             await this.executeSchedule(schedule);
           } catch (error) {
-            this.logger.error({ error, scheduleId: schedule.id }, 'Failed to execute schedule');
+            this.logger.error(
+              { error, scheduleId: schedule.id },
+              'Failed to execute schedule'
+            );
             this.emit('schedule-failed', schedule, error as Error);
           }
         }
       };
 
       if (this.lock) {
-        await this.lock.tryWithLock(LockResources.SCHEDULER_RUN, executeSchedules, {
-          ttl: 30000,
-        });
+        await this.lock.tryWithLock(
+          LockResources.SCHEDULER_RUN,
+          executeSchedules,
+          {
+            ttl: 30000,
+          }
+        );
       } else {
         await executeSchedules();
       }
@@ -381,7 +416,9 @@ export class SchedulerService extends EventEmitter {
     schedule: Schedule,
     isManualTrigger = false
   ): Promise<ScheduleRun> {
-    const scheduledFor = isManualTrigger ? new Date() : schedule.nextRunAt || new Date();
+    const scheduledFor = isManualTrigger
+      ? new Date()
+      : schedule.nextRunAt || new Date();
     const startedAt = new Date();
 
     // Create run record
@@ -401,11 +438,14 @@ export class SchedulerService extends EventEmitter {
       );
 
       // Build input — merge previous result if chaining is enabled
-      const scheduleMetadata = (schedule.metadata as Record<string, unknown>) || {};
+      const scheduleMetadata =
+        (schedule.metadata as Record<string, unknown>) || {};
       let patternInput = (schedule.input as Record<string, unknown>) || {};
 
       if (scheduleMetadata.chainOutput) {
-        const lastResult = scheduleMetadata.lastResult as Record<string, unknown> | undefined;
+        const lastResult = scheduleMetadata.lastResult as
+          | Record<string, unknown>
+          | undefined;
         if (lastResult) {
           patternInput = { ...patternInput, previousResult: lastResult };
         }
@@ -439,7 +479,13 @@ export class SchedulerService extends EventEmitter {
       );
 
       // If chaining is enabled, store the result for the next run
-      const updateData: { lastRunAt: Date; lastRunStatus: string; runCount: { increment: number }; nextRunAt: Date | null; metadata?: Prisma.InputJsonValue } = {
+      const updateData: {
+        lastRunAt: Date;
+        lastRunStatus: string;
+        runCount: { increment: number };
+        nextRunAt: Date | null;
+        metadata?: Prisma.InputJsonValue;
+      } = {
         lastRunAt: startedAt,
         lastRunStatus: 'success',
         runCount: { increment: 1 },
@@ -447,10 +493,12 @@ export class SchedulerService extends EventEmitter {
       };
 
       if (scheduleMetadata.chainOutput) {
-        updateData.metadata = JSON.parse(JSON.stringify({
-          ...scheduleMetadata,
-          lastResult: result.result?.value ?? result.result,
-        }));
+        updateData.metadata = JSON.parse(
+          JSON.stringify({
+            ...scheduleMetadata,
+            lastResult: result.result?.value ?? result.result,
+          })
+        );
       }
 
       await this.prisma.schedule.update({

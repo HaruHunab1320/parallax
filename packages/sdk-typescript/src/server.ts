@@ -1,4 +1,4 @@
-import { ParallaxAgent } from './agent-base';
+import type { ParallaxAgent } from './agent-base';
 
 /**
  * Start an agent as a gRPC server
@@ -8,20 +8,20 @@ export async function serveAgent(
   port: number = 0
 ): Promise<number> {
   const actualPort = await agent.serve(port);
-  
+
   // Handle graceful shutdown
   process.on('SIGINT', async () => {
     console.log('Shutting down agent...');
     await agent.shutdown();
     process.exit(0);
   });
-  
+
   process.on('SIGTERM', async () => {
     console.log('Shutting down agent...');
     await agent.shutdown();
     process.exit(0);
   });
-  
+
   return actualPort;
 }
 

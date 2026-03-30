@@ -7,7 +7,12 @@
  */
 
 import * as yaml from 'js-yaml';
-import { YamlPattern, YamlPatternSchema, ResultGroup, Aggregation } from './types';
+import {
+  type Aggregation,
+  type ResultGroup,
+  type YamlPattern,
+  YamlPatternSchema,
+} from './types';
 
 export interface CompileOptions {
   /** Add comments explaining the generated code */
@@ -80,9 +85,10 @@ export function compileYamlToPrism(
       version: pattern.version || '1.0.0',
       groups: pattern.groups ? Object.keys(pattern.groups) : [],
       hasSteps: !!(pattern.steps && pattern.steps.length > 0),
-      confidenceMethod: typeof pattern.confidence === 'string'
-        ? pattern.confidence
-        : pattern.confidence?.method || 'average',
+      confidenceMethod:
+        typeof pattern.confidence === 'string'
+          ? pattern.confidence
+          : pattern.confidence?.method || 'average',
     },
   };
 }
@@ -102,7 +108,9 @@ function generateMetadata(pattern: YamlPattern): string {
 
   // Generate agent requirements
   if (pattern.agents) {
-    lines.push(` * @agents ${JSON.stringify({ capabilities: pattern.agents.capabilities })}`);
+    lines.push(
+      ` * @agents ${JSON.stringify({ capabilities: pattern.agents.capabilities })}`
+    );
     lines.push(` * @minAgents ${pattern.agents.min || 1}`);
     if (pattern.agents.max) {
       lines.push(` * @maxAgents ${pattern.agents.max}`);
@@ -152,7 +160,9 @@ function generateSimplePattern(
 
   // Filter valid results
   if (comments) lines.push('// Filter to only successful results');
-  lines.push('validResults = results.filter(r => r.confidence > 0 && r.result)');
+  lines.push(
+    'validResults = results.filter(r => r.confidence > 0 && r.result)'
+  );
   lines.push('');
 
   // Generate group filters
@@ -166,7 +176,9 @@ function generateSimplePattern(
     // Extract first result from each group
     if (comments) lines.push('// Get first result from each group');
     for (const groupName of Object.keys(pattern.groups)) {
-      lines.push(`${groupName}Check = ${groupName}Results.length > 0 ? ${groupName}Results.reduce((acc, r) => r, null) : null`);
+      lines.push(
+        `${groupName}Check = ${groupName}Results.length > 0 ? ${groupName}Results.reduce((acc, r) => r, null) : null`
+      );
     }
     lines.push('');
   }
@@ -183,7 +195,9 @@ function generateSimplePattern(
   lines.push('');
 
   // Generate confidence calculation
-  lines.push(generateConfidenceCalculation(pattern.confidence, pattern.groups, comments));
+  lines.push(
+    generateConfidenceCalculation(pattern.confidence, pattern.groups, comments)
+  );
   lines.push('');
 
   // Generate fallback if specified
@@ -216,7 +230,9 @@ function generateMultiStepPattern(
 
   if (comments) lines.push('// Multi-step pattern execution');
   lines.push('results = agentResults');
-  lines.push('validResults = results.filter(r => r.confidence > 0 && r.result)');
+  lines.push(
+    'validResults = results.filter(r => r.confidence > 0 && r.result)'
+  );
   lines.push('');
 
   // Process each step's groups
@@ -225,7 +241,9 @@ function generateMultiStepPattern(
       if (comments) lines.push(`// Step: ${step.name}`);
       for (const [groupName, group] of Object.entries(step.groups)) {
         lines.push(generateGroupFilter(groupName, group));
-        lines.push(`${groupName}Check = ${groupName}Results.length > 0 ? ${groupName}Results.reduce((acc, r) => r, null) : null`);
+        lines.push(
+          `${groupName}Check = ${groupName}Results.length > 0 ? ${groupName}Results.reduce((acc, r) => r, null) : null`
+        );
       }
       lines.push('');
     }
@@ -237,7 +255,9 @@ function generateMultiStepPattern(
   lines.push('');
 
   // Confidence
-  lines.push(generateConfidenceCalculation(pattern.confidence, pattern.groups, comments));
+  lines.push(
+    generateConfidenceCalculation(pattern.confidence, pattern.groups, comments)
+  );
   lines.push('');
 
   lines.push('output ~> finalConfidence');
@@ -275,32 +295,45 @@ function convertMatchExpression(match: string): string {
 /**
  * Generate aggregation code
  */
-function generateAggregation(aggregation: Aggregation, comments: boolean): string {
+function generateAggregation(
+  aggregation: Aggregation,
+  comments: boolean
+): string {
   const lines: string[] = [];
 
   switch (aggregation.strategy) {
     case 'consensus':
       if (comments) lines.push('// Build consensus from results');
       lines.push(`threshold = ${aggregation.threshold || 0.7}`);
-      lines.push('agreements = validResults.filter(r => r.confidence >= threshold)');
-      lines.push('hasConsensus = agreements.length >= (validResults.length * 0.5)');
+      lines.push(
+        'agreements = validResults.filter(r => r.confidence >= threshold)'
+      );
+      lines.push(
+        'hasConsensus = agreements.length >= (validResults.length * 0.5)'
+      );
       break;
 
     case 'voting':
       if (comments) lines.push('// Tally votes');
-      lines.push('votes = validResults.map(r => r.result.decision || r.result.vote)');
+      lines.push(
+        'votes = validResults.map(r => r.result.decision || r.result.vote)'
+      );
       lines.push('voteCounts = {}');
       // Note: Prism would need to support this kind of iteration
       break;
 
     case 'merge':
       if (comments) lines.push('// Merge results');
-      lines.push('merged = validResults.reduce((acc, r) => ({ ...acc, ...r.result }), {})');
+      lines.push(
+        'merged = validResults.reduce((acc, r) => ({ ...acc, ...r.result }), {})'
+      );
       break;
 
     case 'best':
       if (comments) lines.push('// Select best result');
-      lines.push('sorted = validResults.sort((a, b) => b.confidence - a.confidence)');
+      lines.push(
+        'sorted = validResults.sort((a, b) => b.confidence - a.confidence)'
+      );
       lines.push('best = sorted.length > 0 ? sorted[0] : null');
       break;
   }
@@ -316,14 +349,21 @@ function generateOutputMapping(
   groups?: Record<string, ResultGroup>
 ): string {
   // Convert output spec to Prism object literal
-  const prismOutput = convertOutputToprism(output, groups ? Object.keys(groups) : []);
+  const prismOutput = convertOutputToprism(
+    output,
+    groups ? Object.keys(groups) : []
+  );
   return `output = ${prismOutput}`;
 }
 
 /**
  * Recursively convert output spec to Prism code
  */
-function convertOutputToprism(obj: any, groupNames: string[], depth = 0): string {
+function convertOutputToprism(
+  obj: any,
+  groupNames: string[],
+  depth = 0
+): string {
   const indent = '  '.repeat(depth);
   const innerIndent = '  '.repeat(depth + 1);
 
@@ -345,7 +385,9 @@ function convertOutputToprism(obj: any, groupNames: string[], depth = 0): string
 
   if (Array.isArray(obj)) {
     if (obj.length === 0) return '[]';
-    const items = obj.map(item => convertOutputToprism(item, groupNames, depth + 1));
+    const items = obj.map((item) =>
+      convertOutputToprism(item, groupNames, depth + 1)
+    );
     return `[\n${innerIndent}${items.join(`,\n${innerIndent}`)}\n${indent}]`;
   }
 
@@ -418,22 +460,33 @@ function generateConfidenceCalculation(
 ): string {
   const lines: string[] = [];
 
-  const method = typeof confidence === 'string' ? confidence : confidence?.method || 'average';
+  const method =
+    typeof confidence === 'string'
+      ? confidence
+      : confidence?.method || 'average';
 
   if (comments) lines.push(`// Calculate confidence (${method})`);
 
   switch (method) {
     case 'average':
-      lines.push('confidenceSum = validResults.reduce((sum, r) => sum + r.confidence, 0)');
-      lines.push('finalConfidence = validResults.length > 0 ? confidenceSum / validResults.length : 0');
+      lines.push(
+        'confidenceSum = validResults.reduce((sum, r) => sum + r.confidence, 0)'
+      );
+      lines.push(
+        'finalConfidence = validResults.length > 0 ? confidenceSum / validResults.length : 0'
+      );
       break;
 
     case 'min':
-      lines.push('finalConfidence = validResults.length > 0 ? validResults.reduce((min, r) => r.confidence < min ? r.confidence : min, 1) : 0');
+      lines.push(
+        'finalConfidence = validResults.length > 0 ? validResults.reduce((min, r) => r.confidence < min ? r.confidence : min, 1) : 0'
+      );
       break;
 
     case 'max':
-      lines.push('finalConfidence = validResults.length > 0 ? validResults.reduce((max, r) => r.confidence > max ? r.confidence : max, 0) : 0');
+      lines.push(
+        'finalConfidence = validResults.length > 0 ? validResults.reduce((max, r) => r.confidence > max ? r.confidence : max, 0) : 0'
+      );
       break;
 
     case 'weighted':
@@ -444,15 +497,25 @@ function generateConfidenceCalculation(
         lines.push('weightedSum = 0');
         lines.push('totalWeight = 0');
         for (const [groupName, weight] of weightEntries) {
-          lines.push(`${groupName}Conf = ${groupName}Check ? ${groupName}Check.confidence : 0`);
-          lines.push(`weightedSum = weightedSum + (${groupName}Conf * ${weight})`);
+          lines.push(
+            `${groupName}Conf = ${groupName}Check ? ${groupName}Check.confidence : 0`
+          );
+          lines.push(
+            `weightedSum = weightedSum + (${groupName}Conf * ${weight})`
+          );
           lines.push(`totalWeight = totalWeight + ${weight}`);
         }
-        lines.push('finalConfidence = totalWeight > 0 ? weightedSum / totalWeight : 0');
+        lines.push(
+          'finalConfidence = totalWeight > 0 ? weightedSum / totalWeight : 0'
+        );
       } else {
         // Default to average if no weights specified
-        lines.push('confidenceSum = validResults.reduce((sum, r) => sum + r.confidence, 0)');
-        lines.push('finalConfidence = validResults.length > 0 ? confidenceSum / validResults.length : 0');
+        lines.push(
+          'confidenceSum = validResults.reduce((sum, r) => sum + r.confidence, 0)'
+        );
+        lines.push(
+          'finalConfidence = validResults.length > 0 ? confidenceSum / validResults.length : 0'
+        );
       }
       break;
 
@@ -465,8 +528,12 @@ function generateConfidenceCalculation(
       break;
 
     default:
-      lines.push('confidenceSum = validResults.reduce((sum, r) => sum + r.confidence, 0)');
-      lines.push('finalConfidence = validResults.length > 0 ? confidenceSum / validResults.length : 0');
+      lines.push(
+        'confidenceSum = validResults.reduce((sum, r) => sum + r.confidence, 0)'
+      );
+      lines.push(
+        'finalConfidence = validResults.length > 0 ? confidenceSum / validResults.length : 0'
+      );
   }
 
   return lines.join('\n');
@@ -476,7 +543,13 @@ function generateConfidenceCalculation(
  * Generate fallback code
  */
 function generateFallback(
-  fallback: { condition: string; action: string; target?: string; value?: any; maxRetries?: number },
+  fallback: {
+    condition: string;
+    action: string;
+    target?: string;
+    value?: any;
+    maxRetries?: number;
+  },
   comments: boolean
 ): string {
   const lines: string[] = [];
@@ -484,21 +557,27 @@ function generateFallback(
   if (comments) lines.push('// Fallback handling');
 
   // Convert condition
-  const condition = fallback.condition
-    .replace(/\bconfidence\b/g, 'finalConfidence');
+  const condition = fallback.condition.replace(
+    /\bconfidence\b/g,
+    'finalConfidence'
+  );
 
   lines.push(`needsFallback = ${condition}`);
 
   switch (fallback.action) {
     case 'escalate':
-      lines.push(`escalationTarget = needsFallback ? "${fallback.target || 'human'}" : null`);
+      lines.push(
+        `escalationTarget = needsFallback ? "${fallback.target || 'human'}" : null`
+      );
       break;
     case 'retry':
       lines.push(`shouldRetry = needsFallback`);
       lines.push(`maxRetries = ${fallback.maxRetries || 3}`);
       break;
     case 'default':
-      lines.push(`output = needsFallback ? ${JSON.stringify(fallback.value)} : output`);
+      lines.push(
+        `output = needsFallback ? ${JSON.stringify(fallback.value)} : output`
+      );
       break;
   }
 
@@ -512,7 +591,7 @@ export async function compileYamlFile(
   filePath: string,
   options?: CompileOptions
 ): Promise<CompileResult> {
-  const fs = await import('fs/promises');
+  const fs = await import('node:fs/promises');
   const content = await fs.readFile(filePath, 'utf-8');
   return compileYamlToPrism(content, options);
 }

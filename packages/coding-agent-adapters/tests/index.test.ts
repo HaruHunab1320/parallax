@@ -2,29 +2,27 @@
  * Index Exports and Helper Functions Tests
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  // Adapters
-  ClaudeAdapter,
-  GeminiAdapter,
-  CodexAdapter,
-  AiderAdapter,
-  HermesAdapter,
-  BaseCodingAdapter,
-
-  // Helper functions
-  createAllAdapters,
-  createAdapter,
-  checkAdapters,
-  checkAllAdapters,
-  printMissingAdapters,
   ADAPTER_TYPES,
-
   // Types
   type AdapterType,
-  type PreflightResult,
-  type InstallationInfo,
   type AgentCredentials,
+  AiderAdapter,
+  BaseCodingAdapter,
+  // Adapters
+  ClaudeAdapter,
+  CodexAdapter,
+  checkAdapters,
+  checkAllAdapters,
+  createAdapter,
+  // Helper functions
+  createAllAdapters,
+  GeminiAdapter,
+  HermesAdapter,
+  type InstallationInfo,
+  type PreflightResult,
+  printMissingAdapters,
 } from '../src/index';
 
 describe('Exports', () => {
@@ -106,7 +104,9 @@ describe('createAdapter()', () => {
   });
 
   it('should throw for unknown adapter type', () => {
-    expect(() => createAdapter('unknown' as AdapterType)).toThrow('Unknown adapter type');
+    expect(() => createAdapter('unknown' as AdapterType)).toThrow(
+      'Unknown adapter type'
+    );
   });
 });
 
@@ -118,27 +118,27 @@ describe('createAllAdapters()', () => {
 
   it('should include ClaudeAdapter', () => {
     const adapters = createAllAdapters();
-    expect(adapters.some(a => a instanceof ClaudeAdapter)).toBe(true);
+    expect(adapters.some((a) => a instanceof ClaudeAdapter)).toBe(true);
   });
 
   it('should include GeminiAdapter', () => {
     const adapters = createAllAdapters();
-    expect(adapters.some(a => a instanceof GeminiAdapter)).toBe(true);
+    expect(adapters.some((a) => a instanceof GeminiAdapter)).toBe(true);
   });
 
   it('should include CodexAdapter', () => {
     const adapters = createAllAdapters();
-    expect(adapters.some(a => a instanceof CodexAdapter)).toBe(true);
+    expect(adapters.some((a) => a instanceof CodexAdapter)).toBe(true);
   });
 
   it('should include AiderAdapter', () => {
     const adapters = createAllAdapters();
-    expect(adapters.some(a => a instanceof AiderAdapter)).toBe(true);
+    expect(adapters.some((a) => a instanceof AiderAdapter)).toBe(true);
   });
 
   it('should include HermesAdapter', () => {
     const adapters = createAllAdapters();
-    expect(adapters.some(a => a instanceof HermesAdapter)).toBe(true);
+    expect(adapters.some((a) => a instanceof HermesAdapter)).toBe(true);
   });
 
   it('should create new instances each time', () => {
@@ -151,14 +151,18 @@ describe('createAllAdapters()', () => {
 
 describe('checkAdapters()', () => {
   beforeEach(() => {
-    vi.spyOn(ClaudeAdapter.prototype, 'validateInstallation').mockResolvedValue({
-      installed: true,
-      version: '1.0.0',
-    });
-    vi.spyOn(GeminiAdapter.prototype, 'validateInstallation').mockResolvedValue({
-      installed: true,
-      version: '1.0.0',
-    });
+    vi.spyOn(ClaudeAdapter.prototype, 'validateInstallation').mockResolvedValue(
+      {
+        installed: true,
+        version: '1.0.0',
+      }
+    );
+    vi.spyOn(GeminiAdapter.prototype, 'validateInstallation').mockResolvedValue(
+      {
+        installed: true,
+        version: '1.0.0',
+      }
+    );
     vi.spyOn(CodexAdapter.prototype, 'validateInstallation').mockResolvedValue({
       installed: true,
       version: '1.0.0',
@@ -167,10 +171,12 @@ describe('checkAdapters()', () => {
       installed: true,
       version: '1.0.0',
     });
-    vi.spyOn(HermesAdapter.prototype, 'validateInstallation').mockResolvedValue({
-      installed: true,
-      version: '1.0.0',
-    });
+    vi.spyOn(HermesAdapter.prototype, 'validateInstallation').mockResolvedValue(
+      {
+        installed: true,
+        version: '1.0.0',
+      }
+    );
   });
 
   afterEach(() => {
@@ -195,8 +201,8 @@ describe('checkAdapters()', () => {
     const results = await checkAdapters(['claude', 'aider']);
 
     expect(results).toHaveLength(2);
-    expect(results.map(r => r.adapter)).toContain('Claude Code');
-    expect(results.map(r => r.adapter)).toContain('Aider');
+    expect(results.map((r) => r.adapter)).toContain('Claude Code');
+    expect(results.map((r) => r.adapter)).toContain('Aider');
   });
 
   it('should include installed status', async () => {
@@ -227,14 +233,18 @@ describe('checkAdapters()', () => {
 
 describe('checkAllAdapters()', () => {
   beforeEach(() => {
-    vi.spyOn(ClaudeAdapter.prototype, 'validateInstallation').mockResolvedValue({
-      installed: true,
-      version: '1.0.0',
-    });
-    vi.spyOn(GeminiAdapter.prototype, 'validateInstallation').mockResolvedValue({
-      installed: true,
-      version: '1.0.0',
-    });
+    vi.spyOn(ClaudeAdapter.prototype, 'validateInstallation').mockResolvedValue(
+      {
+        installed: true,
+        version: '1.0.0',
+      }
+    );
+    vi.spyOn(GeminiAdapter.prototype, 'validateInstallation').mockResolvedValue(
+      {
+        installed: true,
+        version: '1.0.0',
+      }
+    );
     vi.spyOn(CodexAdapter.prototype, 'validateInstallation').mockResolvedValue({
       installed: true,
       version: '1.0.0',
@@ -243,10 +253,12 @@ describe('checkAllAdapters()', () => {
       installed: true,
       version: '1.0.0',
     });
-    vi.spyOn(HermesAdapter.prototype, 'validateInstallation').mockResolvedValue({
-      installed: true,
-      version: '1.0.0',
-    });
+    vi.spyOn(HermesAdapter.prototype, 'validateInstallation').mockResolvedValue(
+      {
+        installed: true,
+        version: '1.0.0',
+      }
+    );
   });
 
   afterEach(() => {
@@ -261,7 +273,7 @@ describe('checkAllAdapters()', () => {
 
   it('should include all adapter names', async () => {
     const results = await checkAllAdapters();
-    const names = results.map(r => r.adapter);
+    const names = results.map((r) => r.adapter);
 
     expect(names).toContain('Claude Code');
     expect(names).toContain('Google Gemini');
@@ -381,7 +393,10 @@ describe('Adapter consistency', () => {
       });
 
       it('should return args array', () => {
-        const args = adapter.getArgs({ name: 'test', type: adapter.adapterType });
+        const args = adapter.getArgs({
+          name: 'test',
+          type: adapter.adapterType,
+        });
         expect(Array.isArray(args)).toBe(true);
       });
 

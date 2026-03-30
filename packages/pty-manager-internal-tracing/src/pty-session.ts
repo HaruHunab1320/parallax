@@ -4,21 +4,21 @@
  * Manages a single pseudo-terminal session for a CLI tool.
  */
 
-import { EventEmitter } from 'events';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import type * as ptyModule from 'node-pty';
 import type { CLIAdapter } from './adapters/adapter-interface';
 import type {
-  SpawnConfig,
-  SessionStatus,
+  AuthRequiredInfo,
+  AutoResponseRule,
+  BlockingPromptInfo,
+  Logger,
+  LoginDetection,
   SessionHandle,
   SessionMessage,
-  BlockingPromptInfo,
-  AuthRequiredInfo,
-  LoginDetection,
-  AutoResponseRule,
+  SessionStatus,
+  SpawnConfig,
   StallClassification,
-  Logger,
 } from './types';
 
 // Lazy-load node-pty to avoid issues in environments where it's not installed
@@ -135,24 +135,43 @@ export const SPECIAL_KEYS: Record<string, string> = {
   'ctrl+_': '\x1f',
 
   // Alt+letter (Meta key = ESC + letter)
-  'alt+a': '\x1ba', 'alt+b': '\x1bb', 'alt+c': '\x1bc', 'alt+d': '\x1bd',
-  'alt+e': '\x1be', 'alt+f': '\x1bf', 'alt+g': '\x1bg', 'alt+h': '\x1bh',
-  'alt+i': '\x1bi', 'alt+j': '\x1bj', 'alt+k': '\x1bk', 'alt+l': '\x1bl',
-  'alt+m': '\x1bm', 'alt+n': '\x1bn', 'alt+o': '\x1bo', 'alt+p': '\x1bp',
-  'alt+q': '\x1bq', 'alt+r': '\x1br', 'alt+s': '\x1bs', 'alt+t': '\x1bt',
-  'alt+u': '\x1bu', 'alt+v': '\x1bv', 'alt+w': '\x1bw', 'alt+x': '\x1bx',
-  'alt+y': '\x1by', 'alt+z': '\x1bz',
-  'alt+backspace': '\x1b\x7f',  // Delete word backward
+  'alt+a': '\x1ba',
+  'alt+b': '\x1bb',
+  'alt+c': '\x1bc',
+  'alt+d': '\x1bd',
+  'alt+e': '\x1be',
+  'alt+f': '\x1bf',
+  'alt+g': '\x1bg',
+  'alt+h': '\x1bh',
+  'alt+i': '\x1bi',
+  'alt+j': '\x1bj',
+  'alt+k': '\x1bk',
+  'alt+l': '\x1bl',
+  'alt+m': '\x1bm',
+  'alt+n': '\x1bn',
+  'alt+o': '\x1bo',
+  'alt+p': '\x1bp',
+  'alt+q': '\x1bq',
+  'alt+r': '\x1br',
+  'alt+s': '\x1bs',
+  'alt+t': '\x1bt',
+  'alt+u': '\x1bu',
+  'alt+v': '\x1bv',
+  'alt+w': '\x1bw',
+  'alt+x': '\x1bx',
+  'alt+y': '\x1by',
+  'alt+z': '\x1bz',
+  'alt+backspace': '\x1b\x7f', // Delete word backward
 
   // Navigation - plain
-  'up': '\x1b[A',
-  'down': '\x1b[B',
-  'right': '\x1b[C',
-  'left': '\x1b[D',
-  'home': '\x1b[H',
-  'end': '\x1b[F',
-  'pageup': '\x1b[5~',
-  'pagedown': '\x1b[6~',
+  up: '\x1b[A',
+  down: '\x1b[B',
+  right: '\x1b[C',
+  left: '\x1b[D',
+  home: '\x1b[H',
+  end: '\x1b[F',
+  pageup: '\x1b[5~',
+  pagedown: '\x1b[6~',
 
   // Navigation - with Shift (modifier 2)
   'shift+up': '\x1b[1;2A',
@@ -167,14 +186,14 @@ export const SPECIAL_KEYS: Record<string, string> = {
   // Navigation - with Alt (modifier 3)
   'alt+up': '\x1b[1;3A',
   'alt+down': '\x1b[1;3B',
-  'alt+right': '\x1b[1;3C',    // Forward word
-  'alt+left': '\x1b[1;3D',     // Backward word
+  'alt+right': '\x1b[1;3C', // Forward word
+  'alt+left': '\x1b[1;3D', // Backward word
 
   // Navigation - with Ctrl (modifier 5)
   'ctrl+up': '\x1b[1;5A',
   'ctrl+down': '\x1b[1;5B',
-  'ctrl+right': '\x1b[1;5C',   // Forward word
-  'ctrl+left': '\x1b[1;5D',    // Backward word
+  'ctrl+right': '\x1b[1;5C', // Forward word
+  'ctrl+left': '\x1b[1;5D', // Backward word
   'ctrl+home': '\x1b[1;5H',
   'ctrl+end': '\x1b[1;5F',
 
@@ -193,32 +212,32 @@ export const SPECIAL_KEYS: Record<string, string> = {
   'shift+alt+left': '\x1b[1;4D',
 
   // Editing
-  'enter': '\r',
-  'return': '\r',
-  'tab': '\t',
-  'shift+tab': '\x1b[Z',       // Reverse tab
-  'backspace': '\x7f',
-  'delete': '\x1b[3~',
+  enter: '\r',
+  return: '\r',
+  tab: '\t',
+  'shift+tab': '\x1b[Z', // Reverse tab
+  backspace: '\x7f',
+  delete: '\x1b[3~',
   'shift+delete': '\x1b[3;2~',
-  'ctrl+delete': '\x1b[3;5~',  // Delete word forward
-  'insert': '\x1b[2~',
-  'escape': '\x1b',
-  'esc': '\x1b',
-  'space': ' ',
+  'ctrl+delete': '\x1b[3;5~', // Delete word forward
+  insert: '\x1b[2~',
+  escape: '\x1b',
+  esc: '\x1b',
+  space: ' ',
 
   // Function keys - plain
-  'f1': '\x1bOP',
-  'f2': '\x1bOQ',
-  'f3': '\x1bOR',
-  'f4': '\x1bOS',
-  'f5': '\x1b[15~',
-  'f6': '\x1b[17~',
-  'f7': '\x1b[18~',
-  'f8': '\x1b[19~',
-  'f9': '\x1b[20~',
-  'f10': '\x1b[21~',
-  'f11': '\x1b[23~',
-  'f12': '\x1b[24~',
+  f1: '\x1bOP',
+  f2: '\x1bOQ',
+  f3: '\x1bOR',
+  f4: '\x1bOS',
+  f5: '\x1b[15~',
+  f6: '\x1b[17~',
+  f7: '\x1b[18~',
+  f8: '\x1b[19~',
+  f9: '\x1b[20~',
+  f10: '\x1b[21~',
+  f11: '\x1b[23~',
+  f12: '\x1b[24~',
 
   // Function keys - with Shift (modifier 2)
   'shift+f1': '\x1b[1;2P',
@@ -305,14 +324,15 @@ export class PTYSession extends EventEmitter {
     config: SpawnConfig,
     logger?: Logger,
     stallDetectionEnabled?: boolean,
-    defaultStallTimeoutMs?: number,
+    defaultStallTimeoutMs?: number
   ) {
     super();
     this.id = config.id || generateId();
     this.config = { ...config, id: this.id };
     this.logger = logger || consoleLogger;
     this._stallDetectionEnabled = stallDetectionEnabled ?? false;
-    this._stallTimeoutMs = config.stallTimeoutMs ?? defaultStallTimeoutMs ?? 8000;
+    this._stallTimeoutMs =
+      config.stallTimeoutMs ?? defaultStallTimeoutMs ?? 8000;
     this._stallBackoffMs = this._stallTimeoutMs;
 
     // Process rule overrides from spawn config
@@ -354,7 +374,9 @@ export class PTYSession extends EventEmitter {
   addAutoResponseRule(rule: AutoResponseRule): void {
     // Check for duplicate pattern
     const existingIndex = this.sessionRules.findIndex(
-      (r) => r.pattern.source === rule.pattern.source && r.pattern.flags === rule.pattern.flags
+      (r) =>
+        r.pattern.source === rule.pattern.source &&
+        r.pattern.flags === rule.pattern.flags
     );
 
     if (existingIndex >= 0) {
@@ -380,7 +402,11 @@ export class PTYSession extends EventEmitter {
   removeAutoResponseRule(pattern: RegExp): boolean {
     const initialLength = this.sessionRules.length;
     this.sessionRules = this.sessionRules.filter(
-      (r) => !(r.pattern.source === pattern.source && r.pattern.flags === pattern.flags)
+      (r) =>
+        !(
+          r.pattern.source === pattern.source &&
+          r.pattern.flags === pattern.flags
+        )
     );
 
     const removed = this.sessionRules.length < initialLength;
@@ -433,7 +459,10 @@ export class PTYSession extends EventEmitter {
    * resetting the timer.
    */
   private resetStallTimer(): void {
-    if (!this._stallDetectionEnabled || (this._status !== 'busy' && this._status !== 'authenticating')) {
+    if (
+      !this._stallDetectionEnabled ||
+      (this._status !== 'busy' && this._status !== 'authenticating')
+    ) {
       this.clearStallTimer();
       return;
     }
@@ -500,7 +529,10 @@ export class PTYSession extends EventEmitter {
         { sessionId: this.id },
         'Loading pattern detected — suppressing stall emission'
       );
-      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+      this._stallTimer = setTimeout(
+        () => this.onStallTimerFired(),
+        this._stallBackoffMs
+      );
       return;
     }
 
@@ -511,14 +543,20 @@ export class PTYSession extends EventEmitter {
     if (hash === this._lastStallHash) {
       // Buffer tail unchanged since last stall emission — don't re-emit.
       // Schedule another check with current backoff.
-      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+      this._stallTimer = setTimeout(
+        () => this.onStallTimerFired(),
+        this._stallBackoffMs
+      );
       return;
     }
     this._lastStallHash = hash;
 
     // Fast path: try adapter-level task completion detection before
     // falling back to the expensive LLM stall classifier.
-    if (this._status === 'busy' && this.adapter.detectTaskComplete?.(this.outputBuffer)) {
+    if (
+      this._status === 'busy' &&
+      this.adapter.detectTaskComplete?.(this.outputBuffer)
+    ) {
       this._status = 'ready';
       this._lastBlockingPromptHash = null;
       this.outputBuffer = '';
@@ -565,14 +603,17 @@ export class PTYSession extends EventEmitter {
     this.emit('stall_detected', recentOutput, stallDurationMs);
 
     // Schedule next check with current backoff
-    this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+    this._stallTimer = setTimeout(
+      () => this.onStallTimerFired(),
+      this._stallBackoffMs
+    );
   }
 
   /**
    * Promise-based delay helper.
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -582,13 +623,15 @@ export class PTYSession extends EventEmitter {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash |= 0;
     }
     return hash.toString(36);
   }
 
-  private mapLoginTypeToAuthMethod(type: LoginDetection['type'] | undefined): AuthRequiredInfo['method'] {
+  private mapLoginTypeToAuthMethod(
+    type: LoginDetection['type'] | undefined
+  ): AuthRequiredInfo['method'] {
     switch (type) {
       case 'api_key':
         return 'api_key';
@@ -614,7 +657,9 @@ export class PTYSession extends EventEmitter {
     if (!/code/i.test(stripped)) {
       return undefined;
     }
-    const fallbackMatch = stripped.match(/\b([A-Z0-9]{3,}(?:-[A-Z0-9]{3,})+)\b/);
+    const fallbackMatch = stripped.match(
+      /\b([A-Z0-9]{3,}(?:-[A-Z0-9]{3,})+)\b/
+    );
     return fallbackMatch?.[1]?.toUpperCase();
   }
 
@@ -639,7 +684,8 @@ export class PTYSession extends EventEmitter {
     const info: AuthRequiredInfo = {
       method: this.mapLoginTypeToAuthMethod(details.type),
       url: details.url,
-      deviceCode: details.deviceCode ?? this.extractDeviceCode(this.outputBuffer),
+      deviceCode:
+        details.deviceCode ?? this.extractDeviceCode(this.outputBuffer),
       instructions: details.instructions,
       promptSnippet: this.getPromptSnippet(),
     };
@@ -667,7 +713,10 @@ export class PTYSession extends EventEmitter {
 
     // Strip OSC sequences (Operating System Command): \x1b] ... BEL or \x1b] ... ST
     // Used for hyperlinks, window titles, Kitty graphics. Payload text would pollute output.
-    result = result.replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '');
+    result = result.replace(
+      /\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g,
+      ''
+    );
 
     // Strip DCS sequences (Device Control String): \x1bP ... ST
     result = result.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
@@ -685,7 +734,10 @@ export class PTYSession extends EventEmitter {
     result = result.replace(/\xa0/g, ' ');
 
     // Strip TUI box-drawing, spinner, and decorative Unicode characters
-    result = result.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓⬆⬇◆◇▪▫■□▲△▼▽◈⟨⟩⌘⏎⏏⌫⌦⇧⇪⌥]/g, ' ');
+    result = result.replace(
+      /[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❯❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓⬆⬇◆◇▪▫■□▲△▼▽◈⟨⟩⌘⏎⏏⌫⌦⇧⇪⌥]/g,
+      ' '
+    );
 
     // Normalize countdown/duration text (e.g., "8m 17s" → "0s") to prevent
     // TUI countdown timers from resetting the stall timer every second.
@@ -708,7 +760,10 @@ export class PTYSession extends EventEmitter {
     result = result.replace(/\x1b\[\d*[JK]/g, ' ');
 
     // Strip OSC and DCS payloads
-    result = result.replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '');
+    result = result.replace(
+      /\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g,
+      ''
+    );
     result = result.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
 
     // Strip remaining ANSI escape sequences
@@ -741,7 +796,7 @@ export class PTYSession extends EventEmitter {
       // the agent is legitimately working on a long task.
       this._stallBackoffMs = Math.min(
         this._stallBackoffMs * 2,
-        PTYSession.MAX_STALL_BACKOFF_MS,
+        PTYSession.MAX_STALL_BACKOFF_MS
       );
       this.logger.debug(
         { sessionId: this.id, nextCheckMs: this._stallBackoffMs },
@@ -756,7 +811,10 @@ export class PTYSession extends EventEmitter {
         clearTimeout(this._stallTimer);
         this._stallTimer = null;
       }
-      this._stallTimer = setTimeout(() => this.onStallTimerFired(), this._stallBackoffMs);
+      this._stallTimer = setTimeout(
+        () => this.onStallTimerFired(),
+        this._stallBackoffMs
+      );
       return;
     }
 
@@ -775,10 +833,13 @@ export class PTYSession extends EventEmitter {
           );
           const resp = classification.suggestedResponse;
           if (resp.startsWith('keys:')) {
-            const keys = resp.slice(5).split(',').map(k => k.trim());
+            const keys = resp
+              .slice(5)
+              .split(',')
+              .map((k) => k.trim());
             this.sendKeySequence(keys);
           } else {
-            this.writeRaw(resp + '\r');
+            this.writeRaw(`${resp}\r`);
           }
           this.emit('blocking_prompt', promptInfo, true);
           this.outputBuffer = ''; // Prevent stale text from triggering false detections
@@ -794,12 +855,18 @@ export class PTYSession extends EventEmitter {
         this.outputBuffer = '';
         this.clearStallTimer();
         this.emit('ready');
-        this.logger.info({ sessionId: this.id }, 'Stall classified as task_complete, transitioning to ready');
+        this.logger.info(
+          { sessionId: this.id },
+          'Stall classified as task_complete, transitioning to ready'
+        );
         break;
 
       case 'error':
         this.clearStallTimer();
-        this.emit('error', new Error(classification.prompt || 'Stall classified as error'));
+        this.emit(
+          'error',
+          new Error(classification.prompt || 'Stall classified as error')
+        );
         break;
     }
   }
@@ -853,7 +920,10 @@ export class PTYSession extends EventEmitter {
       this.emit('status_changed', 'ready');
       this.emit('task_complete');
       this.traceTaskCompletion('transition_ready', { signal: true });
-      this.logger.info({ sessionId: this.id }, 'Task complete — agent returned to idle prompt');
+      this.logger.info(
+        { sessionId: this.id },
+        'Task complete — agent returned to idle prompt'
+      );
     }, PTYSession.TASK_COMPLETE_DEBOUNCE_MS);
   }
 
@@ -878,7 +948,7 @@ export class PTYSession extends EventEmitter {
       signal: boolean;
       wasPending: boolean;
       debounceMs: number;
-    }> = {},
+    }> = {}
   ): void {
     if (!this.shouldTraceTaskCompletion()) return;
 
@@ -943,12 +1013,14 @@ export class PTYSession extends EventEmitter {
     if (this._readySettleTimer) {
       clearTimeout(this._readySettleTimer);
     }
-    const settleMs = this.config.readySettleMs ?? this.adapter.readySettleMs ?? 100;
+    const settleMs =
+      this.config.readySettleMs ?? this.adapter.readySettleMs ?? 100;
     this._readySettleTimer = setTimeout(() => {
       this._readySettleTimer = null;
       this._readySettlePending = false;
       // Re-verify state and ready indicator
-      if (this._status !== 'starting' && this._status !== 'authenticating') return;
+      if (this._status !== 'starting' && this._status !== 'authenticating')
+        return;
       if (!this.adapter.detectReady(this.outputBuffer)) return;
       this._status = 'ready';
       this._lastBlockingPromptHash = null;
@@ -1044,7 +1116,9 @@ export class PTYSession extends EventEmitter {
       // Cap the buffer to prevent unbounded growth during long tasks.
       // Detection only ever inspects the tail, so trimming is safe.
       if (this.outputBuffer.length > PTYSession.MAX_OUTPUT_BUFFER) {
-        this.outputBuffer = this.outputBuffer.slice(-PTYSession.MAX_OUTPUT_BUFFER);
+        this.outputBuffer = this.outputBuffer.slice(
+          -PTYSession.MAX_OUTPUT_BUFFER
+        );
       }
 
       // Emit raw output immediately (callers may need it for real-time display)
@@ -1218,10 +1292,13 @@ export class PTYSession extends EventEmitter {
 
           const resp = detection.suggestedResponse;
           if (resp.startsWith('keys:')) {
-            const keys = resp.slice(5).split(',').map(k => k.trim());
+            const keys = resp
+              .slice(5)
+              .split(',')
+              .map((k) => k.trim());
             this.sendKeySequence(keys);
           } else {
-            this.writeRaw(resp + '\r');
+            this.writeRaw(`${resp}\r`);
           }
           this._lastBlockingPromptHash = null; // Clear after auto-response
           this.outputBuffer = ''; // Prevent stale text from triggering false detections
@@ -1270,8 +1347,8 @@ export class PTYSession extends EventEmitter {
   private tryAutoResponse(): boolean {
     // Combine session rules (higher priority) with adapter rules (filtered/merged by overrides)
     const adapterRules = (this.adapter.autoResponseRules || [])
-      .filter(r => !this._disabledRulePatterns.has(r.pattern.source))
-      .map(r => {
+      .filter((r) => !this._disabledRulePatterns.has(r.pattern.source))
+      .map((r) => {
         const override = this._ruleOverrides.get(r.pattern.source);
         return override ? { ...r, ...override } : r;
       });
@@ -1313,7 +1390,8 @@ export class PTYSession extends EventEmitter {
 
           // Determine how to send the response
           const useKeys = rule.keys && rule.keys.length > 0;
-          const isTuiDefault = !rule.responseType && !rule.keys && this.adapter.usesTuiMenus;
+          const isTuiDefault =
+            !rule.responseType && !rule.keys && this.adapter.usesTuiMenus;
 
           if (useKeys) {
             // Explicit key sequence
@@ -1323,7 +1401,7 @@ export class PTYSession extends EventEmitter {
             this.sendKeys('enter');
           } else {
             // Text response (backward compat)
-            this.writeRaw(rule.response + '\r');
+            this.writeRaw(`${rule.response}\r`);
           }
 
           // Track once-rules so they don't fire again on TUI re-renders
@@ -1368,7 +1446,7 @@ export class PTYSession extends EventEmitter {
   private tryParseOutput(): void {
     const parsed = this.adapter.parseOutput(this.outputBuffer);
 
-    if (parsed && parsed.isComplete) {
+    if (parsed?.isComplete) {
       // Clear the buffer for the parsed content
       this.outputBuffer = '';
 
@@ -1401,11 +1479,14 @@ export class PTYSession extends EventEmitter {
 
     this._lastActivityAt = new Date();
     const formatted = this.adapter.formatInput(data);
-    const payload = formatted + '\r';
+    const payload = `${formatted}\r`;
     this.ptyProcess.write(payload);
     this.emit('input', payload);
 
-    this.logger.debug({ sessionId: this.id, input: data }, 'Sent input to session');
+    this.logger.debug(
+      { sessionId: this.id, input: data },
+      'Sent input to session'
+    );
   }
 
   /**
@@ -1452,7 +1533,10 @@ export class PTYSession extends EventEmitter {
     // TUI-based CLIs need this as a discrete event to register the submission
     setTimeout(() => this.sendKeys('enter'), 50);
 
-    this.logger.debug({ sessionId: this.id, input: message }, 'Sent input to session');
+    this.logger.debug(
+      { sessionId: this.id, input: message },
+      'Sent input to session'
+    );
 
     return msg;
   }
@@ -1490,7 +1574,10 @@ export class PTYSession extends EventEmitter {
         this._lastActivityAt = new Date();
         this.ptyProcess.write(sequence);
         this.emit('input', sequence);
-        this.logger.debug({ sessionId: this.id, key: normalizedKey }, 'Sent special key');
+        this.logger.debug(
+          { sessionId: this.id, key: normalizedKey },
+          'Sent special key'
+        );
       } else {
         this.logger.warn(
           { sessionId: this.id, key: normalizedKey },

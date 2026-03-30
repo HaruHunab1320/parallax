@@ -5,11 +5,18 @@
  * allowing pty-manager to work from Bun or other non-Node runtimes.
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import { EventEmitter } from 'events';
-import * as path from 'path';
-import * as readline from 'readline';
-import type { SpawnConfig, AutoResponseRule, BlockingPromptType, SessionStatus, StallClassification, AuthRequiredInfo } from './types';
+import { type ChildProcess, spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import * as path from 'node:path';
+import * as readline from 'node:readline';
+import type {
+  AuthRequiredInfo,
+  AutoResponseRule,
+  BlockingPromptType,
+  SessionStatus,
+  SpawnConfig,
+  StallClassification,
+} from './types';
 
 /**
  * Serialized auto-response rule for IPC (pattern as string instead of RegExp)
@@ -65,7 +72,7 @@ export interface BunPTYManagerOptions {
   onStallClassify?: (
     sessionId: string,
     recentOutput: string,
-    stallDurationMs: number,
+    stallDurationMs: number
   ) => Promise<StallClassification | null>;
 }
 
@@ -95,7 +102,7 @@ export class BunCompatiblePTYManager extends EventEmitter {
   private _onStallClassify?: (
     sessionId: string,
     recentOutput: string,
-    stallDurationMs: number,
+    stallDurationMs: number
   ) => Promise<StallClassification | null>;
 
   constructor(options: BunPTYManagerOptions = {}) {
@@ -189,7 +196,10 @@ export class BunCompatiblePTYManager extends EventEmitter {
       case 'worker_ready':
         // Register adapter modules before marking as ready
         if (this.adapterModules.length > 0) {
-          this.sendCommand({ cmd: 'registerAdapters', modules: this.adapterModules });
+          this.sendCommand({
+            cmd: 'registerAdapters',
+            modules: this.adapterModules,
+          });
         }
         // Send stall detection config to worker
         if (this._stallDetectionEnabled) {
@@ -270,7 +280,12 @@ export class BunCompatiblePTYManager extends EventEmitter {
       case 'blocking_prompt': {
         const session = this.sessions.get(id!);
         if (session) {
-          this.emit('blocking_prompt', session, event.promptInfo, event.autoResponded);
+          this.emit(
+            'blocking_prompt',
+            session,
+            event.promptInfo,
+            event.autoResponded
+          );
         }
         break;
       }
@@ -363,11 +378,17 @@ export class BunCompatiblePTYManager extends EventEmitter {
 
       case 'list': {
         // Convert date strings back to Date objects
-        const sessions = (event.sessions as Record<string, unknown>[]).map((s) => ({
-          ...s,
-          startedAt: s.startedAt ? new Date(s.startedAt as string) : undefined,
-          lastActivityAt: s.lastActivityAt ? new Date(s.lastActivityAt as string) : undefined,
-        })) as WorkerSessionHandle[];
+        const sessions = (event.sessions as Record<string, unknown>[]).map(
+          (s) => ({
+            ...s,
+            startedAt: s.startedAt
+              ? new Date(s.startedAt as string)
+              : undefined,
+            lastActivityAt: s.lastActivityAt
+              ? new Date(s.lastActivityAt as string)
+              : undefined,
+          })
+        ) as WorkerSessionHandle[];
         this.resolvePending('list', sessions);
         break;
       }
@@ -415,7 +436,7 @@ export class BunCompatiblePTYManager extends EventEmitter {
       throw new Error('Worker not available');
     }
 
-    this.worker.stdin.write(JSON.stringify(cmd) + '\n');
+    this.worker.stdin.write(`${JSON.stringify(cmd)}\n`);
   }
 
   private createPending(key: string, timeoutMs = 30000): Promise<unknown> {
@@ -455,7 +476,9 @@ export class BunCompatiblePTYManager extends EventEmitter {
   /**
    * Spawn a new PTY session
    */
-  async spawn(config: SpawnConfig & { id: string }): Promise<WorkerSessionHandle> {
+  async spawn(
+    config: SpawnConfig & { id: string }
+  ): Promise<WorkerSessionHandle> {
     await this.waitForReady();
 
     const { id } = config;
@@ -543,7 +566,9 @@ export class BunCompatiblePTYManager extends EventEmitter {
 
     this.sendCommand({ cmd: 'list' });
 
-    const sessions = (await this.createPending('list')) as WorkerSessionHandle[];
+    const sessions = (await this.createPending(
+      'list'
+    )) as WorkerSessionHandle[];
     return sessions;
   }
 
@@ -585,7 +610,10 @@ export class BunCompatiblePTYManager extends EventEmitter {
    * Add an auto-response rule to a session.
    * Session rules are checked before adapter rules.
    */
-  async addAutoResponseRule(sessionId: string, rule: AutoResponseRule): Promise<void> {
+  async addAutoResponseRule(
+    sessionId: string,
+    rule: AutoResponseRule
+  ): Promise<void> {
     await this.waitForReady();
 
     const serialized = this.serializeRule(rule);
@@ -598,7 +626,10 @@ export class BunCompatiblePTYManager extends EventEmitter {
    * Remove an auto-response rule from a session by pattern.
    * Returns true if a rule was removed.
    */
-  async removeAutoResponseRule(sessionId: string, pattern: RegExp): Promise<boolean> {
+  async removeAutoResponseRule(
+    sessionId: string,
+    pattern: RegExp
+  ): Promise<boolean> {
     await this.waitForReady();
 
     this.sendCommand({
@@ -619,7 +650,10 @@ export class BunCompatiblePTYManager extends EventEmitter {
   /**
    * Set all auto-response rules for a session, replacing existing ones.
    */
-  async setAutoResponseRules(sessionId: string, rules: AutoResponseRule[]): Promise<void> {
+  async setAutoResponseRules(
+    sessionId: string,
+    rules: AutoResponseRule[]
+  ): Promise<void> {
     await this.waitForReady();
 
     const serialized = rules.map((r) => this.serializeRule(r));
@@ -636,7 +670,9 @@ export class BunCompatiblePTYManager extends EventEmitter {
 
     this.sendCommand({ cmd: 'getRules', id: sessionId });
 
-    const rules = (await this.createPending(`getRules:${sessionId}`)) as AutoResponseRule[];
+    const rules = (await this.createPending(
+      `getRules:${sessionId}`
+    )) as AutoResponseRule[];
     return rules;
   }
 
@@ -704,6 +740,8 @@ export function isBun(): boolean {
 /**
  * Create the appropriate PTY manager based on runtime
  */
-export function createPTYManager(options?: BunPTYManagerOptions): BunCompatiblePTYManager {
+export function createPTYManager(
+  options?: BunPTYManagerOptions
+): BunCompatiblePTYManager {
   return new BunCompatiblePTYManager(options);
 }

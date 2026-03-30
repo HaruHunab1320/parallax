@@ -6,13 +6,19 @@
  */
 
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from 'adapter-types';
-import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
+import {
+  type AgentCredentials,
+  type AgentFileDescriptor,
+  BaseCodingAdapter,
+  type InstallationInfo,
+  type ModelRecommendations,
+} from './base-coding-adapter';
 
 export class AiderAdapter extends BaseCodingAdapter {
   readonly adapterType = 'aider';
@@ -203,14 +209,16 @@ export class AiderAdapter extends BaseCodingAdapter {
     return [
       {
         relativePath: '.aider.conventions.md',
-        description: 'Project conventions and instructions read on startup (--read flag)',
+        description:
+          'Project conventions and instructions read on startup (--read flag)',
         autoLoaded: true,
         type: 'memory',
         format: 'markdown',
       },
       {
         relativePath: '.aider.conf.yml',
-        description: 'Project-scoped Aider configuration (model, flags, options)',
+        description:
+          'Project-scoped Aider configuration (model, flags, options)',
         autoLoaded: true,
         type: 'config',
         format: 'yaml',
@@ -273,11 +281,17 @@ export class AiderAdapter extends BaseCodingAdapter {
 
     // Model: explicit > provider metadata > inferred from API keys > aider default
     // Aliases (sonnet, 4o, gemini) are maintained by Aider and auto-update
-    const provider = (config.adapterConfig as { provider?: string } | undefined)?.provider;
+    const provider = (config.adapterConfig as { provider?: string } | undefined)
+      ?.provider;
     const credentials = this.getCredentials(config);
     if (config.env?.AIDER_MODEL) {
       args.push('--model', config.env.AIDER_MODEL);
-    } else if (interactive && (credentials.googleKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) {
+    } else if (
+      interactive &&
+      (credentials.googleKey ||
+        process.env.GEMINI_API_KEY ||
+        process.env.GOOGLE_API_KEY)
+    ) {
       args.push('--model', 'gemini');
     } else if (!interactive && provider === 'anthropic') {
       args.push('--model', 'sonnet');
@@ -297,9 +311,12 @@ export class AiderAdapter extends BaseCodingAdapter {
 
     // API keys via --api-key flag only in automation mode.
     if (!interactive) {
-      if (credentials.anthropicKey) args.push('--api-key', `anthropic=${credentials.anthropicKey}`);
-      if (credentials.openaiKey) args.push('--api-key', `openai=${credentials.openaiKey}`);
-      if (credentials.googleKey) args.push('--api-key', `gemini=${credentials.googleKey}`);
+      if (credentials.anthropicKey)
+        args.push('--api-key', `anthropic=${credentials.anthropicKey}`);
+      if (credentials.openaiKey)
+        args.push('--api-key', `openai=${credentials.openaiKey}`);
+      if (credentials.googleKey)
+        args.push('--api-key', `gemini=${credentials.googleKey}`);
     }
 
     // Append approval preset CLI flags
@@ -342,7 +359,8 @@ export class AiderAdapter extends BaseCodingAdapter {
       return {
         required: true,
         type: 'api_key',
-        instructions: 'Set ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable',
+        instructions:
+          'Set ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable',
       };
     }
 
@@ -364,13 +382,18 @@ export class AiderAdapter extends BaseCodingAdapter {
       return {
         required: true,
         type: 'oauth',
-        instructions: 'Aider offering OpenRouter OAuth login — provide API keys to skip',
+        instructions:
+          'Aider offering OpenRouter OAuth login — provide API keys to skip',
       };
     }
 
     // OpenRouter OAuth browser flow in progress (onboarding.py:311)
-    if (/please open this url in your browser to connect aider with openrouter/i.test(stripped) ||
-        /waiting up to 5 minutes for you to finish in the browser/i.test(stripped)) {
+    if (
+      /please open this url in your browser to connect aider with openrouter/i.test(
+        stripped
+      ) ||
+      /waiting up to 5 minutes for you to finish in the browser/i.test(stripped)
+    ) {
       const urlMatch = stripped.match(/https?:\/\/[^\s]+/);
       return {
         required: true,
@@ -421,20 +444,24 @@ export class AiderAdapter extends BaseCodingAdapter {
         type: 'unknown',
         prompt: 'Invalid confirmation input',
         canAutoRespond: false,
-        instructions: 'Aider received an invalid response to a confirmation prompt',
+        instructions:
+          'Aider received an invalid response to a confirmation prompt',
       };
     }
 
     // Destructive operations — NOT auto-responded
-    if (/delete|remove|overwrite/i.test(stripped) &&
-        (/\[y\/n\]/i.test(stripped) || /\(Y\)es\/\(N\)o/i.test(stripped))) {
+    if (
+      /delete|remove|overwrite/i.test(stripped) &&
+      (/\[y\/n\]/i.test(stripped) || /\(Y\)es\/\(N\)o/i.test(stripped))
+    ) {
       return {
         detected: true,
         type: 'permission',
         prompt: 'Destructive operation confirmation',
         options: ['y', 'n'],
         canAutoRespond: false,
-        instructions: 'Aider is asking to perform a potentially destructive operation',
+        instructions:
+          'Aider is asking to perform a potentially destructive operation',
       };
     }
 
@@ -490,10 +517,13 @@ export class AiderAdapter extends BaseCodingAdapter {
     // (not just a bare prompt which could be startup).
     // Match named prompts (ask>, code>, architect>, multi>) AND plain >
     // Aider shows plain > in some modes.
-    const hasPrompt = /(?:(?:ask|code|architect)(?:\s+multi)?)?>\s*$/m.test(stripped);
+    const hasPrompt = /(?:(?:ask|code|architect)(?:\s+multi)?)?>\s*$/m.test(
+      stripped
+    );
     if (hasPrompt) {
       // Check for signs of completed work above the prompt
-      const hasEditMarkers = /Applied edit to|Commit [a-f0-9]+|wrote to|Updated/i.test(stripped);
+      const hasEditMarkers =
+        /Applied edit to|Commit [a-f0-9]+|wrote to|Updated/i.test(stripped);
       const hasTokenUsage = /Tokens:|Cost:/i.test(stripped);
       if (hasEditMarkers || hasTokenUsage) {
         return true;
@@ -507,15 +537,19 @@ export class AiderAdapter extends BaseCodingAdapter {
     const stripped = this.stripAnsi(output);
 
     // Guard: if output contains an auth/OAuth prompt, we're NOT ready
-    if (/login to openrouter/i.test(stripped) ||
-        /open this url in your browser/i.test(stripped) ||
-        /waiting up to 5 minutes/i.test(stripped)) {
+    if (
+      /login to openrouter/i.test(stripped) ||
+      /open this url in your browser/i.test(stripped) ||
+      /waiting up to 5 minutes/i.test(stripped)
+    ) {
       return false;
     }
 
     // Edit-format mode prompts (io.py:545): ask>, code>, architect>, help>, multi>
-    if (/(?:ask|code|architect|help)(?:\s+multi)?>\s*$/m.test(stripped) ||
-        /^multi>\s*$/m.test(stripped)) {
+    if (
+      /(?:ask|code|architect|help)(?:\s+multi)?>\s*$/m.test(stripped) ||
+      /^multi>\s*$/m.test(stripped)
+    ) {
       return true;
     }
 
@@ -552,7 +586,10 @@ export class AiderAdapter extends BaseCodingAdapter {
     let content = this.extractContent(stripped, /^.*aider>\s*/gim);
 
     // Remove file operation confirmations from content
-    content = content.replace(/^(Added|Removed|Created|Updated) .+ (to|from) the chat\.?$/gm, '');
+    content = content.replace(
+      /^(Added|Removed|Created|Updated) .+ (to|from) the chat\.?$/gm,
+      ''
+    );
 
     return {
       type: isQuestion ? 'question' : 'response',
@@ -569,12 +606,18 @@ export class AiderAdapter extends BaseCodingAdapter {
    * Detect exit conditions specific to Aider.
    * Source: base_coder.py:994, base_coder.py:998, report.py:77, versioncheck.py:58
    */
-  override detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  override detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     const stripped = this.stripAnsi(output);
 
     // Ctrl+C exit (base_coder.py:994-998)
-    if (/\^C again to exit/i.test(stripped) ||
-        /\^C KeyboardInterrupt/i.test(stripped)) {
+    if (
+      /\^C again to exit/i.test(stripped) ||
+      /\^C KeyboardInterrupt/i.test(stripped)
+    ) {
       return { exited: true, code: 130 };
     }
 

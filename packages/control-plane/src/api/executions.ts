@@ -1,17 +1,21 @@
 import { Router } from 'express';
-import { PatternEngine } from '../pattern-engine';
-import { Logger } from 'pino';
+import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import WebSocket from 'ws';
-import { DatabaseService } from '../db/database.service';
+import type { DatabaseService } from '../db/database.service';
+import type { ExecutionEventBus } from '../execution-events';
+import type { PatternEngine } from '../pattern-engine';
 import {
+  convertExecutionFromDb,
   createExecutionInDb,
   updateExecutionInDb,
-  convertExecutionFromDb
 } from '../pattern-engine/pattern-engine-db';
-import { ExecutionEventBus } from '../execution-events';
-import { WebhookService, WebhookConfig, WebhookPayload } from '../webhooks';
-import { UserProvidedCredentials } from '../workspace';
+import {
+  type WebhookConfig,
+  type WebhookPayload,
+  WebhookService,
+} from '../webhooks';
+import type { UserProvidedCredentials } from '../workspace';
 
 interface ExecutionRequest {
   patternName: string;
@@ -55,17 +59,17 @@ export function createExecutionsRouter(
         type: event.type,
         executionId: event.executionId,
         data: event.data,
-        timestamp: event.timestamp.toISOString()
+        timestamp: event.timestamp.toISOString(),
       });
 
-      streams.forEach(ws => {
+      streams.forEach((ws) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(message);
         }
       });
 
       if (['completed', 'failed', 'cancelled'].includes(event.type)) {
-        streams.forEach(ws => {
+        streams.forEach((ws) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.close();
           }
@@ -77,13 +81,13 @@ export function createExecutionsRouter(
 
   // List executions
   router.get('/', async (_req: any, res: any) => {
-    const limit = parseInt(_req.query.limit as string) || 100;
-    const offset = parseInt(_req.query.offset as string) || 0;
+    const limit = parseInt(_req.query.limit as string, 10) || 100;
+    const offset = parseInt(_req.query.offset as string, 10) || 0;
     const status = _req.query.status as string;
-    
+
     try {
       let executionList;
-      
+
       if (database) {
         // Get from database
         const where = status ? { status } : undefined;
@@ -91,41 +95,43 @@ export function createExecutionsRouter(
           where,
           skip: offset,
           take: limit,
-          orderBy: { time: 'desc' }
+          orderBy: { time: 'desc' },
         });
-        
+
         // Convert to API format
         executionList = await Promise.all(
-          executionList.map(e => convertExecutionFromDb(e))
+          executionList.map((e) => convertExecutionFromDb(e))
         );
       } else {
         // Get from memory
         executionList = Array.from(executions.values());
-        
+
         // Filter by status if provided
         if (status) {
-          executionList = executionList.filter(e => e.status === status);
+          executionList = executionList.filter((e) => e.status === status);
         }
-        
+
         // Sort by startTime descending
-        executionList.sort((a, b) => 
-          new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+        executionList.sort(
+          (a, b) =>
+            new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
         );
-        
+
         // Apply pagination
         executionList = executionList.slice(offset, offset + limit);
       }
-      
+
       return res.json({
         executions: executionList,
         total: executionList.length,
         limit,
-        offset
+        offset,
       });
     } catch (error) {
       logger.error({ error }, 'Failed to list executions');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to list executions'
+        error:
+          error instanceof Error ? error.message : 'Failed to list executions',
       });
     }
   });
@@ -133,10 +139,10 @@ export function createExecutionsRouter(
   // Get execution details
   router.get('/:id', async (req: any, res: any) => {
     const { id } = req.params;
-    
+
     try {
       let execution;
-      
+
       if (database) {
         const dbExecution = await database.executions.findById(id);
         if (dbExecution) {
@@ -145,16 +151,17 @@ export function createExecutionsRouter(
       } else {
         execution = executions.get(id);
       }
-      
+
       if (!execution) {
         return res.status(404).json({ error: 'Execution not found' });
       }
-      
+
       return res.json(execution);
     } catch (error) {
       logger.error({ error, executionId: id }, 'Failed to get execution');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to get execution'
+        error:
+          error instanceof Error ? error.message : 'Failed to get execution',
       });
     }
   });
@@ -176,24 +183,29 @@ export function createExecutionsRouter(
       status,
       result: status === 'completed' ? result?.result : undefined,
       error: status === 'failed' ? result?.error : undefined,
-      confidence: result?.metrics?.averageConfidence ?? result?.metrics?.confidence,
+      confidence:
+        result?.metrics?.averageConfidence ?? result?.metrics?.confidence,
       duration: Date.now() - startTime.getTime(),
-      completedAt: new Date().toISOString()
+      completedAt: new Date().toISOString(),
     };
 
     // Fire and forget - don't block on webhook delivery
-    webhooks.send(webhook, payload).catch(err => {
-      logger.error({ err, executionId, webhookUrl: webhook.url }, 'Webhook delivery failed');
+    webhooks.send(webhook, payload).catch((err) => {
+      logger.error(
+        { err, executionId, webhookUrl: webhook.url },
+        'Webhook delivery failed'
+      );
     });
   };
 
   // Create new execution
   router.post('/', async (req: any, res: any) => {
-    const { patternName, input, options, webhook } = req.body as ExecutionRequest;
+    const { patternName, input, options, webhook } =
+      req.body as ExecutionRequest;
 
     if (!patternName || !input) {
       return res.status(400).json({
-        error: 'Missing required fields: patternName, input'
+        error: 'Missing required fields: patternName, input',
       });
     }
 
@@ -201,14 +213,17 @@ export function createExecutionsRouter(
     if (webhook?.url) {
       try {
         const url = new URL(webhook.url);
-        if (url.protocol !== 'https:' && process.env.NODE_ENV === 'production') {
+        if (
+          url.protocol !== 'https:' &&
+          process.env.NODE_ENV === 'production'
+        ) {
           return res.status(400).json({
-            error: 'Webhook URL must use HTTPS in production'
+            error: 'Webhook URL must use HTTPS in production',
           });
         }
       } catch {
         return res.status(400).json({
-          error: 'Invalid webhook URL'
+          error: 'Invalid webhook URL',
         });
       }
     }
@@ -229,37 +244,56 @@ export function createExecutionsRouter(
 
         // Start async execution
         const executionOptions = { ...options, executionId: dbExecutionId };
-        patternEngine.executePattern(patternName, input, executionOptions)
+        patternEngine
+          .executePattern(patternName, input, executionOptions)
           .then(async (result) => {
             await updateExecutionInDb(database, dbExecutionId, {
               status: 'completed',
               result: result.result,
               confidence: result.metrics?.confidence,
               durationMs: result.endTime
-                ? new Date(result.endTime).getTime() - new Date(result.startTime).getTime()
-                : undefined
+                ? new Date(result.endTime).getTime() -
+                  new Date(result.startTime).getTime()
+                : undefined,
             });
 
             // Send webhook on completion
-            await sendWebhook(dbExecutionId, patternName, 'completed', result, startTime, webhook);
+            await sendWebhook(
+              dbExecutionId,
+              patternName,
+              'completed',
+              result,
+              startTime,
+              webhook
+            );
           })
           .catch(async (error) => {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const errorMessage =
+              error instanceof Error ? error.message : 'Unknown error';
             await updateExecutionInDb(database, dbExecutionId, {
               status: 'failed',
-              error: errorMessage
+              error: errorMessage,
             });
 
             // Send webhook on failure
-            await sendWebhook(dbExecutionId, patternName, 'failed', { error: errorMessage }, startTime, webhook);
+            await sendWebhook(
+              dbExecutionId,
+              patternName,
+              'failed',
+              { error: errorMessage },
+              startTime,
+              webhook
+            );
           });
 
         return res.status(202).json({
           id: dbExecutionId,
           status: 'accepted',
           message: 'Execution started',
-          streamUrl: options?.stream ? `/api/executions/${dbExecutionId}/stream` : undefined,
-          webhookConfigured: !!webhook?.url
+          streamUrl: options?.stream
+            ? `/api/executions/${dbExecutionId}/stream`
+            : undefined,
+          webhookConfigured: !!webhook?.url,
         });
       } else {
         // Fallback to in-memory
@@ -268,7 +302,7 @@ export function createExecutionsRouter(
           patternName,
           input,
           status: 'running',
-          startTime: startTime.toISOString()
+          startTime: startTime.toISOString(),
         };
 
         executions.set(executionId, execution);
@@ -280,41 +314,60 @@ export function createExecutionsRouter(
 
         // Start async execution
         const executionOptions = { ...options, executionId };
-        patternEngine.executePattern(patternName, input, executionOptions)
+        patternEngine
+          .executePattern(patternName, input, executionOptions)
           .then((result) => {
             executions.set(executionId, {
               ...execution,
               ...result,
-              status: 'completed'
+              status: 'completed',
             });
 
             // Send webhook on completion
-            sendWebhook(executionId, patternName, 'completed', result, startTime, webhook);
+            sendWebhook(
+              executionId,
+              patternName,
+              'completed',
+              result,
+              startTime,
+              webhook
+            );
           })
           .catch((error) => {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const errorMessage =
+              error instanceof Error ? error.message : 'Unknown error';
             executions.set(executionId, {
               ...execution,
               status: 'failed',
-              error: errorMessage
+              error: errorMessage,
             });
 
             // Send webhook on failure
-            sendWebhook(executionId, patternName, 'failed', { error: errorMessage }, startTime, webhook);
+            sendWebhook(
+              executionId,
+              patternName,
+              'failed',
+              { error: errorMessage },
+              startTime,
+              webhook
+            );
           });
 
         return res.status(202).json({
           id: executionId,
           status: 'accepted',
           message: 'Execution started',
-          streamUrl: options?.stream ? `/api/executions/${executionId}/stream` : undefined,
-          webhookConfigured: !!webhook?.url
+          streamUrl: options?.stream
+            ? `/api/executions/${executionId}/stream`
+            : undefined,
+          webhookConfigured: !!webhook?.url,
         });
       }
     } catch (error) {
       logger.error({ error }, 'Failed to create execution');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to create execution'
+        error:
+          error instanceof Error ? error.message : 'Failed to create execution',
       });
     }
   });
@@ -332,9 +385,12 @@ export function createExecutionsRouter(
         return res.json({ events: [] });
       }
     } catch (error) {
-      logger.error({ error, executionId: id }, 'Failed to get execution events');
+      logger.error(
+        { error, executionId: id },
+        'Failed to get execution events'
+      );
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to get events'
+        error: error instanceof Error ? error.message : 'Failed to get events',
       });
     }
   });
@@ -347,12 +403,14 @@ export function createExecutionsRouter(
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
     });
 
     // Send initial connection event
-    res.write(`event: connected\ndata: ${JSON.stringify({ executionId: id })}\n\n`);
+    res.write(
+      `event: connected\ndata: ${JSON.stringify({ executionId: id })}\n\n`
+    );
 
     // Send any historical events first
     try {
@@ -363,13 +421,19 @@ export function createExecutionsRouter(
             executionId: id,
             type: (event as any).type,
             data: (event as any).data,
-            timestamp: (event as any).time?.toISOString?.() ?? new Date().toISOString(),
+            timestamp:
+              (event as any).time?.toISOString?.() ?? new Date().toISOString(),
           };
-          res.write(`event: ${sseEvent.type}\ndata: ${JSON.stringify(sseEvent)}\n\n`);
+          res.write(
+            `event: ${sseEvent.type}\ndata: ${JSON.stringify(sseEvent)}\n\n`
+          );
         }
       }
     } catch (error) {
-      logger.warn({ error, executionId: id }, 'Failed to load historical events for SSE');
+      logger.warn(
+        { error, executionId: id },
+        'Failed to load historical events for SSE'
+      );
     }
 
     // Check if execution is already terminal
@@ -383,7 +447,9 @@ export function createExecutionsRouter(
       }
 
       if (status && ['completed', 'failed', 'cancelled'].includes(status)) {
-        res.write(`event: ${status}\ndata: ${JSON.stringify({ executionId: id, type: status })}\n\n`);
+        res.write(
+          `event: ${status}\ndata: ${JSON.stringify({ executionId: id, type: status })}\n\n`
+        );
         res.end();
         return;
       }
@@ -402,7 +468,9 @@ export function createExecutionsRouter(
           data: event.data,
           timestamp: event.timestamp.toISOString(),
         };
-        res.write(`event: ${event.type}\ndata: ${JSON.stringify(sseEvent)}\n\n`);
+        res.write(
+          `event: ${event.type}\ndata: ${JSON.stringify(sseEvent)}\n\n`
+        );
 
         // Close stream on terminal events
         if (['completed', 'failed', 'cancelled'].includes(event.type)) {
@@ -436,11 +504,13 @@ export function createExecutionsRouter(
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
     });
 
-    res.write(`event: connected\ndata: ${JSON.stringify({ executionId: id, threadIds: threadIdFilter })}\n\n`);
+    res.write(
+      `event: connected\ndata: ${JSON.stringify({ executionId: id, threadIds: threadIdFilter })}\n\n`
+    );
 
     // Subscribe to live thread events via event bus
     let unsubscribe: (() => void) | undefined;
@@ -498,7 +568,7 @@ export function createExecutionsRouter(
           startTime = dbExecution.time || new Date();
         }
         await updateExecutionInDb(database, id, {
-          status: 'cancelled'
+          status: 'cancelled',
         });
       } else {
         const execution = executions.get(id);
@@ -520,9 +590,9 @@ export function createExecutionsRouter(
       const streams = activeStreams.get(id);
       if (streams) {
         const message = JSON.stringify({
-          type: 'cancelled'
+          type: 'cancelled',
         });
-        streams.forEach(ws => {
+        streams.forEach((ws) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(message);
             ws.close();
@@ -533,12 +603,13 @@ export function createExecutionsRouter(
 
       return res.json({
         message: 'Execution cancelled',
-        id
+        id,
       });
     } catch (error) {
       logger.error({ error, executionId: id }, 'Failed to cancel execution');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to cancel execution'
+        error:
+          error instanceof Error ? error.message : 'Failed to cancel execution',
       });
     }
   });
@@ -546,17 +617,17 @@ export function createExecutionsRouter(
   // Retry execution
   router.post('/:id/retry', async (req: any, res: any) => {
     const { id } = req.params;
-    
+
     try {
       let originalExecution;
-      
+
       if (database) {
         const dbExecution = await database.executions.findById(id);
         if (dbExecution) {
           originalExecution = {
             patternName: dbExecution.pattern?.name,
             input: dbExecution.input,
-            options: dbExecution.metrics
+            options: dbExecution.metrics,
           };
         }
       } else {
@@ -565,20 +636,20 @@ export function createExecutionsRouter(
           originalExecution = {
             patternName: execution.patternName,
             input: execution.input,
-            options: execution.options
+            options: execution.options,
           };
         }
       }
-      
-      if (!originalExecution || !originalExecution.patternName) {
+
+      if (!originalExecution?.patternName) {
         return res.status(404).json({ error: 'Original execution not found' });
       }
-      
+
       // Create new execution with same parameters - redirect to create endpoint
       req.body = {
         patternName: originalExecution.patternName,
         input: originalExecution.input,
-        options: originalExecution.options
+        options: originalExecution.options,
       } as ExecutionRequest;
 
       // Use next() to pass to the router's POST handler would require middleware
@@ -586,12 +657,13 @@ export function createExecutionsRouter(
       return res.status(200).json({
         message: 'Retry available',
         retryRequest: req.body,
-        hint: 'POST this to /api/executions to retry'
+        hint: 'POST this to /api/executions to retry',
       });
     } catch (error) {
       logger.error({ error, executionId: id }, 'Failed to retry execution');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to retry execution'
+        error:
+          error instanceof Error ? error.message : 'Failed to retry execution',
       });
     }
   });
@@ -607,10 +679,14 @@ export function createExecutionsRouter(
         const executionList = Array.from(executions.values());
         return res.json({
           total_executions: executionList.length,
-          successful: executionList.filter(e => e.status === 'completed').length,
-          failed: executionList.filter(e => e.status === 'failed').length,
-          cancelled: executionList.filter(e => e.status === 'cancelled').length,
-          in_progress: executionList.filter(e => ['pending', 'running'].includes(e.status)).length,
+          successful: executionList.filter((e) => e.status === 'completed')
+            .length,
+          failed: executionList.filter((e) => e.status === 'failed').length,
+          cancelled: executionList.filter((e) => e.status === 'cancelled')
+            .length,
+          in_progress: executionList.filter((e) =>
+            ['pending', 'running'].includes(e.status)
+          ).length,
           avg_duration_ms: null,
           avg_confidence: null,
         });
@@ -618,14 +694,14 @@ export function createExecutionsRouter(
     } catch (error) {
       logger.error({ error }, 'Failed to get execution stats');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to get stats'
+        error: error instanceof Error ? error.message : 'Failed to get stats',
       });
     }
   });
 
   // Get hourly stats for charts (last 24 hours)
   router.get('/stats/hourly', async (_req: any, res: any) => {
-    const hours = parseInt(_req.query.hours as string) || 24;
+    const hours = parseInt(_req.query.hours as string, 10) || 24;
 
     try {
       if (database) {
@@ -649,14 +725,15 @@ export function createExecutionsRouter(
     } catch (error) {
       logger.error({ error }, 'Failed to get hourly stats');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to get hourly stats'
+        error:
+          error instanceof Error ? error.message : 'Failed to get hourly stats',
       });
     }
   });
 
   // Get daily stats for charts (last 7 days)
   router.get('/stats/daily', async (_req: any, res: any) => {
-    const days = parseInt(_req.query.days as string) || 7;
+    const days = parseInt(_req.query.days as string, 10) || 7;
 
     try {
       if (database) {
@@ -682,7 +759,8 @@ export function createExecutionsRouter(
     } catch (error) {
       logger.error({ error }, 'Failed to get daily stats');
       return res.status(500).json({
-        error: error instanceof Error ? error.message : 'Failed to get daily stats'
+        error:
+          error instanceof Error ? error.message : 'Failed to get daily stats',
       });
     }
   });
@@ -697,29 +775,34 @@ export function createExecutionsRouter(
 export function createExecutionWebSocketHandler(
   executionsRouter: Router
 ): (ws: WebSocket, req: any) => void {
-  const activeStreams = (executionsRouter as any).activeStreams as Map<string, WebSocket[]>;
-  
+  const activeStreams = (executionsRouter as any).activeStreams as Map<
+    string,
+    WebSocket[]
+  >;
+
   return (ws: WebSocket, req: any) => {
     const executionId = req.params.id;
-    
+
     if (!executionId) {
       ws.send(JSON.stringify({ error: 'Missing execution ID' }));
       ws.close();
       return;
     }
-    
+
     // Add to active streams
     if (!activeStreams.has(executionId)) {
       activeStreams.set(executionId, []);
     }
     activeStreams.get(executionId)!.push(ws);
-    
+
     // Send initial message
-    ws.send(JSON.stringify({
-      type: 'connected',
-      executionId
-    }));
-    
+    ws.send(
+      JSON.stringify({
+        type: 'connected',
+        executionId,
+      })
+    );
+
     // Handle client disconnect
     ws.on('close', () => {
       const streams = activeStreams.get(executionId);
@@ -733,7 +816,7 @@ export function createExecutionWebSocketHandler(
         }
       }
     });
-    
+
     // Handle errors silently - connection errors are expected when clients disconnect
     ws.on('error', () => {});
   };

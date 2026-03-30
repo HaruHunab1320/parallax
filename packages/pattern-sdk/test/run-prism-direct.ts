@@ -1,7 +1,8 @@
 // Test Prism code directly through the runtime instead of just validation
+
+import { createEnvironment } from '@prism-lang/core';
 import { Parser } from '@prism-lang/parser';
 import { Runtime } from '@prism-lang/runtime';
-import { createEnvironment } from '@prism-lang/core';
 
 // Test the exact code that's failing validation
 const testCases = [
@@ -16,7 +17,7 @@ totalConfidence = reduce(results, (sum, r) => {
 count = 3
 avgConfidence = totalConfidence / count
 avgConfidence
-`
+`,
   },
   {
     name: 'Type of reduce result',
@@ -35,7 +36,7 @@ result = {
   divided: divided
 }
 result
-`
+`,
   },
   {
     name: 'Our actual pattern code',
@@ -54,39 +55,38 @@ totalConfidence = reduce(results, (sum, r) => {
 count = 3
 avgConfidence = totalConfidence / count
 avgConfidence
-`
-  }
+`,
+  },
 ];
 
 async function testPrismCode() {
   const parser = new Parser();
   const runtime = new Runtime();
-  
+
   console.log('Testing Prism code directly through runtime:\n');
-  
+
   for (const test of testCases) {
     console.log(`=== ${test.name} ===`);
-    
+
     try {
       // Parse the code
       const ast = parser.parse(test.code);
-      
+
       // Create environment
       const env = createEnvironment();
-      
+
       // Execute the code
       const result = await runtime.evaluate(ast, env);
-      
+
       console.log('✅ Success!');
       console.log('Result:', result);
-      
     } catch (error) {
       console.log('❌ Error:', error.message);
       if (error.stack) {
         console.log('Stack:', error.stack.split('\n')[1]);
       }
     }
-    
+
     console.log('');
   }
 }

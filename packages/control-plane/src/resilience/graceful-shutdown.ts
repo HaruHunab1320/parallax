@@ -7,8 +7,8 @@
  * - Cleans up spawned agents
  */
 
-import { Logger } from 'pino';
-import { ExecutionRepository } from '../db/repositories/execution.repository';
+import type { Logger } from 'pino';
+import type { ExecutionRepository } from '../db/repositories/execution.repository';
 
 export interface GracefulShutdownOptions {
   /** Max time to wait for in-flight executions (default: 30000ms) */
@@ -65,7 +65,7 @@ export class GracefulShutdownHandler {
     let remaining = inFlightIds.length;
 
     while (remaining > 0 && Date.now() < deadline) {
-      await new Promise(resolve => setTimeout(resolve, this.pollIntervalMs));
+      await new Promise((resolve) => setTimeout(resolve, this.pollIntervalMs));
 
       const currentInFlight = this.patternEngine.getInFlightExecutionIds();
       remaining = currentInFlight.length;
@@ -112,7 +112,9 @@ export class GracefulShutdownHandler {
 
     // Also fail any DB-level stuck executions on this node
     try {
-      const stuckExecutions = await this.executionRepo.findOrphanedExecutions(this.nodeId);
+      const stuckExecutions = await this.executionRepo.findOrphanedExecutions(
+        this.nodeId
+      );
       for (const exec of stuckExecutions) {
         await this.executionRepo.markOrphaned(
           exec.id,
@@ -120,7 +122,10 @@ export class GracefulShutdownHandler {
         );
       }
     } catch (error) {
-      this.logger.error({ error }, 'Failed to clean up stuck DB executions during shutdown');
+      this.logger.error(
+        { error },
+        'Failed to clean up stuck DB executions during shutdown'
+      );
     }
 
     this.logger.info('Graceful shutdown complete');

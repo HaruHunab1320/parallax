@@ -1,4 +1,4 @@
-import { DisplayRenderer } from './types';
+import type { DisplayRenderer } from './types';
 
 /**
  * Terminal renderer using Unicode half-block characters.
@@ -38,7 +38,7 @@ export class TerminalRenderer implements DisplayRenderer {
       lines.push(line);
     }
 
-    process.stdout.write(lines.join('\n') + '\n');
+    process.stdout.write(`${lines.join('\n')}\n`);
   }
 
   stop(): void {

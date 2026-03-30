@@ -32,7 +32,10 @@ export interface SpawnReviewTeamArgs {
 }
 
 export function generateSpawnReviewTeamPrompt(args: SpawnReviewTeamArgs): {
-  messages: Array<{ role: 'user' | 'assistant'; content: { type: 'text'; text: string } }>;
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: { type: 'text'; text: string };
+  }>;
 } {
   const focus = args.review_focus || 'all';
 

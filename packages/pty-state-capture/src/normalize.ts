@@ -17,7 +17,9 @@ const RE_FRAGMENTED_SGR = /\b(?:\d{1,3}\s*;\s*){2,10}\d{1,3}m\b/g;
 
 export function stripAnsiPreserveText(input: string): string {
   return input
-    .replace(RE_CURSOR_FORWARD, (_match, n: string) => ' '.repeat(Math.max(Number.parseInt(n, 10) || 0, 0)))
+    .replace(RE_CURSOR_FORWARD, (_match, n: string) =>
+      ' '.repeat(Math.max(Number.parseInt(n, 10) || 0, 0))
+    )
     .replace(RE_ANSI_OSC, '')
     .replace(RE_ANSI_CSI, '')
     .replace(RE_ANSI_SINGLE, '');

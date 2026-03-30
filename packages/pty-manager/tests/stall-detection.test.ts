@@ -9,9 +9,9 @@
  * the actual PTY process spawn.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PTYSession } from '../src/pty-session';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CLIAdapter } from '../src/adapters/adapter-interface';
+import { PTYSession } from '../src/pty-session';
 import type { StallClassification } from '../src/types';
 
 /**
@@ -77,11 +77,13 @@ function getInternals(session: PTYSession): SessionInternals {
  * Create a session that's ready for stall testing.
  * Sets up a fake ptyProcess and status='busy'.
  */
-function createBusySession(opts: {
-  enabled?: boolean;
-  timeoutMs?: number;
-  sessionTimeoutMs?: number;
-} = {}): { session: PTYSession; writeFn: ReturnType<typeof vi.fn> } {
+function createBusySession(
+  opts: {
+    enabled?: boolean;
+    timeoutMs?: number;
+    sessionTimeoutMs?: number;
+  } = {}
+): { session: PTYSession; writeFn: ReturnType<typeof vi.fn> } {
   const writeFn = vi.fn();
 
   const session = new PTYSession(
@@ -93,7 +95,7 @@ function createBusySession(opts: {
     },
     silentLogger as never,
     opts.enabled ?? true,
-    opts.timeoutMs ?? 5000,
+    opts.timeoutMs ?? 5000
   );
 
   // Set up fake ptyProcess and status
@@ -121,7 +123,10 @@ function simulateOutput(session: PTYSession, data: string): void {
   // We call send() to trigger it, but since we're testing the timer directly,
   // we need to invoke the private resetStallTimer. We do this by calling
   // the method via bracket notation.
-  if ((internals._status === 'busy' || internals._status === 'authenticating') && internals._stallDetectionEnabled) {
+  if (
+    (internals._status === 'busy' || internals._status === 'authenticating') &&
+    internals._stallDetectionEnabled
+  ) {
     (session as unknown as { resetStallTimer: () => void }).resetStallTimer();
   }
 }
@@ -173,7 +178,7 @@ describe('PTYSession Stall Detection', () => {
     expect(stallHandler).toHaveBeenCalledTimes(1);
     expect(stallHandler).toHaveBeenCalledWith(
       expect.stringContaining('Working on it'),
-      expect.any(Number),
+      expect.any(Number)
     );
   });
 
@@ -500,7 +505,7 @@ describe('tryAutoResponse ANSI stripping', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -519,7 +524,9 @@ describe('tryAutoResponse ANSI stripping', () => {
     session.on('blocking_prompt', blockingHandler);
 
     // Trigger detection by calling the private method via bracket notation
-    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
 
     expect(handled).toBe(true);
     expect(blockingHandler).toHaveBeenCalledTimes(1);
@@ -543,7 +550,7 @@ describe('tryAutoResponse ANSI stripping', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -561,7 +568,9 @@ describe('tryAutoResponse ANSI stripping', () => {
     const blockingHandler = vi.fn();
     session.on('blocking_prompt', blockingHandler);
 
-    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
 
     expect(handled).toBe(true);
     expect(writeFn).toHaveBeenCalledWith('y\r');
@@ -582,7 +591,7 @@ describe('tryAutoResponse ANSI stripping', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -597,7 +606,9 @@ describe('tryAutoResponse ANSI stripping', () => {
     // Buffer has ANSI codes but no matching text
     internals.outputBuffer = '\x1b[32mProcessing...\x1b[0m';
 
-    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
 
     expect(handled).toBe(false);
   });
@@ -630,7 +641,7 @@ describe('TUI key-sequence auto-response', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -643,7 +654,9 @@ describe('TUI key-sequence auto-response', () => {
     internals._status = 'ready';
     internals.outputBuffer = 'Do you trust the contents of this directory?';
 
-    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
 
     expect(handled).toBe(true);
     // Key sent immediately (0ms delay for first key)
@@ -669,7 +682,7 @@ describe('TUI key-sequence auto-response', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -682,7 +695,9 @@ describe('TUI key-sequence auto-response', () => {
     internals._status = 'ready';
     internals.outputBuffer = 'Update available. 1. Update now 2. Skip';
 
-    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
 
     expect(handled).toBe(true);
     // First key (down) at 0ms
@@ -711,7 +726,7 @@ describe('TUI key-sequence auto-response', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -724,7 +739,9 @@ describe('TUI key-sequence auto-response', () => {
     internals._status = 'ready';
     internals.outputBuffer = 'Do you want to continue? [y/n]';
 
-    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
 
     expect(handled).toBe(true);
     expect(writeFn).toHaveBeenCalledWith('y\r');
@@ -747,7 +764,7 @@ describe('TUI key-sequence auto-response', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -760,7 +777,9 @@ describe('TUI key-sequence auto-response', () => {
     internals._status = 'ready';
     internals.outputBuffer = 'Please confirm action';
 
-    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
 
     expect(handled).toBe(true);
     // Should use sendKeys('enter') → writes '\r' via ptyProcess.write
@@ -774,7 +793,7 @@ describe('TUI key-sequence auto-response', () => {
     const session = new PTYSession(
       createMockAdapter(),
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -797,7 +816,7 @@ describe('TUI key-sequence auto-response', () => {
     const session = new PTYSession(
       createMockAdapter(),
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -872,7 +891,7 @@ describe('TUI key-sequence auto-response', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -888,7 +907,9 @@ describe('TUI key-sequence auto-response', () => {
     const blockingHandler = vi.fn();
     session.on('blocking_prompt', blockingHandler);
 
-    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
 
     expect(handled).toBe(true);
     expect(blockingHandler).toHaveBeenCalledTimes(1);
@@ -915,7 +936,7 @@ describe('TUI key-sequence auto-response', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -935,10 +956,15 @@ describe('TUI key-sequence auto-response', () => {
     session.on('auth_required', authHandler);
     session.on('blocking_prompt', blockingHandler);
 
-    const handled = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
 
     expect(handled).toBe(true);
-    expect(loginHandler).toHaveBeenCalledWith('Complete browser auth', 'https://example.com/device');
+    expect(loginHandler).toHaveBeenCalledWith(
+      'Complete browser auth',
+      'https://example.com/device'
+    );
     expect(authHandler).toHaveBeenCalledWith(
       expect.objectContaining({
         method: 'unknown',
@@ -964,7 +990,7 @@ describe('TUI key-sequence auto-response', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -975,14 +1001,17 @@ describe('TUI key-sequence auto-response', () => {
       resize: vi.fn(),
     };
     internals._status = 'starting';
-    internals.outputBuffer = 'Open this link in your browser and enter this code: ABCD-1234';
+    internals.outputBuffer =
+      'Open this link in your browser and enter this code: ABCD-1234';
 
     const loginHandler = vi.fn();
     const authHandler = vi.fn();
     session.on('login_required', loginHandler);
     session.on('auth_required', authHandler);
 
-    (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer();
+    (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer();
 
     expect(loginHandler).toHaveBeenCalledWith(
       'Enter code ABCD-1234 at the URL',
@@ -1026,7 +1055,7 @@ describe('once-rule auto-response thrashing prevention', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -1040,14 +1069,18 @@ describe('once-rule auto-response thrashing prevention', () => {
 
     // First trigger
     internals.outputBuffer = 'Do you trust this folder?';
-    const handled1 = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled1 = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
     expect(handled1).toBe(true);
     vi.advanceTimersByTime(0); // Flush sendKeySequence setTimeout(fn, 0)
     expect(writeFn).toHaveBeenCalledTimes(1); // Enter sent
 
     // TUI re-renders the same prompt text
     internals.outputBuffer = 'Do you trust this folder?';
-    const handled2 = (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    const handled2 = (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
     expect(handled2).toBe(false); // Should NOT fire again
     expect(writeFn).toHaveBeenCalledTimes(1); // No additional write
   });
@@ -1070,7 +1103,7 @@ describe('once-rule auto-response thrashing prevention', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -1084,12 +1117,16 @@ describe('once-rule auto-response thrashing prevention', () => {
 
     // First trigger
     internals.outputBuffer = 'Grant permission?';
-    (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
     expect(writeFn).toHaveBeenCalledTimes(1);
 
     // Second trigger — should still fire
     internals.outputBuffer = 'Grant permission again?';
-    (session as unknown as { detectAndHandleBlockingPrompt: () => boolean }).detectAndHandleBlockingPrompt();
+    (
+      session as unknown as { detectAndHandleBlockingPrompt: () => boolean }
+    ).detectAndHandleBlockingPrompt();
     expect(writeFn).toHaveBeenCalledTimes(2);
   });
 });
@@ -1099,10 +1136,12 @@ describe('stripAnsiForStall cursor movement handling', () => {
     const session = new PTYSession(
       createMockAdapter(),
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
-    const strip = (session as unknown as { stripAnsiForStall: (s: string) => string }).stripAnsiForStall;
+    const strip = (
+      session as unknown as { stripAnsiForStall: (s: string) => string }
+    ).stripAnsiForStall;
     const result = strip.call(session, 'Do\x1b[5;10Hyou\x1b[6;1Htrust');
     expect(result).toContain('Do');
     expect(result).toContain('you');
@@ -1115,10 +1154,12 @@ describe('stripAnsiForStall cursor movement handling', () => {
     const session = new PTYSession(
       createMockAdapter(),
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
-    const strip = (session as unknown as { stripAnsiForStall: (s: string) => string }).stripAnsiForStall;
+    const strip = (
+      session as unknown as { stripAnsiForStall: (s: string) => string }
+    ).stripAnsiForStall;
     const result = strip.call(session, 'safety\x1b[20Gcheck');
     expect(result).toContain('safety');
     expect(result).toContain('check');
@@ -1129,19 +1170,33 @@ describe('stripAnsiForStall cursor movement handling', () => {
     const session = new PTYSession(
       createMockAdapter(),
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
-    const strip = (session as unknown as { stripAnsiForStall: (s: string) => string }).stripAnsiForStall;
+    const strip = (
+      session as unknown as { stripAnsiForStall: (s: string) => string }
+    ).stripAnsiForStall;
 
     // Two outputs differing only by countdown should hash the same
-    const a = strip.call(session, 'Initiating PR Creation (esc to cancel, 8m 17s)');
-    const b = strip.call(session, 'Initiating PR Creation (esc to cancel, 8m 16s)');
+    const a = strip.call(
+      session,
+      'Initiating PR Creation (esc to cancel, 8m 17s)'
+    );
+    const b = strip.call(
+      session,
+      'Initiating PR Creation (esc to cancel, 8m 16s)'
+    );
     expect(a).toBe(b);
 
     // Different countdown formats should also normalize
-    const c = strip.call(session, 'Running shell command (esc to cancel, 1h 02m 30s)');
-    const d = strip.call(session, 'Running shell command (esc to cancel, 1h 02m 29s)');
+    const c = strip.call(
+      session,
+      'Running shell command (esc to cancel, 1h 02m 30s)'
+    );
+    const d = strip.call(
+      session,
+      'Running shell command (esc to cancel, 1h 02m 29s)'
+    );
     expect(c).toBe(d);
 
     // Seconds-only should normalize
@@ -1154,10 +1209,12 @@ describe('stripAnsiForStall cursor movement handling', () => {
     const session = new PTYSession(
       createMockAdapter(),
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
-    const strip = (session as unknown as { stripAnsiForStall: (s: string) => string }).stripAnsiForStall;
+    const strip = (
+      session as unknown as { stripAnsiForStall: (s: string) => string }
+    ).stripAnsiForStall;
     const result = strip.call(session, '⠋ Loading ⠙ Loading ⠹ Loading');
     // Spinner chars stripped, text preserved
     expect(result).toContain('Loading');
@@ -1213,8 +1270,8 @@ describe('Loading pattern suppression', () => {
       adapter,
       { name: 'test', type: 'test' },
       silentLogger as never,
-      true,  // stall detection enabled
-      5000,  // timeout
+      true, // stall detection enabled
+      5000 // timeout
     );
 
     const internals = getInternals(session);
@@ -1251,7 +1308,7 @@ describe('Loading pattern suppression', () => {
       { name: 'test', type: 'test' },
       silentLogger as never,
       true,
-      5000,
+      5000
     );
 
     const internals = getInternals(session);
@@ -1289,7 +1346,7 @@ describe('Loading pattern suppression', () => {
       { name: 'test', type: 'test' },
       silentLogger as never,
       true,
-      3000,
+      3000
     );
 
     const internals = getInternals(session);
@@ -1462,7 +1519,7 @@ describe('Task complete settle pattern', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -1479,7 +1536,9 @@ describe('Task complete settle pattern', () => {
     session.on('status_changed', statusHandler);
     session.on('task_complete', taskCompleteHandler);
 
-    const processOutputBuffer = (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer;
+    const processOutputBuffer = (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer;
 
     // First processOutputBuffer — buffer has prompt, detectReady returns true
     internals.outputBuffer = 'Done.\n$ ';
@@ -1507,7 +1566,7 @@ describe('Task complete settle pattern', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -1522,7 +1581,9 @@ describe('Task complete settle pattern', () => {
     const taskCompleteHandler = vi.fn();
     session.on('task_complete', taskCompleteHandler);
 
-    const processOutputBuffer = (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer;
+    const processOutputBuffer = (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer;
 
     // Initial trigger
     processOutputBuffer.call(session);
@@ -1554,7 +1615,7 @@ describe('Task complete settle pattern', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -1567,7 +1628,9 @@ describe('Task complete settle pattern', () => {
     internals._status = 'busy';
     internals.outputBuffer = 'transient prompt-like output';
 
-    const processOutputBuffer = (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer;
+    const processOutputBuffer = (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer;
     processOutputBuffer.call(session);
 
     expect(internals._taskCompletePending).toBe(false);
@@ -1594,9 +1657,11 @@ describe('Task complete settle pattern', () => {
   it('should preserve visible text when ANSI + cursor movement are present', () => {
     const { session } = createBusySession({ timeoutMs: 3000 });
 
-    const stripAnsiForStall = (session as unknown as {
-      stripAnsiForStall: (s: string) => string;
-    }).stripAnsiForStall;
+    const stripAnsiForStall = (
+      session as unknown as {
+        stripAnsiForStall: (s: string) => string;
+      }
+    ).stripAnsiForStall;
 
     const raw =
       '\x1b[6A\x1b[38;2;215;119;87m✻\x1b[39m ' +
@@ -1611,9 +1676,11 @@ describe('Task complete settle pattern', () => {
   it('should preserve visible symbols/text for classifier stripping', () => {
     const { session } = createBusySession({ timeoutMs: 3000 });
 
-    const stripAnsiForClassifier = (session as unknown as {
-      stripAnsiForClassifier: (s: string) => string;
-    }).stripAnsiForClassifier;
+    const stripAnsiForClassifier = (
+      session as unknown as {
+        stripAnsiForClassifier: (s: string) => string;
+      }
+    ).stripAnsiForClassifier;
 
     const raw =
       '\x1b[6A\x1b[38;2;215;119;87m✻\x1b[39m ' +
@@ -1638,7 +1705,7 @@ describe('Task complete settle pattern', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -1651,7 +1718,9 @@ describe('Task complete settle pattern', () => {
     internals._status = 'busy';
     internals.outputBuffer = 'Claude produced output\nDone.';
 
-    const processOutputBuffer = (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer;
+    const processOutputBuffer = (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer;
     processOutputBuffer.call(session);
 
     expect(internals.outputBuffer).toBe('Claude produced output\nDone.');
@@ -1664,7 +1733,7 @@ describe('Task complete settle pattern', () => {
     const session = new PTYSession(
       adapter,
       { name: 'test', type: 'test' },
-      silentLogger as never,
+      silentLogger as never
     );
 
     const internals = getInternals(session);
@@ -1681,7 +1750,9 @@ describe('Task complete settle pattern', () => {
     session.on('task_complete', taskCompleteHandler);
     session.on('status_changed', statusHandler);
 
-    const processOutputBuffer = (session as unknown as { processOutputBuffer: () => void }).processOutputBuffer;
+    const processOutputBuffer = (
+      session as unknown as { processOutputBuffer: () => void }
+    ).processOutputBuffer;
 
     // Agent finishes task — output contains duration + prompt
     internals.outputBuffer = 'Task completed in 2.3s\n$ ';
@@ -1718,7 +1789,7 @@ describe('Max stall emission count', () => {
 
   it('should stop emitting after MAX_STALL_EMISSIONS', () => {
     const { session } = createBusySession({ timeoutMs: 3000 });
-    const internals = getInternals(session);
+    const _internals = getInternals(session);
     const stallHandler = vi.fn();
     session.on('stall_detected', stallHandler);
 

@@ -2,8 +2,17 @@
  * InfluxDB-backed confidence store for persistent time-series metrics
  */
 
-import { InfluxDB, Point, WriteApi, QueryApi } from '@influxdata/influxdb-client';
-import { ConfidenceStore, ConfidenceDataPoint, AggregationInterval } from './types';
+import {
+  InfluxDB,
+  Point,
+  type QueryApi,
+  type WriteApi,
+} from '@influxdata/influxdb-client';
+import type {
+  AggregationInterval,
+  ConfidenceDataPoint,
+  ConfidenceStore,
+} from './types';
 
 export interface InfluxDBStoreConfig {
   url: string;
@@ -18,21 +27,21 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
   private writeApi: WriteApi;
   private queryApi: QueryApi;
   private config: InfluxDBStoreConfig;
-  
+
   constructor(config: InfluxDBStoreConfig) {
     this.config = config;
     this.influx = new InfluxDB({
       url: config.url,
       token: config.token,
     });
-    
+
     this.writeApi = this.influx.getWriteApi(config.org, config.bucket);
     this.queryApi = this.influx.getQueryApi(config.org);
-    
+
     // Set default tags for all points
     this.writeApi.useDefaultTags({ service: 'parallax' });
   }
-  
+
   async addDataPoint(point: ConfidenceDataPoint): Promise<void> {
     const influxPoint = new Point('confidence')
       .tag('agent_id', point.agentId)
@@ -40,7 +49,7 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
       .tag('task', point.task)
       .floatField('value', point.confidence)
       .timestamp(point.timestamp);
-    
+
     // Add optional tags
     if (point.metadata) {
       Object.entries(point.metadata).forEach(([key, value]) => {
@@ -51,13 +60,13 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
         }
       });
     }
-    
+
     this.writeApi.writePoint(influxPoint);
-    
+
     // Flush immediately for real-time updates
     await this.writeApi.flush();
   }
-  
+
   async getDataPoints(
     agentId: string,
     startTime: Date,
@@ -71,9 +80,9 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
         |> filter(fn: (r) => r._field == "value")
         |> sort(columns: ["_time"])
     `;
-    
+
     const points: ConfidenceDataPoint[] = [];
-    
+
     await new Promise<void>((resolve, reject) => {
       this.queryApi.queryRows(query, {
         next(row, tableMeta) {
@@ -84,12 +93,15 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
             task: record.task,
             confidence: record._value,
             timestamp: new Date(record._time),
-            metadata: Object.entries(record).reduce((acc, [key, value]) => {
-              if (key.startsWith('meta_')) {
-                acc[key.slice(5)] = value;
-              }
-              return acc;
-            }, {} as Record<string, any>)
+            metadata: Object.entries(record).reduce(
+              (acc, [key, value]) => {
+                if (key.startsWith('meta_')) {
+                  acc[key.slice(5)] = value;
+                }
+                return acc;
+              },
+              {} as Record<string, any>
+            ),
           });
         },
         error(error) {
@@ -100,10 +112,10 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
         },
       });
     });
-    
+
     return points;
   }
-  
+
   async getAggregatedData(
     agentId: string,
     interval: AggregationInterval,
@@ -111,7 +123,7 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
     endTime: Date
   ): Promise<{ time: Date; avgConfidence: number; count: number }[]> {
     const windowPeriod = this.getWindowPeriod(interval);
-    
+
     const query = `
       from(bucket: "${this.config.bucket}")
         |> range(start: ${startTime.toISOString()}, stop: ${endTime.toISOString()})
@@ -137,19 +149,22 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
           )
         |> yield(name: "count")
     `;
-    
-    const results = new Map<string, { avgConfidence?: number; count?: number }>();
-    
+
+    const results = new Map<
+      string,
+      { avgConfidence?: number; count?: number }
+    >();
+
     await new Promise<void>((resolve, reject) => {
       this.queryApi.queryRows(query, {
         next(row, tableMeta) {
           const record = tableMeta.toObject(row);
           const timeKey = record._time;
-          
+
           if (!results.has(timeKey)) {
             results.set(timeKey, {});
           }
-          
+
           const entry = results.get(timeKey)!;
           if (record.result === 'mean') {
             entry.avgConfidence = record._value;
@@ -165,7 +180,7 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
         },
       });
     });
-    
+
     return Array.from(results.entries())
       .map(([time, data]) => ({
         time: new Date(time),
@@ -174,7 +189,7 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
       }))
       .sort((a, b) => a.time.getTime() - b.time.getTime());
   }
-  
+
   async getPatternStats(
     pattern: string,
     startTime: Date,
@@ -215,17 +230,17 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
         |> group(columns: ["agent_id"])
         |> count()
     `;
-    
+
     let avgConfidence = 0;
     let totalExecutions = 0;
     let successCount = 0;
     const agentBreakdown = new Map<string, number>();
-    
+
     await new Promise<void>((resolve, reject) => {
       this.queryApi.queryRows(query, {
         next(row, tableMeta) {
           const record = tableMeta.toObject(row);
-          
+
           if (record.result === 'avgConf') {
             avgConfidence = record._value || 0;
           } else if (record.result === 'total') {
@@ -244,7 +259,7 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
         },
       });
     });
-    
+
     return {
       avgConfidence,
       totalExecutions,
@@ -252,7 +267,7 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
       agentBreakdown,
     };
   }
-  
+
   async detectAnomalies(
     agentId: string,
     threshold: number = 2
@@ -269,9 +284,10 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
         |> anomalydetection.mad(threshold: ${threshold})
         |> filter(fn: (r) => r.anomaly == true)
     `;
-    
-    const anomalies: Array<{ time: Date; confidence: number; zscore: number }> = [];
-    
+
+    const anomalies: Array<{ time: Date; confidence: number; zscore: number }> =
+      [];
+
     await new Promise<void>((resolve, reject) => {
       this.queryApi.queryRows(query, {
         next(row, tableMeta) {
@@ -290,20 +306,20 @@ export class InfluxDBConfidenceStore implements ConfidenceStore {
         },
       });
     });
-    
+
     return anomalies;
   }
-  
+
   async cleanup(_retentionPeriod: number): Promise<void> {
     // InfluxDB handles retention automatically based on bucket retention policy
     // This method is here for interface compatibility
     // You can configure retention when creating the bucket
   }
-  
+
   async close(): Promise<void> {
     await this.writeApi.close();
   }
-  
+
   private getWindowPeriod(interval: AggregationInterval): string {
     switch (interval) {
       case 'minute':

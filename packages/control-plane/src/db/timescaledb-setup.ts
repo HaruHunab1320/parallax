@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import { Logger } from 'pino';
+import type { PrismaClient } from '@prisma/client';
+import type { Logger } from 'pino';
 
 /**
  * Sets up database features for time-series data.
@@ -12,7 +12,9 @@ export async function setupTimescaleDB(prisma: PrismaClient, logger: Logger) {
     await prisma.$executeRaw`CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE`;
     logger.info('TimescaleDB extension enabled');
   } catch {
-    logger.info('TimescaleDB extension not available — using standard PostgreSQL (this is fine for Cloud SQL)');
+    logger.info(
+      'TimescaleDB extension not available — using standard PostgreSQL (this is fine for Cloud SQL)'
+    );
   }
 
   // Create indexes optimized for time-series queries (standard PostgreSQL)
@@ -31,7 +33,10 @@ export async function setupTimescaleDB(prisma: PrismaClient, logger: Logger) {
 
     logger.info('Time-series indexes created');
   } catch (error) {
-    logger.warn({ error }, 'Failed to create time-series indexes (tables may not exist yet)');
+    logger.warn(
+      { error },
+      'Failed to create time-series indexes (tables may not exist yet)'
+    );
   }
 
   // Create views for analytics (standard PostgreSQL)
@@ -100,7 +105,10 @@ export async function setupTimescaleDB(prisma: PrismaClient, logger: Logger) {
 /**
  * Creates a job to periodically refresh materialized views
  */
-export async function setupTimescaleDBJobs(prisma: PrismaClient, logger: Logger) {
+export async function setupTimescaleDBJobs(
+  prisma: PrismaClient,
+  logger: Logger
+) {
   try {
     // Check if pg_cron is available (requires additional setup)
     const result = await prisma.$queryRaw`

@@ -1,18 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  SpawnInputSchema,
-  StopInputSchema,
-  ListInputSchema,
   GetInputSchema,
-  SendInputSchema,
+  GetThreadInputSchema,
+  HealthInputSchema,
+  ListInputSchema,
+  ListThreadsInputSchema,
   LogsInputSchema,
   MetricsInputSchema,
-  HealthInputSchema,
-  SpawnThreadInputSchema,
-  StopThreadInputSchema,
-  ListThreadsInputSchema,
-  GetThreadInputSchema,
+  SendInputSchema,
   SendThreadInputSchema,
+  SpawnInputSchema,
+  SpawnThreadInputSchema,
+  StopInputSchema,
+  StopThreadInputSchema,
 } from '../src/tools/schemas.js';
 
 describe('Tool Schemas', () => {
@@ -233,8 +233,12 @@ describe('Tool Schemas', () => {
     });
 
     it('should reject missing required fields', () => {
-      expect(SendInputSchema.safeParse({ agentId: 'test' }).success).toBe(false);
-      expect(SendInputSchema.safeParse({ message: 'test' }).success).toBe(false);
+      expect(SendInputSchema.safeParse({ agentId: 'test' }).success).toBe(
+        false
+      );
+      expect(SendInputSchema.safeParse({ message: 'test' }).success).toBe(
+        false
+      );
     });
   });
 
@@ -300,16 +304,28 @@ describe('Tool Schemas', () => {
     });
 
     it('should validate list thread filters', () => {
-      expect(ListThreadsInputSchema.safeParse({ status: 'ready' }).success).toBe(true);
-      expect(ListThreadsInputSchema.safeParse({ status: ['ready', 'blocked'] }).success).toBe(true);
+      expect(
+        ListThreadsInputSchema.safeParse({ status: 'ready' }).success
+      ).toBe(true);
+      expect(
+        ListThreadsInputSchema.safeParse({ status: ['ready', 'blocked'] })
+          .success
+      ).toBe(true);
     });
 
     it('should validate get thread input', () => {
-      expect(GetThreadInputSchema.safeParse({ threadId: 'thread-1' }).success).toBe(true);
+      expect(
+        GetThreadInputSchema.safeParse({ threadId: 'thread-1' }).success
+      ).toBe(true);
     });
 
     it('should require at least thread id for thread input sending schema', () => {
-      expect(SendThreadInputSchema.safeParse({ threadId: 'thread-1', message: 'Continue' }).success).toBe(true);
+      expect(
+        SendThreadInputSchema.safeParse({
+          threadId: 'thread-1',
+          message: 'Continue',
+        }).success
+      ).toBe(true);
       expect(SendThreadInputSchema.safeParse({}).success).toBe(false);
     });
   });

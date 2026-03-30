@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('LicenseResource', () => {
@@ -23,7 +23,10 @@ describe('LicenseResource', () => {
   }
 
   it('should get license info', async () => {
-    mockFetch({ type: 'enterprise', features: ['pattern_management', 'scheduled_patterns'] });
+    mockFetch({
+      type: 'enterprise',
+      features: ['pattern_management', 'scheduled_patterns'],
+    });
 
     const result = await client.license.info();
 

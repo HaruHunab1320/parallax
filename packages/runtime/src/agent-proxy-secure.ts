@@ -1,17 +1,17 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as grpc from '@grpc/grpc-js';
-import * as fs from 'fs';
-import * as path from 'path';
 import {
+  type AgentRequest,
+  type Capabilities,
   ConfidenceAgentClient,
-  AgentRequest,
-  ConfidenceResult,
-  Capabilities,
-  Health,
-  Health_Status,
+  type ConfidenceResult,
   GoogleEmpty,
+  type Health,
+  Health_Status,
 } from '@parallaxai/sdk-typescript';
-import { Agent, AgentResult } from './types';
 import type { Logger } from 'pino';
+import type { Agent, AgentResult } from './types';
 
 /**
  * mTLS configuration for secure agent communication
@@ -47,7 +47,10 @@ export class MTLSCredentialsProvider {
     _clientName: string
   ): Promise<grpc.ChannelCredentials> {
     // Check cache
-    if (this.cachedCredentials && Date.now() - this.lastLoad < this.cacheDuration) {
+    if (
+      this.cachedCredentials &&
+      Date.now() - this.lastLoad < this.cacheDuration
+    ) {
       return this.cachedCredentials;
     }
 
@@ -56,9 +59,12 @@ export class MTLSCredentialsProvider {
     }
 
     try {
-      const caFile = this.config.caFile || path.join(this.config.certsDir, 'ca.crt');
-      const certFile = this.config.certFile || path.join(this.config.certsDir, 'client.crt');
-      const keyFile = this.config.keyFile || path.join(this.config.certsDir, 'client.key');
+      const caFile =
+        this.config.caFile || path.join(this.config.certsDir, 'ca.crt');
+      const certFile =
+        this.config.certFile || path.join(this.config.certsDir, 'client.crt');
+      const keyFile =
+        this.config.keyFile || path.join(this.config.certsDir, 'client.key');
 
       const rootCert = fs.readFileSync(caFile);
       const clientCert = fs.readFileSync(certFile);
@@ -91,7 +97,10 @@ export class MTLSCredentialsProvider {
 
     // Add auth token if available from environment
     if (process.env.PARALLAX_AUTH_TOKEN) {
-      metadata.set('authorization', `Bearer ${process.env.PARALLAX_AUTH_TOKEN}`);
+      metadata.set(
+        'authorization',
+        `Bearer ${process.env.PARALLAX_AUTH_TOKEN}`
+      );
     }
 
     return metadata;
@@ -139,8 +148,11 @@ export class SecureGrpcAgentProxy implements Agent {
     private logger?: Logger
   ) {
     // Initialize client with secure credentials
-    this._initPromise = this.initializeSecureClient().catch(error => {
-      this.logger?.error({ error, agentId: id }, 'Failed to initialize secure client');
+    this._initPromise = this.initializeSecureClient().catch((error) => {
+      this.logger?.error(
+        { error, agentId: id },
+        'Failed to initialize secure client'
+      );
       // Set defaults on failure
       this._capabilities = ['analyze', 'process'];
     });
@@ -203,7 +215,10 @@ export class SecureGrpcAgentProxy implements Agent {
     metadata.set('timestamp', new Date().toISOString());
 
     if (process.env.PARALLAX_AUTH_TOKEN) {
-      metadata.set('authorization', `Bearer ${process.env.PARALLAX_AUTH_TOKEN}`);
+      metadata.set(
+        'authorization',
+        `Bearer ${process.env.PARALLAX_AUTH_TOKEN}`
+      );
     }
 
     return metadata;
@@ -233,7 +248,10 @@ export class SecureGrpcAgentProxy implements Agent {
       this._capabilityScores = response.capabilityScores;
       this._initialized = true;
     } catch (error) {
-      this.logger?.error({ error, agentId: this.id }, 'Failed to load capabilities');
+      this.logger?.error(
+        { error, agentId: this.id },
+        'Failed to load capabilities'
+      );
       throw error;
     }
   }
@@ -290,11 +308,14 @@ export class SecureGrpcAgentProxy implements Agent {
         { deadline },
         (err: grpc.ServiceError | null, response?: ConfidenceResult) => {
           if (err) {
-            this.logger?.error({
-              error: err,
-              agentId: this.id,
-              task,
-            }, 'Agent analysis failed');
+            this.logger?.error(
+              {
+                error: err,
+                agentId: this.id,
+                task,
+              },
+              'Agent analysis failed'
+            );
             reject(err);
           } else if (response) {
             resolve(response);
@@ -318,7 +339,8 @@ export class SecureGrpcAgentProxy implements Agent {
       confidence: response.confidence,
       agent: response.agentId || this.name,
       reasoning: response.reasoning,
-      uncertainties: response.uncertainties.length > 0 ? response.uncertainties : undefined,
+      uncertainties:
+        response.uncertainties.length > 0 ? response.uncertainties : undefined,
       timestamp: response.timestamp?.getTime() || Date.now(),
     };
   }
@@ -326,7 +348,10 @@ export class SecureGrpcAgentProxy implements Agent {
   /**
    * Stream analysis for long-running tasks with mTLS
    */
-  async *streamAnalyze<T>(task: string, data?: any): AsyncGenerator<AgentResult<T>> {
+  async *streamAnalyze<T>(
+    task: string,
+    data?: any
+  ): AsyncGenerator<AgentResult<T>> {
     const metadata = this.createAuthMetadata();
 
     const request: AgentRequest = {
@@ -353,7 +378,10 @@ export class SecureGrpcAgentProxy implements Agent {
         confidence: response.confidence,
         agent: response.agentId || this.name,
         reasoning: response.reasoning,
-        uncertainties: response.uncertainties.length > 0 ? response.uncertainties : undefined,
+        uncertainties:
+          response.uncertainties.length > 0
+            ? response.uncertainties
+            : undefined,
         timestamp: response.timestamp?.getTime() || Date.now(),
       };
     }
@@ -369,7 +397,9 @@ export class SecureGrpcAgentProxy implements Agent {
 
     this.logger?.info({ agentId: this.id }, 'Rotating agent certificates');
 
-    await this.credentialsProvider.rotateCertificates(`control-plane-${this.id}`);
+    await this.credentialsProvider.rotateCertificates(
+      `control-plane-${this.id}`
+    );
 
     // Clear cached credentials
     this.credentialsProvider.clearCache();

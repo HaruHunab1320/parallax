@@ -4,54 +4,53 @@
  * Shared types and interfaces for agent runtimes.
  */
 
-// Types
+// Adapter interface
 export {
-  AgentType,
-  AgentStatus,
-  ThreadStatus,
-  MessageType,
-  AgentConfig,
-  AgentCredentials,
-  AgentHandle,
-  ThreadWorkspaceRef,
-  ThreadCompletion,
-  ThreadPolicy,
-  ThreadApprovalPreset,
-  ThreadContextFile,
-  ThreadPreparationSpec,
-  ThreadHandle,
-  AgentMessage,
-  RuntimeEvent,
-  BlockingPromptInfo,
-  ThreadEventType,
-  ThreadEvent,
-  AgentRequirement,
-  AgentMetrics,
-  AgentLogEntry,
-  SpawnThreadInput,
-  ThreadInput,
-  ThreadFilter,
-} from './types';
+  AdapterRegistry,
+  AutoResponseRule,
+  BlockingPromptDetection,
+  BlockingPromptType,
+  CLIAdapter,
+  LoginDetection,
+  ParsedOutput,
+} from './adapter';
 
 // Provider interface
 export {
-  RuntimeProvider,
-  ThreadRuntimeProvider,
-  RuntimeProviderWithEvents,
-  BaseRuntimeProvider,
-  StopOptions,
-  SendOptions,
-  LogOptions,
   AgentFilter,
+  BaseRuntimeProvider,
+  LogOptions,
+  RuntimeProvider,
+  RuntimeProviderWithEvents,
+  SendOptions,
+  StopOptions,
+  ThreadRuntimeProvider,
 } from './provider';
-
-// Adapter interface
+// Types
 export {
-  CLIAdapter,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptType,
-  BlockingPromptDetection,
-  AutoResponseRule,
-  AdapterRegistry,
-} from './adapter';
+  AgentConfig,
+  AgentCredentials,
+  AgentHandle,
+  AgentLogEntry,
+  AgentMessage,
+  AgentMetrics,
+  AgentRequirement,
+  AgentStatus,
+  AgentType,
+  BlockingPromptInfo,
+  MessageType,
+  RuntimeEvent,
+  SpawnThreadInput,
+  ThreadApprovalPreset,
+  ThreadCompletion,
+  ThreadContextFile,
+  ThreadEvent,
+  ThreadEventType,
+  ThreadFilter,
+  ThreadHandle,
+  ThreadInput,
+  ThreadPolicy,
+  ThreadPreparationSpec,
+  ThreadStatus,
+  ThreadWorkspaceRef,
+} from './types';

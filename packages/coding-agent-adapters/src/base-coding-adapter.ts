@@ -5,11 +5,15 @@
  * for AI coding agents.
  */
 
-import { writeFile, appendFile, mkdir } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
-import { BaseCLIAdapter } from 'adapter-types';
+import { appendFile, mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import type { SpawnConfig } from 'adapter-types';
-import { generateApprovalConfig, type ApprovalPreset, type ApprovalConfig } from './approval-presets';
+import { BaseCLIAdapter } from 'adapter-types';
+import {
+  type ApprovalConfig,
+  type ApprovalPreset,
+  generateApprovalConfig,
+} from './approval-presets';
 
 /**
  * Supported adapter types
@@ -153,7 +157,9 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
    * Returns the relativePath of the first 'memory' type file from getWorkspaceFiles().
    */
   get memoryFilePath(): string {
-    const memoryFile = this.getWorkspaceFiles().find(f => f.type === 'memory');
+    const memoryFile = this.getWorkspaceFiles().find(
+      (f) => f.type === 'memory'
+    );
     if (!memoryFile) {
       throw new Error(`${this.displayName} adapter has no memory file defined`);
     }
@@ -173,7 +179,9 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
    * When true, skip non-interactive flags (--print, --quiet, etc.)
    */
   protected isInteractive(config: SpawnConfig): boolean {
-    const adapterConfig = config.adapterConfig as { interactive?: boolean } | undefined;
+    const adapterConfig = config.adapterConfig as
+      | { interactive?: boolean }
+      | undefined;
     return adapterConfig?.interactive === true;
   }
 
@@ -181,7 +189,9 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
    * Get recommended models for this adapter.
    * Returns powerful (most capable) and fast (cheapest/fastest) model names.
    */
-  abstract getRecommendedModels(credentials?: AgentCredentials): ModelRecommendations;
+  abstract getRecommendedModels(
+    credentials?: AgentCredentials
+  ): ModelRecommendations;
 
   /**
    * Override stripAnsi to handle TUI cursor movement codes, spinner/box-drawing
@@ -218,7 +228,10 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
 
     // Strip TUI box-drawing, spinner, and decorative Unicode characters.
     // Keeps ❯ and › (prompt indicators) and ◇ (Gemini ready signal).
-    result = result.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓⬆⬇◆▪▫■□▲△▼▽◈⟨⟩⌘⏎⏏⌫⌦⇧⇪⌥]/g, ' ');
+    result = result.replace(
+      /[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼●○❮▶◀⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⣾⣽⣻⢿⡿⣟⣯⣷✻✶✳✢⏺←→↑↓⬆⬇◆▪▫■□▲△▼▽◈⟨⟩⌘⏎⏏⌫⌦⇧⇪⌥]/g,
+      ' '
+    );
 
     // Collapse multiple spaces
     result = result.replace(/ {2,}/g, ' ');
@@ -247,8 +260,15 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   /**
    * Override detectExit to include installation instructions
    */
-  detectExit(output: string): { exited: boolean; code?: number; error?: string } {
-    if (output.includes('Command not found') || output.includes('command not found')) {
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
+    if (
+      output.includes('Command not found') ||
+      output.includes('command not found')
+    ) {
       return {
         exited: true,
         code: 127,
@@ -293,12 +313,12 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
    */
   protected isResponseComplete(output: string): boolean {
     const completionIndicators = [
-      /\n>\s*$/,           // Ends with prompt
-      /\n\s*$/,            // Ends with newline
-      /Done\./i,           // Explicit done
-      /completed/i,        // Task completed
-      /finished/i,         // Finished
-      /```\s*$/,           // Code block ended
+      /\n>\s*$/, // Ends with prompt
+      /\n\s*$/, // Ends with newline
+      /Done\./i, // Explicit done
+      /completed/i, // Task completed
+      /finished/i, // Finished
+      /```\s*$/, // Code block ended
     ];
 
     return completionIndicators.some((pattern) => pattern.test(output));
@@ -314,7 +334,10 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
     content = content.replace(promptPattern, '');
 
     // Remove common status lines
-    content = content.replace(/^(Thinking|Working|Reading|Writing|Processing|Generating)\.+$/gm, '');
+    content = content.replace(
+      /^(Thinking|Working|Reading|Writing|Processing|Generating)\.+$/gm,
+      ''
+    );
 
     // Trim whitespace
     content = content.trim();
@@ -354,7 +377,9 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
    * Extract the approval preset from a spawn config, if set.
    */
   protected getApprovalPreset(config: SpawnConfig): ApprovalPreset | undefined {
-    const adapterConfig = config.adapterConfig as { approvalPreset?: ApprovalPreset } | undefined;
+    const adapterConfig = config.adapterConfig as
+      | { approvalPreset?: ApprovalPreset }
+      | undefined;
     return adapterConfig?.approvalPreset;
   }
 
@@ -364,14 +389,20 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   getApprovalConfig(config: SpawnConfig): ApprovalConfig | null {
     const preset = this.getApprovalPreset(config);
     if (!preset) return null;
-    return generateApprovalConfig(this.adapterType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes', preset);
+    return generateApprovalConfig(
+      this.adapterType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes',
+      preset
+    );
   }
 
   /**
    * Write approval config files to a workspace directory.
    * Returns the list of files written (absolute paths).
    */
-  async writeApprovalConfig(workspacePath: string, config: SpawnConfig): Promise<string[]> {
+  async writeApprovalConfig(
+    workspacePath: string,
+    config: SpawnConfig
+  ): Promise<string[]> {
     const approvalConfig = this.getApprovalConfig(config);
     if (!approvalConfig) return [];
 
@@ -397,7 +428,7 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   async writeMemoryFile(
     workspacePath: string,
     content: string,
-    options?: WriteMemoryOptions,
+    options?: WriteMemoryOptions
   ): Promise<string> {
     const relativePath = options?.fileName ?? this.memoryFilePath;
     const fullPath = join(workspacePath, relativePath);

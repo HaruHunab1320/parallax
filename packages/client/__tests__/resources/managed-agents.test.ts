@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('ManagedAgentsResource', () => {
@@ -45,7 +45,14 @@ describe('ManagedAgentsResource', () => {
 
   it('should list managed agents', async () => {
     mockFetch({
-      agents: [{ id: 'agent-1', name: 'Claude', type: 'claude-code', status: 'running' }],
+      agents: [
+        {
+          id: 'agent-1',
+          name: 'Claude',
+          type: 'claude-code',
+          status: 'running',
+        },
+      ],
       count: 1,
     });
 
@@ -56,7 +63,12 @@ describe('ManagedAgentsResource', () => {
 
   it('should spawn a managed agent', async () => {
     mockFetch(
-      { id: 'agent-new', name: 'Claude', type: 'claude-code', status: 'starting' },
+      {
+        id: 'agent-new',
+        name: 'Claude',
+        type: 'claude-code',
+        status: 'starting',
+      },
       201
     );
 

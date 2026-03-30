@@ -5,8 +5,8 @@
  */
 
 import type {
-  CompileTarget,
   CompileContext,
+  CompileTarget,
   OrgPattern,
   OrgRole,
   OrgWorkflow,
@@ -57,8 +57,10 @@ export const prismTarget: CompileTarget = {
 
     let agentIndex = 0;
     for (const [roleId, role] of Object.entries(ctx.pattern.structure.roles)) {
-      const count = role.singleton ? 1 : (role.minInstances || 1);
-      lines.push(`roleAssignments["${roleId}"] = agentResults.slice(${agentIndex}, ${agentIndex + count});`);
+      const count = role.singleton ? 1 : role.minInstances || 1;
+      lines.push(
+        `roleAssignments["${roleId}"] = agentResults.slice(${agentIndex}, ${agentIndex + count});`
+      );
       agentIndex += count;
     }
     lines.push('');
@@ -74,7 +76,8 @@ export const prismTarget: CompileTarget = {
       lines.push('// === Final Output ===');
     }
 
-    const outputVar = workflow.output || `step_${workflow.steps.length - 1}_result`;
+    const outputVar =
+      workflow.output || `step_${workflow.steps.length - 1}_result`;
     lines.push(`let finalResult = {`);
     lines.push(`  patternName: "${ctx.pattern.name}",`);
     lines.push(`  workflow: "${workflow.name}",`);
@@ -282,7 +285,12 @@ function emitConditionStep(
   const thenVarName = `step_${stepIndex}_then`;
   const thenCode = prismTarget.emitStep(step.then, 0, ctx);
   const renamedThenCode = thenCode.replace(/step_0_result/g, thenVarName);
-  lines.push(renamedThenCode.split('\n').map(l => '  ' + l).join('\n'));
+  lines.push(
+    renamedThenCode
+      .split('\n')
+      .map((l) => `  ${l}`)
+      .join('\n')
+  );
   lines.push(`  ${varName} = ${thenVarName};`);
 
   if (step.else) {
@@ -290,7 +298,12 @@ function emitConditionStep(
     const elseVarName = `step_${stepIndex}_else`;
     const elseCode = prismTarget.emitStep(step.else, 0, ctx);
     const renamedElseCode = elseCode.replace(/step_0_result/g, elseVarName);
-    lines.push(renamedElseCode.split('\n').map(l => '  ' + l).join('\n'));
+    lines.push(
+      renamedElseCode
+        .split('\n')
+        .map((l) => `  ${l}`)
+        .join('\n')
+    );
     lines.push(`  ${varName} = ${elseVarName};`);
   }
 

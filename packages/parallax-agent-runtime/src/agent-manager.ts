@@ -5,52 +5,51 @@
  * and git-workspace-service.
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import {
-  PTYManager,
-  type SessionHandle,
-  type SessionMessage,
-  type PTYManagerConfig,
-  type AuthRequiredInfo as PtyAuthRequiredInfo,
-  type AutoResponseRule,
-  type ToolRunningInfo as PtyToolRunningInfo,
-} from 'pty-manager';
-import {
-  ClaudeAdapter,
-  GeminiAdapter,
-  CodexAdapter,
+  type AgentFileDescriptor,
   AiderAdapter,
-  HermesAdapter,
+  ClaudeAdapter,
+  CodexAdapter,
   checkAdapters,
   createAdapter,
+  GeminiAdapter,
   generateApprovalConfig,
+  HermesAdapter,
   type PreflightResult,
-  type AgentFileDescriptor,
   type WriteMemoryOptions,
-  type ApprovalPreset,
 } from 'coding-agent-adapters';
 import {
-  WorkspaceService,
-  type WorkspaceServiceOptions,
+  type PullRequestInfo,
   type Workspace,
   type WorkspaceConfig,
   type WorkspaceFinalization,
-  type PullRequestInfo,
+  WorkspaceService,
+  type WorkspaceServiceOptions,
 } from 'git-workspace-service';
 import type { Logger } from 'pino';
+import {
+  type AutoResponseRule,
+  PTYManager,
+  type PTYManagerConfig,
+  type AuthRequiredInfo as PtyAuthRequiredInfo,
+  type ToolRunningInfo as PtyToolRunningInfo,
+  type SessionHandle,
+  type SessionMessage,
+} from 'pty-manager';
 import type {
-  AgentType,
   AgentConfig,
+  AgentFilter,
   AgentHandle,
   AgentMessage,
-  AgentFilter,
-  AgentStatus,
   AgentMetrics,
-  BlockingPromptInfo,
+  AgentStatus,
+  AgentType,
   AuthRequiredInfo,
+  BlockingPromptInfo,
+  HookEventType,
   StallClassification,
   ToolRunningInfo,
-  HookEventType,
 } from './types.js';
 
 export interface AgentManagerOptions {
@@ -66,7 +65,7 @@ export interface AgentManagerOptions {
   onStallClassify?: (
     agentId: string,
     recentOutput: string,
-    stallDurationMs: number,
+    stallDurationMs: number
   ) => Promise<StallClassification | null>;
 
   /** Options for the workspace service. If provided, workspace provisioning is enabled. */
@@ -78,12 +77,24 @@ export interface AgentManagerEvents {
   agent_ready: (agent: AgentHandle) => void;
   agent_stopped: (agent: AgentHandle, reason: string) => void;
   agent_error: (agent: AgentHandle, error: string) => void;
-  login_required: (agent: AgentHandle, instructions?: string, url?: string) => void;
+  login_required: (
+    agent: AgentHandle,
+    instructions?: string,
+    url?: string
+  ) => void;
   auth_required: (agent: AgentHandle, auth: AuthRequiredInfo) => void;
-  blocking_prompt: (agent: AgentHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => void;
+  blocking_prompt: (
+    agent: AgentHandle,
+    promptInfo: BlockingPromptInfo,
+    autoResponded: boolean
+  ) => void;
   message: (message: AgentMessage) => void;
   question: (agent: AgentHandle, question: string) => void;
-  stall_detected: (agent: AgentHandle, recentOutput: string, stallDurationMs: number) => void;
+  stall_detected: (
+    agent: AgentHandle,
+    recentOutput: string,
+    stallDurationMs: number
+  ) => void;
   task_complete: (agent: AgentHandle) => void;
   tool_running: (agent: AgentHandle, tool: ToolRunningInfo) => void;
 }
@@ -183,55 +194,87 @@ export class AgentManager extends EventEmitter {
       this.emit('agent_ready', agentHandle);
     });
 
-    this.ptyManager.on('session_stopped', (handle: SessionHandle, reason: string) => {
-      const agentHandle = this.toAgentHandle(handle);
-      this.emit('agent_stopped', agentHandle, reason);
-    });
+    this.ptyManager.on(
+      'session_stopped',
+      (handle: SessionHandle, reason: string) => {
+        const agentHandle = this.toAgentHandle(handle);
+        this.emit('agent_stopped', agentHandle, reason);
+      }
+    );
 
-    this.ptyManager.on('session_error', (handle: SessionHandle, error: string) => {
-      const agentHandle = this.toAgentHandle(handle);
-      this.emit('agent_error', agentHandle, error);
-    });
+    this.ptyManager.on(
+      'session_error',
+      (handle: SessionHandle, error: string) => {
+        const agentHandle = this.toAgentHandle(handle);
+        this.emit('agent_error', agentHandle, error);
+      }
+    );
 
-    this.ptyManager.on('login_required', (handle: SessionHandle, instructions?: string, url?: string) => {
-      const agentHandle = this.toAgentHandle(handle);
-      this.emit('login_required', agentHandle, instructions, url);
-    });
+    this.ptyManager.on(
+      'login_required',
+      (handle: SessionHandle, instructions?: string, url?: string) => {
+        const agentHandle = this.toAgentHandle(handle);
+        this.emit('login_required', agentHandle, instructions, url);
+      }
+    );
 
-    this.ptyManager.on('auth_required', (handle: SessionHandle, auth: PtyAuthRequiredInfo) => {
-      const agentHandle = this.toAgentHandle(handle);
-      this.emit('auth_required', agentHandle, auth as AuthRequiredInfo);
-    });
+    this.ptyManager.on(
+      'auth_required',
+      (handle: SessionHandle, auth: PtyAuthRequiredInfo) => {
+        const agentHandle = this.toAgentHandle(handle);
+        this.emit('auth_required', agentHandle, auth as AuthRequiredInfo);
+      }
+    );
 
-    this.ptyManager.on('blocking_prompt', (handle: SessionHandle, promptInfo: BlockingPromptInfo, autoResponded: boolean) => {
-      const agentHandle = this.toAgentHandle(handle);
-      this.emit('blocking_prompt', agentHandle, promptInfo, autoResponded);
-    });
+    this.ptyManager.on(
+      'blocking_prompt',
+      (
+        handle: SessionHandle,
+        promptInfo: BlockingPromptInfo,
+        autoResponded: boolean
+      ) => {
+        const agentHandle = this.toAgentHandle(handle);
+        this.emit('blocking_prompt', agentHandle, promptInfo, autoResponded);
+      }
+    );
 
     this.ptyManager.on('message', (msg: SessionMessage) => {
       const agentMessage = this.toAgentMessage(msg);
       this.emit('message', agentMessage);
     });
 
-    this.ptyManager.on('question', (handle: SessionHandle, question: string) => {
-      const agentHandle = this.toAgentHandle(handle);
-      this.emit('question', agentHandle, question);
-    });
+    this.ptyManager.on(
+      'question',
+      (handle: SessionHandle, question: string) => {
+        const agentHandle = this.toAgentHandle(handle);
+        this.emit('question', agentHandle, question);
+      }
+    );
 
-    this.ptyManager.on('stall_detected', (handle: SessionHandle, recentOutput: string, stallDurationMs: number) => {
-      const agentHandle = this.toAgentHandle(handle);
-      this.emit('stall_detected', agentHandle, recentOutput, stallDurationMs);
-    });
+    this.ptyManager.on(
+      'stall_detected',
+      (
+        handle: SessionHandle,
+        recentOutput: string,
+        stallDurationMs: number
+      ) => {
+        const agentHandle = this.toAgentHandle(handle);
+        this.emit('stall_detected', agentHandle, recentOutput, stallDurationMs);
+      }
+    );
 
     this.ptyManager.on('task_complete', (handle: SessionHandle) => {
       const agentHandle = this.toAgentHandle(handle);
       this.emit('task_complete', agentHandle);
     });
 
-    this.ptyManager.on('tool_running', (handle: SessionHandle, toolInfo: PtyToolRunningInfo) => {
-      const agentHandle = this.toAgentHandle(handle);
-      this.emit('tool_running', agentHandle, toolInfo as ToolRunningInfo);
-    });
+    this.ptyManager.on(
+      'tool_running',
+      (handle: SessionHandle, toolInfo: PtyToolRunningInfo) => {
+        const agentHandle = this.toAgentHandle(handle);
+        this.emit('tool_running', agentHandle, toolInfo as ToolRunningInfo);
+      }
+    );
   }
 
   private toAgentHandle(handle: SessionHandle): AgentHandle {
@@ -281,16 +324,20 @@ export class AgentManager extends EventEmitter {
     }
 
     // Store config for later lookup
-    const id = config.id ?? `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const id =
+      config.id ??
+      `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.agentConfigs.set(id, { ...config, id });
 
     // Write approval config files to workspace before spawning
     if (config.approvalPreset && config.workdir && config.type !== 'custom') {
       const approvalConfig = generateApprovalConfig(
         config.type as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes',
-        config.approvalPreset,
+        config.approvalPreset
       );
-      const { writeFile: fsWriteFile, mkdir: fsMkdir } = await import('node:fs/promises');
+      const { writeFile: fsWriteFile, mkdir: fsMkdir } = await import(
+        'node:fs/promises'
+      );
       const { join, dirname } = await import('node:path');
 
       const writtenFiles: string[] = [];
@@ -302,7 +349,7 @@ export class AgentManager extends EventEmitter {
       }
       this.logger.info(
         { agentId: id, preset: config.approvalPreset, files: writtenFiles },
-        'Wrote approval config files to workspace',
+        'Wrote approval config files to workspace'
       );
     }
 
@@ -311,7 +358,9 @@ export class AgentManager extends EventEmitter {
     // Include approvalPreset so the adapter's getArgs() can add CLI flags
     const adapterConfig: Record<string, unknown> = {
       ...(config.credentials ?? {}),
-      ...(config.approvalPreset ? { approvalPreset: config.approvalPreset } : {}),
+      ...(config.approvalPreset
+        ? { approvalPreset: config.approvalPreset }
+        : {}),
       interactive: config.interactive ?? true,
     };
 
@@ -321,9 +370,12 @@ export class AgentManager extends EventEmitter {
       type: config.type,
       workdir: config.workdir,
       env: config.env,
-      adapterConfig: Object.keys(adapterConfig).length > 0 ? adapterConfig : undefined,
+      adapterConfig:
+        Object.keys(adapterConfig).length > 0 ? adapterConfig : undefined,
       // Pass through pty-manager features
-      ruleOverrides: config.ruleOverrides as Record<string, Record<string, unknown> | null> | undefined,
+      ruleOverrides: config.ruleOverrides as
+        | Record<string, Record<string, unknown> | null>
+        | undefined,
       stallTimeoutMs: config.stallTimeoutMs,
       inheritProcessEnv: config.inheritProcessEnv,
       skipAdapterAutoResponse: config.skipAdapterAutoResponse,
@@ -331,7 +383,10 @@ export class AgentManager extends EventEmitter {
       traceTaskCompletion: config.traceTaskCompletion,
     };
 
-    this.logger.info({ agentId: id, type: config.type, name: config.name }, 'Spawning agent');
+    this.logger.info(
+      { agentId: id, type: config.type, name: config.name },
+      'Spawning agent'
+    );
 
     const handle = await this.ptyManager.spawn(spawnConfig);
     return this.toAgentHandle(handle);
@@ -340,7 +395,10 @@ export class AgentManager extends EventEmitter {
   /**
    * Stop an agent
    */
-  async stop(agentId: string, options?: { force?: boolean; timeout?: number }): Promise<void> {
+  async stop(
+    agentId: string,
+    options?: { force?: boolean; timeout?: number }
+  ): Promise<void> {
     this.logger.info({ agentId, force: options?.force }, 'Stopping agent');
     await this.ptyManager.stop(agentId, options);
     this.agentConfigs.delete(agentId);
@@ -358,21 +416,23 @@ export class AgentManager extends EventEmitter {
    * List agents with optional filtering
    */
   async list(filter?: AgentFilter): Promise<AgentHandle[]> {
-    const sessionFilter = filter ? {
-      status: filter.status,
-      type: filter.type,
-    } : undefined;
+    const sessionFilter = filter
+      ? {
+          status: filter.status,
+          type: filter.type,
+        }
+      : undefined;
 
     const handles = await this.ptyManager.list(sessionFilter);
-    let agents = handles.map(h => this.toAgentHandle(h));
+    let agents = handles.map((h) => this.toAgentHandle(h));
 
     // Apply agent-specific filters
     if (filter?.role) {
-      agents = agents.filter(a => a.role === filter.role);
+      agents = agents.filter((a) => a.role === filter.role);
     }
     if (filter?.capabilities) {
-      agents = agents.filter(a =>
-        filter.capabilities!.every(c => a.capabilities.includes(c))
+      agents = agents.filter((a) =>
+        filter.capabilities!.every((c) => a.capabilities.includes(c))
       );
     }
 
@@ -383,7 +443,10 @@ export class AgentManager extends EventEmitter {
    * Send a message to an agent
    */
   async send(agentId: string, message: string): Promise<AgentMessage> {
-    this.logger.debug({ agentId, message: message.slice(0, 100) }, 'Sending message to agent');
+    this.logger.debug(
+      { agentId, message: message.slice(0, 100) },
+      'Sending message to agent'
+    );
     const sessionMsg = await this.ptyManager.send(agentId, message);
     return this.toAgentMessage(sessionMsg);
   }
@@ -391,7 +454,10 @@ export class AgentManager extends EventEmitter {
   /**
    * Get logs for an agent
    */
-  async *logs(agentId: string, options?: { tail?: number }): AsyncIterable<string> {
+  async *logs(
+    agentId: string,
+    options?: { tail?: number }
+  ): AsyncIterable<string> {
     yield* this.ptyManager.logs(agentId, options);
   }
 
@@ -459,7 +525,10 @@ export class AgentManager extends EventEmitter {
   /**
    * Handle external stall classification for an agent.
    */
-  handleStallClassification(agentId: string, classification: StallClassification | null): void {
+  handleStallClassification(
+    agentId: string,
+    classification: StallClassification | null
+  ): void {
     const session = this.ptyManager.getSession(agentId);
     if (session) {
       session.handleStallClassification(classification);
@@ -475,10 +544,15 @@ export class AgentManager extends EventEmitter {
    */
   async provisionWorkspace(config: WorkspaceConfig): Promise<Workspace> {
     if (!this.workspaceService) {
-      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+      throw new Error(
+        'Workspace service not configured. Pass workspace options to AgentManagerOptions.'
+      );
     }
 
-    this.logger.info({ repo: config.repo, strategy: config.strategy ?? 'clone' }, 'Provisioning workspace');
+    this.logger.info(
+      { repo: config.repo, strategy: config.strategy ?? 'clone' },
+      'Provisioning workspace'
+    );
     return this.workspaceService.provision(config);
   }
 
@@ -486,12 +560,20 @@ export class AgentManager extends EventEmitter {
    * Finalize a workspace (push, create PR, cleanup).
    * Returns PR info if a PR was created.
    */
-  async finalizeWorkspace(workspaceId: string, options: WorkspaceFinalization): Promise<PullRequestInfo | void> {
+  async finalizeWorkspace(
+    workspaceId: string,
+    options: WorkspaceFinalization
+  ): Promise<PullRequestInfo | undefined> {
     if (!this.workspaceService) {
-      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+      throw new Error(
+        'Workspace service not configured. Pass workspace options to AgentManagerOptions.'
+      );
     }
 
-    this.logger.info({ workspaceId, push: options.push, createPr: options.createPr }, 'Finalizing workspace');
+    this.logger.info(
+      { workspaceId, push: options.push, createPr: options.createPr },
+      'Finalizing workspace'
+    );
     return this.workspaceService.finalize(workspaceId, options);
   }
 
@@ -500,7 +582,9 @@ export class AgentManager extends EventEmitter {
    */
   async cleanupWorkspace(workspaceId: string): Promise<void> {
     if (!this.workspaceService) {
-      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+      throw new Error(
+        'Workspace service not configured. Pass workspace options to AgentManagerOptions.'
+      );
     }
 
     this.logger.info({ workspaceId }, 'Cleaning up workspace');
@@ -524,7 +608,9 @@ export class AgentManager extends EventEmitter {
    */
   getWorkspaceFiles(agentType: AgentType): AgentFileDescriptor[] {
     if (agentType === 'custom') return [];
-    const adapter = createAdapter(agentType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes');
+    const adapter = createAdapter(
+      agentType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes'
+    );
     return adapter.getWorkspaceFiles();
   }
 
@@ -536,12 +622,14 @@ export class AgentManager extends EventEmitter {
     agentType: AgentType,
     workspacePath: string,
     content: string,
-    options?: WriteMemoryOptions,
+    options?: WriteMemoryOptions
   ): Promise<string> {
     if (agentType === 'custom') {
       throw new Error('Custom agents have no default workspace files');
     }
-    const adapter = createAdapter(agentType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes');
+    const adapter = createAdapter(
+      agentType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes'
+    );
     return adapter.writeMemoryFile(workspacePath, content, options);
   }
 
@@ -579,10 +667,17 @@ export class AgentManager extends EventEmitter {
    */
   getHookTelemetryConfig(
     agentType: AgentType,
-    options?: { scriptPath?: string; markerPrefix?: string; httpUrl?: string; sessionId?: string },
+    options?: {
+      scriptPath?: string;
+      markerPrefix?: string;
+      httpUrl?: string;
+      sessionId?: string;
+    }
   ) {
     if (agentType === 'custom') return null;
-    const adapter = createAdapter(agentType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes');
+    const adapter = createAdapter(
+      agentType as 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes'
+    );
     return adapter.getHookTelemetryProtocol(options);
   }
 
@@ -600,13 +695,18 @@ export class AgentManager extends EventEmitter {
       branch: string;
       execution: { id: string; patternName: string };
       task: { id: string; role: string; slug?: string };
-    },
+    }
   ): Promise<Workspace> {
     if (!this.workspaceService) {
-      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+      throw new Error(
+        'Workspace service not configured. Pass workspace options to AgentManagerOptions.'
+      );
     }
 
-    this.logger.info({ parentWorkspaceId, branch: options.branch }, 'Adding worktree');
+    this.logger.info(
+      { parentWorkspaceId, branch: options.branch },
+      'Adding worktree'
+    );
     return this.workspaceService.addWorktree(parentWorkspaceId, options);
   }
 
@@ -615,7 +715,9 @@ export class AgentManager extends EventEmitter {
    */
   listWorktrees(parentWorkspaceId: string): Workspace[] {
     if (!this.workspaceService) {
-      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+      throw new Error(
+        'Workspace service not configured. Pass workspace options to AgentManagerOptions.'
+      );
     }
 
     return this.workspaceService.listWorktrees(parentWorkspaceId);
@@ -626,7 +728,9 @@ export class AgentManager extends EventEmitter {
    */
   async removeWorktree(workspaceId: string): Promise<void> {
     if (!this.workspaceService) {
-      throw new Error('Workspace service not configured. Pass workspace options to AgentManagerOptions.');
+      throw new Error(
+        'Workspace service not configured. Pass workspace options to AgentManagerOptions.'
+      );
     }
 
     this.logger.info({ workspaceId }, 'Removing worktree');
@@ -660,13 +764,21 @@ export class AgentManager extends EventEmitter {
     const agents = await this.list();
 
     // Run preflight checks on all adapter CLIs
-    const preflightResults = await checkAdapters(['claude', 'gemini', 'codex', 'aider', 'hermes']);
-    const adapters: AdapterHealth[] = preflightResults.map((r: PreflightResult) => ({
-      type: r.adapter,
-      installed: r.installed,
-      version: r.version,
-      error: r.error,
-    }));
+    const preflightResults = await checkAdapters([
+      'claude',
+      'gemini',
+      'codex',
+      'aider',
+      'hermes',
+    ]);
+    const adapters: AdapterHealth[] = preflightResults.map(
+      (r: PreflightResult) => ({
+        type: r.adapter,
+        installed: r.installed,
+        version: r.version,
+        error: r.error,
+      })
+    );
 
     return {
       healthy: true,

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * Adapter Monitor CLI
  *
@@ -11,20 +12,20 @@
  *   diff            - Compare patterns between versions
  */
 
-import { checkAllVersions, filterUpdatesAvailable } from './version-checker';
+import { MONITORED_CLIS } from './config';
+import { checkFileChanges, listWatchedFiles } from './file-change-checker';
 import { captureSnapshot } from './snapshot-capture';
 import {
-  saveSnapshot,
-  updateVersionHistory,
-  loadVersionHistory,
-  loadLatestSnapshot,
   comparePatterns,
   extractPatterns,
+  loadLatestSnapshot,
+  loadVersionHistory,
+  saveSnapshot,
+  updateVersionHistory,
 } from './snapshot-storage';
-import { checkFileChanges, listWatchedFiles } from './file-change-checker';
-import { MONITORED_CLIS } from './config';
-import { WATCHED_FILES } from './watched-files';
 import type { AdapterType } from './types';
+import { checkAllVersions, filterUpdatesAvailable } from './version-checker';
+import { WATCHED_FILES } from './watched-files';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -88,13 +89,17 @@ async function main() {
       const useDocker = options.docker === true;
 
       if (!adapter || !version) {
-        console.error('Usage: capture --adapter <type> --version <version> [--docker]');
+        console.error(
+          'Usage: capture --adapter <type> --version <version> [--docker]'
+        );
         process.exit(1);
       }
 
       if (!MONITORED_CLIS[adapter]) {
         console.error(`Unknown adapter: ${adapter}`);
-        console.error(`Valid adapters: ${Object.keys(MONITORED_CLIS).join(', ')}`);
+        console.error(
+          `Valid adapters: ${Object.keys(MONITORED_CLIS).join(', ')}`
+        );
         process.exit(1);
       }
 
@@ -167,7 +172,8 @@ async function main() {
         }
 
         const versions = Object.keys(history.versions).sort();
-        const previousVersion = versions.length > 1 ? versions[versions.length - 2] : null;
+        const previousVersion =
+          versions.length > 1 ? versions[versions.length - 2] : null;
 
         if (previousVersion && history.versions[previousVersion]) {
           const oldPatterns = history.versions[previousVersion];
@@ -208,7 +214,9 @@ async function main() {
       const newVersion = options.new as string;
 
       if (!adapter || !oldVersion || !newVersion) {
-        console.error('Usage: diff --adapter <type> --old <version> --new <version>');
+        console.error(
+          'Usage: diff --adapter <type> --old <version> --new <version>'
+        );
         process.exit(1);
       }
 
@@ -253,7 +261,9 @@ async function main() {
         }
 
         if (diff.isBreaking) {
-          console.log('\n⚠️  This is a BREAKING change - ready patterns were removed.');
+          console.log(
+            '\n⚠️  This is a BREAKING change - ready patterns were removed.'
+          );
         }
       }
       break;
@@ -265,17 +275,23 @@ async function main() {
       const newVersion = options.new as string;
 
       if (!adapter || !oldVersion || !newVersion) {
-        console.error('Usage: check-changes --adapter <type> --old <version> --new <version> [--json]');
+        console.error(
+          'Usage: check-changes --adapter <type> --old <version> --new <version> [--json]'
+        );
         process.exit(1);
       }
 
       if (!WATCHED_FILES[adapter]) {
         console.error(`Unknown adapter: ${adapter}`);
-        console.error(`Valid adapters: ${Object.keys(WATCHED_FILES).join(', ')}`);
+        console.error(
+          `Valid adapters: ${Object.keys(WATCHED_FILES).join(', ')}`
+        );
         process.exit(1);
       }
 
-      console.error(`Checking watched file changes for ${adapter}: ${oldVersion} -> ${newVersion}...\n`);
+      console.error(
+        `Checking watched file changes for ${adapter}: ${oldVersion} -> ${newVersion}...\n`
+      );
 
       const result = await checkFileChanges(adapter, oldVersion, newVersion);
 
@@ -328,8 +344,6 @@ async function main() {
       }
       break;
     }
-
-    case 'help':
     default:
       console.log(`
 Adapter Monitor CLI

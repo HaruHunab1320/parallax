@@ -10,10 +10,10 @@ export function getUserByName(name: string) {
 }
 
 // Security Issue: Hardcoded credentials
-const API_KEY = "sk-1234567890abcdef";
+const API_KEY = 'sk-1234567890abcdef';
 
 // Style Issue: Function too complex, deeply nested
-export function processOrder(order: any, user: any, config: any) {
+export function processOrder(order: any, user: any, _config: any) {
   if (order) {
     if (order.items) {
       if (order.items.length > 0) {
@@ -21,7 +21,10 @@ export function processOrder(order: any, user: any, config: any) {
           if (order.items[i].quantity > 0) {
             if (order.items[i].price > 0) {
               if (user) {
-                if (user.balance >= order.items[i].price * order.items[i].quantity) {
+                if (
+                  user.balance >=
+                  order.items[i].price * order.items[i].quantity
+                ) {
                   // process
                   console.log('processing');
                 }
@@ -46,8 +49,10 @@ export function calc(a, b, c, op) {
 export class OrderProcessor {
   process(orderId: string) {
     const order = db.query(`SELECT * FROM orders WHERE id = ${orderId}`);
-    const user = db.query(`SELECT * FROM users WHERE id = ${order.userId}`);
-    const result = fetch(`https://api.payment.com/charge?key=${API_KEY}&amount=${order.total}`);
+    const _user = db.query(`SELECT * FROM users WHERE id = ${order.userId}`);
+    const result = fetch(
+      `https://api.payment.com/charge?key=${API_KEY}&amount=${order.total}`
+    );
     db.execute(`UPDATE orders SET status = 'processed' WHERE id = ${orderId}`);
     return result;
   }

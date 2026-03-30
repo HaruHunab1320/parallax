@@ -1,18 +1,25 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest';
-import crypto from 'crypto';
-import { verifyLicenseKey, LicensePayload } from '../license-keys';
+import crypto from 'node:crypto';
+import { describe, expect, it, vi } from 'vitest';
+import { type LicensePayload, verifyLicenseKey } from '../license-keys';
 
 // Generate a test keypair for all tests
 const keypair = crypto.generateKeyPairSync('ed25519');
-const publicKeyB64 = keypair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+const publicKeyB64 = keypair.publicKey
+  .export({ type: 'spki', format: 'der' })
+  .toString('base64');
 
-function signPayload(payload: Record<string, unknown>, privateKey = keypair.privateKey): string {
+function signPayload(
+  payload: Record<string, unknown>,
+  privateKey = keypair.privateKey
+): string {
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signature = crypto.sign(null, Buffer.from(payloadB64), privateKey);
   return `${payloadB64}.${signature.toString('base64url')}`;
 }
 
-function makePayload(overrides: Partial<LicensePayload> = {}): Record<string, unknown> {
+function makePayload(
+  overrides: Partial<LicensePayload> = {}
+): Record<string, unknown> {
   return {
     iss: 'parallax',
     v: 1,
@@ -70,7 +77,7 @@ describe('verifyLicenseKey', () => {
       const key = signPayload(makePayload());
       // Tamper with the payload portion
       const [payloadB64, sig] = key.split('.');
-      const tampered = payloadB64.slice(0, -2) + 'XX';
+      const tampered = `${payloadB64.slice(0, -2)}XX`;
       const result = verifyLicenseKey(`${tampered}.${sig}`, publicKeyB64);
       expect(result.valid).toBe(false);
       if (!result.valid) {
@@ -170,7 +177,11 @@ describe('verifyLicenseKey', () => {
     it('should reject non-base64 payload with valid structure', () => {
       // Create a valid signature for garbage payload
       const payloadB64 = '!!!not-base64!!!';
-      const signature = crypto.sign(null, Buffer.from(payloadB64), keypair.privateKey);
+      const signature = crypto.sign(
+        null,
+        Buffer.from(payloadB64),
+        keypair.privateKey
+      );
       const key = `${payloadB64}.${signature.toString('base64url')}`;
       const result = verifyLicenseKey(key, publicKeyB64);
       expect(result.valid).toBe(false);

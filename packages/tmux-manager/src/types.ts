@@ -10,15 +10,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type {
-  MessageType,
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptType,
-  BlockingPromptDetection,
-  AutoResponseRule,
-  ToolRunningInfo,
   AdapterFactoryConfig,
+  AutoResponseRule,
+  BlockingPromptDetection,
+  BlockingPromptType,
+  LoginDetection,
+  MessageType,
+  ParsedOutput,
+  SpawnConfig,
+  ToolRunningInfo,
 } from 'adapter-types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,14 +29,14 @@ export type {
  * Session lifecycle states
  */
 export type SessionStatus =
-  | 'pending'        // Requested, not yet started
-  | 'starting'       // Process starting
+  | 'pending' // Requested, not yet started
+  | 'starting' // Process starting
   | 'authenticating' // Waiting for login
-  | 'ready'          // Available for input
-  | 'busy'           // Processing a message
-  | 'stopping'       // Graceful shutdown
-  | 'stopped'        // Terminated
-  | 'error';         // Failed state
+  | 'ready' // Available for input
+  | 'busy' // Processing a message
+  | 'stopping' // Graceful shutdown
+  | 'stopped' // Terminated
+  | 'error'; // Failed state
 
 /**
  * Handle to a running session

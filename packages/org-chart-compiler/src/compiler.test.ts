@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { OrgChartCompiler, createTarget } from './compiler';
-import type { OrgPattern, CompileTarget } from './types';
+import { describe, expect, it } from 'vitest';
+import { createTarget, OrgChartCompiler } from './compiler';
+import type { CompileTarget, OrgPattern } from './types';
 
 const samplePattern: OrgPattern = {
   name: 'test-team',
@@ -76,14 +76,17 @@ workflow:
       const invalid = { ...samplePattern, name: '' };
       const result = OrgChartCompiler.validate(invalid);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.path === 'name')).toBe(true);
+      expect(result.errors.some((e) => e.path === 'name')).toBe(true);
     });
 
     it('should catch missing structure', () => {
-      const invalid = { name: 'test', workflow: samplePattern.workflow } as OrgPattern;
+      const invalid = {
+        name: 'test',
+        workflow: samplePattern.workflow,
+      } as OrgPattern;
       const result = OrgChartCompiler.validate(invalid);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.path === 'structure')).toBe(true);
+      expect(result.errors.some((e) => e.path === 'structure')).toBe(true);
     });
 
     it('should catch unknown role references in steps', () => {
@@ -96,7 +99,9 @@ workflow:
       };
       const result = OrgChartCompiler.validate(invalid);
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.message.includes('Unknown role'))).toBe(true);
+      expect(
+        result.errors.some((e) => e.message.includes('Unknown role'))
+      ).toBe(true);
     });
   });
 
@@ -110,21 +115,27 @@ workflow:
     });
 
     it('should compile to json target', () => {
-      const result = OrgChartCompiler.compile(samplePattern, { target: 'json' });
+      const result = OrgChartCompiler.compile(samplePattern, {
+        target: 'json',
+      });
       expect(result.format).toBe('json');
       const parsed = JSON.parse(result.output);
       expect(parsed.name).toBe('test-workflow');
     });
 
     it('should compile to mermaid target', () => {
-      const result = OrgChartCompiler.compile(samplePattern, { target: 'mermaid' });
+      const result = OrgChartCompiler.compile(samplePattern, {
+        target: 'mermaid',
+      });
       expect(result.format).toBe('code');
       expect(result.output).toContain('graph TD');
       expect(result.output).toContain('engineer');
     });
 
     it('should include comments when requested', () => {
-      const result = OrgChartCompiler.compile(samplePattern, { includeComments: true });
+      const result = OrgChartCompiler.compile(samplePattern, {
+        includeComments: true,
+      });
       expect(result.output).toContain('//');
     });
 
@@ -162,16 +173,18 @@ workflow:
       const customTarget: CompileTarget = {
         name: 'custom',
         format: 'code',
-        emitRole: (role, id) => `ROLE: ${id}`,
+        emitRole: (_role, id) => `ROLE: ${id}`,
         emitWorkflow: (wf) => `WORKFLOW: ${wf.name}`,
-        emitStep: (step, idx) => `STEP: ${idx}`,
+        emitStep: (_step, idx) => `STEP: ${idx}`,
         join: (parts) => parts.join('\n'),
       };
 
       OrgChartCompiler.registerTarget(customTarget);
       expect(OrgChartCompiler.getTargets()).toContain('custom');
 
-      const result = OrgChartCompiler.compile(samplePattern, { target: 'custom' });
+      const result = OrgChartCompiler.compile(samplePattern, {
+        target: 'custom',
+      });
       expect(result.output).toContain('ROLE: engineer');
       expect(result.output).toContain('WORKFLOW: test-workflow');
 
@@ -191,9 +204,11 @@ workflow:
     it('should allow overriding functions', () => {
       const target = createTarget({
         name: 'test',
-        emitRole: (role, id) => `Custom: ${id}`,
+        emitRole: (_role, id) => `Custom: ${id}`,
       });
-      expect(target.emitRole({} as any, 'test', {} as any)).toBe('Custom: test');
+      expect(target.emitRole({} as any, 'test', {} as any)).toBe(
+        'Custom: test'
+      );
     });
   });
 
@@ -251,8 +266,16 @@ describe('Workflow Step Compilation', () => {
           {
             type: 'condition',
             check: 'confidence > 0.8',
-            then: { type: 'assign', role: 'worker', task: 'High confidence task' },
-            else: { type: 'assign', role: 'worker', task: 'Low confidence task' },
+            then: {
+              type: 'assign',
+              role: 'worker',
+              task: 'High confidence task',
+            },
+            else: {
+              type: 'assign',
+              role: 'worker',
+              task: 'Low confidence task',
+            },
           },
         ],
       },

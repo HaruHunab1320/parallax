@@ -5,8 +5,8 @@
  * Part of the multi-model voting demo.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'gemini-flash-2';
@@ -16,16 +16,11 @@ class Flash2Agent extends ParallaxAgent {
   private model: any = null;
 
   constructor() {
-    super(
-      AGENT_ID,
-      AGENT_NAME,
-      ['voting', 'classification', 'decision'],
-      {
-        expertise: 0.85,
-        model: MODEL_NAME,
-        description: 'Fast decision-making with Gemini 2.0 Flash'
-      }
-    );
+    super(AGENT_ID, AGENT_NAME, ['voting', 'classification', 'decision'], {
+      expertise: 0.85,
+      model: MODEL_NAME,
+      description: 'Fast decision-making with Gemini 2.0 Flash',
+    });
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
@@ -37,7 +32,10 @@ class Flash2Agent extends ParallaxAgent {
     }
   }
 
-  async analyze(task: string, data?: any): Promise<{
+  async analyze(
+    task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +44,7 @@ class Flash2Agent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -80,7 +78,7 @@ Be decisive. Pick the option that best answers the question based on the informa
         return {
           value: { decision: null, error: 'Could not parse response' },
           confidence: 0.3,
-          reasoning: text.substring(0, 200)
+          reasoning: text.substring(0, 200),
         };
       }
 
@@ -97,17 +95,17 @@ Be decisive. Pick the option that best answers the question based on the informa
         value: {
           decision: validDecision ? parsed.decision : options[0],
           model: MODEL_NAME,
-          raw_decision: parsed.decision
+          raw_decision: parsed.decision,
         },
         confidence: validDecision ? confidence : confidence * 0.5,
-        reasoning: parsed.reasoning || 'Decision made'
+        reasoning: parsed.reasoning || 'Decision made',
       };
     } catch (error) {
       console.error('Analysis error:', error);
       return {
         value: { decision: null, error: String(error) },
         confidence: 0,
-        reasoning: 'Analysis failed'
+        reasoning: 'Analysis failed',
       };
     }
   }

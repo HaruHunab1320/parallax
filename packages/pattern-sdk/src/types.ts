@@ -7,45 +7,71 @@ import { z } from 'zod';
 // Requirements Schema
 export const OrchestrationRequirementsSchema = z.object({
   goal: z.string().describe('The main objective of the orchestration'),
-  strategy: z.string().optional().describe('Overall strategy (consensus, pipeline, etc)'),
+  strategy: z
+    .string()
+    .optional()
+    .describe('Overall strategy (consensus, pipeline, etc)'),
   minConfidence: z.number().min(0).max(1).optional().default(0.7),
-  fallback: z.string().optional().describe('Fallback action if confidence is low'),
-  
-  agents: z.array(z.object({
-    capability: z.string(),
-    count: z.number().optional(),
-    minConfidence: z.number().optional()
-  })).optional(),
-  
-  stages: z.array(z.object({
-    name: z.string(),
-    description: z.string().optional(),
-    parallel: z.boolean().optional(),
-    condition: z.string().optional(),
-    agents: z.array(z.object({
-      capability: z.string(),
-      count: z.number().optional()
-    })).optional()
-  })).optional(),
-  
-  constraints: z.object({
-    maxRetries: z.number().optional(),
-    timeout: z.number().optional(),
-    maxReviewTime: z.number().optional(),
-    requiredApprovals: z.number().optional(),
-    blockOnCritical: z.boolean().optional()
-  }).optional(),
-  context: z.object({
-    environment: z.string().optional(),
-    previousResults: z.array(z.any()).optional(),
-    metadata: z.object({
-      tags: z.array(z.string()).optional(),
-      source: z.string().optional()
-    }).optional()
-  }).optional()
+  fallback: z
+    .string()
+    .optional()
+    .describe('Fallback action if confidence is low'),
+
+  agents: z
+    .array(
+      z.object({
+        capability: z.string(),
+        count: z.number().optional(),
+        minConfidence: z.number().optional(),
+      })
+    )
+    .optional(),
+
+  stages: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().optional(),
+        parallel: z.boolean().optional(),
+        condition: z.string().optional(),
+        agents: z
+          .array(
+            z.object({
+              capability: z.string(),
+              count: z.number().optional(),
+            })
+          )
+          .optional(),
+      })
+    )
+    .optional(),
+
+  constraints: z
+    .object({
+      maxRetries: z.number().optional(),
+      timeout: z.number().optional(),
+      maxReviewTime: z.number().optional(),
+      requiredApprovals: z.number().optional(),
+      blockOnCritical: z.boolean().optional(),
+    })
+    .optional(),
+  context: z
+    .object({
+      environment: z.string().optional(),
+      previousResults: z.array(z.any()).optional(),
+      metadata: z
+        .object({
+          tags: z.array(z.string()).optional(),
+          source: z.string().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
 });
 
-export type OrchestrationRequirements = z.infer<typeof OrchestrationRequirementsSchema>;
+export type OrchestrationRequirements = z.infer<
+  typeof OrchestrationRequirementsSchema
+>;
 
 // Pattern Types
 export interface Pattern {
@@ -171,25 +197,29 @@ export const RequirementsAnalysisSchema = z.object({
   needsFallback: z.boolean(),
   confidenceRequirement: z.number(),
   estimatedComplexity: z.enum(['low', 'medium', 'high']),
-  reasoning: z.string()
+  reasoning: z.string(),
 });
 
 export const PrimitiveSelectionSchema = z.object({
-  selected: z.array(z.object({
-    name: z.string(),
-    reason: z.string(),
-    config: z.object({
-      maxConcurrency: z.number().optional(),
-      threshold: z.number().optional(),
-      strategy: z.string().optional(),
-      timeout: z.number().optional(),
-      maxRetries: z.number().optional(),
-      fallbackTo: z.string().optional()
-    }).optional()
-  })),
+  selected: z.array(
+    z.object({
+      name: z.string(),
+      reason: z.string(),
+      config: z
+        .object({
+          maxConcurrency: z.number().optional(),
+          threshold: z.number().optional(),
+          strategy: z.string().optional(),
+          timeout: z.number().optional(),
+          maxRetries: z.number().optional(),
+          fallbackTo: z.string().optional(),
+        })
+        .optional(),
+    })
+  ),
   order: z.array(z.string()),
   confidence: z.number(),
-  reasoning: z.string()
+  reasoning: z.string(),
 });
 
 export type RequirementsAnalysis = z.infer<typeof RequirementsAnalysisSchema>;

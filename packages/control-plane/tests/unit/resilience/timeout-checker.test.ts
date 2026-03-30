@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import pino from 'pino';
-import { TimeoutChecker } from '@/resilience/timeout-checker';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExecutionRepository } from '@/db/repositories/execution.repository';
+import { TimeoutChecker } from '@/resilience/timeout-checker';
 
 const logger = pino({ level: 'silent' });
 
@@ -103,7 +103,9 @@ describe('TimeoutChecker', () => {
     });
 
     it('logs and returns 0 on error', async () => {
-      vi.mocked(repo.findTimedOutExecutions).mockRejectedValue(new Error('DB down'));
+      vi.mocked(repo.findTimedOutExecutions).mockRejectedValue(
+        new Error('DB down')
+      );
       checker = new TimeoutChecker(repo, logger);
 
       const count = await checker.check();

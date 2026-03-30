@@ -1,17 +1,17 @@
 import {
-  CoordinateRequest,
-  CoordinateResponse,
-  CoordinatorClient,
-  GetHistoryRequest,
-  GetHistoryResponse,
-} from "../generated/coordinator";
-import {
-  ChannelCredentials,
-  ClientOptions,
-  ClientReadableStream,
+  type ChannelCredentials,
+  type ClientOptions,
+  type ClientReadableStream,
   Metadata,
-  ServiceError,
-} from "@grpc/grpc-js";
+  type ServiceError,
+} from '@grpc/grpc-js';
+import {
+  type CoordinateRequest,
+  type CoordinateResponse,
+  CoordinatorClient,
+  type GetHistoryRequest,
+  type GetHistoryResponse,
+} from '../generated/coordinator';
 
 export type CoordinatorStreamHandlers = {
   onMessage?: (response: CoordinateResponse) => void;
@@ -30,18 +30,22 @@ export class CoordinatorServiceClient {
     this.client = new CoordinatorClient(address, credentials, options);
   }
 
-  coordinate(request: CoordinateRequest, metadata?: Metadata): Promise<CoordinateResponse> {
+  coordinate(
+    request: CoordinateRequest,
+    metadata?: Metadata
+  ): Promise<CoordinateResponse> {
     return new Promise((resolve, reject) => {
       this.client.coordinate(
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: CoordinateResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 
@@ -50,15 +54,20 @@ export class CoordinatorServiceClient {
     handlers: CoordinatorStreamHandlers = {},
     metadata?: Metadata
   ): ClientReadableStream<CoordinateResponse> {
-    const stream = this.client.streamCoordinate(request, metadata || new Metadata());
-    stream.on("data", (message: CoordinateResponse) => handlers.onMessage?.(message));
-    stream.on("error", (error: ServiceError) => handlers.onError?.(error));
-    stream.on("end", () => handlers.onEnd?.());
+    const stream = this.client.streamCoordinate(
+      request,
+      metadata || new Metadata()
+    );
+    stream.on('data', (message: CoordinateResponse) =>
+      handlers.onMessage?.(message)
+    );
+    stream.on('error', (error: ServiceError) => handlers.onError?.(error));
+    stream.on('end', () => handlers.onEnd?.());
     return stream;
   }
 
   getHistory(
-    taskId = "",
+    taskId = '',
     limit = 50,
     sinceTimestamp = 0,
     metadata?: Metadata
@@ -69,12 +78,13 @@ export class CoordinatorServiceClient {
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: GetHistoryResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 }

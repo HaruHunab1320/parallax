@@ -2,32 +2,38 @@
  * OpenTelemetry Tracer Provider for Parallax platform
  */
 
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { Resource } from '@opentelemetry/resources';
-import { 
-  SEMRESATTRS_SERVICE_NAME as ATTR_SERVICE_NAME,
-  SEMRESATTRS_SERVICE_VERSION as ATTR_SERVICE_VERSION,
-  SEMRESATTRS_SERVICE_INSTANCE_ID as ATTR_SERVICE_INSTANCE_ID,
-  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT as ATTR_DEPLOYMENT_ENVIRONMENT_NAME
-} from '@opentelemetry/semantic-conventions';
-import { 
-  NodeTracerProvider,
-  BatchSpanProcessor,
-  ConsoleSpanExporter,
-  SimpleSpanProcessor
-} from '@opentelemetry/sdk-trace-node';
+import * as api from '@opentelemetry/api';
+import {
+  CompositePropagator,
+  W3CTraceContextPropagator,
+} from '@opentelemetry/core';
+import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { GrpcInstrumentation } from '@opentelemetry/instrumentation-grpc';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
-import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
-import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
-import { B3Propagator, B3InjectEncoding } from '@opentelemetry/propagator-b3';
+import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
 import { JaegerPropagator } from '@opentelemetry/propagator-jaeger';
-import { CompositePropagator, W3CTraceContextPropagator } from '@opentelemetry/core';
-import { Logger } from 'pino';
-import * as api from '@opentelemetry/api';
-import { ParentBasedSampler, TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-base';
+import { Resource } from '@opentelemetry/resources';
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import {
+  ParentBasedSampler,
+  TraceIdRatioBasedSampler,
+} from '@opentelemetry/sdk-trace-base';
+import {
+  BatchSpanProcessor,
+  ConsoleSpanExporter,
+  NodeTracerProvider,
+  SimpleSpanProcessor,
+} from '@opentelemetry/sdk-trace-node';
+import {
+  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT as ATTR_DEPLOYMENT_ENVIRONMENT_NAME,
+  SEMRESATTRS_SERVICE_INSTANCE_ID as ATTR_SERVICE_INSTANCE_ID,
+  SEMRESATTRS_SERVICE_NAME as ATTR_SERVICE_NAME,
+  SEMRESATTRS_SERVICE_VERSION as ATTR_SERVICE_VERSION,
+} from '@opentelemetry/semantic-conventions';
+import type { Logger } from 'pino';
 
 export interface TracingConfig {
   serviceName: string;
@@ -44,40 +50,43 @@ export interface TracingConfig {
 export class TracerProvider {
   private sdk?: NodeSDK;
   private provider?: NodeTracerProvider;
-  
+
   constructor(
     private config: TracingConfig,
     private logger: Logger
   ) {}
-  
+
   /**
    * Initialize the tracer provider
    */
   async initialize(): Promise<void> {
-    this.logger.info({ config: this.config }, 'Initializing OpenTelemetry tracing');
-    
+    this.logger.info(
+      { config: this.config },
+      'Initializing OpenTelemetry tracing'
+    );
+
     // Create resource
     const resource = Resource.default().merge(
       new Resource({
         [ATTR_SERVICE_NAME]: this.config.serviceName,
         [ATTR_SERVICE_VERSION]: this.config.serviceVersion || '0.1.0',
-        [ATTR_SERVICE_INSTANCE_ID]: this.config.instanceId || `${this.config.serviceName}-${Date.now()}`,
-        [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: this.config.environment || 'development',
+        [ATTR_SERVICE_INSTANCE_ID]:
+          this.config.instanceId || `${this.config.serviceName}-${Date.now()}`,
+        [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]:
+          this.config.environment || 'development',
         'parallax.platform.version': '0.1.0',
-        'parallax.service.type': this.getServiceType(this.config.serviceName)
+        'parallax.service.type': this.getServiceType(this.config.serviceName),
       })
     );
-    
+
     // Create tracer provider
     this.provider = new NodeTracerProvider({
       resource,
       sampler: new ParentBasedSampler({
-        root: new TraceIdRatioBasedSampler(
-          this.config.samplingRatio || 1.0
-        )
-      })
+        root: new TraceIdRatioBasedSampler(this.config.samplingRatio || 1.0),
+      }),
     });
-    
+
     // Configure exporter
     const exporter = this.createExporter();
     if (exporter) {
@@ -87,26 +96,26 @@ export class TracerProvider {
         this.provider.addSpanProcessor(new BatchSpanProcessor(exporter));
       }
     }
-    
+
     // Register provider
     this.provider.register({
-      propagator: this.createPropagator()
+      propagator: this.createPropagator(),
     });
-    
+
     // Register instrumentations
     this.registerInstrumentations();
-    
+
     // Create SDK for graceful shutdown
     this.sdk = new NodeSDK({
       resource,
-      instrumentations: this.getInstrumentations()
+      instrumentations: this.getInstrumentations(),
     });
-    
+
     await this.sdk.start();
-    
+
     this.logger.info('OpenTelemetry tracing initialized');
   }
-  
+
   /**
    * Create the appropriate exporter based on configuration
    */
@@ -116,94 +125,97 @@ export class TracerProvider {
         return new OTLPTraceExporter({
           url: this.config.endpoint || 'http://localhost:4317',
           headers: {
-            'x-service-name': this.config.serviceName
-          }
+            'x-service-name': this.config.serviceName,
+          },
         });
-        
+
       case 'jaeger':
         return new JaegerExporter({
-          endpoint: this.config.endpoint || 'http://localhost:14268/api/traces'
+          endpoint: this.config.endpoint || 'http://localhost:14268/api/traces',
         });
-        
+
       case 'console':
         return new ConsoleSpanExporter();
-        
+
       case 'none':
         return null;
-        
+
       default:
         // Default to OTLP
         return new OTLPTraceExporter({
-          url: this.config.endpoint || 'http://localhost:4317'
+          url: this.config.endpoint || 'http://localhost:4317',
         });
     }
   }
-  
+
   /**
    * Create composite propagator
    */
   private createPropagator() {
     const propagators: api.TextMapPropagator[] = [];
-    
+
     const configuredPropagators = this.config.propagators || ['w3c', 'b3'];
-    
+
     for (const propagator of configuredPropagators) {
       switch (propagator) {
         case 'w3c':
           propagators.push(new W3CTraceContextPropagator());
           break;
         case 'b3':
-          propagators.push(new B3Propagator({
-            injectEncoding: B3InjectEncoding.MULTI_HEADER
-          }));
+          propagators.push(
+            new B3Propagator({
+              injectEncoding: B3InjectEncoding.MULTI_HEADER,
+            })
+          );
           break;
         case 'jaeger':
           propagators.push(new JaegerPropagator());
           break;
       }
     }
-    
+
     return new CompositePropagator({
-      propagators
+      propagators,
     });
   }
-  
+
   /**
    * Register instrumentations
    */
   private registerInstrumentations(): void {
     registerInstrumentations({
-      instrumentations: this.getInstrumentations()
+      instrumentations: this.getInstrumentations(),
     });
   }
-  
+
   /**
    * Get instrumentations
    */
   private getInstrumentations() {
     return [
       new GrpcInstrumentation({
-        ignoreGrpcMethods: ['HealthCheck']
+        ignoreGrpcMethods: ['HealthCheck'],
       }),
       new HttpInstrumentation({
         requestHook: (span, request) => {
           if ('headers' in request) {
             span.setAttributes({
-              'http.request.body.size': (request as any).headers['content-length'] || 0
+              'http.request.body.size':
+                (request as any).headers['content-length'] || 0,
             });
           }
-        }
+        },
       }),
       new ExpressInstrumentation({
         requestHook: (span, info) => {
           span.setAttributes({
-            'express.route': info.route
+            'express.route': info.route,
           });
-        }
-      })
+        },
+      }),
     ];
   }
-  
+
   /**
    * Get tracer instance
    */
@@ -213,7 +225,7 @@ export class TracerProvider {
       this.config.serviceVersion
     );
   }
-  
+
   /**
    * Create a new span
    */
@@ -223,14 +235,14 @@ export class TracerProvider {
     context?: api.Context
   ): api.Span {
     const tracer = this.getTracer();
-    
+
     if (context) {
       return tracer.startSpan(name, options, context);
     }
-    
+
     return tracer.startActiveSpan(name, options || {}, (span) => span);
   }
-  
+
   /**
    * Wrap a function with a span
    */
@@ -240,7 +252,7 @@ export class TracerProvider {
     options?: api.SpanOptions
   ): Promise<T> {
     const tracer = this.getTracer();
-    
+
     return tracer.startActiveSpan(name, options || {}, async (span) => {
       try {
         const result = await fn(span);
@@ -250,7 +262,7 @@ export class TracerProvider {
         span.recordException(error as Error);
         span.setStatus({
           code: api.SpanStatusCode.ERROR,
-          message: error instanceof Error ? error.message : 'Unknown error'
+          message: error instanceof Error ? error.message : 'Unknown error',
         });
         throw error;
       } finally {
@@ -258,7 +270,7 @@ export class TracerProvider {
       }
     });
   }
-  
+
   /**
    * Add event to current span
    */
@@ -268,7 +280,7 @@ export class TracerProvider {
       span.addEvent(name, attributes);
     }
   }
-  
+
   /**
    * Set attributes on current span
    */
@@ -278,16 +290,18 @@ export class TracerProvider {
       span.setAttributes(attributes);
     }
   }
-  
+
   /**
    * Set baggage
    */
   setBaggage(key: string, value: string): void {
-    const baggage = api.propagation.getBaggage(api.context.active()) || api.propagation.createBaggage();
+    const baggage =
+      api.propagation.getBaggage(api.context.active()) ||
+      api.propagation.createBaggage();
     const updatedBaggage = baggage.setEntry(key, { value });
     api.propagation.setBaggage(api.context.active(), updatedBaggage);
   }
-  
+
   /**
    * Get baggage
    */
@@ -295,18 +309,18 @@ export class TracerProvider {
     const baggage = api.propagation.getBaggage(api.context.active());
     return baggage?.getEntry(key)?.value;
   }
-  
+
   /**
    * Shutdown the tracer
    */
   async shutdown(): Promise<void> {
     this.logger.info('Shutting down OpenTelemetry tracing');
-    
+
     if (this.sdk) {
       await this.sdk.shutdown();
     }
   }
-  
+
   /**
    * Get service type from name
    */
@@ -333,10 +347,10 @@ export async function initializeTracing(
   if (globalTracer) {
     return globalTracer;
   }
-  
+
   globalTracer = new TracerProvider(config, logger);
   await globalTracer.initialize();
-  
+
   return globalTracer;
 }
 
@@ -347,6 +361,6 @@ export function getGlobalTracer(): TracerProvider {
   if (!globalTracer) {
     throw new Error('Tracer not initialized. Call initializeTracing first.');
   }
-  
+
   return globalTracer;
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('AuthResource', () => {
@@ -28,12 +28,19 @@ describe('AuthResource', () => {
   }
 
   it('should register a user', async () => {
-    mockFetch({
-      user: { id: 'user-1', email: 'test@example.com', role: 'admin' },
-      tokens: { accessToken: 'jwt-access', refreshToken: 'jwt-refresh' },
-    }, 201);
+    mockFetch(
+      {
+        user: { id: 'user-1', email: 'test@example.com', role: 'admin' },
+        tokens: { accessToken: 'jwt-access', refreshToken: 'jwt-refresh' },
+      },
+      201
+    );
 
-    const result = await client.auth.register('test@example.com', 'password123', 'Test');
+    const result = await client.auth.register(
+      'test@example.com',
+      'password123',
+      'Test'
+    );
 
     expect(result.user.email).toBe('test@example.com');
     expect(result.tokens.accessToken).toBe('jwt-access');
@@ -70,7 +77,10 @@ describe('AuthResource', () => {
   });
 
   it('should request forgot password', async () => {
-    mockFetch({ message: 'If an account exists with this email, a password reset link has been sent' });
+    mockFetch({
+      message:
+        'If an account exists with this email, a password reset link has been sent',
+    });
 
     const result = await client.auth.forgotPassword('test@example.com');
     expect(result.message).toBeDefined();
@@ -79,7 +89,10 @@ describe('AuthResource', () => {
   it('should reset password', async () => {
     mockFetch({ message: 'Password has been reset successfully' });
 
-    const result = await client.auth.resetPassword('reset-token', 'newpassword');
+    const result = await client.auth.resetPassword(
+      'reset-token',
+      'newpassword'
+    );
     expect(result.message).toContain('reset');
   });
 

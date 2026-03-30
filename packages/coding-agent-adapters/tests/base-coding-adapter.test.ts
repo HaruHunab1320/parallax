@@ -2,13 +2,17 @@
  * Base Coding Adapter Tests
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { readFile, rm, stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { BaseCodingAdapter, type InstallationInfo, type AgentCredentials, type AgentFileDescriptor } from '../src/base-coding-adapter';
-import type { SpawnConfig, ParsedOutput, LoginDetection } from 'pty-manager';
+import { join } from 'node:path';
+import type { LoginDetection, ParsedOutput, SpawnConfig } from 'pty-manager';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  type AgentCredentials,
+  type AgentFileDescriptor,
+  BaseCodingAdapter,
+  type InstallationInfo,
+} from '../src/base-coding-adapter';
 
 // Concrete implementation for testing
 class TestAdapter extends BaseCodingAdapter {
@@ -120,7 +124,9 @@ describe('BaseCodingAdapter', () => {
     });
 
     it('should have alternatives', () => {
-      expect(adapter.installation.alternatives).toContain('brew install test-cli');
+      expect(adapter.installation.alternatives).toContain(
+        'brew install test-cli'
+      );
     });
 
     it('should have docs URL', () => {
@@ -215,7 +221,9 @@ describe('BaseCodingAdapter', () => {
     });
 
     it('should detect completion with completed', () => {
-      expect(adapter.testIsResponseComplete('Task completed successfully')).toBe(true);
+      expect(
+        adapter.testIsResponseComplete('Task completed successfully')
+      ).toBe(true);
     });
 
     it('should detect completion with finished', () => {
@@ -233,12 +241,18 @@ describe('BaseCodingAdapter', () => {
 
   describe('extractContent()', () => {
     it('should remove prompt patterns', () => {
-      const content = adapter.testExtractContent('test> hello\ntest> world', /^.*test>\s*/gim);
+      const content = adapter.testExtractContent(
+        'test> hello\ntest> world',
+        /^.*test>\s*/gim
+      );
       expect(content).toBe('hello\nworld');
     });
 
     it('should remove status lines', () => {
-      const content = adapter.testExtractContent('Thinking...\nActual content', /^$/gm);
+      const content = adapter.testExtractContent(
+        'Thinking...\nActual content',
+        /^$/gm
+      );
       expect(content).toBe('Actual content');
     });
 
@@ -298,7 +312,7 @@ describe('BaseCodingAdapter', () => {
 
     it('should have memory file with correct shape', () => {
       const files = adapter.getWorkspaceFiles();
-      const memory = files.find(f => f.type === 'memory');
+      const memory = files.find((f) => f.type === 'memory');
       expect(memory).toBeDefined();
       expect(memory!.relativePath).toBe('TEST.md');
       expect(memory!.autoLoaded).toBe(true);
@@ -307,7 +321,7 @@ describe('BaseCodingAdapter', () => {
 
     it('should have config file', () => {
       const files = adapter.getWorkspaceFiles();
-      const config = files.find(f => f.type === 'config');
+      const config = files.find((f) => f.type === 'config');
       expect(config).toBeDefined();
       expect(config!.relativePath).toBe('.test/config.json');
     });
@@ -331,7 +345,10 @@ describe('BaseCodingAdapter', () => {
     });
 
     it('should write content to the default memory file', async () => {
-      const fullPath = await adapter.writeMemoryFile(tmpDir, '# Test Memory\nHello world');
+      const fullPath = await adapter.writeMemoryFile(
+        tmpDir,
+        '# Test Memory\nHello world'
+      );
       expect(fullPath).toBe(join(tmpDir, 'TEST.md'));
       const content = await readFile(fullPath, 'utf-8');
       expect(content).toBe('# Test Memory\nHello world');

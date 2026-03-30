@@ -2,9 +2,9 @@
  * Gemini Adapter Tests
  */
 
-import { describe, it, expect } from 'vitest';
-import { GeminiAdapter } from '../src/gemini-adapter';
 import type { SpawnConfig } from 'pty-manager';
+import { describe, expect, it } from 'vitest';
+import { GeminiAdapter } from '../src/gemini-adapter';
 
 describe('GeminiAdapter', () => {
   const adapter = new GeminiAdapter();
@@ -174,7 +174,9 @@ describe('GeminiAdapter', () => {
       const env = adapter.getEnv(config);
 
       expect(env.PARALLAX_GEMINI_HOOK_TELEMETRY).toBe('1');
-      expect(env.PARALLAX_GEMINI_HOOK_MARKER_PREFIX).toBe('PARALLAX_GEMINI_HOOK');
+      expect(env.PARALLAX_GEMINI_HOOK_MARKER_PREFIX).toBe(
+        'PARALLAX_GEMINI_HOOK'
+      );
     });
   });
 
@@ -216,14 +218,18 @@ describe('GeminiAdapter', () => {
     });
 
     it('should detect auth dialog (AuthDialog.tsx)', () => {
-      const result = adapter.detectLogin('How would you like to authenticate for this project?');
+      const result = adapter.detectLogin(
+        'How would you like to authenticate for this project?'
+      );
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('oauth');
     });
 
     it('should detect auth dialog with Get started + login options', () => {
-      const result = adapter.detectLogin('Get started\nLogin with Google\nUse Gemini API Key\nVertex AI');
+      const result = adapter.detectLogin(
+        'Get started\nLogin with Google\nUse Gemini API Key\nVertex AI'
+      );
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('oauth');
@@ -237,14 +243,18 @@ describe('GeminiAdapter', () => {
     });
 
     it('should detect auth in-progress (AuthInProgress.tsx)', () => {
-      const result = adapter.detectLogin('Waiting for auth... (Press ESC or CTRL+C to cancel)');
+      const result = adapter.detectLogin(
+        'Waiting for auth... (Press ESC or CTRL+C to cancel)'
+      );
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('oauth');
     });
 
     it('should detect gcloud auth requirement', () => {
-      const result = adapter.detectLogin('Run gcloud auth application-default login');
+      const result = adapter.detectLogin(
+        'Run gcloud auth application-default login'
+      );
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('browser');
@@ -252,7 +262,9 @@ describe('GeminiAdapter', () => {
     });
 
     it('should detect ADC requirement', () => {
-      const result = adapter.detectLogin('Application Default Credentials not found');
+      const result = adapter.detectLogin(
+        'Application Default Credentials not found'
+      );
 
       expect(result.required).toBe(true);
     });
@@ -283,21 +295,27 @@ describe('GeminiAdapter', () => {
     });
 
     it('should detect model selection', () => {
-      const result = adapter.detectBlockingPrompt('Select model:\n1) gemini-pro\n2) gemini-ultra');
+      const result = adapter.detectBlockingPrompt(
+        'Select model:\n1) gemini-pro\n2) gemini-ultra'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('model_select');
     });
 
     it('should detect project selection', () => {
-      const result = adapter.detectBlockingPrompt('Select Google Cloud project:');
+      const result = adapter.detectBlockingPrompt(
+        'Select Google Cloud project:'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('project_select');
     });
 
     it('should detect safety filter', () => {
-      const result = adapter.detectBlockingPrompt('Content blocked by safety filter');
+      const result = adapter.detectBlockingPrompt(
+        'Content blocked by safety filter'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('unknown');
@@ -314,7 +332,9 @@ describe('GeminiAdapter', () => {
     });
 
     it('should auto-respond to "Allow execution of" with keys:enter', () => {
-      const result = adapter.detectBlockingPrompt('Allow execution of: \'ls -la\'?');
+      const result = adapter.detectBlockingPrompt(
+        "Allow execution of: 'ls -la'?"
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -332,7 +352,9 @@ describe('GeminiAdapter', () => {
     });
 
     it('should auto-respond to Waiting for user confirmation with keys:enter', () => {
-      const result = adapter.detectBlockingPrompt('Waiting for user confirmation');
+      const result = adapter.detectBlockingPrompt(
+        'Waiting for user confirmation'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -341,7 +363,9 @@ describe('GeminiAdapter', () => {
     });
 
     it('should detect account validation (ValidationDialog.tsx)', () => {
-      const result = adapter.detectBlockingPrompt('Further action is required to use this service.');
+      const result = adapter.detectBlockingPrompt(
+        'Further action is required to use this service.'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('config');
@@ -356,14 +380,18 @@ describe('GeminiAdapter', () => {
     });
 
     it('should detect verification wait', () => {
-      const result = adapter.detectBlockingPrompt('Waiting for verification... (Press ESC or CTRL+C to cancel)');
+      const result = adapter.detectBlockingPrompt(
+        'Waiting for verification... (Press ESC or CTRL+C to cancel)'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('config');
     });
 
     it('should detect permission prompt even with API key context in output', () => {
-      const result = adapter.detectBlockingPrompt('GEMINI_API_KEY configured\nApply this change?');
+      const result = adapter.detectBlockingPrompt(
+        'GEMINI_API_KEY configured\nApply this change?'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -372,7 +400,9 @@ describe('GeminiAdapter', () => {
     });
 
     it('should detect interactive shell y/n confirmation prompt', () => {
-      const result = adapter.detectBlockingPrompt('Do you want to continue (Y/n)?');
+      const result = adapter.detectBlockingPrompt(
+        'Do you want to continue (Y/n)?'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('tool_wait');
@@ -398,21 +428,29 @@ describe('GeminiAdapter', () => {
 
   describe('detectReady()', () => {
     it('should detect ready from AfterAgent hook marker', () => {
-      expect(adapter.detectReady('PARALLAX_GEMINI_HOOK {"event":"AfterAgent"}')).toBe(true);
+      expect(
+        adapter.detectReady('PARALLAX_GEMINI_HOOK {"event":"AfterAgent"}')
+      ).toBe(true);
     });
 
     it('should not detect ready for ToolPermission hook marker', () => {
       expect(
-        adapter.detectReady('PARALLAX_GEMINI_HOOK {"event":"Notification","notification_type":"ToolPermission"}')
+        adapter.detectReady(
+          'PARALLAX_GEMINI_HOOK {"event":"Notification","notification_type":"ToolPermission"}'
+        )
       ).toBe(false);
     });
 
     it('should detect ready from custom hook marker prefix', () => {
-      expect(adapter.detectReady('TEAM_GEMINI_HOOK_MARKER {"event":"AfterAgent"}')).toBe(true);
+      expect(
+        adapter.detectReady('TEAM_GEMINI_HOOK_MARKER {"event":"AfterAgent"}')
+      ).toBe(true);
     });
 
     it('should detect Type your message prompt (Composer.tsx)', () => {
-      expect(adapter.detectReady('> Type your message or @path/to/file')).toBe(true);
+      expect(adapter.detectReady('> Type your message or @path/to/file')).toBe(
+        true
+      );
     });
 
     it('should detect > input prompt glyph (InputPrompt.tsx)', () => {
@@ -447,7 +485,9 @@ describe('GeminiAdapter', () => {
       // "Type your message" is a definitive positive indicator that overrides negative guards.
       // After auth/trust completes, TUI re-renders may include stale dialog text alongside
       // the ready prompt. The positive match should always win.
-      expect(adapter.detectReady('Do you trust this folder?\n> Type your message')).toBe(true);
+      expect(
+        adapter.detectReady('Do you trust this folder?\n> Type your message')
+      ).toBe(true);
     });
 
     it('should NOT detect ready when ONLY trust prompt is present (no ready indicator)', () => {
@@ -455,7 +495,11 @@ describe('GeminiAdapter', () => {
     });
 
     it('should NOT detect ready when auth dialog is present', () => {
-      expect(adapter.detectReady('How would you like to authenticate for this project?')).toBe(false);
+      expect(
+        adapter.detectReady(
+          'How would you like to authenticate for this project?'
+        )
+      ).toBe(false);
     });
 
     it('should NOT detect ready when waiting for auth', () => {
@@ -471,19 +515,35 @@ describe('GeminiAdapter', () => {
     });
 
     it('should NOT detect ready while waiting for user confirmation overlay is present', () => {
-      expect(adapter.detectReady('Waiting for user confirmation... > Type your message or @path/to/file')).toBe(false);
+      expect(
+        adapter.detectReady(
+          'Waiting for user confirmation... > Type your message or @path/to/file'
+        )
+      ).toBe(false);
     });
 
     it('should NOT detect ready while interactive shell input overlay is present', () => {
-      expect(adapter.detectReady('Interactive shell awaiting input... press tab to focus shell > Type your message')).toBe(false);
+      expect(
+        adapter.detectReady(
+          'Interactive shell awaiting input... press tab to focus shell > Type your message'
+        )
+      ).toBe(false);
     });
 
     it('should NOT detect ready while shell y/n confirmation is present', () => {
-      expect(adapter.detectReady('Do you want to continue (Y/n)? > Type your message')).toBe(false);
+      expect(
+        adapter.detectReady(
+          'Do you want to continue (Y/n)? > Type your message'
+        )
+      ).toBe(false);
     });
 
     it('should NOT detect ready while checkpoint prompt is present', () => {
-      expect(adapter.detectReady('Enable checkpointing to recover your session after a crash (s) > Type your message')).toBe(false);
+      expect(
+        adapter.detectReady(
+          'Enable checkpointing to recover your session after a crash (s) > Type your message'
+        )
+      ).toBe(false);
     });
   });
 
@@ -496,7 +556,9 @@ describe('GeminiAdapter', () => {
     });
 
     it('should remove safety warnings from content', () => {
-      const result = adapter.parseOutput('[Safety Warning] Filtered\nActual content Done.');
+      const result = adapter.parseOutput(
+        '[Safety Warning] Filtered\nActual content Done.'
+      );
 
       expect(result).not.toBeNull();
       expect(result?.content).not.toContain('[Safety');
@@ -539,7 +601,7 @@ describe('GeminiAdapter', () => {
 
   describe('autoResponseRules', () => {
     it('should have trust folder rule with keys: ["enter"] and once: true', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust current folder')
       );
 
@@ -551,14 +613,14 @@ describe('GeminiAdapter', () => {
     });
 
     it('should match "Do you trust this folder?" (FolderTrustDialog.tsx)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust current folder')
       );
       expect(rule?.pattern.test('Do you trust this folder?')).toBe(true);
     });
 
     it('should match trust folder/parent folder variants', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust current folder')
       );
       expect(rule?.pattern.test('Trust folder (/my/project)')).toBe(true);
@@ -566,7 +628,7 @@ describe('GeminiAdapter', () => {
     });
 
     it('should have multi-folder trust rule with once: true', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('multiple folders')
       );
 
@@ -577,14 +639,18 @@ describe('GeminiAdapter', () => {
     });
 
     it('should match multi-folder trust prompt (MultiFolderTrustDialog.tsx)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('multiple folders')
       );
-      expect(rule?.pattern.test('Do you trust the following folders being added to this workspace?')).toBe(true);
+      expect(
+        rule?.pattern.test(
+          'Do you trust the following folders being added to this workspace?'
+        )
+      ).toBe(true);
     });
 
     it('should have privacy consent rule that declines (Down+Enter)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('data collection')
       );
 
@@ -595,16 +661,22 @@ describe('GeminiAdapter', () => {
     });
 
     it('should match privacy consent prompt (CloudFreePrivacyNotice.tsx)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('data collection')
       );
-      expect(rule?.pattern.test('Allow Google to use this data to develop and improve our products?')).toBe(true);
+      expect(
+        rule?.pattern.test(
+          'Allow Google to use this data to develop and improve our products?'
+        )
+      ).toBe(true);
     });
   });
 
   describe('detectExit()', () => {
     it('should detect folder trust rejection exit (FolderTrustDialog.tsx)', () => {
-      const result = adapter.detectExit('A folder trust level must be selected to continue. Exiting');
+      const result = adapter.detectExit(
+        'A folder trust level must be selected to continue. Exiting'
+      );
 
       expect(result.exited).toBe(true);
       expect(result.code).toBe(1);
@@ -641,7 +713,9 @@ describe('GeminiAdapter', () => {
     it('should return a default marker protocol and script path', () => {
       const protocol = adapter.getHookTelemetryProtocol();
       expect(protocol.markerPrefix).toBe('PARALLAX_GEMINI_HOOK');
-      expect(protocol.scriptPath).toBe('.gemini/hooks/parallax-hook-telemetry.sh');
+      expect(protocol.scriptPath).toBe(
+        '.gemini/hooks/parallax-hook-telemetry.sh'
+      );
       expect(protocol.settingsHooks).toHaveProperty('Notification');
       expect(protocol.settingsHooks).toHaveProperty('BeforeTool');
       expect(protocol.settingsHooks).toHaveProperty('AfterAgent');
@@ -651,22 +725,34 @@ describe('GeminiAdapter', () => {
 
   describe('hook-marker lifecycle helpers', () => {
     it('should detect loading from BeforeTool hook marker', () => {
-      expect(adapter.detectLoading('PARALLAX_GEMINI_HOOK {"event":"BeforeTool","tool_name":"run_shell_command"}')).toBe(true);
+      expect(
+        adapter.detectLoading(
+          'PARALLAX_GEMINI_HOOK {"event":"BeforeTool","tool_name":"run_shell_command"}'
+        )
+      ).toBe(true);
     });
 
     it('should detect tool running from BeforeTool hook marker', () => {
-      const result = adapter.detectToolRunning!('PARALLAX_GEMINI_HOOK {"event":"BeforeTool","tool_name":"read_file"}');
+      const result = adapter.detectToolRunning!(
+        'PARALLAX_GEMINI_HOOK {"event":"BeforeTool","tool_name":"read_file"}'
+      );
       expect(result).not.toBeNull();
       expect(result!.toolName).toBe('read_file');
       expect(result!.description).toContain('(hook)');
     });
 
     it('should detect task completion from AfterAgent hook marker', () => {
-      expect(adapter.detectTaskComplete('PARALLAX_GEMINI_HOOK {"event":"AfterAgent"}')).toBe(true);
+      expect(
+        adapter.detectTaskComplete(
+          'PARALLAX_GEMINI_HOOK {"event":"AfterAgent"}'
+        )
+      ).toBe(true);
     });
 
     it('should detect exit from SessionEnd hook marker', () => {
-      const result = adapter.detectExit('PARALLAX_GEMINI_HOOK {"event":"SessionEnd"}');
+      const result = adapter.detectExit(
+        'PARALLAX_GEMINI_HOOK {"event":"SessionEnd"}'
+      );
       expect(result.exited).toBe(true);
       expect(result.code).toBe(0);
     });
@@ -675,7 +761,7 @@ describe('GeminiAdapter', () => {
   describe('getWorkspaceFiles()', () => {
     it('should return GEMINI.md as primary memory file', () => {
       const files = adapter.getWorkspaceFiles();
-      const memory = files.find(f => f.type === 'memory');
+      const memory = files.find((f) => f.type === 'memory');
       expect(memory).toBeDefined();
       expect(memory!.relativePath).toBe('GEMINI.md');
       expect(memory!.autoLoaded).toBe(true);
@@ -684,7 +770,9 @@ describe('GeminiAdapter', () => {
 
     it('should include settings.json config', () => {
       const files = adapter.getWorkspaceFiles();
-      const config = files.find(f => f.relativePath === '.gemini/settings.json');
+      const config = files.find(
+        (f) => f.relativePath === '.gemini/settings.json'
+      );
       expect(config).toBeDefined();
       expect(config!.type).toBe('config');
       expect(config!.format).toBe('json');
@@ -692,7 +780,7 @@ describe('GeminiAdapter', () => {
 
     it('should include styles directory', () => {
       const files = adapter.getWorkspaceFiles();
-      const styles = files.find(f => f.relativePath === '.gemini/styles');
+      const styles = files.find((f) => f.relativePath === '.gemini/styles');
       expect(styles).toBeDefined();
       expect(styles!.autoLoaded).toBe(false);
     });

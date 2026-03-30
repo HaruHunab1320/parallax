@@ -4,23 +4,22 @@
  * Spawns and manages CLI agents as Docker containers.
  */
 
-import Docker from 'dockerode';
-import { EventEmitter } from 'events';
-import { Logger } from 'pino';
-import { v4 as uuidv4 } from 'uuid';
 import {
-  AgentConfig,
-  AgentHandle,
-  AgentMessage,
-  AgentStatus,
-  AgentType,
-  AgentFilter,
-  AgentMetrics,
+  type AgentConfig,
+  type AgentFilter,
+  type AgentHandle,
+  type AgentMessage,
+  type AgentMetrics,
+  type AgentStatus,
+  type AgentType,
   BaseRuntimeProvider,
-  StopOptions,
-  SendOptions,
-  LogOptions,
+  type LogOptions,
+  type SendOptions,
+  type StopOptions,
 } from '@parallaxai/runtime-interface';
+import Docker from 'dockerode';
+import type { Logger } from 'pino';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface DockerRuntimeOptions {
   socketPath?: string;
@@ -42,9 +41,11 @@ interface ContainerInfo {
 }
 
 // Default configuration values - can be overridden via environment variables
-const DEFAULT_DOCKER_SOCKET = process.env.DOCKER_SOCKET || '/var/run/docker.sock';
+const DEFAULT_DOCKER_SOCKET =
+  process.env.DOCKER_SOCKET || '/var/run/docker.sock';
 const DEFAULT_DOCKER_NETWORK = process.env.DOCKER_NETWORK || 'parallax-agents';
-const DEFAULT_REGISTRY_ENDPOINT = process.env.PARALLAX_REGISTRY || 'localhost:50051';
+const _DEFAULT_REGISTRY_ENDPOINT =
+  process.env.PARALLAX_REGISTRY || 'localhost:50051';
 
 /**
  * Default Docker images for each agent type.
@@ -90,7 +91,7 @@ export class DockerRuntime extends BaseRuntimeProvider {
     // Verify Docker is accessible
     try {
       await this.docker.ping();
-    } catch (error) {
+    } catch (_error) {
       throw new Error('Cannot connect to Docker daemon. Is Docker running?');
     }
 
@@ -141,7 +142,10 @@ export class DockerRuntime extends BaseRuntimeProvider {
     const agentId = config.id || uuidv4();
     const image = this.getImageForType(config.type);
 
-    this.logger.info({ agentId, type: config.type, image }, 'Spawning agent container');
+    this.logger.info(
+      { agentId, type: config.type, image },
+      'Spawning agent container'
+    );
 
     // Ensure shared auth volume exists for this execution
     if (config.executionId) {
@@ -167,8 +171,12 @@ export class DockerRuntime extends BaseRuntimeProvider {
         'parallax.agent.name': config.name,
         'parallax.agent.type': config.type,
         'parallax.agent.role': config.role || '',
-        'parallax.agent.capabilities': JSON.stringify(config.capabilities || []),
-        ...(config.executionId ? { 'parallax.execution.id': config.executionId } : {}),
+        'parallax.agent.capabilities': JSON.stringify(
+          config.capabilities || []
+        ),
+        ...(config.executionId
+          ? { 'parallax.execution.id': config.executionId }
+          : {}),
       },
       HostConfig: {
         Memory: this.parseMemory(config.resources?.memory),
@@ -223,7 +231,10 @@ export class DockerRuntime extends BaseRuntimeProvider {
       throw new Error(`Agent ${agentId} not found`);
     }
 
-    this.logger.info({ agentId, force: options?.force }, 'Stopping agent container');
+    this.logger.info(
+      { agentId, force: options?.force },
+      'Stopping agent container'
+    );
 
     info.handle.status = 'stopping';
 
@@ -231,7 +242,9 @@ export class DockerRuntime extends BaseRuntimeProvider {
       if (options?.force) {
         await info.container.kill();
       } else {
-        await info.container.stop({ t: Math.floor((options?.timeout || 10000) / 1000) });
+        await info.container.stop({
+          t: Math.floor((options?.timeout || 10000) / 1000),
+        });
       }
     } catch (error: any) {
       // Container may already be stopped
@@ -291,11 +304,15 @@ export class DockerRuntime extends BaseRuntimeProvider {
     // Sync with Docker
     await this.syncContainers();
 
-    let handles = Array.from(this.containers.values()).map((info) => info.handle);
+    let handles = Array.from(this.containers.values()).map(
+      (info) => info.handle
+    );
 
     // Apply filters
     if (filter?.status) {
-      const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+      const statuses = Array.isArray(filter.status)
+        ? filter.status
+        : [filter.status];
       handles = handles.filter((h) => statuses.includes(h.status));
     }
 
@@ -321,17 +338,24 @@ export class DockerRuntime extends BaseRuntimeProvider {
     agentId: string,
     message: string,
     options?: SendOptions
-  ): Promise<AgentMessage | void> {
+  ): Promise<AgentMessage | undefined> {
     const info = this.containers.get(agentId);
     if (!info) {
       throw new Error(`Agent ${agentId} not found`);
     }
 
-    this.logger.debug({ agentId, messageLength: message.length }, 'Sending message to container');
+    this.logger.debug(
+      { agentId, messageLength: message.length },
+      'Sending message to container'
+    );
 
     // Execute command in container to send input
     const exec = await info.container.exec({
-      Cmd: ['sh', '-c', `echo "${message.replace(/"/g, '\\"')}" >> /tmp/agent-input`],
+      Cmd: [
+        'sh',
+        '-c',
+        `echo "${message.replace(/"/g, '\\"')}" >> /tmp/agent-input`,
+      ],
       AttachStdout: true,
       AttachStderr: true,
     });
@@ -409,16 +433,19 @@ export class DockerRuntime extends BaseRuntimeProvider {
 
       // Calculate CPU percentage
       const cpuDelta =
-        stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
+        stats.cpu_stats.cpu_usage.total_usage -
+        stats.precpu_stats.cpu_usage.total_usage;
       const systemDelta =
         stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
       const cpuPercent =
-        systemDelta > 0 ? (cpuDelta / systemDelta) * stats.cpu_stats.online_cpus * 100 : 0;
+        systemDelta > 0
+          ? (cpuDelta / systemDelta) * stats.cpu_stats.online_cpus * 100
+          : 0;
 
       // Calculate memory usage
       const memUsage = stats.memory_stats.usage || 0;
       const memLimit = stats.memory_stats.limit || 1;
-      const memPercent = (memUsage / memLimit) * 100;
+      const _memPercent = (memUsage / memLimit) * 100;
 
       const uptime = info.handle.startedAt
         ? Date.now() - info.handle.startedAt.getTime()
@@ -448,10 +475,16 @@ export class DockerRuntime extends BaseRuntimeProvider {
     try {
       await this.docker.getVolume(volumeName).remove();
       this.sharedAuthVolumes.delete(volumeName);
-      this.logger.info({ volumeName, executionId }, 'Deleted shared auth volume');
+      this.logger.info(
+        { volumeName, executionId },
+        'Deleted shared auth volume'
+      );
     } catch (error: any) {
       if (!error.message?.includes('no such volume')) {
-        this.logger.warn({ volumeName, error: error.message }, 'Failed to delete shared auth volume');
+        this.logger.warn(
+          { volumeName, error: error.message },
+          'Failed to delete shared auth volume'
+        );
       }
     }
   }
@@ -465,7 +498,10 @@ export class DockerRuntime extends BaseRuntimeProvider {
       await this.docker.getVolume(volumeName).inspect();
       this.logger.debug({ volumeName }, 'Shared auth volume already exists');
     } catch {
-      this.logger.info({ volumeName, executionId }, 'Creating shared auth volume');
+      this.logger.info(
+        { volumeName, executionId },
+        'Creating shared auth volume'
+      );
       await this.docker.createVolume({
         Name: volumeName,
         Labels: {
@@ -508,7 +544,9 @@ export class DockerRuntime extends BaseRuntimeProvider {
       `AGENT_TYPE=${config.type}`,
       `AGENT_ROLE=${config.role || ''}`,
       `AGENT_CAPABILITIES=${JSON.stringify(config.capabilities || [])}`,
-      ...(config.executionId ? [`PARALLAX_EXECUTION_ID=${config.executionId}`] : []),
+      ...(config.executionId
+        ? [`PARALLAX_EXECUTION_ID=${config.executionId}`]
+        : []),
     ];
 
     // Add credentials
@@ -554,8 +592,6 @@ export class DockerRuntime extends BaseRuntimeProvider {
       case 'gi':
       case 'g':
         return value * 1024 * 1024 * 1024;
-      case 'mi':
-      case 'm':
       default:
         return value * 1024 * 1024;
     }
@@ -577,7 +613,9 @@ export class DockerRuntime extends BaseRuntimeProvider {
     return isMillicores ? value * 100 : value * 100000;
   }
 
-  private dockerStateToStatus(state: Docker.ContainerInspectInfo['State']): AgentStatus {
+  private dockerStateToStatus(
+    state: Docker.ContainerInspectInfo['State']
+  ): AgentStatus {
     if (state.Running) return 'ready';
     if (state.Restarting) return 'starting';
     if (state.Paused) return 'busy';
@@ -605,7 +643,9 @@ export class DockerRuntime extends BaseRuntimeProvider {
           type: (dc.Labels['parallax.agent.type'] || 'custom') as AgentType,
           status: dc.State === 'running' ? 'ready' : 'stopped',
           containerId: dc.Id,
-          capabilities: JSON.parse(dc.Labels['parallax.agent.capabilities'] || '[]'),
+          capabilities: JSON.parse(
+            dc.Labels['parallax.agent.capabilities'] || '[]'
+          ),
           role: dc.Labels['parallax.agent.role'] || undefined,
         };
 
@@ -626,7 +666,9 @@ export class DockerRuntime extends BaseRuntimeProvider {
     }
 
     // Remove containers that no longer exist
-    const dockerIds = new Set(dockerContainers.map((dc) => dc.Labels['parallax.agent.id']));
+    const dockerIds = new Set(
+      dockerContainers.map((dc) => dc.Labels['parallax.agent.id'])
+    );
     for (const [agentId] of this.containers) {
       if (!dockerIds.has(agentId)) {
         this.containers.delete(agentId);
@@ -639,7 +681,10 @@ export class DockerRuntime extends BaseRuntimeProvider {
       { stream: true, stdout: true, stderr: true },
       (err, stream) => {
         if (err || !stream) {
-          this.logger.error({ error: err, agentId: info.handle.id }, 'Failed to attach to container');
+          this.logger.error(
+            { error: err, agentId: info.handle.id },
+            'Failed to attach to container'
+          );
           return;
         }
 
@@ -690,7 +735,7 @@ export class DockerRuntime extends BaseRuntimeProvider {
     }
   }
 
-  private detectLoginRequired(output: string, type: AgentType): boolean {
+  private detectLoginRequired(output: string, _type: AgentType): boolean {
     const patterns = [
       'Please sign in',
       'API key not found',
@@ -736,7 +781,10 @@ export class DockerRuntime extends BaseRuntimeProvider {
     return null;
   }
 
-  private async waitForResponse(info: ContainerInfo, timeout: number): Promise<AgentMessage> {
+  private async waitForResponse(
+    info: ContainerInfo,
+    timeout: number
+  ): Promise<AgentMessage> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error('Response timeout'));

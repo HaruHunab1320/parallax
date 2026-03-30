@@ -5,8 +5,8 @@
  * Part of the specialized extractors demo.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'entity-extractor';
@@ -21,9 +21,10 @@ class EntityExtractorAgent extends ParallaxAgent {
       AGENT_NAME,
       ['extraction', 'entities', 'names', 'organizations', 'parsing'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Extracts names of people and organizations from unstructured text'
+        description:
+          'Extracts names of people and organizations from unstructured text',
       }
     );
 
@@ -37,7 +38,10 @@ class EntityExtractorAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(task: string, data?: any): Promise<{
+  async analyze(
+    task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +50,7 @@ class EntityExtractorAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -91,9 +95,15 @@ Be thorough - look for full names, company names, abbreviations, titles (Mr., Dr
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         return {
-          value: { entities: [], people: [], organizations: [], count: 0, error: 'Could not parse response' },
+          value: {
+            entities: [],
+            people: [],
+            organizations: [],
+            count: 0,
+            error: 'Could not parse response',
+          },
           confidence: 0.3,
-          reasoning: text.substring(0, 200)
+          reasoning: text.substring(0, 200),
         };
       }
 
@@ -101,9 +111,13 @@ Be thorough - look for full names, company names, abbreviations, titles (Mr., Dr
       const entities = parsed.entities || [];
 
       // Calculate overall confidence based on individual entity confidences
-      const avgConfidence = entities.length > 0
-        ? entities.reduce((sum: number, e: any) => sum + (e.confidence || 0.8), 0) / entities.length
-        : 0.5;
+      const avgConfidence =
+        entities.length > 0
+          ? entities.reduce(
+              (sum: number, e: any) => sum + (e.confidence || 0.8),
+              0
+            ) / entities.length
+          : 0.5;
 
       return {
         value: {
@@ -111,17 +125,25 @@ Be thorough - look for full names, company names, abbreviations, titles (Mr., Dr
           people: parsed.people || [],
           organizations: parsed.organizations || [],
           count: entities.length,
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: avgConfidence,
-        reasoning: parsed.reasoning || `Extracted ${entities.length} named entities from text`
+        reasoning:
+          parsed.reasoning ||
+          `Extracted ${entities.length} named entities from text`,
       };
     } catch (error) {
       console.error('Extraction error:', error);
       return {
-        value: { entities: [], people: [], organizations: [], count: 0, error: String(error) },
+        value: {
+          entities: [],
+          people: [],
+          organizations: [],
+          count: 0,
+          error: String(error),
+        },
         confidence: 0,
-        reasoning: 'Extraction failed'
+        reasoning: 'Extraction failed',
       };
     }
   }

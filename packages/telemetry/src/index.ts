@@ -1,24 +1,22 @@
-export * from './tracing/tracer-provider';
-export * from './tracing/pattern-tracer';
-export * from './config';
-
+// Export types
+export type {
+  Attributes,
+  AttributeValue,
+  Context,
+  Span,
+  SpanContext,
+  SpanOptions,
+  Tracer,
+} from '@opentelemetry/api';
 // Re-export commonly used OpenTelemetry APIs
-export { 
-  trace,
+export {
   context,
   propagation,
   SpanKind,
+  SpanStatus,
   SpanStatusCode,
-  SpanStatus
+  trace,
 } from '@opentelemetry/api';
-
-// Export types
-export type {
-  Span,
-  Tracer,
-  SpanOptions,
-  SpanContext,
-  Context,
-  Attributes,
-  AttributeValue
-} from '@opentelemetry/api';
+export * from './config';
+export * from './tracing/pattern-tracer';
+export * from './tracing/tracer-provider';

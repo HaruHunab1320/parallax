@@ -2,18 +2,18 @@
  * Workspace Service Tests
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
-import { WorkspaceService } from '../src/workspace-service';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CredentialService } from '../src/credential-service';
 import type {
-  WorkspaceConfig,
-  GitProviderAdapter,
   GitCredential,
+  GitProviderAdapter,
+  WorkspaceConfig,
   WorkspaceEvent,
 } from '../src/types';
+import { WorkspaceService } from '../src/workspace-service';
 
 // Mock child_process
 vi.mock('child_process', () => ({
@@ -150,7 +150,9 @@ describe('WorkspaceService', () => {
 
       const workspace = await service.provision(config);
 
-      expect(workspace.branch.name).toBe('parallax/exec-123/engineer-auth-feature');
+      expect(workspace.branch.name).toBe(
+        'parallax/exec-123/engineer-auth-feature'
+      );
     });
 
     it('uses user-provided credentials', async () => {
@@ -200,7 +202,9 @@ describe('WorkspaceService', () => {
 
       await service.provision(config);
 
-      expect(events.some((e) => e.type === 'workspace:provisioning')).toBe(true);
+      expect(events.some((e) => e.type === 'workspace:provisioning')).toBe(
+        true
+      );
       expect(events.some((e) => e.type === 'credential:granted')).toBe(true);
       expect(events.some((e) => e.type === 'workspace:ready')).toBe(true);
     });
@@ -638,7 +642,9 @@ describe('WorkspaceService', () => {
         },
       };
 
-      await expect(service.provision(config)).rejects.toThrow('Parent workspace not found');
+      await expect(service.provision(config)).rejects.toThrow(
+        'Parent workspace not found'
+      );
     });
 
     it('lists worktrees for a parent workspace', async () => {

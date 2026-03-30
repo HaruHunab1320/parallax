@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkFileChanges, listWatchedFiles } from './file-change-checker';
 
 // Mock global fetch
@@ -54,9 +54,7 @@ describe('checkFileChanges', () => {
         ahead_by: 2,
         behind_by: 0,
         total_commits: 2,
-        files: [
-          { filename: 'aider/waiting.py', status: 'modified' },
-        ],
+        files: [{ filename: 'aider/waiting.py', status: 'modified' }],
       }),
     });
 
@@ -105,7 +103,7 @@ describe('checkFileChanges', () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://api.github.com/repos/google-gemini/gemini-cli/compare/v1.0.0...v1.1.0',
-      expect.any(Object),
+      expect.any(Object)
     );
   });
 
@@ -125,7 +123,7 @@ describe('checkFileChanges', () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://api.github.com/repos/openai/codex/compare/v0.1.0...v0.2.0',
-      expect.any(Object),
+      expect.any(Object)
     );
   });
 
@@ -136,8 +134,9 @@ describe('checkFileChanges', () => {
       statusText: 'Not Found',
     });
 
-    await expect(checkFileChanges('gemini', '0.0.1', '99.99.99'))
-      .rejects.toThrow(/Tags not found/);
+    await expect(
+      checkFileChanges('gemini', '0.0.1', '99.99.99')
+    ).rejects.toThrow(/Tags not found/);
   });
 
   it('throws on other API errors', async () => {
@@ -147,8 +146,9 @@ describe('checkFileChanges', () => {
       statusText: 'Forbidden',
     });
 
-    await expect(checkFileChanges('gemini', '1.0.0', '1.1.0'))
-      .rejects.toThrow(/GitHub API error/);
+    await expect(checkFileChanges('gemini', '1.0.0', '1.1.0')).rejects.toThrow(
+      /GitHub API error/
+    );
   });
 
   it('includes GITHUB_TOKEN in headers when available', async () => {
@@ -174,7 +174,7 @@ describe('checkFileChanges', () => {
         headers: expect.objectContaining({
           Authorization: 'token test-token-123',
         }),
-      }),
+      })
     );
 
     // Restore
@@ -194,7 +194,10 @@ describe('checkFileChanges', () => {
         behind_by: 0,
         total_commits: 3,
         files: [
-          { filename: 'packages/cli/src/ui/auth/AuthDialog.tsx', status: 'modified' },
+          {
+            filename: 'packages/cli/src/ui/auth/AuthDialog.tsx',
+            status: 'modified',
+          },
         ],
       }),
     });
@@ -215,7 +218,10 @@ describe('checkFileChanges', () => {
         behind_by: 0,
         total_commits: 1,
         files: [
-          { filename: 'codex-rs/tui/src/bottom_pane/chat_composer.rs', status: 'modified' },
+          {
+            filename: 'codex-rs/tui/src/bottom_pane/chat_composer.rs',
+            status: 'modified',
+          },
         ],
       }),
     });
@@ -253,8 +259,14 @@ describe('checkFileChanges', () => {
         behind_by: 0,
         total_commits: 8,
         files: [
-          { filename: 'packages/cli/src/ui/auth/AuthDialog.tsx', status: 'modified' },
-          { filename: 'packages/cli/src/ui/components/InputPrompt.tsx', status: 'modified' },
+          {
+            filename: 'packages/cli/src/ui/auth/AuthDialog.tsx',
+            status: 'modified',
+          },
+          {
+            filename: 'packages/cli/src/ui/components/InputPrompt.tsx',
+            status: 'modified',
+          },
           { filename: 'packages/cli/src/gemini.tsx', status: 'modified' },
         ],
       }),

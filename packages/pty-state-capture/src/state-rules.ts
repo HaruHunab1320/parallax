@@ -15,90 +15,103 @@ export const DEFAULT_STATE_RULES: StateRule[] = [
   {
     id: 'awaiting_approval_claude_menu',
     kind: 'awaiting_approval',
-    pattern: /do you want to proceed\?.*(?:1\.\s*yes|2\.\s*yes,?\s*and\s*don.?t\s*ask\s*again)|yes,?\s*and\s*don.?t\s*ask\s*again/i,
+    pattern:
+      /do you want to proceed\?.*(?:1\.\s*yes|2\.\s*yes,?\s*and\s*don.?t\s*ask\s*again)|yes,?\s*and\s*don.?t\s*ask\s*again/i,
     priority: 112,
     source: 'claude',
   },
   {
     id: 'awaiting_approval_codex',
     kind: 'awaiting_approval',
-    pattern: /would.?you.?like.?to.?run.?the.?following.?command|would.?you.?like.?to.?make.?the.?following.?edits|approve.?access/i,
+    pattern:
+      /would.?you.?like.?to.?run.?the.?following.?command|would.?you.?like.?to.?make.?the.?following.?edits|approve.?access/i,
     priority: 100,
     source: 'codex',
   },
   {
     id: 'awaiting_approval_gemini',
     kind: 'awaiting_approval',
-    pattern: /apply.?this.?change|allow.?execution|allow.?execution.?of.?mcp.?tool|do.?you.?want.?to.?proceed/i,
+    pattern:
+      /apply.?this.?change|allow.?execution|allow.?execution.?of.?mcp.?tool|do.?you.?want.?to.?proceed/i,
     priority: 95,
     source: 'gemini',
   },
   {
     id: 'awaiting_auth_gemini',
     kind: 'awaiting_auth',
-    pattern: /get.?started.*authenticate.?for.?this.?project|waiting.?for.?auth|enter.?gemini.?api.?key/i,
+    pattern:
+      /get.?started.*authenticate.?for.?this.?project|waiting.?for.?auth|enter.?gemini.?api.?key/i,
     priority: 90,
     source: 'gemini',
   },
   {
     id: 'awaiting_auth_codex',
     kind: 'awaiting_auth',
-    pattern: /sign.?in.?with.?chatgpt|sign.?in.?with.?device.?code|provide.?your.?own.?api.?key|finish.?signing.?in.?via.?your.?browser|device.?code/i,
+    pattern:
+      /sign.?in.?with.?chatgpt|sign.?in.?with.?device.?code|provide.?your.?own.?api.?key|finish.?signing.?in.?via.?your.?browser|device.?code/i,
     priority: 90,
     source: 'codex',
   },
   {
     id: 'busy_plan_mode_claude',
     kind: 'busy_streaming',
-    pattern: /plan mode on|entered plan mode|now exploring and designing|ctrl\+b to run in background|\b(?:[a-z][a-z-]{4,}ing…)\b|\b\d+m?\s*\d*s?\s*·\s*↓\s*\d+(?:\.\d+)?k?\s*tokens\b/i,
+    pattern:
+      /plan mode on|entered plan mode|now exploring and designing|ctrl\+b to run in background|\b(?:[a-z][a-z-]{4,}ing…)\b|\b\d+m?\s*\d*s?\s*·\s*↓\s*\d+(?:\.\d+)?k?\s*tokens\b/i,
     priority: 88,
     source: 'claude',
   },
   {
     id: 'awaiting_input_shell_wait',
     kind: 'awaiting_input',
-    pattern: /interactive.?shell.?awaiting.?input|press.?tab.?to.?focus.?shell/i,
+    pattern:
+      /interactive.?shell.?awaiting.?input|press.?tab.?to.?focus.?shell/i,
     priority: 85,
     source: 'gemini',
   },
   {
     id: 'awaiting_input_shell_confirm_gemini',
     kind: 'awaiting_input',
-    pattern: /do.?you.?want.?to.?continue.?\([yY]\/[nN]\)|continue\?.?\([yY]\/[nN]\)|are.?you.?sure\?.?\([yY]\/[nN]\)/i,
+    pattern:
+      /do.?you.?want.?to.?continue.?\([yY]\/[nN]\)|continue\?.?\([yY]\/[nN]\)|are.?you.?sure\?.?\([yY]\/[nN]\)/i,
     priority: 96,
     source: 'gemini',
   },
   {
     id: 'awaiting_input_checkpoint_gemini',
     kind: 'awaiting_input',
-    pattern: /enable.?checkpointing.?to.?recover.?your.?session.?after.?a.?crash/i,
+    pattern:
+      /enable.?checkpointing.?to.?recover.?your.?session.?after.?a.?crash/i,
     priority: 84,
     source: 'gemini',
   },
   {
     id: 'busy_status_line',
     kind: 'busy_streaming',
-    pattern: /esc.?to.?interrupt|esc.?to.?cancel|waiting.?for.?background.?terminal|booting.?mcp/i,
+    pattern:
+      /esc.?to.?interrupt|esc.?to.?cancel|waiting.?for.?background.?terminal|booting.?mcp/i,
     priority: 80,
   },
   {
     id: 'ready_prompt_gemini_after_cancel',
     kind: 'ready_for_input',
-    pattern: /request.?cancelled.*(?:type.?your.?message|@path\/to\/file)|press.?ctrl\+c.?again.?to.?exit.*(?:type.?your.?message|@path\/to\/file)/i,
+    pattern:
+      /request.?cancelled.*(?:type.?your.?message|@path\/to\/file)|press.?ctrl\+c.?again.?to.?exit.*(?:type.?your.?message|@path\/to\/file)/i,
     priority: 82,
     source: 'gemini',
   },
   {
     id: 'ready_prompt_claude',
     kind: 'ready_for_input',
-    pattern: /(?:^|\s)(?:❯|›)\s*(?:try\s*"[^"]*")?\s*(?:\?\s*for shortcuts)?\s*$/im,
+    pattern:
+      /(?:^|\s)(?:❯|›)\s*(?:try\s*"[^"]*")?\s*(?:\?\s*for shortcuts)?\s*$/im,
     priority: 76,
     source: 'claude',
   },
   {
     id: 'ready_prompt_codex',
     kind: 'ready_for_input',
-    pattern: /(?:^|\s)›\s+.+|ask.?codex.?to.?do.?anything|explain.?this.?codebase|summarize.?recent.?commits/i,
+    pattern:
+      /(?:^|\s)›\s+.+|ask.?codex.?to.?do.?anything|explain.?this.?codebase|summarize.?recent.?commits/i,
     priority: 70,
     source: 'codex',
   },
@@ -126,7 +139,7 @@ export function mergeRules(userRules: StateRule[] | undefined): StateRule[] {
 export function classifyState(
   normalizedTail: string,
   rules: StateRule[],
-  source?: string,
+  source?: string
 ): { kind: StateKind; ruleId?: string; confidence: number } {
   if (normalizedTail.length === 0) {
     return { kind: 'unknown', confidence: 0.1 };
@@ -152,7 +165,9 @@ export function classifyState(
   if (matches.length > 0) {
     if (
       source === 'gemini' &&
-      /request.?cancelled.*(?:type.?your.?message|@path\/to\/file)|press.?ctrl\+c.?again.?to.?exit.*(?:type.?your.?message|@path\/to\/file)/i.test(recentTail)
+      /request.?cancelled.*(?:type.?your.?message|@path\/to\/file)|press.?ctrl\+c.?again.?to.?exit.*(?:type.?your.?message|@path\/to\/file)/i.test(
+        recentTail
+      )
     ) {
       return {
         kind: 'ready_for_input',
@@ -184,17 +199,25 @@ export function classifyState(
       }
 
       const recentWindowStart = Math.max(0, recentTail.length - 1600);
-      const overrideKinds: StateKind[] = ['awaiting_input', 'awaiting_approval', 'busy_streaming', 'awaiting_auth'];
+      const overrideKinds: StateKind[] = [
+        'awaiting_input',
+        'awaiting_approval',
+        'busy_streaming',
+        'awaiting_auth',
+      ];
       const conflicts = matches.filter(({ rule, index }) => {
         return overrideKinds.includes(rule.kind) && index >= recentWindowStart;
       });
 
       if (conflicts.length > 0) {
-        const hasBusyCancellation = conflicts.some(({ rule }) => rule.id === 'busy_status_line')
-          && /esc.{0,20}to.{0,20}cancel/i.test(recentTail)
-          && !/request.?cancelled/i.test(recentTail);
+        const hasBusyCancellation =
+          conflicts.some(({ rule }) => rule.id === 'busy_status_line') &&
+          /esc.{0,20}to.{0,20}cancel/i.test(recentTail) &&
+          !/request.?cancelled/i.test(recentTail);
         if (hasBusyCancellation) {
-          const busy = conflicts.find(({ rule }) => rule.id === 'busy_status_line');
+          const busy = conflicts.find(
+            ({ rule }) => rule.id === 'busy_status_line'
+          );
           if (busy) {
             topMatch = busy;
           }

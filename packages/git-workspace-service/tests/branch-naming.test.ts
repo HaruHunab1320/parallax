@@ -2,15 +2,15 @@
  * Branch Naming Tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  generateBranchName,
-  parseBranchName,
-  isManagedBranch,
-  filterBranchesByExecution,
   createBranchInfo,
-  generateSlug,
   DEFAULT_BRANCH_PREFIX,
+  filterBranchesByExecution,
+  generateBranchName,
+  generateSlug,
+  isManagedBranch,
+  parseBranchName,
 } from '../src/utils/branch-naming';
 
 describe('generateBranchName', () => {
@@ -106,7 +106,9 @@ describe('parseBranchName', () => {
   });
 
   it('parses with custom prefix', () => {
-    const result = parseBranchName('custom/exec-123/engineer', { prefix: 'custom' });
+    const result = parseBranchName('custom/exec-123/engineer', {
+      prefix: 'custom',
+    });
 
     expect(result).toEqual({
       executionId: 'exec-123',
@@ -125,7 +127,9 @@ describe('isManagedBranch', () => {
   });
 
   it('uses custom prefix', () => {
-    expect(isManagedBranch('custom/exec-123/engineer', { prefix: 'custom' })).toBe(true);
+    expect(
+      isManagedBranch('custom/exec-123/engineer', { prefix: 'custom' })
+    ).toBe(true);
   });
 });
 
@@ -184,7 +188,10 @@ describe('generateSlug', () => {
   });
 
   it('limits to max length', () => {
-    const result = generateSlug('This is a very long description that should be truncated', 15);
+    const result = generateSlug(
+      'This is a very long description that should be truncated',
+      15
+    );
 
     expect(result.length).toBeLessThanOrEqual(15);
   });

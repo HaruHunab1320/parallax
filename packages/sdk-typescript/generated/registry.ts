@@ -6,25 +6,25 @@
 // source: registry.proto
 
 /* eslint-disable */
-import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf";
+import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf';
 import {
   type CallOptions,
   type ChannelCredentials,
-  Client,
+  type Client,
   type ClientOptions,
   type ClientReadableStream,
   type ClientUnaryCall,
   type handleServerStreamingCall,
   type handleUnaryCall,
-  makeGenericClientConstructor,
   type Metadata,
+  makeGenericClientConstructor,
   type ServiceError,
   type UntypedServiceImplementation,
-} from "@grpc/grpc-js";
-import { Duration } from "./google/protobuf/duration";
-import { Timestamp } from "./google/protobuf/timestamp";
+} from '@grpc/grpc-js';
+import { Duration } from './google/protobuf/duration';
+import { Timestamp } from './google/protobuf/timestamp';
 
-export const protobufPackage = "parallax.registry";
+export const protobufPackage = 'parallax.registry';
 
 /** Agent registration information */
 export interface AgentRegistration {
@@ -34,9 +34,7 @@ export interface AgentRegistration {
   endpoint: string;
   capabilities: string[];
   metadata: AgentRegistration_Metadata | undefined;
-  registeredAt:
-    | Date
-    | undefined;
+  registeredAt: Date | undefined;
   /** Time to live for registration */
   ttl: Duration | undefined;
 }
@@ -55,9 +53,7 @@ export interface AgentRegistration_Metadata_LabelsEntry {
 
 /** Registration request */
 export interface RegisterRequest {
-  agent:
-    | AgentRegistration
-    | undefined;
+  agent: AgentRegistration | undefined;
   /** Auto-renew registration before TTL expires */
   autoRenew: boolean;
 }
@@ -115,40 +111,41 @@ export enum WatchEvent_EventType {
   UNRECOGNIZED = -1,
 }
 
-export function watchEvent_EventTypeFromJSON(object: any): WatchEvent_EventType {
+export function watchEvent_EventTypeFromJSON(
+  object: any
+): WatchEvent_EventType {
   switch (object) {
     case 0:
-    case "UNKNOWN":
+    case 'UNKNOWN':
       return WatchEvent_EventType.UNKNOWN;
     case 1:
-    case "ADDED":
+    case 'ADDED':
       return WatchEvent_EventType.ADDED;
     case 2:
-    case "MODIFIED":
+    case 'MODIFIED':
       return WatchEvent_EventType.MODIFIED;
     case 3:
-    case "DELETED":
+    case 'DELETED':
       return WatchEvent_EventType.DELETED;
-    case -1:
-    case "UNRECOGNIZED":
     default:
       return WatchEvent_EventType.UNRECOGNIZED;
   }
 }
 
-export function watchEvent_EventTypeToJSON(object: WatchEvent_EventType): string {
+export function watchEvent_EventTypeToJSON(
+  object: WatchEvent_EventType
+): string {
   switch (object) {
     case WatchEvent_EventType.UNKNOWN:
-      return "UNKNOWN";
+      return 'UNKNOWN';
     case WatchEvent_EventType.ADDED:
-      return "ADDED";
+      return 'ADDED';
     case WatchEvent_EventType.MODIFIED:
-      return "MODIFIED";
+      return 'MODIFIED';
     case WatchEvent_EventType.DELETED:
-      return "DELETED";
-    case WatchEvent_EventType.UNRECOGNIZED:
+      return 'DELETED';
     default:
-      return "UNRECOGNIZED";
+      return 'UNRECOGNIZED';
   }
 }
 
@@ -165,9 +162,9 @@ export interface GetAgentRequest {
 
 function createBaseAgentRegistration(): AgentRegistration {
   return {
-    id: "",
-    name: "",
-    endpoint: "",
+    id: '',
+    name: '',
+    endpoint: '',
     capabilities: [],
     metadata: undefined,
     registeredAt: undefined,
@@ -176,24 +173,33 @@ function createBaseAgentRegistration(): AgentRegistration {
 }
 
 export const AgentRegistration: MessageFns<AgentRegistration> = {
-  encode(message: AgentRegistration, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.id !== "") {
+  encode(
+    message: AgentRegistration,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.id !== '') {
       writer.uint32(10).string(message.id);
     }
-    if (message.name !== "") {
+    if (message.name !== '') {
       writer.uint32(18).string(message.name);
     }
-    if (message.endpoint !== "") {
+    if (message.endpoint !== '') {
       writer.uint32(26).string(message.endpoint);
     }
     for (const v of message.capabilities) {
       writer.uint32(34).string(v!);
     }
     if (message.metadata !== undefined) {
-      AgentRegistration_Metadata.encode(message.metadata, writer.uint32(42).fork()).join();
+      AgentRegistration_Metadata.encode(
+        message.metadata,
+        writer.uint32(42).fork()
+      ).join();
     }
     if (message.registeredAt !== undefined) {
-      Timestamp.encode(toTimestamp(message.registeredAt), writer.uint32(50).fork()).join();
+      Timestamp.encode(
+        toTimestamp(message.registeredAt),
+        writer.uint32(50).fork()
+      ).join();
     }
     if (message.ttl !== undefined) {
       Duration.encode(message.ttl, writer.uint32(58).fork()).join();
@@ -202,7 +208,8 @@ export const AgentRegistration: MessageFns<AgentRegistration> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): AgentRegistration {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseAgentRegistration();
     while (reader.pos < end) {
@@ -245,7 +252,10 @@ export const AgentRegistration: MessageFns<AgentRegistration> = {
             break;
           }
 
-          message.metadata = AgentRegistration_Metadata.decode(reader, reader.uint32());
+          message.metadata = AgentRegistration_Metadata.decode(
+            reader,
+            reader.uint32()
+          );
           continue;
         }
         case 6: {
@@ -253,7 +263,9 @@ export const AgentRegistration: MessageFns<AgentRegistration> = {
             break;
           }
 
-          message.registeredAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          message.registeredAt = fromTimestamp(
+            Timestamp.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 7: {
@@ -275,27 +287,33 @@ export const AgentRegistration: MessageFns<AgentRegistration> = {
 
   fromJSON(object: any): AgentRegistration {
     return {
-      id: isSet(object.id) ? globalThis.String(object.id) : "",
-      name: isSet(object.name) ? globalThis.String(object.name) : "",
-      endpoint: isSet(object.endpoint) ? globalThis.String(object.endpoint) : "",
+      id: isSet(object.id) ? globalThis.String(object.id) : '',
+      name: isSet(object.name) ? globalThis.String(object.name) : '',
+      endpoint: isSet(object.endpoint)
+        ? globalThis.String(object.endpoint)
+        : '',
       capabilities: globalThis.Array.isArray(object?.capabilities)
         ? object.capabilities.map((e: any) => globalThis.String(e))
         : [],
-      metadata: isSet(object.metadata) ? AgentRegistration_Metadata.fromJSON(object.metadata) : undefined,
-      registeredAt: isSet(object.registeredAt) ? fromJsonTimestamp(object.registeredAt) : undefined,
+      metadata: isSet(object.metadata)
+        ? AgentRegistration_Metadata.fromJSON(object.metadata)
+        : undefined,
+      registeredAt: isSet(object.registeredAt)
+        ? fromJsonTimestamp(object.registeredAt)
+        : undefined,
       ttl: isSet(object.ttl) ? Duration.fromJSON(object.ttl) : undefined,
     };
   },
 
   toJSON(message: AgentRegistration): unknown {
     const obj: any = {};
-    if (message.id !== "") {
+    if (message.id !== '') {
       obj.id = message.id;
     }
-    if (message.name !== "") {
+    if (message.name !== '') {
       obj.name = message.name;
     }
-    if (message.endpoint !== "") {
+    if (message.endpoint !== '') {
       obj.endpoint = message.endpoint;
     }
     if (message.capabilities?.length) {
@@ -313,237 +331,283 @@ export const AgentRegistration: MessageFns<AgentRegistration> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<AgentRegistration>, I>>(base?: I): AgentRegistration {
+  create<I extends Exact<DeepPartial<AgentRegistration>, I>>(
+    base?: I
+  ): AgentRegistration {
     return AgentRegistration.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<AgentRegistration>, I>>(object: I): AgentRegistration {
+  fromPartial<I extends Exact<DeepPartial<AgentRegistration>, I>>(
+    object: I
+  ): AgentRegistration {
     const message = createBaseAgentRegistration();
-    message.id = object.id ?? "";
-    message.name = object.name ?? "";
-    message.endpoint = object.endpoint ?? "";
+    message.id = object.id ?? '';
+    message.name = object.name ?? '';
+    message.endpoint = object.endpoint ?? '';
     message.capabilities = object.capabilities?.map((e) => e) || [];
-    message.metadata = (object.metadata !== undefined && object.metadata !== null)
-      ? AgentRegistration_Metadata.fromPartial(object.metadata)
-      : undefined;
+    message.metadata =
+      object.metadata !== undefined && object.metadata !== null
+        ? AgentRegistration_Metadata.fromPartial(object.metadata)
+        : undefined;
     message.registeredAt = object.registeredAt ?? undefined;
-    message.ttl = (object.ttl !== undefined && object.ttl !== null) ? Duration.fromPartial(object.ttl) : undefined;
+    message.ttl =
+      object.ttl !== undefined && object.ttl !== null
+        ? Duration.fromPartial(object.ttl)
+        : undefined;
     return message;
   },
 };
 
 function createBaseAgentRegistration_Metadata(): AgentRegistration_Metadata {
-  return { version: "", region: "", labels: {}, defaultConfidence: 0 };
+  return { version: '', region: '', labels: {}, defaultConfidence: 0 };
 }
 
-export const AgentRegistration_Metadata: MessageFns<AgentRegistration_Metadata> = {
-  encode(message: AgentRegistration_Metadata, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.version !== "") {
-      writer.uint32(10).string(message.version);
-    }
-    if (message.region !== "") {
-      writer.uint32(18).string(message.region);
-    }
-    Object.entries(message.labels).forEach(([key, value]) => {
-      AgentRegistration_Metadata_LabelsEntry.encode({ key: key as any, value }, writer.uint32(26).fork()).join();
-    });
-    if (message.defaultConfidence !== 0) {
-      writer.uint32(33).double(message.defaultConfidence);
-    }
-    return writer;
-  },
+export const AgentRegistration_Metadata: MessageFns<AgentRegistration_Metadata> =
+  {
+    encode(
+      message: AgentRegistration_Metadata,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.version !== '') {
+        writer.uint32(10).string(message.version);
+      }
+      if (message.region !== '') {
+        writer.uint32(18).string(message.region);
+      }
+      Object.entries(message.labels).forEach(([key, value]) => {
+        AgentRegistration_Metadata_LabelsEntry.encode(
+          { key: key as any, value },
+          writer.uint32(26).fork()
+        ).join();
+      });
+      if (message.defaultConfidence !== 0) {
+        writer.uint32(33).double(message.defaultConfidence);
+      }
+      return writer;
+    },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): AgentRegistration_Metadata {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseAgentRegistration_Metadata();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): AgentRegistration_Metadata {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseAgentRegistration_Metadata();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.version = reader.string();
+            continue;
           }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-          message.version = reader.string();
-          continue;
+            message.region = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            const entry3 = AgentRegistration_Metadata_LabelsEntry.decode(
+              reader,
+              reader.uint32()
+            );
+            if (entry3.value !== undefined) {
+              message.labels[entry3.key] = entry3.value;
+            }
+            continue;
+          }
+          case 4: {
+            if (tag !== 33) {
+              break;
+            }
+
+            message.defaultConfidence = reader.double();
+            continue;
+          }
         }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.region = reader.string();
-          continue;
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
         }
-        case 3: {
-          if (tag !== 26) {
-            break;
-          }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
 
-          const entry3 = AgentRegistration_Metadata_LabelsEntry.decode(reader, reader.uint32());
-          if (entry3.value !== undefined) {
-            message.labels[entry3.key] = entry3.value;
-          }
-          continue;
-        }
-        case 4: {
-          if (tag !== 33) {
-            break;
-          }
+    fromJSON(object: any): AgentRegistration_Metadata {
+      return {
+        version: isSet(object.version) ? globalThis.String(object.version) : '',
+        region: isSet(object.region) ? globalThis.String(object.region) : '',
+        labels: isObject(object.labels)
+          ? Object.entries(object.labels).reduce<{ [key: string]: string }>(
+              (acc, [key, value]) => {
+                acc[key] = String(value);
+                return acc;
+              },
+              {}
+            )
+          : {},
+        defaultConfidence: isSet(object.defaultConfidence)
+          ? globalThis.Number(object.defaultConfidence)
+          : 0,
+      };
+    },
 
-          message.defaultConfidence = reader.double();
-          continue;
+    toJSON(message: AgentRegistration_Metadata): unknown {
+      const obj: any = {};
+      if (message.version !== '') {
+        obj.version = message.version;
+      }
+      if (message.region !== '') {
+        obj.region = message.region;
+      }
+      if (message.labels) {
+        const entries = Object.entries(message.labels);
+        if (entries.length > 0) {
+          obj.labels = {};
+          entries.forEach(([k, v]) => {
+            obj.labels[k] = v;
+          });
         }
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.defaultConfidence !== 0) {
+        obj.defaultConfidence = message.defaultConfidence;
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      return obj;
+    },
 
-  fromJSON(object: any): AgentRegistration_Metadata {
-    return {
-      version: isSet(object.version) ? globalThis.String(object.version) : "",
-      region: isSet(object.region) ? globalThis.String(object.region) : "",
-      labels: isObject(object.labels)
-        ? Object.entries(object.labels).reduce<{ [key: string]: string }>((acc, [key, value]) => {
-          acc[key] = String(value);
-          return acc;
-        }, {})
-        : {},
-      defaultConfidence: isSet(object.defaultConfidence) ? globalThis.Number(object.defaultConfidence) : 0,
-    };
-  },
-
-  toJSON(message: AgentRegistration_Metadata): unknown {
-    const obj: any = {};
-    if (message.version !== "") {
-      obj.version = message.version;
-    }
-    if (message.region !== "") {
-      obj.region = message.region;
-    }
-    if (message.labels) {
-      const entries = Object.entries(message.labels);
-      if (entries.length > 0) {
-        obj.labels = {};
-        entries.forEach(([k, v]) => {
-          obj.labels[k] = v;
-        });
-      }
-    }
-    if (message.defaultConfidence !== 0) {
-      obj.defaultConfidence = message.defaultConfidence;
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<AgentRegistration_Metadata>, I>>(base?: I): AgentRegistration_Metadata {
-    return AgentRegistration_Metadata.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<AgentRegistration_Metadata>, I>>(object: I): AgentRegistration_Metadata {
-    const message = createBaseAgentRegistration_Metadata();
-    message.version = object.version ?? "";
-    message.region = object.region ?? "";
-    message.labels = Object.entries(object.labels ?? {}).reduce<{ [key: string]: string }>((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = globalThis.String(value);
-      }
-      return acc;
-    }, {});
-    message.defaultConfidence = object.defaultConfidence ?? 0;
-    return message;
-  },
-};
+    create<I extends Exact<DeepPartial<AgentRegistration_Metadata>, I>>(
+      base?: I
+    ): AgentRegistration_Metadata {
+      return AgentRegistration_Metadata.fromPartial(base ?? ({} as any));
+    },
+    fromPartial<I extends Exact<DeepPartial<AgentRegistration_Metadata>, I>>(
+      object: I
+    ): AgentRegistration_Metadata {
+      const message = createBaseAgentRegistration_Metadata();
+      message.version = object.version ?? '';
+      message.region = object.region ?? '';
+      message.labels = Object.entries(object.labels ?? {}).reduce<{
+        [key: string]: string;
+      }>((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = globalThis.String(value);
+        }
+        return acc;
+      }, {});
+      message.defaultConfidence = object.defaultConfidence ?? 0;
+      return message;
+    },
+  };
 
 function createBaseAgentRegistration_Metadata_LabelsEntry(): AgentRegistration_Metadata_LabelsEntry {
-  return { key: "", value: "" };
+  return { key: '', value: '' };
 }
 
-export const AgentRegistration_Metadata_LabelsEntry: MessageFns<AgentRegistration_Metadata_LabelsEntry> = {
-  encode(message: AgentRegistration_Metadata_LabelsEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.key !== "") {
-      writer.uint32(10).string(message.key);
-    }
-    if (message.value !== "") {
-      writer.uint32(18).string(message.value);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): AgentRegistration_Metadata_LabelsEntry {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseAgentRegistration_Metadata_LabelsEntry();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.key = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.value = reader.string();
-          continue;
-        }
+export const AgentRegistration_Metadata_LabelsEntry: MessageFns<AgentRegistration_Metadata_LabelsEntry> =
+  {
+    encode(
+      message: AgentRegistration_Metadata_LabelsEntry,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.key !== '') {
+        writer.uint32(10).string(message.key);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.value !== '') {
+        writer.uint32(18).string(message.value);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      return writer;
+    },
 
-  fromJSON(object: any): AgentRegistration_Metadata_LabelsEntry {
-    return {
-      key: isSet(object.key) ? globalThis.String(object.key) : "",
-      value: isSet(object.value) ? globalThis.String(object.value) : "",
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): AgentRegistration_Metadata_LabelsEntry {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseAgentRegistration_Metadata_LabelsEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: AgentRegistration_Metadata_LabelsEntry): unknown {
-    const obj: any = {};
-    if (message.key !== "") {
-      obj.key = message.key;
-    }
-    if (message.value !== "") {
-      obj.value = message.value;
-    }
-    return obj;
-  },
+            message.key = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<AgentRegistration_Metadata_LabelsEntry>, I>>(
-    base?: I,
-  ): AgentRegistration_Metadata_LabelsEntry {
-    return AgentRegistration_Metadata_LabelsEntry.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<AgentRegistration_Metadata_LabelsEntry>, I>>(
-    object: I,
-  ): AgentRegistration_Metadata_LabelsEntry {
-    const message = createBaseAgentRegistration_Metadata_LabelsEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
-  },
-};
+            message.value = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): AgentRegistration_Metadata_LabelsEntry {
+      return {
+        key: isSet(object.key) ? globalThis.String(object.key) : '',
+        value: isSet(object.value) ? globalThis.String(object.value) : '',
+      };
+    },
+
+    toJSON(message: AgentRegistration_Metadata_LabelsEntry): unknown {
+      const obj: any = {};
+      if (message.key !== '') {
+        obj.key = message.key;
+      }
+      if (message.value !== '') {
+        obj.value = message.value;
+      }
+      return obj;
+    },
+
+    create<
+      I extends Exact<DeepPartial<AgentRegistration_Metadata_LabelsEntry>, I>,
+    >(base?: I): AgentRegistration_Metadata_LabelsEntry {
+      return AgentRegistration_Metadata_LabelsEntry.fromPartial(
+        base ?? ({} as any)
+      );
+    },
+    fromPartial<
+      I extends Exact<DeepPartial<AgentRegistration_Metadata_LabelsEntry>, I>,
+    >(object: I): AgentRegistration_Metadata_LabelsEntry {
+      const message = createBaseAgentRegistration_Metadata_LabelsEntry();
+      message.key = object.key ?? '';
+      message.value = object.value ?? '';
+      return message;
+    },
+  };
 
 function createBaseRegisterRequest(): RegisterRequest {
   return { agent: undefined, autoRenew: false };
 }
 
 export const RegisterRequest: MessageFns<RegisterRequest> = {
-  encode(message: RegisterRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: RegisterRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.agent !== undefined) {
       AgentRegistration.encode(message.agent, writer.uint32(10).fork()).join();
     }
@@ -554,7 +618,8 @@ export const RegisterRequest: MessageFns<RegisterRequest> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): RegisterRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseRegisterRequest();
     while (reader.pos < end) {
@@ -587,8 +652,12 @@ export const RegisterRequest: MessageFns<RegisterRequest> = {
 
   fromJSON(object: any): RegisterRequest {
     return {
-      agent: isSet(object.agent) ? AgentRegistration.fromJSON(object.agent) : undefined,
-      autoRenew: isSet(object.autoRenew) ? globalThis.Boolean(object.autoRenew) : false,
+      agent: isSet(object.agent)
+        ? AgentRegistration.fromJSON(object.agent)
+        : undefined,
+      autoRenew: isSet(object.autoRenew)
+        ? globalThis.Boolean(object.autoRenew)
+        : false,
     };
   },
 
@@ -603,39 +672,48 @@ export const RegisterRequest: MessageFns<RegisterRequest> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<RegisterRequest>, I>>(base?: I): RegisterRequest {
+  create<I extends Exact<DeepPartial<RegisterRequest>, I>>(
+    base?: I
+  ): RegisterRequest {
     return RegisterRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<RegisterRequest>, I>>(object: I): RegisterRequest {
+  fromPartial<I extends Exact<DeepPartial<RegisterRequest>, I>>(
+    object: I
+  ): RegisterRequest {
     const message = createBaseRegisterRequest();
-    message.agent = (object.agent !== undefined && object.agent !== null)
-      ? AgentRegistration.fromPartial(object.agent)
-      : undefined;
+    message.agent =
+      object.agent !== undefined && object.agent !== null
+        ? AgentRegistration.fromPartial(object.agent)
+        : undefined;
     message.autoRenew = object.autoRenew ?? false;
     return message;
   },
 };
 
 function createBaseRegisterResponse(): RegisterResponse {
-  return { success: false, message: "", leaseId: "" };
+  return { success: false, message: '', leaseId: '' };
 }
 
 export const RegisterResponse: MessageFns<RegisterResponse> = {
-  encode(message: RegisterResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: RegisterResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.success !== false) {
       writer.uint32(8).bool(message.success);
     }
-    if (message.message !== "") {
+    if (message.message !== '') {
       writer.uint32(18).string(message.message);
     }
-    if (message.leaseId !== "") {
+    if (message.leaseId !== '') {
       writer.uint32(26).string(message.leaseId);
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): RegisterResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseRegisterResponse();
     while (reader.pos < end) {
@@ -676,9 +754,11 @@ export const RegisterResponse: MessageFns<RegisterResponse> = {
 
   fromJSON(object: any): RegisterResponse {
     return {
-      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
-      message: isSet(object.message) ? globalThis.String(object.message) : "",
-      leaseId: isSet(object.leaseId) ? globalThis.String(object.leaseId) : "",
+      success: isSet(object.success)
+        ? globalThis.Boolean(object.success)
+        : false,
+      message: isSet(object.message) ? globalThis.String(object.message) : '',
+      leaseId: isSet(object.leaseId) ? globalThis.String(object.leaseId) : '',
     };
   },
 
@@ -687,50 +767,61 @@ export const RegisterResponse: MessageFns<RegisterResponse> = {
     if (message.success !== false) {
       obj.success = message.success;
     }
-    if (message.message !== "") {
+    if (message.message !== '') {
       obj.message = message.message;
     }
-    if (message.leaseId !== "") {
+    if (message.leaseId !== '') {
       obj.leaseId = message.leaseId;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<RegisterResponse>, I>>(base?: I): RegisterResponse {
+  create<I extends Exact<DeepPartial<RegisterResponse>, I>>(
+    base?: I
+  ): RegisterResponse {
     return RegisterResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<RegisterResponse>, I>>(object: I): RegisterResponse {
+  fromPartial<I extends Exact<DeepPartial<RegisterResponse>, I>>(
+    object: I
+  ): RegisterResponse {
     const message = createBaseRegisterResponse();
     message.success = object.success ?? false;
-    message.message = object.message ?? "";
-    message.leaseId = object.leaseId ?? "";
+    message.message = object.message ?? '';
+    message.leaseId = object.leaseId ?? '';
     return message;
   },
 };
 
 function createBaseListAgentsRequest(): ListAgentsRequest {
-  return { capabilities: [], labels: {}, limit: 0, continuationToken: "" };
+  return { capabilities: [], labels: {}, limit: 0, continuationToken: '' };
 }
 
 export const ListAgentsRequest: MessageFns<ListAgentsRequest> = {
-  encode(message: ListAgentsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: ListAgentsRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.capabilities) {
       writer.uint32(10).string(v!);
     }
     Object.entries(message.labels).forEach(([key, value]) => {
-      ListAgentsRequest_LabelsEntry.encode({ key: key as any, value }, writer.uint32(18).fork()).join();
+      ListAgentsRequest_LabelsEntry.encode(
+        { key: key as any, value },
+        writer.uint32(18).fork()
+      ).join();
     });
     if (message.limit !== 0) {
       writer.uint32(24).int32(message.limit);
     }
-    if (message.continuationToken !== "") {
+    if (message.continuationToken !== '') {
       writer.uint32(34).string(message.continuationToken);
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): ListAgentsRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseListAgentsRequest();
     while (reader.pos < end) {
@@ -749,7 +840,10 @@ export const ListAgentsRequest: MessageFns<ListAgentsRequest> = {
             break;
           }
 
-          const entry2 = ListAgentsRequest_LabelsEntry.decode(reader, reader.uint32());
+          const entry2 = ListAgentsRequest_LabelsEntry.decode(
+            reader,
+            reader.uint32()
+          );
           if (entry2.value !== undefined) {
             message.labels[entry2.key] = entry2.value;
           }
@@ -786,13 +880,18 @@ export const ListAgentsRequest: MessageFns<ListAgentsRequest> = {
         ? object.capabilities.map((e: any) => globalThis.String(e))
         : [],
       labels: isObject(object.labels)
-        ? Object.entries(object.labels).reduce<{ [key: string]: string }>((acc, [key, value]) => {
-          acc[key] = String(value);
-          return acc;
-        }, {})
+        ? Object.entries(object.labels).reduce<{ [key: string]: string }>(
+            (acc, [key, value]) => {
+              acc[key] = String(value);
+              return acc;
+            },
+            {}
+          )
         : {},
       limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
-      continuationToken: isSet(object.continuationToken) ? globalThis.String(object.continuationToken) : "",
+      continuationToken: isSet(object.continuationToken)
+        ? globalThis.String(object.continuationToken)
+        : '',
     };
   },
 
@@ -813,118 +912,137 @@ export const ListAgentsRequest: MessageFns<ListAgentsRequest> = {
     if (message.limit !== 0) {
       obj.limit = Math.round(message.limit);
     }
-    if (message.continuationToken !== "") {
+    if (message.continuationToken !== '') {
       obj.continuationToken = message.continuationToken;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ListAgentsRequest>, I>>(base?: I): ListAgentsRequest {
+  create<I extends Exact<DeepPartial<ListAgentsRequest>, I>>(
+    base?: I
+  ): ListAgentsRequest {
     return ListAgentsRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<ListAgentsRequest>, I>>(object: I): ListAgentsRequest {
+  fromPartial<I extends Exact<DeepPartial<ListAgentsRequest>, I>>(
+    object: I
+  ): ListAgentsRequest {
     const message = createBaseListAgentsRequest();
     message.capabilities = object.capabilities?.map((e) => e) || [];
-    message.labels = Object.entries(object.labels ?? {}).reduce<{ [key: string]: string }>((acc, [key, value]) => {
+    message.labels = Object.entries(object.labels ?? {}).reduce<{
+      [key: string]: string;
+    }>((acc, [key, value]) => {
       if (value !== undefined) {
         acc[key] = globalThis.String(value);
       }
       return acc;
     }, {});
     message.limit = object.limit ?? 0;
-    message.continuationToken = object.continuationToken ?? "";
+    message.continuationToken = object.continuationToken ?? '';
     return message;
   },
 };
 
 function createBaseListAgentsRequest_LabelsEntry(): ListAgentsRequest_LabelsEntry {
-  return { key: "", value: "" };
+  return { key: '', value: '' };
 }
 
-export const ListAgentsRequest_LabelsEntry: MessageFns<ListAgentsRequest_LabelsEntry> = {
-  encode(message: ListAgentsRequest_LabelsEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.key !== "") {
-      writer.uint32(10).string(message.key);
-    }
-    if (message.value !== "") {
-      writer.uint32(18).string(message.value);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): ListAgentsRequest_LabelsEntry {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseListAgentsRequest_LabelsEntry();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.key = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.value = reader.string();
-          continue;
-        }
+export const ListAgentsRequest_LabelsEntry: MessageFns<ListAgentsRequest_LabelsEntry> =
+  {
+    encode(
+      message: ListAgentsRequest_LabelsEntry,
+      writer: BinaryWriter = new BinaryWriter()
+    ): BinaryWriter {
+      if (message.key !== '') {
+        writer.uint32(10).string(message.key);
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
+      if (message.value !== '') {
+        writer.uint32(18).string(message.value);
       }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
+      return writer;
+    },
 
-  fromJSON(object: any): ListAgentsRequest_LabelsEntry {
-    return {
-      key: isSet(object.key) ? globalThis.String(object.key) : "",
-      value: isSet(object.value) ? globalThis.String(object.value) : "",
-    };
-  },
+    decode(
+      input: BinaryReader | Uint8Array,
+      length?: number
+    ): ListAgentsRequest_LabelsEntry {
+      const reader =
+        input instanceof BinaryReader ? input : new BinaryReader(input);
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseListAgentsRequest_LabelsEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
 
-  toJSON(message: ListAgentsRequest_LabelsEntry): unknown {
-    const obj: any = {};
-    if (message.key !== "") {
-      obj.key = message.key;
-    }
-    if (message.value !== "") {
-      obj.value = message.value;
-    }
-    return obj;
-  },
+            message.key = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
 
-  create<I extends Exact<DeepPartial<ListAgentsRequest_LabelsEntry>, I>>(base?: I): ListAgentsRequest_LabelsEntry {
-    return ListAgentsRequest_LabelsEntry.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<ListAgentsRequest_LabelsEntry>, I>>(
-    object: I,
-  ): ListAgentsRequest_LabelsEntry {
-    const message = createBaseListAgentsRequest_LabelsEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
-  },
-};
+            message.value = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    },
+
+    fromJSON(object: any): ListAgentsRequest_LabelsEntry {
+      return {
+        key: isSet(object.key) ? globalThis.String(object.key) : '',
+        value: isSet(object.value) ? globalThis.String(object.value) : '',
+      };
+    },
+
+    toJSON(message: ListAgentsRequest_LabelsEntry): unknown {
+      const obj: any = {};
+      if (message.key !== '') {
+        obj.key = message.key;
+      }
+      if (message.value !== '') {
+        obj.value = message.value;
+      }
+      return obj;
+    },
+
+    create<I extends Exact<DeepPartial<ListAgentsRequest_LabelsEntry>, I>>(
+      base?: I
+    ): ListAgentsRequest_LabelsEntry {
+      return ListAgentsRequest_LabelsEntry.fromPartial(base ?? ({} as any));
+    },
+    fromPartial<I extends Exact<DeepPartial<ListAgentsRequest_LabelsEntry>, I>>(
+      object: I
+    ): ListAgentsRequest_LabelsEntry {
+      const message = createBaseListAgentsRequest_LabelsEntry();
+      message.key = object.key ?? '';
+      message.value = object.value ?? '';
+      return message;
+    },
+  };
 
 function createBaseListAgentsResponse(): ListAgentsResponse {
-  return { agents: [], nextContinuationToken: "", totalCount: 0 };
+  return { agents: [], nextContinuationToken: '', totalCount: 0 };
 }
 
 export const ListAgentsResponse: MessageFns<ListAgentsResponse> = {
-  encode(message: ListAgentsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: ListAgentsResponse,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.agents) {
       AgentRegistration.encode(v!, writer.uint32(10).fork()).join();
     }
-    if (message.nextContinuationToken !== "") {
+    if (message.nextContinuationToken !== '') {
       writer.uint32(18).string(message.nextContinuationToken);
     }
     if (message.totalCount !== 0) {
@@ -933,8 +1051,12 @@ export const ListAgentsResponse: MessageFns<ListAgentsResponse> = {
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): ListAgentsResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+  decode(
+    input: BinaryReader | Uint8Array,
+    length?: number
+  ): ListAgentsResponse {
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseListAgentsResponse();
     while (reader.pos < end) {
@@ -945,7 +1067,9 @@ export const ListAgentsResponse: MessageFns<ListAgentsResponse> = {
             break;
           }
 
-          message.agents.push(AgentRegistration.decode(reader, reader.uint32()));
+          message.agents.push(
+            AgentRegistration.decode(reader, reader.uint32())
+          );
           continue;
         }
         case 2: {
@@ -978,8 +1102,12 @@ export const ListAgentsResponse: MessageFns<ListAgentsResponse> = {
       agents: globalThis.Array.isArray(object?.agents)
         ? object.agents.map((e: any) => AgentRegistration.fromJSON(e))
         : [],
-      nextContinuationToken: isSet(object.nextContinuationToken) ? globalThis.String(object.nextContinuationToken) : "",
-      totalCount: isSet(object.totalCount) ? globalThis.Number(object.totalCount) : 0,
+      nextContinuationToken: isSet(object.nextContinuationToken)
+        ? globalThis.String(object.nextContinuationToken)
+        : '',
+      totalCount: isSet(object.totalCount)
+        ? globalThis.Number(object.totalCount)
+        : 0,
     };
   },
 
@@ -988,7 +1116,7 @@ export const ListAgentsResponse: MessageFns<ListAgentsResponse> = {
     if (message.agents?.length) {
       obj.agents = message.agents.map((e) => AgentRegistration.toJSON(e));
     }
-    if (message.nextContinuationToken !== "") {
+    if (message.nextContinuationToken !== '') {
       obj.nextContinuationToken = message.nextContinuationToken;
     }
     if (message.totalCount !== 0) {
@@ -997,13 +1125,18 @@ export const ListAgentsResponse: MessageFns<ListAgentsResponse> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ListAgentsResponse>, I>>(base?: I): ListAgentsResponse {
+  create<I extends Exact<DeepPartial<ListAgentsResponse>, I>>(
+    base?: I
+  ): ListAgentsResponse {
     return ListAgentsResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<ListAgentsResponse>, I>>(object: I): ListAgentsResponse {
+  fromPartial<I extends Exact<DeepPartial<ListAgentsResponse>, I>>(
+    object: I
+  ): ListAgentsResponse {
     const message = createBaseListAgentsResponse();
-    message.agents = object.agents?.map((e) => AgentRegistration.fromPartial(e)) || [];
-    message.nextContinuationToken = object.nextContinuationToken ?? "";
+    message.agents =
+      object.agents?.map((e) => AgentRegistration.fromPartial(e)) || [];
+    message.nextContinuationToken = object.nextContinuationToken ?? '';
     message.totalCount = object.totalCount ?? 0;
     return message;
   },
@@ -1014,7 +1147,10 @@ function createBaseWatchRequest(): WatchRequest {
 }
 
 export const WatchRequest: MessageFns<WatchRequest> = {
-  encode(message: WatchRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: WatchRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     for (const v of message.capabilities) {
       writer.uint32(10).string(v!);
     }
@@ -1025,7 +1161,8 @@ export const WatchRequest: MessageFns<WatchRequest> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): WatchRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseWatchRequest();
     while (reader.pos < end) {
@@ -1061,7 +1198,9 @@ export const WatchRequest: MessageFns<WatchRequest> = {
       capabilities: globalThis.Array.isArray(object?.capabilities)
         ? object.capabilities.map((e: any) => globalThis.String(e))
         : [],
-      includeInitial: isSet(object.includeInitial) ? globalThis.Boolean(object.includeInitial) : false,
+      includeInitial: isSet(object.includeInitial)
+        ? globalThis.Boolean(object.includeInitial)
+        : false,
     };
   },
 
@@ -1076,10 +1215,14 @@ export const WatchRequest: MessageFns<WatchRequest> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<WatchRequest>, I>>(base?: I): WatchRequest {
+  create<I extends Exact<DeepPartial<WatchRequest>, I>>(
+    base?: I
+  ): WatchRequest {
     return WatchRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<WatchRequest>, I>>(object: I): WatchRequest {
+  fromPartial<I extends Exact<DeepPartial<WatchRequest>, I>>(
+    object: I
+  ): WatchRequest {
     const message = createBaseWatchRequest();
     message.capabilities = object.capabilities?.map((e) => e) || [];
     message.includeInitial = object.includeInitial ?? false;
@@ -1092,7 +1235,10 @@ function createBaseWatchEvent(): WatchEvent {
 }
 
 export const WatchEvent: MessageFns<WatchEvent> = {
-  encode(message: WatchEvent, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+  encode(
+    message: WatchEvent,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
     if (message.type !== 0) {
       writer.uint32(8).int32(message.type);
     }
@@ -1100,13 +1246,17 @@ export const WatchEvent: MessageFns<WatchEvent> = {
       AgentRegistration.encode(message.agent, writer.uint32(18).fork()).join();
     }
     if (message.timestamp !== undefined) {
-      Timestamp.encode(toTimestamp(message.timestamp), writer.uint32(26).fork()).join();
+      Timestamp.encode(
+        toTimestamp(message.timestamp),
+        writer.uint32(26).fork()
+      ).join();
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): WatchEvent {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseWatchEvent();
     while (reader.pos < end) {
@@ -1133,7 +1283,9 @@ export const WatchEvent: MessageFns<WatchEvent> = {
             break;
           }
 
-          message.timestamp = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          message.timestamp = fromTimestamp(
+            Timestamp.decode(reader, reader.uint32())
+          );
           continue;
         }
       }
@@ -1148,8 +1300,12 @@ export const WatchEvent: MessageFns<WatchEvent> = {
   fromJSON(object: any): WatchEvent {
     return {
       type: isSet(object.type) ? watchEvent_EventTypeFromJSON(object.type) : 0,
-      agent: isSet(object.agent) ? AgentRegistration.fromJSON(object.agent) : undefined,
-      timestamp: isSet(object.timestamp) ? fromJsonTimestamp(object.timestamp) : undefined,
+      agent: isSet(object.agent)
+        ? AgentRegistration.fromJSON(object.agent)
+        : undefined,
+      timestamp: isSet(object.timestamp)
+        ? fromJsonTimestamp(object.timestamp)
+        : undefined,
     };
   },
 
@@ -1170,24 +1326,30 @@ export const WatchEvent: MessageFns<WatchEvent> = {
   create<I extends Exact<DeepPartial<WatchEvent>, I>>(base?: I): WatchEvent {
     return WatchEvent.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<WatchEvent>, I>>(object: I): WatchEvent {
+  fromPartial<I extends Exact<DeepPartial<WatchEvent>, I>>(
+    object: I
+  ): WatchEvent {
     const message = createBaseWatchEvent();
     message.type = object.type ?? 0;
-    message.agent = (object.agent !== undefined && object.agent !== null)
-      ? AgentRegistration.fromPartial(object.agent)
-      : undefined;
+    message.agent =
+      object.agent !== undefined && object.agent !== null
+        ? AgentRegistration.fromPartial(object.agent)
+        : undefined;
     message.timestamp = object.timestamp ?? undefined;
     return message;
   },
 };
 
 function createBaseRenewRequest(): RenewRequest {
-  return { leaseId: "", ttl: undefined };
+  return { leaseId: '', ttl: undefined };
 }
 
 export const RenewRequest: MessageFns<RenewRequest> = {
-  encode(message: RenewRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.leaseId !== "") {
+  encode(
+    message: RenewRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.leaseId !== '') {
       writer.uint32(10).string(message.leaseId);
     }
     if (message.ttl !== undefined) {
@@ -1197,7 +1359,8 @@ export const RenewRequest: MessageFns<RenewRequest> = {
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): RenewRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseRenewRequest();
     while (reader.pos < end) {
@@ -1230,14 +1393,14 @@ export const RenewRequest: MessageFns<RenewRequest> = {
 
   fromJSON(object: any): RenewRequest {
     return {
-      leaseId: isSet(object.leaseId) ? globalThis.String(object.leaseId) : "",
+      leaseId: isSet(object.leaseId) ? globalThis.String(object.leaseId) : '',
       ttl: isSet(object.ttl) ? Duration.fromJSON(object.ttl) : undefined,
     };
   },
 
   toJSON(message: RenewRequest): unknown {
     const obj: any = {};
-    if (message.leaseId !== "") {
+    if (message.leaseId !== '') {
       obj.leaseId = message.leaseId;
     }
     if (message.ttl !== undefined) {
@@ -1246,31 +1409,42 @@ export const RenewRequest: MessageFns<RenewRequest> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<RenewRequest>, I>>(base?: I): RenewRequest {
+  create<I extends Exact<DeepPartial<RenewRequest>, I>>(
+    base?: I
+  ): RenewRequest {
     return RenewRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<RenewRequest>, I>>(object: I): RenewRequest {
+  fromPartial<I extends Exact<DeepPartial<RenewRequest>, I>>(
+    object: I
+  ): RenewRequest {
     const message = createBaseRenewRequest();
-    message.leaseId = object.leaseId ?? "";
-    message.ttl = (object.ttl !== undefined && object.ttl !== null) ? Duration.fromPartial(object.ttl) : undefined;
+    message.leaseId = object.leaseId ?? '';
+    message.ttl =
+      object.ttl !== undefined && object.ttl !== null
+        ? Duration.fromPartial(object.ttl)
+        : undefined;
     return message;
   },
 };
 
 function createBaseGetAgentRequest(): GetAgentRequest {
-  return { agentId: "" };
+  return { agentId: '' };
 }
 
 export const GetAgentRequest: MessageFns<GetAgentRequest> = {
-  encode(message: GetAgentRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.agentId !== "") {
+  encode(
+    message: GetAgentRequest,
+    writer: BinaryWriter = new BinaryWriter()
+  ): BinaryWriter {
+    if (message.agentId !== '') {
       writer.uint32(10).string(message.agentId);
     }
     return writer;
   },
 
   decode(input: BinaryReader | Uint8Array, length?: number): GetAgentRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const reader =
+      input instanceof BinaryReader ? input : new BinaryReader(input);
     const end = length === undefined ? reader.len : reader.pos + length;
     const message = createBaseGetAgentRequest();
     while (reader.pos < end) {
@@ -1294,23 +1468,29 @@ export const GetAgentRequest: MessageFns<GetAgentRequest> = {
   },
 
   fromJSON(object: any): GetAgentRequest {
-    return { agentId: isSet(object.agentId) ? globalThis.String(object.agentId) : "" };
+    return {
+      agentId: isSet(object.agentId) ? globalThis.String(object.agentId) : '',
+    };
   },
 
   toJSON(message: GetAgentRequest): unknown {
     const obj: any = {};
-    if (message.agentId !== "") {
+    if (message.agentId !== '') {
       obj.agentId = message.agentId;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<GetAgentRequest>, I>>(base?: I): GetAgentRequest {
+  create<I extends Exact<DeepPartial<GetAgentRequest>, I>>(
+    base?: I
+  ): GetAgentRequest {
     return GetAgentRequest.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<GetAgentRequest>, I>>(object: I): GetAgentRequest {
+  fromPartial<I extends Exact<DeepPartial<GetAgentRequest>, I>>(
+    object: I
+  ): GetAgentRequest {
     const message = createBaseGetAgentRequest();
-    message.agentId = object.agentId ?? "";
+    message.agentId = object.agentId ?? '';
     return message;
   },
 };
@@ -1320,63 +1500,87 @@ export type RegistryService = typeof RegistryService;
 export const RegistryService = {
   /** Register an agent */
   register: {
-    path: "/parallax.registry.Registry/Register",
+    path: '/parallax.registry.Registry/Register',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: RegisterRequest): Buffer => Buffer.from(RegisterRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): RegisterRequest => RegisterRequest.decode(value),
-    responseSerialize: (value: RegisterResponse): Buffer => Buffer.from(RegisterResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): RegisterResponse => RegisterResponse.decode(value),
+    requestSerialize: (value: RegisterRequest): Buffer =>
+      Buffer.from(RegisterRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): RegisterRequest =>
+      RegisterRequest.decode(value),
+    responseSerialize: (value: RegisterResponse): Buffer =>
+      Buffer.from(RegisterResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): RegisterResponse =>
+      RegisterResponse.decode(value),
   },
   /** Unregister an agent */
   unregister: {
-    path: "/parallax.registry.Registry/Unregister",
+    path: '/parallax.registry.Registry/Unregister',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: AgentRegistration): Buffer => Buffer.from(AgentRegistration.encode(value).finish()),
-    requestDeserialize: (value: Buffer): AgentRegistration => AgentRegistration.decode(value),
-    responseSerialize: (value: RegisterResponse): Buffer => Buffer.from(RegisterResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): RegisterResponse => RegisterResponse.decode(value),
+    requestSerialize: (value: AgentRegistration): Buffer =>
+      Buffer.from(AgentRegistration.encode(value).finish()),
+    requestDeserialize: (value: Buffer): AgentRegistration =>
+      AgentRegistration.decode(value),
+    responseSerialize: (value: RegisterResponse): Buffer =>
+      Buffer.from(RegisterResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): RegisterResponse =>
+      RegisterResponse.decode(value),
   },
   /** Renew agent registration */
   renew: {
-    path: "/parallax.registry.Registry/Renew",
+    path: '/parallax.registry.Registry/Renew',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: RenewRequest): Buffer => Buffer.from(RenewRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): RenewRequest => RenewRequest.decode(value),
-    responseSerialize: (value: RegisterResponse): Buffer => Buffer.from(RegisterResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): RegisterResponse => RegisterResponse.decode(value),
+    requestSerialize: (value: RenewRequest): Buffer =>
+      Buffer.from(RenewRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): RenewRequest =>
+      RenewRequest.decode(value),
+    responseSerialize: (value: RegisterResponse): Buffer =>
+      Buffer.from(RegisterResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): RegisterResponse =>
+      RegisterResponse.decode(value),
   },
   /** List registered agents */
   listAgents: {
-    path: "/parallax.registry.Registry/ListAgents",
+    path: '/parallax.registry.Registry/ListAgents',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: ListAgentsRequest): Buffer => Buffer.from(ListAgentsRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): ListAgentsRequest => ListAgentsRequest.decode(value),
-    responseSerialize: (value: ListAgentsResponse): Buffer => Buffer.from(ListAgentsResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): ListAgentsResponse => ListAgentsResponse.decode(value),
+    requestSerialize: (value: ListAgentsRequest): Buffer =>
+      Buffer.from(ListAgentsRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): ListAgentsRequest =>
+      ListAgentsRequest.decode(value),
+    responseSerialize: (value: ListAgentsResponse): Buffer =>
+      Buffer.from(ListAgentsResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): ListAgentsResponse =>
+      ListAgentsResponse.decode(value),
   },
   /** Get specific agent */
   getAgent: {
-    path: "/parallax.registry.Registry/GetAgent",
+    path: '/parallax.registry.Registry/GetAgent',
     requestStream: false,
     responseStream: false,
-    requestSerialize: (value: GetAgentRequest): Buffer => Buffer.from(GetAgentRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): GetAgentRequest => GetAgentRequest.decode(value),
-    responseSerialize: (value: AgentRegistration): Buffer => Buffer.from(AgentRegistration.encode(value).finish()),
-    responseDeserialize: (value: Buffer): AgentRegistration => AgentRegistration.decode(value),
+    requestSerialize: (value: GetAgentRequest): Buffer =>
+      Buffer.from(GetAgentRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): GetAgentRequest =>
+      GetAgentRequest.decode(value),
+    responseSerialize: (value: AgentRegistration): Buffer =>
+      Buffer.from(AgentRegistration.encode(value).finish()),
+    responseDeserialize: (value: Buffer): AgentRegistration =>
+      AgentRegistration.decode(value),
   },
   /** Watch for agent changes */
   watch: {
-    path: "/parallax.registry.Registry/Watch",
+    path: '/parallax.registry.Registry/Watch',
     requestStream: false,
     responseStream: true,
-    requestSerialize: (value: WatchRequest): Buffer => Buffer.from(WatchRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): WatchRequest => WatchRequest.decode(value),
-    responseSerialize: (value: WatchEvent): Buffer => Buffer.from(WatchEvent.encode(value).finish()),
-    responseDeserialize: (value: Buffer): WatchEvent => WatchEvent.decode(value),
+    requestSerialize: (value: WatchRequest): Buffer =>
+      Buffer.from(WatchRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): WatchRequest =>
+      WatchRequest.decode(value),
+    responseSerialize: (value: WatchEvent): Buffer =>
+      Buffer.from(WatchEvent.encode(value).finish()),
+    responseDeserialize: (value: Buffer): WatchEvent =>
+      WatchEvent.decode(value),
   },
 } as const;
 
@@ -1399,108 +1603,133 @@ export interface RegistryClient extends Client {
   /** Register an agent */
   register(
     request: RegisterRequest,
-    callback: (error: ServiceError | null, response: RegisterResponse) => void,
+    callback: (error: ServiceError | null, response: RegisterResponse) => void
   ): ClientUnaryCall;
   register(
     request: RegisterRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: RegisterResponse) => void,
+    callback: (error: ServiceError | null, response: RegisterResponse) => void
   ): ClientUnaryCall;
   register(
     request: RegisterRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: RegisterResponse) => void,
+    callback: (error: ServiceError | null, response: RegisterResponse) => void
   ): ClientUnaryCall;
   /** Unregister an agent */
   unregister(
     request: AgentRegistration,
-    callback: (error: ServiceError | null, response: RegisterResponse) => void,
+    callback: (error: ServiceError | null, response: RegisterResponse) => void
   ): ClientUnaryCall;
   unregister(
     request: AgentRegistration,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: RegisterResponse) => void,
+    callback: (error: ServiceError | null, response: RegisterResponse) => void
   ): ClientUnaryCall;
   unregister(
     request: AgentRegistration,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: RegisterResponse) => void,
+    callback: (error: ServiceError | null, response: RegisterResponse) => void
   ): ClientUnaryCall;
   /** Renew agent registration */
   renew(
     request: RenewRequest,
-    callback: (error: ServiceError | null, response: RegisterResponse) => void,
+    callback: (error: ServiceError | null, response: RegisterResponse) => void
   ): ClientUnaryCall;
   renew(
     request: RenewRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: RegisterResponse) => void,
+    callback: (error: ServiceError | null, response: RegisterResponse) => void
   ): ClientUnaryCall;
   renew(
     request: RenewRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: RegisterResponse) => void,
+    callback: (error: ServiceError | null, response: RegisterResponse) => void
   ): ClientUnaryCall;
   /** List registered agents */
   listAgents(
     request: ListAgentsRequest,
-    callback: (error: ServiceError | null, response: ListAgentsResponse) => void,
+    callback: (error: ServiceError | null, response: ListAgentsResponse) => void
   ): ClientUnaryCall;
   listAgents(
     request: ListAgentsRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: ListAgentsResponse) => void,
+    callback: (error: ServiceError | null, response: ListAgentsResponse) => void
   ): ClientUnaryCall;
   listAgents(
     request: ListAgentsRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: ListAgentsResponse) => void,
+    callback: (error: ServiceError | null, response: ListAgentsResponse) => void
   ): ClientUnaryCall;
   /** Get specific agent */
   getAgent(
     request: GetAgentRequest,
-    callback: (error: ServiceError | null, response: AgentRegistration) => void,
+    callback: (error: ServiceError | null, response: AgentRegistration) => void
   ): ClientUnaryCall;
   getAgent(
     request: GetAgentRequest,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: AgentRegistration) => void,
+    callback: (error: ServiceError | null, response: AgentRegistration) => void
   ): ClientUnaryCall;
   getAgent(
     request: GetAgentRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: AgentRegistration) => void,
+    callback: (error: ServiceError | null, response: AgentRegistration) => void
   ): ClientUnaryCall;
   /** Watch for agent changes */
-  watch(request: WatchRequest, options?: Partial<CallOptions>): ClientReadableStream<WatchEvent>;
-  watch(request: WatchRequest, metadata?: Metadata, options?: Partial<CallOptions>): ClientReadableStream<WatchEvent>;
+  watch(
+    request: WatchRequest,
+    options?: Partial<CallOptions>
+  ): ClientReadableStream<WatchEvent>;
+  watch(
+    request: WatchRequest,
+    metadata?: Metadata,
+    options?: Partial<CallOptions>
+  ): ClientReadableStream<WatchEvent>;
 }
 
 export const RegistryClient = makeGenericClientConstructor(
   RegistryService,
-  "parallax.registry.Registry",
+  'parallax.registry.Registry'
 ) as unknown as {
-  new (address: string, credentials: ChannelCredentials, options?: Partial<ClientOptions>): RegistryClient;
+  new (
+    address: string,
+    credentials: ChannelCredentials,
+    options?: Partial<ClientOptions>
+  ): RegistryClient;
   service: typeof RegistryService;
   serviceName: string;
 };
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : Partial<T>;
+export type DeepPartial<T> = T extends Builtin
+  ? T
+  : T extends globalThis.Array<infer U>
+    ? globalThis.Array<DeepPartial<U>>
+    : T extends ReadonlyArray<infer U>
+      ? ReadonlyArray<DeepPartial<U>>
+      : T extends {}
+        ? { [K in keyof T]?: DeepPartial<T[K]> }
+        : Partial<T>;
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & {
+      [K in Exclude<keyof I, KeysOfUnion<P>>]: never;
+    };
 
 function toTimestamp(date: Date): Timestamp {
   const seconds = Math.trunc(date.getTime() / 1_000);
@@ -1517,7 +1746,7 @@ function fromTimestamp(t: Timestamp): Date {
 function fromJsonTimestamp(o: any): Date {
   if (o instanceof globalThis.Date) {
     return o;
-  } else if (typeof o === "string") {
+  } else if (typeof o === 'string') {
     return new globalThis.Date(o);
   } else {
     return fromTimestamp(Timestamp.fromJSON(o));
@@ -1525,7 +1754,7 @@ function fromJsonTimestamp(o: any): Date {
 }
 
 function isObject(value: any): boolean {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function isSet(value: any): boolean {

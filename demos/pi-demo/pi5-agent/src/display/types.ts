@@ -10,8 +10,8 @@ export enum TamagotchiState {
 
 export interface SpriteFrame {
   data: Uint8Array; // row-major, MSB-first packed bits. width*height/8 bytes
-  width: number;    // 32
-  height: number;   // 40
+  width: number; // 32
+  height: number; // 40
 }
 
 export interface AnimationFrames {

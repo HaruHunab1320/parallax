@@ -2,7 +2,7 @@
  * Interface for agent registry operations
  */
 
-import { ServiceRegistration } from './types';
+import type { ServiceRegistration } from './types';
 
 export interface IAgentRegistry {
   register(service: ServiceRegistration): Promise<void>;

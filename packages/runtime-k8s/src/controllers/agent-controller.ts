@@ -5,7 +5,7 @@
  */
 
 import * as k8s from '@kubernetes/client-node';
-import { Logger } from 'pino';
+import type { Logger } from 'pino';
 
 const CRD_GROUP = 'parallax.ai';
 const CRD_VERSION = 'v1';
@@ -34,7 +34,7 @@ export class AgentController {
   private running = false;
 
   constructor(
-    private kc: k8s.KubeConfig,
+    kc: k8s.KubeConfig,
     private logger: Logger,
     private options: ControllerOptions
   ) {
@@ -59,7 +59,10 @@ export class AgentController {
         try {
           await this.handleEvent(type, apiObj);
         } catch (error) {
-          this.logger.error({ error, type, name: apiObj.metadata?.name }, 'Reconciliation error');
+          this.logger.error(
+            { error, type, name: apiObj.metadata?.name },
+            'Reconciliation error'
+          );
         }
       },
       (err) => {
@@ -125,14 +128,18 @@ export class AgentController {
     });
   }
 
-  private async reconcileDeployment(agent: any, namespace: string): Promise<void> {
+  private async reconcileDeployment(
+    agent: any,
+    namespace: string
+  ): Promise<void> {
     const name = agent.metadata.name;
     const spec = agent.spec;
     const agentId = agent.metadata.labels['parallax.ai/agent-id'];
 
     const image = spec.image || this.getImageForType(spec.type);
     const cpu = spec.resources?.cpu || this.options.defaultCpu || '1';
-    const memory = spec.resources?.memory || this.options.defaultMemory || '2Gi';
+    const memory =
+      spec.resources?.memory || this.options.defaultMemory || '2Gi';
 
     const deployment: k8s.V1Deployment = {
       metadata: {
@@ -172,16 +179,18 @@ export class AgentController {
           spec: {
             // Shared auth volume: all agents in the same execution share CLI credentials
             // so that one OAuth login authenticates the entire swarm
-            ...(spec.executionId ? {
-              volumes: [
-                {
-                  name: 'shared-auth',
-                  persistentVolumeClaim: {
-                    claimName: `parallax-auth-${spec.executionId.substring(0, 8)}`,
-                  },
-                },
-              ],
-            } : {}),
+            ...(spec.executionId
+              ? {
+                  volumes: [
+                    {
+                      name: 'shared-auth',
+                      persistentVolumeClaim: {
+                        claimName: `parallax-auth-${spec.executionId.substring(0, 8)}`,
+                      },
+                    },
+                  ],
+                }
+              : {}),
             containers: [
               {
                 name: 'agent',
@@ -193,20 +202,22 @@ export class AgentController {
                   limits: { cpu, memory },
                 },
                 // Mount shared auth volume at CLI credential directories
-                ...(spec.executionId ? {
-                  volumeMounts: [
-                    {
-                      name: 'shared-auth',
-                      mountPath: '/home/agent/.claude',
-                      subPath: 'claude',
-                    },
-                    {
-                      name: 'shared-auth',
-                      mountPath: '/home/agent/.codex',
-                      subPath: 'codex',
-                    },
-                  ],
-                } : {}),
+                ...(spec.executionId
+                  ? {
+                      volumeMounts: [
+                        {
+                          name: 'shared-auth',
+                          mountPath: '/home/agent/.claude',
+                          subPath: 'claude',
+                        },
+                        {
+                          name: 'shared-auth',
+                          mountPath: '/home/agent/.codex',
+                          subPath: 'codex',
+                        },
+                      ],
+                    }
+                  : {}),
                 readinessProbe: {
                   httpGet: {
                     path: '/health',
@@ -234,13 +245,21 @@ export class AgentController {
     try {
       await this.appsApi.readNamespacedDeployment({ name, namespace });
       // Update existing
-      await this.appsApi.replaceNamespacedDeployment({ name, namespace, body: deployment });
+      await this.appsApi.replaceNamespacedDeployment({
+        name,
+        namespace,
+        body: deployment,
+      });
       this.logger.debug({ name }, 'Updated deployment');
     } catch (error: any) {
-      const status = error.statusCode ?? error.code ?? error.response?.statusCode;
+      const status =
+        error.statusCode ?? error.code ?? error.response?.statusCode;
       if (status === 404) {
         // Create new
-        await this.appsApi.createNamespacedDeployment({ namespace, body: deployment });
+        await this.appsApi.createNamespacedDeployment({
+          namespace,
+          body: deployment,
+        });
         this.logger.debug({ name }, 'Created deployment');
       } else {
         throw error;
@@ -289,13 +308,21 @@ export class AgentController {
     try {
       await this.coreApi.readNamespacedService({ name, namespace });
       // Update existing
-      await this.coreApi.replaceNamespacedService({ name, namespace, body: service });
+      await this.coreApi.replaceNamespacedService({
+        name,
+        namespace,
+        body: service,
+      });
       this.logger.debug({ name }, 'Updated service');
     } catch (error: any) {
-      const status = error.statusCode ?? error.code ?? error.response?.statusCode;
+      const status =
+        error.statusCode ?? error.code ?? error.response?.statusCode;
       if (status === 404) {
         // Create new
-        await this.coreApi.createNamespacedService({ namespace, body: service });
+        await this.coreApi.createNamespacedService({
+          namespace,
+          body: service,
+        });
         this.logger.debug({ name }, 'Created service');
       } else {
         throw error;
@@ -318,7 +345,10 @@ export class AgentController {
     }
 
     try {
-      await this.coreApi.deleteNamespacedService({ name: `${name}-svc`, namespace });
+      await this.coreApi.deleteNamespacedService({
+        name: `${name}-svc`,
+        namespace,
+      });
     } catch {
       // Ignore
     }
@@ -353,7 +383,9 @@ export class AgentController {
         plural: CRD_PLURAL,
         name,
         body: patch,
-        options: { headers: { 'Content-Type': 'application/merge-patch+json' } },
+        options: {
+          headers: { 'Content-Type': 'application/merge-patch+json' },
+        },
       } as any);
     } catch (error) {
       this.logger.warn({ error, name }, 'Failed to update status');
@@ -362,7 +394,9 @@ export class AgentController {
 
   private getImageForType(type: string): string {
     const baseImage = DEFAULT_IMAGES[type] || DEFAULT_IMAGES.custom;
-    return this.options.imagePrefix ? `${this.options.imagePrefix}/${baseImage}` : baseImage;
+    return this.options.imagePrefix
+      ? `${this.options.imagePrefix}/${baseImage}`
+      : baseImage;
   }
 
   private buildEnv(spec: any, agentId: string): k8s.V1EnvVar[] {
@@ -371,8 +405,13 @@ export class AgentController {
       { name: 'AGENT_NAME', value: spec.name },
       { name: 'AGENT_TYPE', value: spec.type },
       { name: 'AGENT_ROLE', value: spec.role || '' },
-      { name: 'AGENT_CAPABILITIES', value: JSON.stringify(spec.capabilities || []) },
-      ...(spec.executionId ? [{ name: 'PARALLAX_EXECUTION_ID', value: spec.executionId }] : []),
+      {
+        name: 'AGENT_CAPABILITIES',
+        value: JSON.stringify(spec.capabilities || []),
+      },
+      ...(spec.executionId
+        ? [{ name: 'PARALLAX_EXECUTION_ID', value: spec.executionId }]
+        : []),
     ];
 
     // Add credentials from secret if specified

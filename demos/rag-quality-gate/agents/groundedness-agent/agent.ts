@@ -5,8 +5,8 @@
  * Catches hallucinations where the model makes up information not in the sources.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'groundedness-checker';
@@ -21,9 +21,10 @@ class GroundednessAgent extends ParallaxAgent {
       AGENT_NAME,
       ['quality-gate', 'groundedness', 'verification', 'rag'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Verifies that answers are grounded in the source documents'
+        description:
+          'Verifies that answers are grounded in the source documents',
       }
     );
 
@@ -37,7 +38,10 @@ class GroundednessAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,14 +50,16 @@ class GroundednessAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
     const question = data?.question || '';
     const answer = data?.answer || data?.generatedAnswer || '';
     const sources = data?.sources || data?.retrievedDocs || [];
-    const sourcesText = Array.isArray(sources) ? sources.join('\n\n---\n\n') : sources;
+    const sourcesText = Array.isArray(sources)
+      ? sources.join('\n\n---\n\n')
+      : sources;
 
     const prompt = `You are a groundedness verification agent. Your job is to check if the ANSWER is fully supported by the SOURCE DOCUMENTS.
 
@@ -104,7 +110,7 @@ Be strict - if information is not in the sources, it's a hallucination.`;
         return {
           value: { passed: false, error: 'Could not parse response' },
           confidence: 0.3,
-          reasoning: text.substring(0, 200)
+          reasoning: text.substring(0, 200),
         };
       }
 
@@ -118,17 +124,21 @@ Be strict - if information is not in the sources, it's a hallucination.`;
           claims: parsed.claims || [],
           hallucinations: parsed.hallucinations || [],
           checkType: 'groundedness',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: score,
-        reasoning: parsed.reasoning || 'Groundedness check completed'
+        reasoning: parsed.reasoning || 'Groundedness check completed',
       };
     } catch (error) {
       console.error('Analysis error:', error);
       return {
-        value: { passed: false, error: String(error), checkType: 'groundedness' },
+        value: {
+          passed: false,
+          error: String(error),
+          checkType: 'groundedness',
+        },
         confidence: 0,
-        reasoning: 'Analysis failed'
+        reasoning: 'Analysis failed',
       };
     }
   }

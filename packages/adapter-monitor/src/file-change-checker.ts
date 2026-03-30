@@ -7,8 +7,8 @@
  * detection are checked.
  */
 
-import type { AdapterType, FileChangeResult, WatchedFile } from './types';
-import { WATCHED_FILES, getWatchedFiles } from './watched-files';
+import type { AdapterType, FileChangeResult } from './types';
+import { getWatchedFiles } from './watched-files';
 
 /** GitHub compare API response shape (subset) */
 interface GitHubCompareResponse {
@@ -39,7 +39,7 @@ function githubHeaders(): Record<string, string> {
  * Normalize a version string to a tag name.
  * Tries common patterns: v1.2.3, 1.2.3, aider-1.2.3, etc.
  */
-function normalizeTag(version: string, adapter: AdapterType): string {
+function normalizeTag(version: string, _adapter: AdapterType): string {
   // If it already looks like a tag (starts with v, or contains adapter name), use as-is
   if (/^v\d/.test(version) || version.includes('/')) {
     return version;
@@ -63,7 +63,7 @@ function normalizeTag(version: string, adapter: AdapterType): string {
 export async function checkFileChanges(
   adapter: AdapterType,
   oldVersion: string,
-  newVersion: string,
+  newVersion: string
 ): Promise<FileChangeResult> {
   const config = getWatchedFiles(adapter);
   const { githubRepo, watchedFiles } = config;
@@ -79,17 +79,19 @@ export async function checkFileChanges(
     if (response.status === 404) {
       throw new Error(
         `Tags not found: ${oldTag}...${newTag} in ${githubRepo}. ` +
-        `Check that both version tags exist.`,
+          `Check that both version tags exist.`
       );
     }
     throw new Error(
-      `GitHub API error for ${githubRepo}: ${response.status} ${response.statusText}`,
+      `GitHub API error for ${githubRepo}: ${response.status} ${response.statusText}`
     );
   }
 
   const data = (await response.json()) as GitHubCompareResponse;
   const changedFilenames = new Set(data.files?.map((f) => f.filename) ?? []);
-  const fileStatusMap = new Map(data.files?.map((f) => [f.filename, f.status]) ?? []);
+  const fileStatusMap = new Map(
+    data.files?.map((f) => [f.filename, f.status]) ?? []
+  );
 
   // Match watched files against changed files
   const changedWatchedFiles: FileChangeResult['changedFiles'] = [];
@@ -99,17 +101,32 @@ export async function checkFileChanges(
       changedWatchedFiles.push({
         path: watched.path,
         category: watched.category,
-        status: fileStatusMap.get(watched.path) as FileChangeResult['changedFiles'][0]['status'],
+        status: fileStatusMap.get(
+          watched.path
+        ) as FileChangeResult['changedFiles'][0]['status'],
       });
     }
   }
 
   // Determine if adapter update is needed based on which categories changed
-  const criticalCategories = new Set(['blocking_prompt', 'ready_detection', 'auth', 'exit_detection']);
-  const adapterUpdateNeeded = changedWatchedFiles.some((f) => criticalCategories.has(f.category));
+  const criticalCategories = new Set([
+    'blocking_prompt',
+    'ready_detection',
+    'auth',
+    'exit_detection',
+  ]);
+  const adapterUpdateNeeded = changedWatchedFiles.some((f) =>
+    criticalCategories.has(f.category)
+  );
 
   // Build human-readable summary
-  const summary = buildSummary(adapter, oldVersion, newVersion, changedWatchedFiles, data.total_commits);
+  const summary = buildSummary(
+    adapter,
+    oldVersion,
+    newVersion,
+    changedWatchedFiles,
+    data.total_commits
+  );
 
   return {
     adapter,
@@ -125,7 +142,7 @@ export async function checkFileChanges(
  * Check file changes for all adapters between version pairs.
  */
 export async function checkAllFileChanges(
-  versionPairs: Partial<Record<AdapterType, { old: string; new: string }>>,
+  versionPairs: Partial<Record<AdapterType, { old: string; new: string }>>
 ): Promise<FileChangeResult[]> {
   const results: FileChangeResult[] = [];
 
@@ -136,7 +153,7 @@ export async function checkAllFileChanges(
       const result = await checkFileChanges(
         adapter as AdapterType,
         versions.old,
-        versions.new,
+        versions.new
       );
       results.push(result);
     } catch (error) {
@@ -150,7 +167,9 @@ export async function checkAllFileChanges(
 /**
  * List all watched files for an adapter, grouped by category.
  */
-export function listWatchedFiles(adapter: AdapterType): Record<string, string[]> {
+export function listWatchedFiles(
+  adapter: AdapterType
+): Record<string, string[]> {
   const config = getWatchedFiles(adapter);
   const grouped: Record<string, string[]> = {};
 
@@ -172,14 +191,18 @@ function buildSummary(
   oldVersion: string,
   newVersion: string,
   changedFiles: FileChangeResult['changedFiles'],
-  totalCommits: number,
+  totalCommits: number
 ): string {
   const lines: string[] = [];
 
-  lines.push(`${adapter}: ${oldVersion} → ${newVersion} (${totalCommits} commits)`);
+  lines.push(
+    `${adapter}: ${oldVersion} → ${newVersion} (${totalCommits} commits)`
+  );
 
   if (changedFiles.length === 0) {
-    lines.push('  No watched files changed — adapter patterns likely still valid.');
+    lines.push(
+      '  No watched files changed — adapter patterns likely still valid.'
+    );
     return lines.join('\n');
   }
 
@@ -200,12 +223,23 @@ function buildSummary(
     }
   }
 
-  const criticalCategories = new Set(['blocking_prompt', 'ready_detection', 'auth', 'exit_detection']);
-  const criticalChanges = changedFiles.filter((f) => criticalCategories.has(f.category));
+  const criticalCategories = new Set([
+    'blocking_prompt',
+    'ready_detection',
+    'auth',
+    'exit_detection',
+  ]);
+  const criticalChanges = changedFiles.filter((f) =>
+    criticalCategories.has(f.category)
+  );
   if (criticalChanges.length > 0) {
-    lines.push(`  ⚠  ${criticalChanges.length} critical file(s) changed — adapter update recommended.`);
+    lines.push(
+      `  ⚠  ${criticalChanges.length} critical file(s) changed — adapter update recommended.`
+    );
   } else {
-    lines.push('  Only framework/startup files changed — adapter update likely not needed.');
+    lines.push(
+      '  Only framework/startup files changed — adapter update likely not needed.'
+    );
   }
 
   return lines.join('\n');

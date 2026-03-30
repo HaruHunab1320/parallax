@@ -4,15 +4,15 @@
  * Routes messages between agents based on organizational hierarchy and routing rules.
  */
 
-import { Logger } from 'pino';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
+import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  OrgStructure,
+import type {
+  AgentAnswer,
+  AgentQuestion,
   OrgAgentInstance,
   OrgExecutionContext,
-  AgentQuestion,
-  AgentAnswer,
+  OrgStructure,
   RoutingRule,
 } from './types';
 
@@ -34,7 +34,7 @@ export class MessageRouter extends EventEmitter {
     private structure: OrgStructure,
     private context: OrgExecutionContext,
     private logger: Logger,
-    private options: MessageRouterOptions = {}
+    options: MessageRouterOptions = {}
   ) {
     super();
     this.defaultTimeout = options.defaultTimeout || 30000;
@@ -47,8 +47,8 @@ export class MessageRouter extends EventEmitter {
   async routeTask(
     fromRole: string,
     toRole: string,
-    task: string,
-    data?: any
+    _task: string,
+    _data?: any
   ): Promise<string[]> {
     const targetAgents = this.getAgentsForRole(toRole);
 
@@ -171,8 +171,8 @@ export class MessageRouter extends EventEmitter {
    * Get pending questions for an agent
    */
   getPendingQuestionsFor(agentId: string): AgentQuestion[] {
-    return Array.from(this.pendingQuestions.values()).filter(
-      (q) => this.isQuestionRoutedTo(q, agentId)
+    return Array.from(this.pendingQuestions.values()).filter((q) =>
+      this.isQuestionRoutedTo(q, agentId)
     );
   }
 
@@ -263,10 +263,7 @@ export class MessageRouter extends EventEmitter {
       targetAgent = targetAgents[0];
     }
 
-    question.escalationPath = [
-      ...(question.escalationPath || []),
-      targetRole,
-    ];
+    question.escalationPath = [...(question.escalationPath || []), targetRole];
 
     this.logger.info(
       {

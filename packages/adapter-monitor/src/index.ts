@@ -5,57 +5,67 @@
  * and detects pattern changes across versions.
  */
 
+// Configuration
+export {
+  BASELINE_AUTH_PATTERNS,
+  BASELINE_EXIT_PATTERNS,
+  BASELINE_LOADING_PATTERNS,
+  BASELINE_READY_PATTERNS,
+  BASELINE_TOOL_WAIT_PATTERNS,
+  BASELINE_TURN_COMPLETE_PATTERNS,
+  MONITORED_CLIS,
+} from './config';
+// File change checking
+export {
+  checkAllFileChanges,
+  checkFileChanges,
+  listWatchedFiles,
+} from './file-change-checker';
+// Snapshot capture
+export {
+  captureLocally,
+  captureSnapshot,
+  captureWithDocker,
+} from './snapshot-capture';
+// Snapshot storage
+export {
+  comparePatterns,
+  extractPatterns,
+  getPatternsForVersion,
+  listCapturedVersions,
+  loadLatestSnapshot,
+  loadSnapshot,
+  loadVersionHistory,
+  saveSnapshot,
+  saveVersionHistory,
+  updateVersionHistory,
+} from './snapshot-storage';
 // Types
 export type {
   AdapterType,
-  RegistryType,
+  AdapterVersionHistory,
+  AnalysisResult,
+  CaptureOptions,
   CLIVersionSource,
   DetectedPattern,
-  StartupSnapshot,
-  VersionPatternMapping,
-  AdapterVersionHistory,
+  FileChangeResult,
   PatternDiff,
+  RegistryType,
+  StartupSnapshot,
   VersionCheckResult,
-  CaptureOptions,
-  AnalysisResult,
+  VersionPatternMapping,
   WatchedFile,
   WatchedFileConfig,
-  FileChangeResult,
 } from './types';
-
-// Configuration
-export {
-  MONITORED_CLIS,
-  BASELINE_READY_PATTERNS,
-  BASELINE_AUTH_PATTERNS,
-  BASELINE_LOADING_PATTERNS,
-  BASELINE_TURN_COMPLETE_PATTERNS,
-  BASELINE_TOOL_WAIT_PATTERNS,
-  BASELINE_EXIT_PATTERNS,
-} from './config';
-
 // Version checking
-export { checkVersion, checkAllVersions, filterUpdatesAvailable } from './version-checker';
-
-// Snapshot capture
-export { captureSnapshot, captureWithDocker, captureLocally } from './snapshot-capture';
-
-// Snapshot storage
 export {
-  saveSnapshot,
-  loadSnapshot,
-  loadLatestSnapshot,
-  extractPatterns,
-  loadVersionHistory,
-  saveVersionHistory,
-  updateVersionHistory,
-  comparePatterns,
-  getPatternsForVersion,
-  listCapturedVersions,
-} from './snapshot-storage';
-
+  checkAllVersions,
+  checkVersion,
+  filterUpdatesAvailable,
+} from './version-checker';
 // Watched files
-export { WATCHED_FILES, getWatchedFiles, getWatchedFilesByCategory } from './watched-files';
-
-// File change checking
-export { checkFileChanges, checkAllFileChanges, listWatchedFiles } from './file-change-checker';
+export {
+  getWatchedFiles,
+  getWatchedFilesByCategory,
+  WATCHED_FILES,
+} from './watched-files';

@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ConfidenceProtocol, DEFAULT_THRESHOLDS } from './confidence-protocol';
-import { AgentResult } from './types';
+import type { AgentResult } from './types';
 
-function makeResult<T>(value: T, confidence: number, agent: string): AgentResult<T> {
+function makeResult<T>(
+  value: T,
+  confidence: number,
+  agent: string
+): AgentResult<T> {
   return { value, confidence, agent, timestamp: Date.now() };
 }
 
@@ -33,7 +37,11 @@ describe('ConfidenceProtocol', () => {
     });
 
     it('should respect custom thresholds', () => {
-      const custom = new ConfidenceProtocol({ high: 0.9, medium: 0.6, low: 0.0 });
+      const custom = new ConfidenceProtocol({
+        high: 0.9,
+        medium: 0.6,
+        low: 0.0,
+      });
       expect(custom.getConfidenceLevel(0.85)).toBe('medium');
       expect(custom.getConfidenceLevel(0.9)).toBe('high');
     });
@@ -43,7 +51,9 @@ describe('ConfidenceProtocol', () => {
     const protocol = new ConfidenceProtocol();
 
     it('should return 0 consensus for empty results', () => {
-      const { consensus, disagreements } = protocol.calculateWeightedConsensus([]);
+      const { consensus, disagreements } = protocol.calculateWeightedConsensus(
+        []
+      );
       expect(consensus).toBe(0);
       expect(disagreements).toEqual([]);
     });
@@ -91,7 +101,7 @@ describe('ConfidenceProtocol', () => {
     const protocol = new ConfidenceProtocol();
 
     it('should return true when low consensus + high confidence + disagreements', () => {
-      const results = [
+      const _results = [
         makeResult('yes', 0.9, 'a1'),
         makeResult('no', 0.85, 'a2'),
         makeResult('maybe', 0.1, 'a3'),

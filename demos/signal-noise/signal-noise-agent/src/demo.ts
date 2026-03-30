@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { ParallaxClient } from '@parallaxai/client';
 
 /**
@@ -59,8 +59,12 @@ async function checkAgents() {
   }
 
   if (conversationAgents.length < 2) {
-    console.warn('\n  WARNING: Need at least 2 conversation agents for the demo.');
-    console.warn('  Start agents with: AGENT_PERSONA=vero npx tsx src/index.ts');
+    console.warn(
+      '\n  WARNING: Need at least 2 conversation agents for the demo.'
+    );
+    console.warn(
+      '  Start agents with: AGENT_PERSONA=vero npx tsx src/index.ts'
+    );
   }
 
   return conversationAgents.length;
@@ -81,7 +85,11 @@ async function executeRound(topic: string) {
   console.log(`  Execution ID: ${execution.id}`);
   console.log('  Waiting for completion...');
 
-  const result = await client.executions.waitForCompletion(execution.id, 2000, 60000);
+  const result = await client.executions.waitForCompletion(
+    execution.id,
+    2000,
+    60000
+  );
 
   console.log(`  Status: ${result.status}`);
 
@@ -89,14 +97,20 @@ async function executeRound(topic: string) {
     const raw = result.result as any;
     const output = raw.value || raw;
     console.log('\n  --- Station Output ---');
-    console.log(`  Primary: ${output.primary?.agent} (${output.primary?.channel})`);
+    console.log(
+      `  Primary: ${output.primary?.agent} (${output.primary?.channel})`
+    );
     console.log(`  Message: ${output.primary?.message?.substring(0, 100)}...`);
-    console.log(`  Station confidence: ${output.stationConfidence?.toFixed(2)}`);
+    console.log(
+      `  Station confidence: ${output.stationConfidence?.toFixed(2)}`
+    );
     console.log(`  Agent count: ${output.agentCount}`);
     if (output.background?.length) {
       console.log('  Background:');
       for (const bg of output.background) {
-        console.log(`    - ${bg.agent} (${bg.channel}): dominance=${bg.dominance?.toFixed(2)}`);
+        console.log(
+          `    - ${bg.agent} (${bg.channel}): dominance=${bg.dominance?.toFixed(2)}`
+        );
       }
     }
   }
@@ -152,7 +166,9 @@ async function main() {
       break;
 
     case 'run': {
-      const topic = process.argv[3] || 'What are you working on and what interests you right now?';
+      const topic =
+        process.argv[3] ||
+        'What are you working on and what interests you right now?';
       await checkAgents();
       await executeRound(topic);
       break;
@@ -167,7 +183,9 @@ async function main() {
       await uploadPatterns();
       const agentCount = await checkAgents();
       if (agentCount >= 2) {
-        await executeRound('What are you working on and what interests you right now?');
+        await executeRound(
+          'What are you working on and what interests you right now?'
+        );
         await createConversationSchedule();
       }
       break;

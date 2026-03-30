@@ -1,8 +1,8 @@
-import { Router, Response } from 'express';
-import { Logger } from 'pino';
+import { type Response, Router } from 'express';
+import type { Logger } from 'pino';
+import type { JWTService } from '../jwt/jwt-service';
+import type { OAuthConfig } from '../types';
 import { OAuthProvider } from './oauth-provider';
-import { JWTService } from '../jwt/jwt-service';
-import { OAuthConfig } from '../types';
 
 export interface OAuthMiddlewareOptions {
   providers: {
@@ -67,7 +67,10 @@ export class OAuthMiddleware {
         });
         res.redirect(authUrl);
       } catch (error) {
-        this.logger.error({ error, provider: providerName }, 'Failed to generate auth URL');
+        this.logger.error(
+          { error, provider: providerName },
+          'Failed to generate auth URL'
+        );
         res.status(500).json({
           error: 'OAuth error',
           message: 'Failed to initiate OAuth flow',
@@ -128,7 +131,10 @@ export class OAuthMiddleware {
           const redirectUrl = new URL(this.options.successRedirect);
           redirectUrl.searchParams.set('token', authTokens.accessToken);
           if (authTokens.refreshToken) {
-            redirectUrl.searchParams.set('refreshToken', authTokens.refreshToken);
+            redirectUrl.searchParams.set(
+              'refreshToken',
+              authTokens.refreshToken
+            );
           }
           res.redirect(redirectUrl.toString());
         } else {
@@ -144,7 +150,10 @@ export class OAuthMiddleware {
           });
         }
       } catch (error) {
-        this.logger.error({ error, provider: providerName }, 'OAuth callback error');
+        this.logger.error(
+          { error, provider: providerName },
+          'OAuth callback error'
+        );
         this.handleAuthError(res, 'Authentication failed');
       }
     });
@@ -161,7 +170,8 @@ export class OAuthMiddleware {
       }
 
       try {
-        const tokens = await this.options.jwtService.refreshAccessToken(refreshToken);
+        const tokens =
+          await this.options.jwtService.refreshAccessToken(refreshToken);
         res.json(tokens);
       } catch (error) {
         this.logger.error({ error }, 'Token refresh error');

@@ -2,20 +2,27 @@
  * List Threads Tool - Query running managed threads
  */
 
+import type {
+  ThreadFilter,
+  ThreadHandle,
+  ThreadRuntimeProvider,
+} from '@parallaxai/runtime-interface';
 import type { LocalRuntime } from '@parallaxai/runtime-local';
-import type { ThreadFilter, ThreadHandle, ThreadRuntimeProvider } from '@parallaxai/runtime-interface';
-import { ListThreadsInputSchema, type ListThreadsInput } from './schemas.js';
+import { type ListThreadsInput, ListThreadsInputSchema } from './schemas.js';
 
 export const LIST_THREADS_TOOL = {
   name: 'list_threads',
-  description: 'List managed threads with optional filtering by execution, role, or status.',
+  description:
+    'List managed threads with optional filtering by execution, role, or status.',
   inputSchema: ListThreadsInputSchema,
 };
 
 export async function executeListThreads(
   runtime: LocalRuntime,
   input: ListThreadsInput
-): Promise<{ success: true; threads: ThreadHandle[] } | { success: false; error: string }> {
+): Promise<
+  { success: true; threads: ThreadHandle[] } | { success: false; error: string }
+> {
   try {
     const threadRuntime = runtime as LocalRuntime & ThreadRuntimeProvider;
     const filter: ThreadFilter = {};

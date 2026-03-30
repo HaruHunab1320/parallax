@@ -4,7 +4,7 @@
  * Database operations for credential grants.
  */
 
-import { PrismaClient, CredentialGrant } from '@prisma/client';
+import type { CredentialGrant, PrismaClient } from '@prisma/client';
 
 export interface CreateCredentialGrantInput {
   id: string;

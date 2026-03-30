@@ -81,7 +81,10 @@ const logger = pino({
 });
 
 async function main() {
-  logger.info({ version: VERSION, maxAgents }, 'Starting Parallax Agent Runtime');
+  logger.info(
+    { version: VERSION, maxAgents },
+    'Starting Parallax Agent Runtime'
+  );
 
   // Create server
   const server = new ParallaxMcpServer({

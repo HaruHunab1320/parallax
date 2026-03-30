@@ -5,21 +5,20 @@
  * Run with: npx tsx test-integration.ts
  */
 
-import {
-  OrgChartCompiler,
-  createTarget,
-  validatePattern,
-  prismTarget,
-  jsonTarget,
-  mermaidTarget,
-  listTargets,
-} from './src/index';
-
 import type {
-  OrgPattern,
   CompileResult,
-  ValidationResult,
   CompileTarget,
+  OrgPattern,
+  ValidationResult,
+} from './src/index';
+import {
+  createTarget,
+  jsonTarget,
+  listTargets,
+  mermaidTarget,
+  OrgChartCompiler,
+  prismTarget,
+  validatePattern,
 } from './src/index';
 
 async function runTests() {
@@ -89,19 +88,23 @@ async function runTests() {
   });
 
   test('validatePattern is exported', () => {
-    if (typeof validatePattern !== 'function') throw new Error('Not a function');
+    if (typeof validatePattern !== 'function')
+      throw new Error('Not a function');
   });
 
   test('prismTarget is exported', () => {
-    if (!prismTarget || prismTarget.name !== 'prism') throw new Error('Invalid target');
+    if (!prismTarget || prismTarget.name !== 'prism')
+      throw new Error('Invalid target');
   });
 
   test('jsonTarget is exported', () => {
-    if (!jsonTarget || jsonTarget.name !== 'json') throw new Error('Invalid target');
+    if (!jsonTarget || jsonTarget.name !== 'json')
+      throw new Error('Invalid target');
   });
 
   test('mermaidTarget is exported', () => {
-    if (!mermaidTarget || mermaidTarget.name !== 'mermaid') throw new Error('Invalid target');
+    if (!mermaidTarget || mermaidTarget.name !== 'mermaid')
+      throw new Error('Invalid target');
   });
 
   test('listTargets is exported', () => {
@@ -156,7 +159,8 @@ workflow:
   test('compile to prism', () => {
     const result = OrgChartCompiler.compile(samplePattern);
     if (result.format !== 'code') throw new Error('Wrong format');
-    if (!result.output.includes('roleAssignments')) throw new Error('Missing expected output');
+    if (!result.output.includes('roleAssignments'))
+      throw new Error('Missing expected output');
   });
 
   test('compile to json', () => {
@@ -167,16 +171,22 @@ workflow:
   });
 
   test('compile to mermaid', () => {
-    const result = OrgChartCompiler.compile(samplePattern, { target: 'mermaid' });
+    const result = OrgChartCompiler.compile(samplePattern, {
+      target: 'mermaid',
+    });
     if (result.format !== 'code') throw new Error('Wrong format');
-    if (!result.output.includes('graph TD')) throw new Error('Missing mermaid header');
+    if (!result.output.includes('graph TD'))
+      throw new Error('Missing mermaid header');
   });
 
   test('extract metadata', () => {
     const result = OrgChartCompiler.compile(samplePattern);
-    if (result.metadata.name !== 'integration-test') throw new Error('Wrong name');
-    if (!result.metadata.capabilities.includes('coding')) throw new Error('Missing capability');
-    if (result.metadata.agentCounts.min !== 3) throw new Error('Wrong agent count');
+    if (result.metadata.name !== 'integration-test')
+      throw new Error('Wrong name');
+    if (!result.metadata.capabilities.includes('coding'))
+      throw new Error('Missing capability');
+    if (result.metadata.agentCounts.min !== 3)
+      throw new Error('Wrong agent count');
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -186,7 +196,7 @@ workflow:
     const target = createTarget({
       name: 'custom-test',
       format: 'code',
-      emitRole: (r, id) => `ROLE:${id}`,
+      emitRole: (_r, id) => `ROLE:${id}`,
       emitWorkflow: (w) => `WORKFLOW:${w.name}`,
       join: (parts) => parts.join('|'),
     });
@@ -196,7 +206,9 @@ workflow:
       throw new Error('Target not registered');
     }
 
-    const result = OrgChartCompiler.compile(samplePattern, { target: 'custom-test' });
+    const result = OrgChartCompiler.compile(samplePattern, {
+      target: 'custom-test',
+    });
     if (!result.output.includes('ROLE:engineer')) {
       throw new Error('Custom target not used');
     }
@@ -229,7 +241,7 @@ workflow:
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  console.log('\n' + '─'.repeat(50));
+  console.log(`\n${'─'.repeat(50)}`);
   console.log(`Results: ${passed} passed, ${failed} failed`);
 
   if (failed > 0) {

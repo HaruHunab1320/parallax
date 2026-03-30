@@ -1,22 +1,22 @@
 import {
-  AgentRegistration,
-  GetAgentRequest,
-  ListAgentsRequest,
-  ListAgentsResponse,
-  RegisterRequest,
-  RegisterResponse,
-  RegistryClient,
-  RenewRequest,
-  WatchEvent,
-  WatchRequest,
-} from "../generated/registry";
-import {
-  ChannelCredentials,
-  ClientOptions,
-  ClientReadableStream,
+  type ChannelCredentials,
+  type ClientOptions,
+  type ClientReadableStream,
   Metadata,
-  ServiceError,
-} from "@grpc/grpc-js";
+  type ServiceError,
+} from '@grpc/grpc-js';
+import {
+  type AgentRegistration,
+  type GetAgentRequest,
+  type ListAgentsRequest,
+  type ListAgentsResponse,
+  type RegisterRequest,
+  type RegisterResponse,
+  RegistryClient,
+  type RenewRequest,
+  type WatchEvent,
+  type WatchRequest,
+} from '../generated/registry';
 
 export type RegistryWatchHandlers = {
   onEvent?: (event: WatchEvent) => void;
@@ -35,38 +35,51 @@ export class RegistryServiceClient {
     this.client = new RegistryClient(address, credentials, options);
   }
 
-  register(agent: AgentRegistration, autoRenew = true, metadata?: Metadata): Promise<RegisterResponse> {
+  register(
+    agent: AgentRegistration,
+    autoRenew = true,
+    metadata?: Metadata
+  ): Promise<RegisterResponse> {
     const request: RegisterRequest = { agent, autoRenew };
     return new Promise((resolve, reject) => {
       this.client.register(
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: RegisterResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 
-  unregister(agent: AgentRegistration, metadata?: Metadata): Promise<RegisterResponse> {
+  unregister(
+    agent: AgentRegistration,
+    metadata?: Metadata
+  ): Promise<RegisterResponse> {
     return new Promise((resolve, reject) => {
       this.client.unregister(
         agent,
         metadata || new Metadata(),
         (error: ServiceError | null, response: RegisterResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 
-  renew(leaseId: string, ttlSeconds = 60, metadata?: Metadata): Promise<RegisterResponse> {
+  renew(
+    leaseId: string,
+    ttlSeconds = 60,
+    metadata?: Metadata
+  ): Promise<RegisterResponse> {
     const request: RenewRequest = {
       leaseId,
       ttl: { seconds: ttlSeconds, nanos: 0 },
@@ -76,12 +89,13 @@ export class RegistryServiceClient {
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: RegisterResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 
@@ -89,7 +103,7 @@ export class RegistryServiceClient {
     capabilities: string[] = [],
     labels: Record<string, string> = {},
     limit = 100,
-    continuationToken = "",
+    continuationToken = '',
     metadata?: Metadata
   ): Promise<ListAgentsResponse> {
     const request: ListAgentsRequest = {
@@ -103,12 +117,13 @@ export class RegistryServiceClient {
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: ListAgentsResponse) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 
@@ -119,12 +134,13 @@ export class RegistryServiceClient {
         request,
         metadata || new Metadata(),
         (error: ServiceError | null, response: AgentRegistration) => {
-        if (error) {
-          reject(error);
-          return;
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(response);
         }
-        resolve(response);
-      });
+      );
     });
   }
 
@@ -136,9 +152,9 @@ export class RegistryServiceClient {
   ): ClientReadableStream<WatchEvent> {
     const request: WatchRequest = { capabilities, includeInitial };
     const stream = this.client.watch(request, metadata || new Metadata());
-    stream.on("data", (event: WatchEvent) => handlers.onEvent?.(event));
-    stream.on("error", (error: ServiceError) => handlers.onError?.(error));
-    stream.on("end", () => handlers.onEnd?.());
+    stream.on('data', (event: WatchEvent) => handlers.onEvent?.(event));
+    stream.on('error', (error: ServiceError) => handlers.onError?.(error));
+    stream.on('end', () => handlers.onEnd?.());
     return stream;
   }
 }

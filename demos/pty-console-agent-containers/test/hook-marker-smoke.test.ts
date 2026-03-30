@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { PTYManager, type SessionHandle } from '../../../packages/pty-manager/src/index';
-import { PTYConsoleBridge } from '../../../packages/pty-console/src/index';
 import { ClaudeAdapter } from '../../../packages/coding-agent-adapters/src/claude-adapter';
 import { GeminiAdapter } from '../../../packages/coding-agent-adapters/src/gemini-adapter';
+import { PTYConsoleBridge } from '../../../packages/pty-console/src/index';
+import {
+  PTYManager,
+  type SessionHandle,
+} from '../../../packages/pty-manager/src/index';
 
 type EventKind = 'blocking_prompt' | 'ready';
 
@@ -17,7 +20,7 @@ class MockClaudeHookAdapter extends ClaudeAdapter {
       '\'PARALLAX_CLAUDE_HOOK {"event":"Notification","notification_type":"permission_prompt","message":"Allow?"}\\n\',',
       '\'PARALLAX_CLAUDE_HOOK {"event":"PreToolUse","tool_name":"Bash"}\\n\',',
       '\'PARALLAX_CLAUDE_HOOK {"event":"TaskCompleted"}\\n\',',
-      '\'How can I help you today?\\n\',',
+      "'How can I help you today?\\n',",
       '\'PARALLAX_CLAUDE_HOOK {"event":"SessionEnd"}\\n\',',
       '];',
       'let i = 0;',
@@ -43,7 +46,7 @@ class MockGeminiHookAdapter extends GeminiAdapter {
       '\'PARALLAX_GEMINI_HOOK {"event":"Notification","notification_type":"ToolPermission","message":"Allow?"}\\n\',',
       '\'PARALLAX_GEMINI_HOOK {"event":"BeforeTool","tool_name":"run_shell_command"}\\n\',',
       '\'PARALLAX_GEMINI_HOOK {"event":"AfterAgent"}\\n\',',
-      '\'> Type your message or @path/to/file\\n\',',
+      "'> Type your message or @path/to/file\\n',",
       '\'PARALLAX_GEMINI_HOOK {"event":"SessionEnd"}\\n\',',
       '];',
       'let i = 0;',
@@ -73,52 +76,54 @@ afterEach(async () => {
 });
 
 describe('hook marker PTY smoke', () => {
-  it(
-    'emits blocking_prompt and ready from Claude/Gemini hook markers',
-    async () => {
-      const manager = new PTYManager();
-      activeManager = manager;
+  it('emits blocking_prompt and ready from Claude/Gemini hook markers', async () => {
+    const manager = new PTYManager();
+    activeManager = manager;
 
-      manager.registerAdapter(new MockClaudeHookAdapter());
-      manager.registerAdapter(new MockGeminiHookAdapter());
+    manager.registerAdapter(new MockClaudeHookAdapter());
+    manager.registerAdapter(new MockGeminiHookAdapter());
 
-      const bridge = new PTYConsoleBridge(manager, { maxBufferedCharsPerSession: 50_000 });
-      activeBridge = bridge;
+    const bridge = new PTYConsoleBridge(manager, {
+      maxBufferedCharsPerSession: 50_000,
+    });
+    activeBridge = bridge;
 
-      const claude = await manager.spawn({
-        name: 'claude-hook-smoke',
-        type: 'claude',
-        workdir: process.cwd(),
-        readySettleMs: 40,
-        adapterConfig: { interactive: true },
-      });
+    const claude = await manager.spawn({
+      name: 'claude-hook-smoke',
+      type: 'claude',
+      workdir: process.cwd(),
+      readySettleMs: 40,
+      adapterConfig: { interactive: true },
+    });
 
-      const gemini = await manager.spawn({
-        name: 'gemini-hook-smoke',
-        type: 'gemini',
-        workdir: process.cwd(),
-        readySettleMs: 40,
-        adapterConfig: { interactive: true },
-      });
+    const gemini = await manager.spawn({
+      name: 'gemini-hook-smoke',
+      type: 'gemini',
+      workdir: process.cwd(),
+      readySettleMs: 40,
+      adapterConfig: { interactive: true },
+    });
 
-      await Promise.all([
-        waitForKinds(bridge, claude.id, ['blocking_prompt', 'ready'], 6000),
-        waitForKinds(bridge, gemini.id, ['blocking_prompt', 'ready'], 6000),
-      ]);
+    await Promise.all([
+      waitForKinds(bridge, claude.id, ['blocking_prompt', 'ready'], 6000),
+      waitForKinds(bridge, gemini.id, ['blocking_prompt', 'ready'], 6000),
+    ]);
 
-      // Ensure hook markers actually traversed the PTY output path.
-      expect(bridge.getBufferedOutput(claude.id)).toContain('"event":"PreToolUse"');
-      expect(bridge.getBufferedOutput(gemini.id)).toContain('"event":"BeforeTool"');
-    },
-    20_000,
-  );
+    // Ensure hook markers actually traversed the PTY output path.
+    expect(bridge.getBufferedOutput(claude.id)).toContain(
+      '"event":"PreToolUse"'
+    );
+    expect(bridge.getBufferedOutput(gemini.id)).toContain(
+      '"event":"BeforeTool"'
+    );
+  }, 20_000);
 });
 
 function waitForKinds(
   bridge: PTYConsoleBridge,
   sessionId: string,
   required: EventKind[],
-  timeoutMs: number,
+  timeoutMs: number
 ): Promise<void> {
   const seen = new Set<EventKind>();
   return new Promise((resolve, reject) => {
@@ -141,8 +146,8 @@ function waitForKinds(
       cleanup();
       reject(
         new Error(
-          `timeout waiting for ${required.join(', ')} on ${sessionId}; seen=${Array.from(seen).join(', ')}`,
-        ),
+          `timeout waiting for ${required.join(', ')} on ${sessionId}; seen=${Array.from(seen).join(', ')}`
+        )
       );
     }, timeoutMs);
 

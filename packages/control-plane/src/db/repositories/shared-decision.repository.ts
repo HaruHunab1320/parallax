@@ -1,5 +1,5 @@
-import { Prisma } from '@prisma/client';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
+import type { Prisma } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 
 export interface PersistedSharedDecision {

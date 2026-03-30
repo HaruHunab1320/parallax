@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import pino from 'pino';
-import { GracefulShutdownHandler } from '@/resilience/graceful-shutdown';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExecutionRepository } from '@/db/repositories/execution.repository';
+import { GracefulShutdownHandler } from '@/resilience/graceful-shutdown';
 
 const logger = pino({ level: 'silent' });
 

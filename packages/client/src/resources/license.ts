@@ -1,8 +1,8 @@
-import { HttpClient } from '../http.js';
-import {
-  LicenseInfo,
-  LicenseFeaturesResponse,
+import type { HttpClient } from '../http.js';
+import type {
   LicenseCheckResponse,
+  LicenseFeaturesResponse,
+  LicenseInfo,
 } from '../types/license.js';
 
 export class LicenseResource {

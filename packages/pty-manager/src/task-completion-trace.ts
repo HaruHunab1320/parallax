@@ -25,7 +25,12 @@ export interface TaskCompletionTraceRecord {
 export interface TaskCompletionTimelineStep {
   event: string;
   atIndex: number;
-  status: 'active' | 'active_loading' | 'likely_complete' | 'completed' | 'rejected';
+  status:
+    | 'active'
+    | 'active_loading'
+    | 'likely_complete'
+    | 'completed'
+    | 'rejected';
   confidence: number;
   signal?: boolean;
   detectTaskComplete?: boolean;
@@ -58,7 +63,7 @@ export interface BuildTimelineOptions {
  * Accepts structured objects and JSON lines.
  */
 export function extractTaskCompletionTraceRecords(
-  entries: Array<string | Record<string, unknown>>,
+  entries: Array<string | Record<string, unknown>>
 ): TaskCompletionTraceRecord[] {
   const out: TaskCompletionTraceRecord[] = [];
 
@@ -107,7 +112,7 @@ export function extractTaskCompletionTraceRecords(
  */
 export function buildTaskCompletionTimeline(
   records: TaskCompletionTraceRecord[],
-  options: BuildTimelineOptions = {},
+  options: BuildTimelineOptions = {}
 ): TaskCompletionTimelineResult {
   const filtered = records.filter((r) => {
     if (!options.adapterType) return true;
@@ -159,7 +164,10 @@ export function buildTaskCompletionTimeline(
   };
 }
 
-function toStep(record: TaskCompletionTraceRecord, atIndex: number): TaskCompletionTimelineStep | null {
+function toStep(
+  record: TaskCompletionTraceRecord,
+  atIndex: number
+): TaskCompletionTimelineStep | null {
   const event = record.event;
   const confidence = scoreConfidence(record);
 
@@ -172,7 +180,10 @@ function toStep(record: TaskCompletionTraceRecord, atIndex: number): TaskComplet
     });
   }
 
-  if (event === 'debounce_reject_signal' || event === 'debounce_reject_status') {
+  if (
+    event === 'debounce_reject_signal' ||
+    event === 'debounce_reject_status'
+  ) {
     return withCommon(record, {
       event,
       atIndex,
@@ -222,7 +233,10 @@ function scoreConfidence(record: TaskCompletionTraceRecord): number {
   if (record.detectReady) score += 20;
   if (record.detectTaskComplete) score += 45;
   if (record.signal) score += 20;
-  if (record.event === 'debounce_reject_signal' || record.event === 'debounce_reject_status') {
+  if (
+    record.event === 'debounce_reject_signal' ||
+    record.event === 'debounce_reject_status'
+  ) {
     score -= 30;
   }
   if (record.event === 'transition_ready') score = 100;
@@ -234,7 +248,10 @@ function scoreConfidence(record: TaskCompletionTraceRecord): number {
 
 function withCommon(
   record: TaskCompletionTraceRecord,
-  step: Omit<TaskCompletionTimelineStep, 'signal' | 'detectTaskComplete' | 'detectReady' | 'detectLoading'>,
+  step: Omit<
+    TaskCompletionTimelineStep,
+    'signal' | 'detectTaskComplete' | 'detectReady' | 'detectLoading'
+  >
 ): TaskCompletionTimelineStep {
   return {
     ...step,
@@ -258,9 +275,12 @@ function asNumber(value: unknown): number | undefined {
 }
 
 function asTimestamp(value: unknown): string | number | Date | undefined {
-  if (typeof value === 'string' || typeof value === 'number' || value instanceof Date) {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    value instanceof Date
+  ) {
     return value;
   }
   return undefined;
 }
-

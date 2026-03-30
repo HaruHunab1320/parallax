@@ -4,12 +4,12 @@
  * the established stream.
  */
 
-import * as grpc from '@grpc/grpc-js';
-import { EventEmitter } from 'events';
-import { Logger } from 'pino';
+import { EventEmitter } from 'node:events';
+import type * as grpc from '@grpc/grpc-js';
+import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
-import type { IAgentRegistry } from '../../registry';
 import type { ExecutionEventBus } from '../../execution-events';
+import type { IAgentRegistry } from '../../registry';
 
 export interface GatewayAgentSession {
   agentId: string;
@@ -44,7 +44,8 @@ export interface GatewayDispatchResult {
 export class GatewayService extends EventEmitter {
   private connectedAgents: Map<string, GatewayAgentSession> = new Map();
   private pendingRequests: Map<string, PendingRequest> = new Map();
-  private threadEventListeners: Map<string, Set<(event: any) => void>> = new Map();
+  private threadEventListeners: Map<string, Set<(event: any) => void>> =
+    new Map();
 
   constructor(
     private registry: IAgentRegistry,
@@ -86,17 +87,26 @@ export class GatewayService extends EventEmitter {
         this.handleTaskResult(requestId, message.task_result);
       } else if (message.task_error || payload === 'task_error') {
         this.handleTaskError(requestId, message.task_error);
-      } else if (message.thread_spawn_result || payload === 'thread_spawn_result') {
+      } else if (
+        message.thread_spawn_result ||
+        payload === 'thread_spawn_result'
+      ) {
         this.handleThreadSpawnResult(requestId, message.thread_spawn_result);
       } else if (message.thread_event || payload === 'thread_event') {
         this.handleThreadEvent(message.thread_event);
-      } else if (message.thread_status_update || payload === 'thread_status_update') {
+      } else if (
+        message.thread_status_update ||
+        payload === 'thread_status_update'
+      ) {
         this.handleThreadStatusUpdate(message.thread_status_update);
       }
     });
 
     stream.on('error', (error: any) => {
-      this.logger.warn({ agentId, error: error.message }, 'Gateway stream error');
+      this.logger.warn(
+        { agentId, error: error.message },
+        'Gateway stream error'
+      );
       if (agentId) {
         this.cleanupAgent(agentId, 'stream_error');
       }
@@ -163,7 +173,10 @@ export class GatewayService extends EventEmitter {
     session.heartbeatTimer = setInterval(() => {
       const elapsed = Date.now() - session.lastHeartbeat.getTime();
       if (elapsed > heartbeatIntervalMs * 3) {
-        this.logger.warn({ agentId, elapsed }, 'Agent heartbeat dead, disconnecting');
+        this.logger.warn(
+          { agentId, elapsed },
+          'Agent heartbeat dead, disconnecting'
+        );
         session.status = 'dead';
         this.cleanupAgent(agentId, 'heartbeat_dead');
       } else if (elapsed > heartbeatIntervalMs * 2) {
@@ -200,7 +213,10 @@ export class GatewayService extends EventEmitter {
         'Gateway agent registered'
       );
     } catch (error) {
-      this.logger.error({ agentId, error }, 'Failed to register gateway agent in registry');
+      this.logger.error(
+        { agentId, error },
+        'Failed to register gateway agent in registry'
+      );
     }
 
     // Send ServerAck
@@ -239,9 +255,13 @@ export class GatewayService extends EventEmitter {
   private handleTaskResult(requestId: string, result: any): void {
     const taskId = result?.task_id;
     // Look up by request_id first, then by task_id
-    const pending = this.pendingRequests.get(requestId) || this.pendingRequests.get(taskId);
+    const pending =
+      this.pendingRequests.get(requestId) || this.pendingRequests.get(taskId);
     if (!pending) {
-      this.logger.warn({ requestId, taskId }, 'Received task result for unknown request');
+      this.logger.warn(
+        { requestId, taskId },
+        'Received task result for unknown request'
+      );
       return;
     }
 
@@ -251,7 +271,9 @@ export class GatewayService extends EventEmitter {
       this.pendingRequests.delete(taskId);
     }
 
-    const parsed = result.value_json ? JSON.parse(result.value_json) : undefined;
+    const parsed = result.value_json
+      ? JSON.parse(result.value_json)
+      : undefined;
     pending.resolve({
       value: parsed,
       confidence: result.confidence || 0,
@@ -265,9 +287,13 @@ export class GatewayService extends EventEmitter {
    */
   private handleTaskError(requestId: string, error: any): void {
     const taskId = error?.task_id;
-    const pending = this.pendingRequests.get(requestId) || this.pendingRequests.get(taskId);
+    const pending =
+      this.pendingRequests.get(requestId) || this.pendingRequests.get(taskId);
     if (!pending) {
-      this.logger.warn({ requestId, taskId }, 'Received task error for unknown request');
+      this.logger.warn(
+        { requestId, taskId },
+        'Received task error for unknown request'
+      );
       return;
     }
 
@@ -320,10 +346,17 @@ export class GatewayService extends EventEmitter {
         });
       }, timeout);
 
-      this.pendingRequests.set(requestId, { resolve, reject, timeout: timer, taskId });
+      this.pendingRequests.set(requestId, {
+        resolve,
+        reject,
+        timeout: timer,
+        taskId,
+      });
 
       // Build Struct for data
-      const dataStruct = request.data ? this.toStruct(request.data) : { fields: {} };
+      const dataStruct = request.data
+        ? this.toStruct(request.data)
+        : { fields: {} };
 
       const taskRequest = {
         request_id: requestId,
@@ -342,7 +375,9 @@ export class GatewayService extends EventEmitter {
       } catch (error) {
         clearTimeout(timer);
         this.pendingRequests.delete(requestId);
-        throw new Error(`Failed to write to gateway stream for agent ${agentId}: ${error}`);
+        throw new Error(
+          `Failed to write to gateway stream for agent ${agentId}: ${error}`
+        );
       }
     });
   }
@@ -394,7 +429,10 @@ export class GatewayService extends EventEmitter {
   private handleThreadSpawnResult(requestId: string, result: any): void {
     const pending = this.pendingRequests.get(requestId);
     if (!pending) {
-      this.logger.warn({ requestId, threadId: result?.thread_id }, 'Received thread spawn result for unknown request');
+      this.logger.warn(
+        { requestId, threadId: result?.thread_id },
+        'Received thread spawn result for unknown request'
+      );
       return;
     }
 
@@ -434,7 +472,7 @@ export class GatewayService extends EventEmitter {
       thread_id: report.thread_id,
       event_type: report.event_type,
       data_json: report.data_json,
-      timestamp_ms: parseInt(report.timestamp_ms) || Date.now(),
+      timestamp_ms: parseInt(report.timestamp_ms, 10) || Date.now(),
       sequence: report.sequence || 0,
     };
 
@@ -492,7 +530,7 @@ export class GatewayService extends EventEmitter {
           status: update.status,
           summary: update.summary,
           progress: update.progress,
-          timestamp_ms: parseInt(update.timestamp_ms) || Date.now(),
+          timestamp_ms: parseInt(update.timestamp_ms, 10) || Date.now(),
         },
         timestamp: new Date(),
       });
@@ -561,7 +599,9 @@ export class GatewayService extends EventEmitter {
       } catch (error) {
         clearTimeout(timer);
         this.pendingRequests.delete(requestId);
-        throw new Error(`Failed to write thread spawn to gateway stream for agent ${agentId}: ${error}`);
+        throw new Error(
+          `Failed to write thread spawn to gateway stream for agent ${agentId}: ${error}`
+        );
       }
     });
   }
@@ -577,7 +617,10 @@ export class GatewayService extends EventEmitter {
   ): void {
     const session = this.connectedAgents.get(agentId);
     if (!session) {
-      this.logger.warn({ agentId, threadId }, 'Cannot dispatch thread input — agent not connected');
+      this.logger.warn(
+        { agentId, threadId },
+        'Cannot dispatch thread input — agent not connected'
+      );
       return; // Don't throw — let the workflow handle the missing response via timeout
     }
 
@@ -591,7 +634,10 @@ export class GatewayService extends EventEmitter {
         },
       });
     } catch (error: any) {
-      this.logger.warn({ agentId, threadId, error: error.message }, 'Failed to write thread input to gateway stream');
+      this.logger.warn(
+        { agentId, threadId, error: error.message },
+        'Failed to write thread input to gateway stream'
+      );
     }
   }
 
@@ -622,7 +668,10 @@ export class GatewayService extends EventEmitter {
    * Subscribe to thread events for a specific thread.
    * Returns an unsubscribe function.
    */
-  subscribeThreadEvents(threadId: string, callback: (event: any) => void): () => void {
+  subscribeThreadEvents(
+    threadId: string,
+    callback: (event: any) => void
+  ): () => void {
     if (!this.threadEventListeners.has(threadId)) {
       this.threadEventListeners.set(threadId, new Set());
     }
@@ -654,7 +703,10 @@ export class GatewayService extends EventEmitter {
     // Emit thread_failed for all active threads on this agent
     if (session.activeThreads.size > 0) {
       for (const [threadId] of session.activeThreads) {
-        this.logger.warn({ agentId, threadId, reason }, 'Thread failed due to agent disconnect');
+        this.logger.warn(
+          { agentId, threadId, reason },
+          'Thread failed due to agent disconnect'
+        );
         if (this.executionEvents) {
           this.executionEvents.emitEvent({
             executionId: threadId,
@@ -662,7 +714,9 @@ export class GatewayService extends EventEmitter {
             data: {
               thread_id: threadId,
               event_type: 'failed',
-              data_json: JSON.stringify({ reason: `Agent disconnected: ${reason}` }),
+              data_json: JSON.stringify({
+                reason: `Agent disconnected: ${reason}`,
+              }),
               timestamp_ms: Date.now(),
               sequence: 0,
             },
@@ -672,7 +726,9 @@ export class GatewayService extends EventEmitter {
         this.emit('thread_event', {
           thread_id: threadId,
           event_type: 'failed',
-          data_json: JSON.stringify({ reason: `Agent disconnected: ${reason}` }),
+          data_json: JSON.stringify({
+            reason: `Agent disconnected: ${reason}`,
+          }),
           timestamp_ms: Date.now(),
           sequence: 0,
         });
@@ -699,7 +755,10 @@ export class GatewayService extends EventEmitter {
     try {
       await this.registry.unregister('agent', agentId);
     } catch (error) {
-      this.logger.warn({ agentId, error }, 'Failed to unregister gateway agent');
+      this.logger.warn(
+        { agentId, error },
+        'Failed to unregister gateway agent'
+      );
     }
 
     this.connectedAgents.delete(agentId);
@@ -722,7 +781,9 @@ export class GatewayService extends EventEmitter {
       return { nullValue: 0 };
     }
     if (Array.isArray(value)) {
-      return { listValue: { values: value.map((item) => this.toStructValue(item)) } };
+      return {
+        listValue: { values: value.map((item) => this.toStructValue(item)) },
+      };
     }
     if (typeof value === 'object') {
       const fields: Record<string, any> = {};

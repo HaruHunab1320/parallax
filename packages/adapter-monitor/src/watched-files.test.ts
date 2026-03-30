@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { WATCHED_FILES, getWatchedFiles, getWatchedFilesByCategory } from './watched-files';
+import { describe, expect, it } from 'vitest';
 import type { AdapterType } from './types';
+import {
+  getWatchedFiles,
+  getWatchedFilesByCategory,
+  WATCHED_FILES,
+} from './watched-files';
 
 describe('WATCHED_FILES', () => {
   const adapters: AdapterType[] = ['gemini', 'codex', 'aider', 'claude'];
@@ -22,7 +26,7 @@ describe('WATCHED_FILES', () => {
   });
 
   it('gemini has files for all key categories', () => {
-    const categories = WATCHED_FILES.gemini.watchedFiles.map(f => f.category);
+    const categories = WATCHED_FILES.gemini.watchedFiles.map((f) => f.category);
     expect(categories).toContain('auth');
     expect(categories).toContain('blocking_prompt');
     expect(categories).toContain('ready_detection');
@@ -32,7 +36,7 @@ describe('WATCHED_FILES', () => {
   });
 
   it('codex has files for key categories', () => {
-    const categories = WATCHED_FILES.codex.watchedFiles.map(f => f.category);
+    const categories = WATCHED_FILES.codex.watchedFiles.map((f) => f.category);
     expect(categories).toContain('auth');
     expect(categories).toContain('blocking_prompt');
     expect(categories).toContain('ready_detection');
@@ -41,7 +45,7 @@ describe('WATCHED_FILES', () => {
   });
 
   it('aider has files for key categories', () => {
-    const categories = WATCHED_FILES.aider.watchedFiles.map(f => f.category);
+    const categories = WATCHED_FILES.aider.watchedFiles.map((f) => f.category);
     expect(categories).toContain('auth');
     expect(categories).toContain('blocking_prompt');
     expect(categories).toContain('exit_detection');
@@ -54,28 +58,30 @@ describe('WATCHED_FILES', () => {
         expect(file.path).toBeTruthy();
         expect(file.path).not.toContain(' ');
         expect(file.category).toMatch(
-          /^(blocking_prompt|ready_detection|exit_detection|auth|framework|startup|loading)$/,
+          /^(blocking_prompt|ready_detection|exit_detection|auth|framework|startup|loading)$/
         );
       }
     }
   });
 
   it('gemini watched files include key source files from catalog', () => {
-    const paths = WATCHED_FILES.gemini.watchedFiles.map(f => f.path);
+    const paths = WATCHED_FILES.gemini.watchedFiles.map((f) => f.path);
     expect(paths).toContain('packages/cli/src/ui/auth/AuthDialog.tsx');
-    expect(paths).toContain('packages/cli/src/ui/components/messages/ToolConfirmationMessage.tsx');
+    expect(paths).toContain(
+      'packages/cli/src/ui/components/messages/ToolConfirmationMessage.tsx'
+    );
     expect(paths).toContain('packages/cli/src/ui/components/InputPrompt.tsx');
   });
 
   it('codex watched files include key source files from catalog', () => {
-    const paths = WATCHED_FILES.codex.watchedFiles.map(f => f.path);
+    const paths = WATCHED_FILES.codex.watchedFiles.map((f) => f.path);
     expect(paths).toContain('codex-rs/tui/src/onboarding/auth.rs');
     expect(paths).toContain('codex-rs/tui/src/bottom_pane/approval_overlay.rs');
     expect(paths).toContain('codex-rs/tui/src/bottom_pane/chat_composer.rs');
   });
 
   it('aider watched files include key source files from catalog', () => {
-    const paths = WATCHED_FILES.aider.watchedFiles.map(f => f.path);
+    const paths = WATCHED_FILES.aider.watchedFiles.map((f) => f.path);
     expect(paths).toContain('aider/io.py');
     expect(paths).toContain('aider/onboarding.py');
     expect(paths).toContain('aider/coders/base_coder.py');
@@ -91,7 +97,12 @@ describe('getWatchedFiles', () => {
   });
 
   it('returns config for each adapter', () => {
-    for (const adapter of ['gemini', 'codex', 'aider', 'claude'] as AdapterType[]) {
+    for (const adapter of [
+      'gemini',
+      'codex',
+      'aider',
+      'claude',
+    ] as AdapterType[]) {
       const config = getWatchedFiles(adapter);
       expect(config.adapter).toBe(adapter);
     }
@@ -121,6 +132,8 @@ describe('getWatchedFilesByCategory', () => {
 
   it('returns ready_detection files for codex', () => {
     const readyFiles = getWatchedFilesByCategory('codex', 'ready_detection');
-    expect(readyFiles).toContain('codex-rs/tui/src/bottom_pane/chat_composer.rs');
+    expect(readyFiles).toContain(
+      'codex-rs/tui/src/bottom_pane/chat_composer.rs'
+    );
   });
 });

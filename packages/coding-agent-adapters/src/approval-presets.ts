@@ -23,7 +23,11 @@ export type ToolCategory =
 
 export type RiskLevel = 'low' | 'medium' | 'high';
 
-export type ApprovalPreset = 'readonly' | 'standard' | 'permissive' | 'autonomous';
+export type ApprovalPreset =
+  | 'readonly'
+  | 'standard'
+  | 'permissive'
+  | 'autonomous';
 
 export interface ToolCategoryInfo {
   category: ToolCategory;
@@ -56,13 +60,33 @@ export interface ApprovalConfig {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const TOOL_CATEGORIES: ToolCategoryInfo[] = [
-  { category: 'file_read', risk: 'low', description: 'Read files, search, list directories' },
-  { category: 'file_write', risk: 'medium', description: 'Write, edit, and create files' },
+  {
+    category: 'file_read',
+    risk: 'low',
+    description: 'Read files, search, list directories',
+  },
+  {
+    category: 'file_write',
+    risk: 'medium',
+    description: 'Write, edit, and create files',
+  },
   { category: 'shell', risk: 'high', description: 'Execute shell commands' },
   { category: 'web', risk: 'medium', description: 'Web search and fetch' },
-  { category: 'agent', risk: 'medium', description: 'Spawn sub-agents, skills, MCP tools' },
-  { category: 'planning', risk: 'low', description: 'Task planning and todo management' },
-  { category: 'user_interaction', risk: 'low', description: 'Ask user questions' },
+  {
+    category: 'agent',
+    risk: 'medium',
+    description: 'Spawn sub-agents, skills, MCP tools',
+  },
+  {
+    category: 'planning',
+    risk: 'low',
+    description: 'Task planning and todo management',
+  },
+  {
+    category: 'user_interaction',
+    risk: 'low',
+    description: 'Ask user questions',
+  },
 ];
 
 export const PRESET_DEFINITIONS: PresetDefinition[] = [
@@ -83,14 +107,29 @@ export const PRESET_DEFINITIONS: PresetDefinition[] = [
   {
     preset: 'permissive',
     description: 'File ops auto-approved, shell still prompts.',
-    autoApprove: ['file_read', 'file_write', 'planning', 'user_interaction', 'web', 'agent'],
+    autoApprove: [
+      'file_read',
+      'file_write',
+      'planning',
+      'user_interaction',
+      'web',
+      'agent',
+    ],
     requireApproval: ['shell'],
     blocked: [],
   },
   {
     preset: 'autonomous',
     description: 'Everything auto-approved. Use with sandbox.',
-    autoApprove: ['file_read', 'file_write', 'shell', 'web', 'agent', 'planning', 'user_interaction'],
+    autoApprove: [
+      'file_read',
+      'file_write',
+      'shell',
+      'web',
+      'agent',
+      'planning',
+      'user_interaction',
+    ],
     requireApproval: [],
     blocked: [],
   },
@@ -221,17 +260,22 @@ export const AIDER_COMMAND_CATEGORIES: Record<string, ToolCategory> = {
 
 function getToolsForCategories(
   mapping: Record<string, ToolCategory>,
-  categories: ToolCategory[],
+  categories: ToolCategory[]
 ): string[] {
   return Object.entries(mapping)
     .filter(([, cat]) => categories.includes(cat))
     .map(([tool]) => tool);
 }
 
-export function generateClaudeApprovalConfig(preset: ApprovalPreset): ApprovalConfig {
+export function generateClaudeApprovalConfig(
+  preset: ApprovalPreset
+): ApprovalConfig {
   const def = getPresetDefinition(preset);
 
-  const allowTools = getToolsForCategories(CLAUDE_TOOL_CATEGORIES, def.autoApprove);
+  const allowTools = getToolsForCategories(
+    CLAUDE_TOOL_CATEGORIES,
+    def.autoApprove
+  );
   const denyTools = getToolsForCategories(CLAUDE_TOOL_CATEGORIES, def.blocked);
 
   const settings: Record<string, unknown> = {
@@ -278,12 +322,20 @@ export function generateClaudeApprovalConfig(preset: ApprovalPreset): ApprovalCo
   };
 }
 
-export function generateGeminiApprovalConfig(preset: ApprovalPreset): ApprovalConfig {
+export function generateGeminiApprovalConfig(
+  preset: ApprovalPreset
+): ApprovalConfig {
   const def = getPresetDefinition(preset);
   const cliFlags: string[] = [];
 
-  const allowedTools = getToolsForCategories(GEMINI_TOOL_CATEGORIES, def.autoApprove);
-  const excludeTools = getToolsForCategories(GEMINI_TOOL_CATEGORIES, def.blocked);
+  const allowedTools = getToolsForCategories(
+    GEMINI_TOOL_CATEGORIES,
+    def.autoApprove
+  );
+  const excludeTools = getToolsForCategories(
+    GEMINI_TOOL_CATEGORIES,
+    def.blocked
+  );
 
   let approvalMode: string;
 
@@ -335,7 +387,9 @@ export function generateGeminiApprovalConfig(preset: ApprovalPreset): ApprovalCo
   };
 }
 
-export function generateCodexApprovalConfig(preset: ApprovalPreset): ApprovalConfig {
+export function generateCodexApprovalConfig(
+  preset: ApprovalPreset
+): ApprovalConfig {
   const cliFlags: string[] = [];
 
   let approvalPolicy: string;
@@ -392,7 +446,9 @@ export function generateCodexApprovalConfig(preset: ApprovalPreset): ApprovalCon
   };
 }
 
-export function generateAiderApprovalConfig(preset: ApprovalPreset): ApprovalConfig {
+export function generateAiderApprovalConfig(
+  preset: ApprovalPreset
+): ApprovalConfig {
   const def = getPresetDefinition(preset);
   const cliFlags: string[] = [];
   const lines: string[] = [];
@@ -422,7 +478,7 @@ export function generateAiderApprovalConfig(preset: ApprovalPreset): ApprovalCon
     workspaceFiles: [
       {
         relativePath: '.aider.conf.yml',
-        content: lines.join('\n') + '\n',
+        content: `${lines.join('\n')}\n`,
         format: 'yaml',
       },
     ],
@@ -432,7 +488,9 @@ export function generateAiderApprovalConfig(preset: ApprovalPreset): ApprovalCon
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export function generateHermesApprovalConfig(preset: ApprovalPreset): ApprovalConfig {
+export function generateHermesApprovalConfig(
+  preset: ApprovalPreset
+): ApprovalConfig {
   const def = getPresetDefinition(preset);
 
   // Hermes CLI handles dangerous command approvals internally and does not
@@ -451,7 +509,7 @@ export function generateHermesApprovalConfig(preset: ApprovalPreset): ApprovalCo
 
 export function generateApprovalConfig(
   adapterType: AdapterType,
-  preset: ApprovalPreset,
+  preset: ApprovalPreset
 ): ApprovalConfig {
   switch (adapterType) {
     case 'claude':
@@ -474,7 +532,7 @@ export function listPresets(): PresetDefinition[] {
 }
 
 export function getPresetDefinition(preset: ApprovalPreset): PresetDefinition {
-  const def = PRESET_DEFINITIONS.find(d => d.preset === preset);
+  const def = PRESET_DEFINITIONS.find((d) => d.preset === preset);
   if (!def) {
     throw new Error(`Unknown preset: ${preset}`);
   }

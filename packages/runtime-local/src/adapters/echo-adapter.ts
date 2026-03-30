@@ -6,12 +6,12 @@
  */
 
 import type {
-  CLIAdapter,
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  CLIAdapter,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
 } from 'pty-manager';
 
 export class EchoAdapter implements CLIAdapter {
@@ -48,7 +48,9 @@ export class EchoAdapter implements CLIAdapter {
 
   detectReady(output: string): boolean {
     // Ready when we see the prompt or any output after starting
-    return output.includes('echo>') || output.includes('bash') || output.length > 10;
+    return (
+      output.includes('echo>') || output.includes('bash') || output.length > 10
+    );
   }
 
   parseOutput(output: string): ParsedOutput | null {
@@ -68,7 +70,11 @@ export class EchoAdapter implements CLIAdapter {
     return /(?:echo>|bash-\d+\.\d+\$|\$)\s*$/m;
   }
 
-  detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     if (output.includes('exit')) {
       return { exited: true, code: 0 };
     }
@@ -80,7 +86,11 @@ export class EchoAdapter implements CLIAdapter {
     return `echo "ECHO: ${message.replace(/"/g, '\\"')}"`;
   }
 
-  async validateInstallation(): Promise<{ installed: boolean; version?: string; error?: string }> {
+  async validateInstallation(): Promise<{
+    installed: boolean;
+    version?: string;
+    error?: string;
+  }> {
     // Bash is always installed
     return { installed: true, version: 'test' };
   }

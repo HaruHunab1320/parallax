@@ -5,8 +5,8 @@
  * Part of the specialized extractors demo.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'address-extractor';
@@ -21,9 +21,10 @@ class AddressExtractorAgent extends ParallaxAgent {
       AGENT_NAME,
       ['extraction', 'addresses', 'locations', 'parsing'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Extracts and parses physical addresses from unstructured text'
+        description:
+          'Extracts and parses physical addresses from unstructured text',
       }
     );
 
@@ -37,7 +38,10 @@ class AddressExtractorAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(task: string, data?: any): Promise<{
+  async analyze(
+    task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,7 +50,7 @@ class AddressExtractorAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
@@ -96,7 +100,7 @@ Handle various formats: "123 Main St, City, ST 12345", "123 Main Street\\nCity, 
         return {
           value: { addresses: [], count: 0, error: 'Could not parse response' },
           confidence: 0.3,
-          reasoning: text.substring(0, 200)
+          reasoning: text.substring(0, 200),
         };
       }
 
@@ -104,25 +108,31 @@ Handle various formats: "123 Main St, City, ST 12345", "123 Main Street\\nCity, 
       const addresses = parsed.addresses || [];
 
       // Calculate overall confidence based on individual address confidences
-      const avgConfidence = addresses.length > 0
-        ? addresses.reduce((sum: number, a: any) => sum + (a.confidence || 0.8), 0) / addresses.length
-        : 0.5;
+      const avgConfidence =
+        addresses.length > 0
+          ? addresses.reduce(
+              (sum: number, a: any) => sum + (a.confidence || 0.8),
+              0
+            ) / addresses.length
+          : 0.5;
 
       return {
         value: {
           addresses: addresses,
           count: addresses.length,
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: avgConfidence,
-        reasoning: parsed.reasoning || `Extracted ${addresses.length} addresses from text`
+        reasoning:
+          parsed.reasoning ||
+          `Extracted ${addresses.length} addresses from text`,
       };
     } catch (error) {
       console.error('Extraction error:', error);
       return {
         value: { addresses: [], count: 0, error: String(error) },
         confidence: 0,
-        reasoning: 'Extraction failed'
+        reasoning: 'Extraction failed',
       };
     }
   }

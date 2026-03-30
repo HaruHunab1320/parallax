@@ -17,9 +17,11 @@ async function main() {
   });
 
   // Register the shell adapter
-  manager.registerAdapter(new ShellAdapter({
-    shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/bash',
-  }));
+  manager.registerAdapter(
+    new ShellAdapter({
+      shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/bash',
+    })
+  );
 
   // Collect output
   let output = '';
@@ -58,25 +60,25 @@ async function main() {
   console.log(`Status: ${session.status}`);
 
   // Wait for shell to be ready
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 500));
   output = ''; // Clear initial prompt
 
   // Run some commands
   console.log('\n--- Running: echo "Hello from PTY!" ---');
   manager.send(session.id, 'echo "Hello from PTY!"\n');
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 500));
   console.log('Output:', output.trim());
   output = '';
 
   console.log('\n--- Running: pwd ---');
   manager.send(session.id, 'pwd\n');
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 500));
   console.log('Output:', output.trim());
   output = '';
 
   console.log('\n--- Running: node --version ---');
   manager.send(session.id, 'node --version\n');
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 500));
   console.log('Output:', output.trim());
   output = '';
 
@@ -93,7 +95,7 @@ async function main() {
   console.log('\n--- Active Sessions ---');
   const sessions = manager.list();
   console.log(`Total sessions: ${sessions.length}`);
-  sessions.forEach(s => {
+  sessions.forEach((s) => {
     console.log(`  - ${s.id} (PID: ${s.pid}, Status: ${s.status})`);
   });
 
@@ -102,7 +104,9 @@ async function main() {
   await manager.stop(session.id, { force: true });
 
   console.log('\n=== Demo Complete ===');
-  console.log('Successfully spawned a real PTY shell session and ran commands.\n');
+  console.log(
+    'Successfully spawned a real PTY shell session and ran commands.\n'
+  );
 
   process.exit(0);
 }

@@ -3,8 +3,8 @@
  * Run with: npx tsx test-integration.ts
  */
 
-import { ConfidenceTracker, InMemoryStore } from './src/index';
 import type { ConfidenceAnomalyAlert } from './src/index';
+import { ConfidenceTracker, InMemoryStore } from './src/index';
 
 async function main() {
   console.log('Testing @parallaxai/confidence-tracker integration...\n');
@@ -51,7 +51,10 @@ async function main() {
     dataPoints: metrics.dataPoints,
   });
   console.assert(metrics.dataPoints === 10, 'Should have 10 data points');
-  console.assert(metrics.averageConfidence > 0.8, 'Average should be above 0.8');
+  console.assert(
+    metrics.averageConfidence > 0.8,
+    'Average should be above 0.8'
+  );
 
   // 3. Get historical data
   const hourlyData = await tracker.getHistoricalData('agent-1', 'hour');
@@ -93,10 +96,13 @@ async function main() {
   console.log('7. Category stats:', {
     avgConfidence: categoryStats.avgConfidence.toFixed(3),
     totalExecutions: categoryStats.totalExecutions,
-    successRate: (categoryStats.successRate * 100).toFixed(1) + '%',
+    successRate: `${(categoryStats.successRate * 100).toFixed(1)}%`,
     entities: categoryStats.entityBreakdown.size,
   });
-  console.assert(categoryStats.entityBreakdown.size === 2, 'Should have 2 entities');
+  console.assert(
+    categoryStats.entityBreakdown.size === 2,
+    'Should have 2 entities'
+  );
 
   // 8. Test acknowledge alert
   if (activeAlerts.length > 0) {

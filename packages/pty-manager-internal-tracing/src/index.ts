@@ -5,14 +5,7 @@
  * pluggable adapters, and blocking prompt detection.
  */
 
-// Core classes
-export { PTYManager } from './pty-manager';
-export { PTYSession, SPECIAL_KEYS } from './pty-session';
-export {
-  extractTaskCompletionTraceRecords,
-  buildTaskCompletionTimeline,
-} from './task-completion-trace';
-
+export type { CLIAdapter, ShellAdapterOptions } from './adapters';
 // Adapter system
 export {
   AdapterRegistry,
@@ -20,64 +13,61 @@ export {
   createAdapter,
   ShellAdapter,
 } from './adapters';
-
-export type { CLIAdapter, ShellAdapterOptions } from './adapters';
-
-// Types
 export type {
-  // Session types
-  SessionStatus,
-  MessageType,
-  SpawnConfig,
-  SessionHandle,
-  SessionMessage,
-  SessionFilter,
-
-  // Adapter types
-  ParsedOutput,
-  LoginDetection,
-  AuthRequiredMethod,
-  AuthRequiredInfo,
-  BlockingPromptType,
-  BlockingPromptDetection,
-  AutoResponseRule,
-  BlockingPromptInfo,
-
-  // Stall detection types
-  StallClassification,
-
-  // Manager types
-  Logger,
-  StopOptions,
-  LogOptions,
-  TerminalAttachment,
-  PTYManagerConfig,
-  PTYCaptureConfig,
-  InteractionStateChangedInfo,
-
-  // Factory types
-  AdapterFactoryConfig,
-} from './types';
-
-// Event types
-export type { PTYManagerEvents } from './pty-manager';
-export type { PTYSessionEvents } from './pty-session';
-export type {
-  TaskCompletionTraceRecord,
-  TaskCompletionTimelineStep,
-  TaskCompletionTurnTimeline,
-  TaskCompletionTimelineResult,
-  BuildTimelineOptions,
-} from './task-completion-trace';
-
+  BunPTYManagerOptions,
+  WorkerSessionHandle,
+} from './bun-compat';
 // Bun compatibility layer
 export {
   BunCompatiblePTYManager,
   createPTYManager,
   isBun,
 } from './bun-compat';
-
+// Event types
+export type { PTYManagerEvents } from './pty-manager';
+// Core classes
+export { PTYManager } from './pty-manager';
+export type { PTYSessionEvents } from './pty-session';
+export { PTYSession, SPECIAL_KEYS } from './pty-session';
 export type {
-  WorkerSessionHandle,
-  BunPTYManagerOptions,
-} from './bun-compat';
+  BuildTimelineOptions,
+  TaskCompletionTimelineResult,
+  TaskCompletionTimelineStep,
+  TaskCompletionTraceRecord,
+  TaskCompletionTurnTimeline,
+} from './task-completion-trace';
+export {
+  buildTaskCompletionTimeline,
+  extractTaskCompletionTraceRecords,
+} from './task-completion-trace';
+// Types
+export type {
+  // Factory types
+  AdapterFactoryConfig,
+  AuthRequiredInfo,
+  AuthRequiredMethod,
+  AutoResponseRule,
+  BlockingPromptDetection,
+  BlockingPromptInfo,
+  BlockingPromptType,
+  InteractionStateChangedInfo,
+  // Manager types
+  Logger,
+  LoginDetection,
+  LogOptions,
+  MessageType,
+  // Adapter types
+  ParsedOutput,
+  PTYCaptureConfig,
+  PTYManagerConfig,
+  SessionFilter,
+  SessionHandle,
+  SessionMessage,
+  // Session types
+  SessionStatus,
+  SpawnConfig,
+  // Stall detection types
+  StallClassification,
+  StopOptions,
+  TerminalAttachment,
+} from './types';

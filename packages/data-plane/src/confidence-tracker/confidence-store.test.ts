@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryConfidenceStore } from './confidence-store';
-import { ConfidenceDataPoint } from './types';
+import type { ConfidenceDataPoint } from './types';
 
 function makeDataPoint(
   agentId: string,
@@ -53,9 +53,15 @@ describe('InMemoryConfidenceStore', () => {
       const now = new Date('2025-01-15T12:00:00Z');
       vi.setSystemTime(now);
 
-      await store.addDataPoint(makeDataPoint('a1', 0.9, new Date('2025-01-15T11:00:00Z')));
-      await store.addDataPoint(makeDataPoint('a1', 0.8, new Date('2025-01-15T11:30:00Z')));
-      await store.addDataPoint(makeDataPoint('a2', 0.7, new Date('2025-01-15T11:00:00Z')));
+      await store.addDataPoint(
+        makeDataPoint('a1', 0.9, new Date('2025-01-15T11:00:00Z'))
+      );
+      await store.addDataPoint(
+        makeDataPoint('a1', 0.8, new Date('2025-01-15T11:30:00Z'))
+      );
+      await store.addDataPoint(
+        makeDataPoint('a2', 0.7, new Date('2025-01-15T11:00:00Z'))
+      );
 
       const result = await store.getDataPoints(
         'a1',
@@ -67,7 +73,11 @@ describe('InMemoryConfidenceStore', () => {
     });
 
     it('should return empty for unknown agent', async () => {
-      const result = await store.getDataPoints('unknown', new Date(0), new Date());
+      const result = await store.getDataPoints(
+        'unknown',
+        new Date(0),
+        new Date()
+      );
       expect(result).toEqual([]);
     });
   });
@@ -77,9 +87,15 @@ describe('InMemoryConfidenceStore', () => {
       const now = new Date('2025-01-15T12:00:00Z');
       vi.setSystemTime(now);
 
-      await store.addDataPoint(makeDataPoint('a1', 0.9, new Date('2025-01-15T11:00:00Z')));
-      await store.addDataPoint(makeDataPoint('a1', 0.4, new Date('2025-01-15T11:30:00Z')));
-      await store.addDataPoint(makeDataPoint('a2', 0.7, new Date('2025-01-15T11:00:00Z')));
+      await store.addDataPoint(
+        makeDataPoint('a1', 0.9, new Date('2025-01-15T11:00:00Z'))
+      );
+      await store.addDataPoint(
+        makeDataPoint('a1', 0.4, new Date('2025-01-15T11:30:00Z'))
+      );
+      await store.addDataPoint(
+        makeDataPoint('a2', 0.7, new Date('2025-01-15T11:00:00Z'))
+      );
 
       const result = await store.query({
         agentIds: ['a1'],
@@ -93,9 +109,15 @@ describe('InMemoryConfidenceStore', () => {
       const now = new Date('2025-01-15T12:00:00Z');
       vi.setSystemTime(now);
 
-      await store.addDataPoint(makeDataPoint('a1', 0.9, new Date('2025-01-15T10:00:00Z')));
-      await store.addDataPoint(makeDataPoint('a1', 0.8, new Date('2025-01-15T11:00:00Z')));
-      await store.addDataPoint(makeDataPoint('a1', 0.7, new Date('2025-01-15T09:00:00Z')));
+      await store.addDataPoint(
+        makeDataPoint('a1', 0.9, new Date('2025-01-15T10:00:00Z'))
+      );
+      await store.addDataPoint(
+        makeDataPoint('a1', 0.8, new Date('2025-01-15T11:00:00Z'))
+      );
+      await store.addDataPoint(
+        makeDataPoint('a1', 0.7, new Date('2025-01-15T09:00:00Z'))
+      );
 
       const result = await store.query({ agentIds: ['a1'] });
       expect(result[0].confidence).toBe(0.8); // Most recent first
@@ -116,9 +138,15 @@ describe('InMemoryConfidenceStore', () => {
       const now = new Date('2025-01-15T12:00:00Z');
       vi.setSystemTime(now);
 
-      await store.addDataPoint(makeDataPoint('a1', 0.9, now, { pattern: 'consensus' }));
-      await store.addDataPoint(makeDataPoint('a2', 0.8, now, { pattern: 'consensus' }));
-      await store.addDataPoint(makeDataPoint('a1', 0.3, now, { pattern: 'consensus' }));
+      await store.addDataPoint(
+        makeDataPoint('a1', 0.9, now, { pattern: 'consensus' })
+      );
+      await store.addDataPoint(
+        makeDataPoint('a2', 0.8, now, { pattern: 'consensus' })
+      );
+      await store.addDataPoint(
+        makeDataPoint('a1', 0.3, now, { pattern: 'consensus' })
+      );
 
       const stats = await store.getPatternStats(
         'consensus',
@@ -131,7 +159,11 @@ describe('InMemoryConfidenceStore', () => {
     });
 
     it('should return empty stats for unknown pattern', async () => {
-      const stats = await store.getPatternStats('unknown', new Date(0), new Date());
+      const stats = await store.getPatternStats(
+        'unknown',
+        new Date(0),
+        new Date()
+      );
       expect(stats.totalExecutions).toBe(0);
       expect(stats.avgConfidence).toBe(0);
     });
@@ -141,7 +173,9 @@ describe('InMemoryConfidenceStore', () => {
     it('should detect z-score anomalies', async () => {
       // Add 15 normal points around 0.8
       for (let i = 0; i < 15; i++) {
-        await store.addDataPoint(makeDataPoint('a1', 0.78 + Math.random() * 0.04));
+        await store.addDataPoint(
+          makeDataPoint('a1', 0.78 + Math.random() * 0.04)
+        );
       }
       // Add an outlier
       await store.addDataPoint(makeDataPoint('a1', 0.1));
@@ -164,12 +198,18 @@ describe('InMemoryConfidenceStore', () => {
       vi.setSystemTime(now);
 
       // Old data
-      await store.addDataPoint(makeDataPoint('a1', 0.9, new Date('2025-01-01T00:00:00Z')));
+      await store.addDataPoint(
+        makeDataPoint('a1', 0.9, new Date('2025-01-01T00:00:00Z'))
+      );
       // Recent data
       await store.addDataPoint(makeDataPoint('a1', 0.8, now));
 
       await store.cleanup(7); // 7-day retention
-      const result = await store.getDataPoints('a1', new Date(0), new Date('2025-12-31'));
+      const result = await store.getDataPoints(
+        'a1',
+        new Date(0),
+        new Date('2025-12-31')
+      );
       expect(result).toHaveLength(1);
       expect(result[0].confidence).toBe(0.8);
     });

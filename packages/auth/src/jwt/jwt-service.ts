@@ -1,7 +1,7 @@
 import * as jwt from 'jsonwebtoken';
+import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
-import { Logger } from 'pino';
-import { AuthToken, JWTPayload, User, AuthConfig } from '../types';
+import type { AuthConfig, AuthToken, JWTPayload, User } from '../types';
 
 export class JWTService {
   constructor(
@@ -52,9 +52,10 @@ export class JWTService {
       jwtid: uuidv4(),
     };
 
-    const secret = this.config.algorithm === 'RS256' 
-      ? this.config.privateKey! 
-      : this.config.secret;
+    const secret =
+      this.config.algorithm === 'RS256'
+        ? this.config.privateKey!
+        : this.config.secret;
 
     return new Promise((resolve, reject) => {
       jwt.sign(payload, secret, options, (err, token) => {
@@ -72,9 +73,10 @@ export class JWTService {
    * Verify and decode a JWT token
    */
   async verifyToken(token: string): Promise<JWTPayload> {
-    const secret = this.config.algorithm === 'RS256' 
-      ? this.config.publicKey! 
-      : this.config.secret;
+    const secret =
+      this.config.algorithm === 'RS256'
+        ? this.config.publicKey!
+        : this.config.secret;
 
     const options: jwt.VerifyOptions = {
       issuer: this.config.issuer,
@@ -85,7 +87,10 @@ export class JWTService {
     return new Promise((resolve, reject) => {
       jwt.verify(token, secret, options, (err, decoded) => {
         if (err) {
-          this.logger.warn({ err, token: token.substring(0, 20) }, 'Invalid token');
+          this.logger.warn(
+            { err, token: token.substring(0, 20) },
+            'Invalid token'
+          );
           reject(err);
         } else {
           resolve(decoded as JWTPayload);
@@ -99,7 +104,7 @@ export class JWTService {
    */
   async refreshAccessToken(refreshToken: string): Promise<AuthToken> {
     const payload = await this.verifyToken(refreshToken);
-    
+
     // Verify it's a refresh token
     if (payload.type !== 'refresh') {
       throw new Error('Invalid refresh token');
@@ -138,15 +143,20 @@ export class JWTService {
       throw new Error(`Invalid expiration format: ${expiration}`);
     }
 
-    const value = parseInt(match[1]);
+    const value = parseInt(match[1], 10);
     const unit = match[2];
 
     switch (unit) {
-      case 's': return value;
-      case 'm': return value * 60;
-      case 'h': return value * 3600;
-      case 'd': return value * 86400;
-      default: throw new Error(`Invalid expiration unit: ${unit}`);
+      case 's':
+        return value;
+      case 'm':
+        return value * 60;
+      case 'h':
+        return value * 3600;
+      case 'd':
+        return value * 86400;
+      default:
+        throw new Error(`Invalid expiration unit: ${unit}`);
     }
   }
 }

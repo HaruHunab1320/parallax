@@ -1,5 +1,9 @@
-import { ExecutionTask, ExecutionResult, ParallelExecutionPlan } from './types';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
+import type {
+  ExecutionResult,
+  ExecutionTask,
+  ParallelExecutionPlan,
+} from './types';
 
 type LimitFunction = <T>(fn: () => Promise<T>) => Promise<T>;
 
@@ -42,17 +46,22 @@ export class ParallelExecutor extends EventEmitter {
     taskExecutor: (task: ExecutionTask) => Promise<ExecutionResult>
   ): Promise<ExecutionResult[]> {
     const limit = concurrencyLimit(plan.maxConcurrency || 10);
-    
+
     switch (plan.strategy) {
       case 'all':
         return this.executeAll(plan.tasks, taskExecutor, limit, plan.timeout);
-      
+
       case 'race':
         return this.executeRace(plan.tasks, taskExecutor, plan.timeout);
-      
+
       case 'weighted':
-        return this.executeWeighted(plan.tasks, taskExecutor, limit, plan.timeout);
-      
+        return this.executeWeighted(
+          plan.tasks,
+          taskExecutor,
+          limit,
+          plan.timeout
+        );
+
       default:
         throw new Error(`Unknown execution strategy: ${plan.strategy}`);
     }
@@ -65,20 +74,20 @@ export class ParallelExecutor extends EventEmitter {
     timeout?: number
   ): Promise<ExecutionResult[]> {
     const startTime = Date.now();
-    
-    const taskPromises = tasks.map(task => 
+
+    const taskPromises = tasks.map((task) =>
       limit(() => this.executeWithTimeout(task, taskExecutor, timeout))
     );
 
     try {
       const results = await Promise.all(taskPromises);
-      
+
       this.emit('parallel:completed', {
         strategy: 'all',
         taskCount: tasks.length,
         duration: Date.now() - startTime,
       });
-      
+
       return results;
     } catch (error) {
       this.emit('parallel:failed', { error });
@@ -92,20 +101,20 @@ export class ParallelExecutor extends EventEmitter {
     timeout?: number
   ): Promise<ExecutionResult[]> {
     const startTime = Date.now();
-    
-    const taskPromises = tasks.map(task => 
+
+    const taskPromises = tasks.map((task) =>
       this.executeWithTimeout(task, taskExecutor, timeout)
     );
 
     try {
       const firstResult = await Promise.race(taskPromises);
-      
+
       // Cancel other tasks (in a real implementation)
       this.emit('parallel:race-winner', {
         winnerId: firstResult.taskId,
         duration: Date.now() - startTime,
       });
-      
+
       return [firstResult];
     } catch (error) {
       this.emit('parallel:failed', { error });
@@ -120,10 +129,10 @@ export class ParallelExecutor extends EventEmitter {
     timeout?: number
   ): Promise<ExecutionResult[]> {
     const startTime = Date.now();
-    
+
     // Sort tasks by priority
-    const sortedTasks = [...tasks].sort((a, b) => 
-      (b.metadata?.priority || 0) - (a.metadata?.priority || 0)
+    const sortedTasks = [...tasks].sort(
+      (a, b) => (b.metadata?.priority || 0) - (a.metadata?.priority || 0)
     );
 
     const results: ExecutionResult[] = [];
@@ -131,10 +140,10 @@ export class ParallelExecutor extends EventEmitter {
 
     for (const task of sortedTasks) {
       try {
-        const result = await limit(() => 
+        const result = await limit(() =>
           this.executeWithTimeout(task, taskExecutor, timeout)
         );
-        
+
         results.push(result);
 
         // If we get a high confidence result, we might stop early
@@ -174,17 +183,14 @@ export class ParallelExecutor extends EventEmitter {
     timeout?: number
   ): Promise<ExecutionResult> {
     const timeoutMs = timeout || task.metadata?.timeout || 30000;
-    
+
     const timeoutPromise = new Promise<ExecutionResult>((_, reject) => {
       setTimeout(() => reject(new Error('Task timeout')), timeoutMs);
     });
 
     try {
-      const result = await Promise.race([
-        taskExecutor(task),
-        timeoutPromise,
-      ]);
-      
+      const result = await Promise.race([taskExecutor(task), timeoutPromise]);
+
       return result;
     } catch (error) {
       if (error instanceof Error && error.message === 'Task timeout') {
@@ -211,13 +217,13 @@ export class ParallelExecutor extends EventEmitter {
 
     const canExecute = (task: ExecutionTask): boolean => {
       if (!task.metadata?.dependencies) return true;
-      
-      return task.metadata.dependencies.every(dep => completed.has(dep));
+
+      return task.metadata.dependencies.every((dep) => completed.has(dep));
     };
 
     const executeTask = async (task: ExecutionTask) => {
       inProgress.add(task.id);
-      
+
       try {
         const result = await taskExecutor(task);
         results.set(task.id, result);
@@ -238,10 +244,11 @@ export class ParallelExecutor extends EventEmitter {
 
     // Execute tasks respecting dependencies
     while (completed.size < tasks.length) {
-      const readyTasks = tasks.filter(task => 
-        !completed.has(task.id) && 
-        !inProgress.has(task.id) && 
-        canExecute(task)
+      const readyTasks = tasks.filter(
+        (task) =>
+          !completed.has(task.id) &&
+          !inProgress.has(task.id) &&
+          canExecute(task)
       );
 
       if (readyTasks.length === 0 && inProgress.size === 0) {
@@ -250,7 +257,7 @@ export class ParallelExecutor extends EventEmitter {
       }
 
       await Promise.all(
-        readyTasks.map(task => limit(() => executeTask(task)))
+        readyTasks.map((task) => limit(() => executeTask(task)))
       );
     }
 

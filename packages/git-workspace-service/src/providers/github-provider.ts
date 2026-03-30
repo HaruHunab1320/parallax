@@ -5,18 +5,18 @@
  * Requires @octokit/rest and @octokit/auth-app as peer dependencies.
  */
 
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import type {
-  GitProviderAdapter,
+  CreateIssueOptions,
   GitCredential,
   GitCredentialRequest,
-  PullRequestInfo,
   GitHubAppInstallation,
-  IssueInfo,
-  CreateIssueOptions,
+  GitProviderAdapter,
   IssueComment,
   IssueCommentOptions,
+  IssueInfo,
   IssueState,
+  PullRequestInfo,
 } from '../types';
 
 // Lazy-loaded Octokit - using any for the cache since types are dynamically loaded
@@ -109,7 +109,8 @@ export class GitHubProvider implements GitProviderAdapter {
     });
 
     try {
-      const { data: installations } = await this.appOctokit.apps.listInstallations();
+      const { data: installations } =
+        await this.appOctokit.apps.listInstallations();
 
       for (const installation of installations) {
         await this.registerInstallation(installation.id);
@@ -130,22 +131,27 @@ export class GitHubProvider implements GitProviderAdapter {
   /**
    * Register an installation (called on webhook or init)
    */
-  async registerInstallation(installationId: number): Promise<GitHubAppInstallation> {
+  async registerInstallation(
+    installationId: number
+  ): Promise<GitHubAppInstallation> {
     if (!this.appOctokit) {
       await this.initialize();
     }
 
     try {
       // Get installation details
-      const { data: installation } = await this.appOctokit.apps.getInstallation({
-        installation_id: installationId,
-      });
+      const { data: installation } = await this.appOctokit.apps.getInstallation(
+        {
+          installation_id: installationId,
+        }
+      );
 
       // Get accessible repositories
       const octokit = await this.getInstallationOctokit(installationId);
-      const { data: repos } = await octokit.apps.listReposAccessibleToInstallation({
-        per_page: 100,
-      });
+      const { data: repos } =
+        await octokit.apps.listReposAccessibleToInstallation({
+          per_page: 100,
+        });
 
       // Handle different account types
       const account = installation.account as {
@@ -154,13 +160,16 @@ export class GitHubProvider implements GitProviderAdapter {
         slug?: string;
       } | null;
       const accountLogin = account?.login || account?.slug || 'unknown';
-      const accountType = account?.type === 'Organization' ? 'Organization' : 'User';
+      const accountType =
+        account?.type === 'Organization' ? 'Organization' : 'User';
 
       const appInstallation: GitHubAppInstallation = {
         installationId,
         accountLogin,
         accountType,
-        repositories: repos.repositories?.map((r: { full_name: string }) => r.full_name) || [],
+        repositories:
+          repos.repositories?.map((r: { full_name: string }) => r.full_name) ||
+          [],
         permissions: installation.permissions as Record<string, string>,
       };
 
@@ -178,7 +187,11 @@ export class GitHubProvider implements GitProviderAdapter {
 
       return appInstallation;
     } catch (error) {
-      this.log('error', { installationId, error }, 'Failed to register installation');
+      this.log(
+        'error',
+        { installationId, error },
+        'Failed to register installation'
+      );
       throw error;
     }
   }
@@ -186,7 +199,10 @@ export class GitHubProvider implements GitProviderAdapter {
   /**
    * Get installation for a repository
    */
-  getInstallationForRepo(owner: string, repo: string): GitHubAppInstallation | null {
+  getInstallationForRepo(
+    owner: string,
+    repo: string
+  ): GitHubAppInstallation | null {
     // Check by owner
     const installation = this.installations.get(owner);
     if (!installation) {
@@ -265,7 +281,9 @@ export class GitHubProvider implements GitProviderAdapter {
         access === 'write'
           ? ['contents:write', 'pull_requests:write', 'metadata:read']
           : ['contents:read', 'metadata:read'],
-      expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + ttlSeconds * 1000),
+      expiresAt: expiresAt
+        ? new Date(expiresAt)
+        : new Date(Date.now() + ttlSeconds * 1000),
       provider: 'github',
     };
   }
@@ -332,7 +350,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: pr } = await octokit.pulls.create({
       owner,
@@ -399,12 +419,17 @@ export class GitHubProvider implements GitProviderAdapter {
       await this.initialize();
     }
 
-    const installation = this.getInstallationForRepo(repoInfo.owner, repoInfo.repo);
+    const installation = this.getInstallationForRepo(
+      repoInfo.owner,
+      repoInfo.repo
+    );
     if (!installation) {
       return false;
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     try {
       await octokit.repos.getBranch({
@@ -421,7 +446,10 @@ export class GitHubProvider implements GitProviderAdapter {
   /**
    * Get the default branch for a repository (implements GitProviderAdapter)
    */
-  async getDefaultBranch(repo: string, _credential: GitCredential): Promise<string> {
+  async getDefaultBranch(
+    repo: string,
+    _credential: GitCredential
+  ): Promise<string> {
     const repoInfo = this.parseRepo(repo);
     if (!repoInfo) {
       throw new Error(`Invalid repository format: ${repo}`);
@@ -431,12 +459,17 @@ export class GitHubProvider implements GitProviderAdapter {
       await this.initialize();
     }
 
-    const installation = this.getInstallationForRepo(repoInfo.owner, repoInfo.repo);
+    const installation = this.getInstallationForRepo(
+      repoInfo.owner,
+      repoInfo.repo
+    );
     if (!installation) {
       throw new Error(`No GitHub App installation found for ${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: repoData } = await octokit.repos.get({
       owner: repoInfo.owner,
@@ -463,7 +496,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: pr } = await octokit.pulls.get({
       owner,
@@ -487,7 +522,11 @@ export class GitHubProvider implements GitProviderAdapter {
   /**
    * Delete a branch
    */
-  async deleteBranch(owner: string, repo: string, branch: string): Promise<void> {
+  async deleteBranch(
+    owner: string,
+    repo: string,
+    branch: string
+  ): Promise<void> {
     if (!this.initialized) {
       await this.initialize();
     }
@@ -497,7 +536,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     await octokit.git.deleteRef({
       owner,
@@ -525,7 +566,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const branches: string[] = [];
     let page = 1;
@@ -573,7 +616,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: issue } = await octokit.issues.create({
       owner,
@@ -609,7 +654,11 @@ export class GitHubProvider implements GitProviderAdapter {
   /**
    * Get an issue by number
    */
-  async getIssue(owner: string, repo: string, issueNumber: number): Promise<IssueInfo> {
+  async getIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number
+  ): Promise<IssueInfo> {
     if (!this.initialized) {
       await this.initialize();
     }
@@ -619,7 +668,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: issue } = await octokit.issues.get({
       owner,
@@ -664,7 +715,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: issues } = await octokit.issues.listForRepo({
       owner,
@@ -679,29 +732,32 @@ export class GitHubProvider implements GitProviderAdapter {
     // Filter out pull requests (GitHub API returns PRs as issues)
     return issues
       .filter((issue: { pull_request?: unknown }) => !issue.pull_request)
-      .map((issue: {
-        number: number;
-        html_url: string;
-        state: string;
-        title: string;
-        body: string | null;
-        labels: Array<{ name?: string } | string>;
-        assignees?: Array<{ login: string }>;
-        created_at: string;
-        closed_at: string | null;
-      }) => ({
-        number: issue.number,
-        url: issue.html_url,
-        state: issue.state as IssueState,
-        title: issue.title,
-        body: issue.body || '',
-        labels: issue.labels.map((l: { name?: string } | string) =>
-          typeof l === 'string' ? l : l.name || ''
-        ),
-        assignees: issue.assignees?.map((a: { login: string }) => a.login) || [],
-        createdAt: new Date(issue.created_at),
-        closedAt: issue.closed_at ? new Date(issue.closed_at) : undefined,
-      }));
+      .map(
+        (issue: {
+          number: number;
+          html_url: string;
+          state: string;
+          title: string;
+          body: string | null;
+          labels: Array<{ name?: string } | string>;
+          assignees?: Array<{ login: string }>;
+          created_at: string;
+          closed_at: string | null;
+        }) => ({
+          number: issue.number,
+          url: issue.html_url,
+          state: issue.state as IssueState,
+          title: issue.title,
+          body: issue.body || '',
+          labels: issue.labels.map((l: { name?: string } | string) =>
+            typeof l === 'string' ? l : l.name || ''
+          ),
+          assignees:
+            issue.assignees?.map((a: { login: string }) => a.login) || [],
+          createdAt: new Date(issue.created_at),
+          closedAt: issue.closed_at ? new Date(issue.closed_at) : undefined,
+        })
+      );
   }
 
   /**
@@ -728,7 +784,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: issue } = await octokit.issues.update({
       owner,
@@ -780,7 +838,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     await octokit.issues.addLabels({
       owner,
@@ -789,7 +849,11 @@ export class GitHubProvider implements GitProviderAdapter {
       labels,
     });
 
-    this.log('info', { owner, repo, issueNumber, labels }, 'Labels added to issue');
+    this.log(
+      'info',
+      { owner, repo, issueNumber, labels },
+      'Labels added to issue'
+    );
   }
 
   /**
@@ -810,7 +874,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     await octokit.issues.removeLabel({
       owner,
@@ -819,7 +885,11 @@ export class GitHubProvider implements GitProviderAdapter {
       name: label,
     });
 
-    this.log('info', { owner, repo, issueNumber, label }, 'Label removed from issue');
+    this.log(
+      'info',
+      { owner, repo, issueNumber, label },
+      'Label removed from issue'
+    );
   }
 
   /**
@@ -840,7 +910,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: comment } = await octokit.issues.createComment({
       owner,
@@ -849,7 +921,11 @@ export class GitHubProvider implements GitProviderAdapter {
       body: options.body,
     });
 
-    this.log('info', { owner, repo, issueNumber, commentId: comment.id }, 'Comment added to issue');
+    this.log(
+      'info',
+      { owner, repo, issueNumber, commentId: comment.id },
+      'Comment added to issue'
+    );
 
     return {
       id: comment.id,
@@ -877,7 +953,9 @@ export class GitHubProvider implements GitProviderAdapter {
       throw new Error(`No GitHub App installation found for ${owner}/${repo}`);
     }
 
-    const octokit = await this.getInstallationOctokit(installation.installationId);
+    const octokit = await this.getInstallationOctokit(
+      installation.installationId
+    );
 
     const { data: comments } = await octokit.issues.listComments({
       owner,
@@ -886,32 +964,42 @@ export class GitHubProvider implements GitProviderAdapter {
       per_page: 100,
     });
 
-    return comments.map((comment: {
-      id: number;
-      html_url: string;
-      body: string | undefined;
-      user: { login: string } | null;
-      created_at: string;
-    }) => ({
-      id: comment.id,
-      url: comment.html_url,
-      body: comment.body || '',
-      author: comment.user?.login || 'unknown',
-      createdAt: new Date(comment.created_at),
-    }));
+    return comments.map(
+      (comment: {
+        id: number;
+        html_url: string;
+        body: string | undefined;
+        user: { login: string } | null;
+        created_at: string;
+      }) => ({
+        id: comment.id,
+        url: comment.html_url,
+        body: comment.body || '',
+        author: comment.user?.login || 'unknown',
+        createdAt: new Date(comment.created_at),
+      })
+    );
   }
 
   /**
    * Close an issue
    */
-  async closeIssue(owner: string, repo: string, issueNumber: number): Promise<IssueInfo> {
+  async closeIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number
+  ): Promise<IssueInfo> {
     return this.updateIssue(owner, repo, issueNumber, { state: 'closed' });
   }
 
   /**
    * Reopen an issue
    */
-  async reopenIssue(owner: string, repo: string, issueNumber: number): Promise<IssueInfo> {
+  async reopenIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number
+  ): Promise<IssueInfo> {
     return this.updateIssue(owner, repo, issueNumber, { state: 'open' });
   }
 
@@ -941,10 +1029,7 @@ export class GitHubProvider implements GitProviderAdapter {
   }
 
   private parseRepo(repo: string): { owner: string; repo: string } | null {
-    const patterns = [
-      /github\.com[/:]([^/]+)\/([^/.]+)/,
-      /^([^/]+)\/([^/]+)$/,
-    ];
+    const patterns = [/github\.com[/:]([^/]+)\/([^/.]+)/, /^([^/]+)\/([^/]+)$/];
 
     for (const pattern of patterns) {
       const match = repo.match(pattern);

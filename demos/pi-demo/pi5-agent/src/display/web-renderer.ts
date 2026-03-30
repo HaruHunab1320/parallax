@@ -1,5 +1,5 @@
-import { DisplayRenderer } from './types';
-import type { Server } from 'http';
+import type { Server } from 'node:http';
+import type { DisplayRenderer } from './types';
 
 /**
  * Web renderer: Express SSE server with inline HTML canvas (4x scale).

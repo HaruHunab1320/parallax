@@ -1,21 +1,22 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
-import path from 'path';
-import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { AgentResponse, ensureConfidence } from './types/agent-response';
+import { type AgentResponse, ensureConfidence } from './types/agent-response';
 import type {
-  GatewayThreadSpawnRequest,
   GatewayThreadEvent,
   GatewayThreadInput,
-  GatewayThreadStopRequest,
+  GatewayThreadSpawnRequest,
   GatewayThreadStatusUpdate,
+  GatewayThreadStopRequest,
 } from './types/thread-types';
 
-const PROTO_DIR = process.env.PARALLAX_PROTO_DIR
-  || (fs.existsSync(path.join(__dirname, '../../proto'))
-      ? path.join(__dirname, '../../proto')
-      : path.join(__dirname, '../../../proto'));
+const PROTO_DIR =
+  process.env.PARALLAX_PROTO_DIR ||
+  (fs.existsSync(path.join(__dirname, '../../proto'))
+    ? path.join(__dirname, '../../proto')
+    : path.join(__dirname, '../../../proto'));
 
 /**
  * Base class for Parallax agents in TypeScript.
@@ -31,7 +32,8 @@ interface GrpcProto {
 function normalizeStructList(value: any): any[] {
   if (!value) return [];
   if (Array.isArray(value)) return value.map(normalizeStructValue);
-  if (Array.isArray(value.values)) return value.values.map(normalizeStructValue);
+  if (Array.isArray(value.values))
+    return value.values.map(normalizeStructValue);
   return [];
 }
 
@@ -49,9 +51,11 @@ function normalizeStructValue(value: any): any {
     return value.values.map(normalizeStructValue);
   }
   if ('kind' in value && value.kind && typeof value.kind === 'object') {
-    const kindValue = (value.kind as any);
-    if ('structValue' in kindValue) return normalizeStruct(kindValue.structValue);
-    if ('listValue' in kindValue) return normalizeStructList(kindValue.listValue);
+    const kindValue = value.kind as any;
+    if ('structValue' in kindValue)
+      return normalizeStruct(kindValue.structValue);
+    if ('listValue' in kindValue)
+      return normalizeStructList(kindValue.listValue);
     if ('stringValue' in kindValue) return kindValue.stringValue;
     if ('numberValue' in kindValue) return kindValue.numberValue;
     if ('boolValue' in kindValue) return kindValue.boolValue;
@@ -134,14 +138,22 @@ export abstract class ParallaxAgent {
   /**
    * Optional: Override to provide custom health checking
    */
-  async checkHealth(): Promise<{ status: 'healthy' | 'unhealthy' | 'degraded', message?: string }> {
+  async checkHealth(): Promise<{
+    status: 'healthy' | 'unhealthy' | 'degraded';
+    message?: string;
+  }> {
     return { status: 'healthy' };
   }
 
   /**
    * Helper method to create standardized agent results
    */
-  protected createResult<T>(value: T, confidence: number, reasoning?: string, uncertainties?: string[]): AgentResponse<T> {
+  protected createResult<T>(
+    value: T,
+    confidence: number,
+    reasoning?: string,
+    uncertainties?: string[]
+  ): AgentResponse<T> {
     return ensureConfidence({
       value,
       confidence,
@@ -149,8 +161,8 @@ export abstract class ParallaxAgent {
       reasoning,
       uncertainties,
       metadata: {
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     });
   }
 
@@ -163,10 +175,12 @@ export abstract class ParallaxAgent {
       enums: String,
       defaults: true,
       oneofs: true,
-      includeDirs: [PROTO_DIR]
+      includeDirs: [PROTO_DIR],
     });
-    
-    const confidenceDescriptor = grpc.loadPackageDefinition(confidenceDefinition) as unknown as GrpcProto;
+
+    const confidenceDescriptor = grpc.loadPackageDefinition(
+      confidenceDefinition
+    ) as unknown as GrpcProto;
     this.confidenceProto = confidenceDescriptor.parallax.confidence;
 
     // Load registry proto
@@ -177,10 +191,12 @@ export abstract class ParallaxAgent {
       enums: String,
       defaults: true,
       oneofs: true,
-      includeDirs: [PROTO_DIR]
+      includeDirs: [PROTO_DIR],
     });
 
-    const registryDescriptor = grpc.loadPackageDefinition(registryDefinition) as unknown as GrpcProto;
+    const registryDescriptor = grpc.loadPackageDefinition(
+      registryDefinition
+    ) as unknown as GrpcProto;
     this.registryProto = registryDescriptor.parallax.registry;
 
     // Load gateway proto
@@ -192,9 +208,11 @@ export abstract class ParallaxAgent {
         enums: String,
         defaults: true,
         oneofs: true,
-        includeDirs: [PROTO_DIR]
+        includeDirs: [PROTO_DIR],
       });
-      const gatewayDescriptor = grpc.loadPackageDefinition(gatewayDefinition) as any;
+      const gatewayDescriptor = grpc.loadPackageDefinition(
+        gatewayDefinition
+      ) as any;
       this.gatewayProto = gatewayDescriptor.parallax.gateway;
     }
   }
@@ -208,53 +226,66 @@ export abstract class ParallaxAgent {
       serverCredentials?: grpc.ServerCredentials;
       registryEndpoint?: string;
       registryCredentials?: grpc.ChannelCredentials;
-      verifyRequest?: (call: grpc.ServerUnaryCall<any, any> | grpc.ServerWritableStream<any, any>) => Promise<{ verified: boolean; error?: string }>;
+      verifyRequest?: (
+        call:
+          | grpc.ServerUnaryCall<any, any>
+          | grpc.ServerWritableStream<any, any>
+      ) => Promise<{ verified: boolean; error?: string }>;
     }
   ): Promise<number> {
     // Add ConfidenceAgent service implementation
     const verify = options?.verifyRequest;
-    const wrapUnary = (
-      handler: (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => Promise<void>
-    ) => async (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => {
-      if (verify) {
-        const result = await verify(call);
-        if (!result.verified) {
-          const error = new Error(result.error || 'Unauthorized');
-          (error as any).code = grpc.status.UNAUTHENTICATED;
-          callback(error);
-          return;
+    const wrapUnary =
+      (
+        handler: (
+          call: grpc.ServerUnaryCall<any, any>,
+          callback: grpc.sendUnaryData<any>
+        ) => Promise<void>
+      ) =>
+      async (
+        call: grpc.ServerUnaryCall<any, any>,
+        callback: grpc.sendUnaryData<any>
+      ) => {
+        if (verify) {
+          const result = await verify(call);
+          if (!result.verified) {
+            const error = new Error(result.error || 'Unauthorized');
+            (error as any).code = grpc.status.UNAUTHENTICATED;
+            callback(error);
+            return;
+          }
         }
-      }
-      await handler(call, callback);
-    };
-    const wrapStream = (
-      handler: (call: grpc.ServerWritableStream<any, any>) => Promise<void>
-    ) => async (call: grpc.ServerWritableStream<any, any>) => {
-      if (verify) {
-        const result = await verify(call);
-        if (!result.verified) {
-          call.emit('error', {
-            code: grpc.status.UNAUTHENTICATED,
-            details: result.error || 'Unauthorized'
-          });
-          return;
+        await handler(call, callback);
+      };
+    const wrapStream =
+      (handler: (call: grpc.ServerWritableStream<any, any>) => Promise<void>) =>
+      async (call: grpc.ServerWritableStream<any, any>) => {
+        if (verify) {
+          const result = await verify(call);
+          if (!result.verified) {
+            call.emit('error', {
+              code: grpc.status.UNAUTHENTICATED,
+              details: result.error || 'Unauthorized',
+            });
+            return;
+          }
         }
-      }
-      await handler(call);
-    };
+        await handler(call);
+      };
 
     this.server.addService(this.confidenceProto.ConfidenceAgent.service, {
       analyze: wrapUnary(this.handleAnalyze.bind(this)),
       streamAnalyze: wrapStream(this.handleStreamAnalyze.bind(this)),
       getCapabilities: wrapUnary(this.handleGetCapabilities.bind(this)),
-      healthCheck: wrapUnary(this.handleHealthCheck.bind(this))
+      healthCheck: wrapUnary(this.handleHealthCheck.bind(this)),
     });
 
     // Start the server
     return new Promise((resolve, reject) => {
       const bindAddr = `0.0.0.0:${port}`;
       const advertisedHost = process.env.PARALLAX_AGENT_HOST || '127.0.0.1';
-      const credentials = options?.serverCredentials || grpc.ServerCredentials.createInsecure();
+      const credentials =
+        options?.serverCredentials || grpc.ServerCredentials.createInsecure();
 
       this.server.bindAsync(
         bindAddr,
@@ -265,7 +296,9 @@ export abstract class ParallaxAgent {
             return;
           }
 
-          console.log(`Agent ${this.name} (${this.id}) listening on port ${actualPort}`);
+          console.log(
+            `Agent ${this.name} (${this.id}) listening on port ${actualPort}`
+          );
 
           // Use PARALLAX_AGENT_PORT to override advertised port (e.g. for ngrok tunnels)
           const advertisedPort = process.env.PARALLAX_AGENT_PORT
@@ -298,8 +331,9 @@ export abstract class ParallaxAgent {
     registryEndpoint?: string,
     registryCredentials?: grpc.ChannelCredentials
   ): Promise<void> {
-    const endpoint = registryEndpoint || process.env.PARALLAX_REGISTRY || 'localhost:50051';
-    
+    const endpoint =
+      registryEndpoint || process.env.PARALLAX_REGISTRY || 'localhost:50051';
+
     this.registryClient = new this.registryProto.Registry(
       endpoint,
       registryCredentials || grpc.credentials.createInsecure()
@@ -311,9 +345,9 @@ export abstract class ParallaxAgent {
         name: this.name,
         endpoint: agentAddress,
         capabilities: this.capabilities,
-        metadata: { ...this.metadata, legacyId: this.id }
+        metadata: { ...this.metadata, legacyId: this.id },
       },
-      auto_renew: true
+      auto_renew: true,
     };
 
     await new Promise<void>((resolve, reject) => {
@@ -334,7 +368,7 @@ export abstract class ParallaxAgent {
             endpoint,
             message: error.message,
             code: error.code,
-            details: error.details
+            details: error.details,
           });
           reject(error);
           return;
@@ -355,7 +389,7 @@ export abstract class ParallaxAgent {
    */
   private startLeaseRenewal() {
     if (!this.leaseId) return;
-    
+
     // Renew lease every 30 seconds
     this.renewInterval = setInterval(async () => {
       try {
@@ -371,15 +405,18 @@ export abstract class ParallaxAgent {
    */
   private async renewLease(): Promise<void> {
     if (!this.registryClient || !this.leaseId) return;
-    
+
     return new Promise((resolve, reject) => {
-      this.registryClient.renew({ lease_id: this.leaseId }, (error: any, _response: any) => {
-        if (error) {
-          reject(error);
-          return;
+      this.registryClient.renew(
+        { lease_id: this.leaseId },
+        (error: any, _response: any) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
         }
-        resolve();
-      });
+      );
     });
   }
 
@@ -392,15 +429,16 @@ export abstract class ParallaxAgent {
   ) {
     try {
       const request = call.request;
-      const taskDescription = request.task_description || request.task?.description || '';
-      const data = normalizeStruct(request.data || (request.task?.data ? JSON.parse(request.task.data) : undefined));
-      
-      // Call the agent's analyze method
-      const result = await this.analyze(
-        taskDescription,
-        data
+      const taskDescription =
+        request.task_description || request.task?.description || '';
+      const data = normalizeStruct(
+        request.data ||
+          (request.task?.data ? JSON.parse(request.task.data) : undefined)
       );
-      
+
+      // Call the agent's analyze method
+      const result = await this.analyze(taskDescription, data);
+
       // Build response
       const response = {
         value_json: JSON.stringify(result.value),
@@ -408,17 +446,17 @@ export abstract class ParallaxAgent {
         agent_id: this.uuid,
         timestamp: {
           seconds: Math.floor(Date.now() / 1000),
-          nanos: 0
+          nanos: 0,
         },
         reasoning: result.reasoning || '',
-        metadata: result.metadata || {}
+        metadata: result.metadata || {},
       };
-      
+
       callback(null, response);
     } catch (error: any) {
       callback({
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -426,11 +464,17 @@ export abstract class ParallaxAgent {
   /**
    * Handle streaming execute requests
    */
-  protected async handleStreamAnalyze(call: grpc.ServerWritableStream<any, any>) {
+  protected async handleStreamAnalyze(
+    call: grpc.ServerWritableStream<any, any>
+  ) {
     try {
       const request = call.request;
-      const taskDescription = request.task_description || request.task?.description || '';
-      const data = normalizeStruct(request.data || (request.task?.data ? JSON.parse(request.task.data) : undefined));
+      const taskDescription =
+        request.task_description || request.task?.description || '';
+      const data = normalizeStruct(
+        request.data ||
+          (request.task?.data ? JSON.parse(request.task.data) : undefined)
+      );
 
       await this.streamAnalyze(taskDescription, data, (result) => {
         call.write({
@@ -439,10 +483,10 @@ export abstract class ParallaxAgent {
           agent_id: this.uuid,
           timestamp: {
             seconds: Math.floor(Date.now() / 1000),
-            nanos: 0
+            nanos: 0,
           },
           reasoning: result.reasoning || '',
-          metadata: result.metadata || {}
+          metadata: result.metadata || {},
         });
       });
 
@@ -450,7 +494,7 @@ export abstract class ParallaxAgent {
     } catch (error: any) {
       call.emit('error', {
         code: grpc.status.INTERNAL,
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -467,7 +511,7 @@ export abstract class ParallaxAgent {
       name: this.name,
       capabilities: this.capabilities,
       expertise_level: 'EXPERT',
-      capability_scores: {}
+      capability_scores: {},
     });
   }
 
@@ -484,9 +528,9 @@ export abstract class ParallaxAgent {
       message: health.message,
       last_check: {
         seconds: Math.floor(Date.now() / 1000),
-        nanos: 0
+        nanos: 0,
       },
-      details: {}
+      details: {},
     });
   }
 
@@ -500,13 +544,16 @@ export abstract class ParallaxAgent {
     options?: GatewayOptions
   ): Promise<void> {
     if (!this.gatewayProto) {
-      throw new Error('Gateway proto not loaded. Ensure gateway.proto exists in the proto directory.');
+      throw new Error(
+        'Gateway proto not loaded. Ensure gateway.proto exists in the proto directory.'
+      );
     }
 
     this.gatewayEndpoint = endpoint;
     this.gatewayOptions = options;
 
-    const credentials = options?.credentials || grpc.credentials.createInsecure();
+    const credentials =
+      options?.credentials || grpc.credentials.createInsecure();
     const heartbeatIntervalMs = options?.heartbeatIntervalMs || 10000;
 
     const client = new this.gatewayProto.AgentGateway(endpoint, credentials);
@@ -527,7 +574,9 @@ export abstract class ParallaxAgent {
       },
     });
 
-    console.log(`Agent ${this.name} (${this.id}) connecting via gateway to ${endpoint}`);
+    console.log(
+      `Agent ${this.name} (${this.id}) connecting via gateway to ${endpoint}`
+    );
 
     // Start heartbeat
     this.gatewayHeartbeatTimer = setInterval(() => {
@@ -549,20 +598,30 @@ export abstract class ParallaxAgent {
     stream.on('data', async (message: any) => {
       if (message.ack) {
         if (message.ack.accepted) {
-          console.log(`Agent ${this.name} connected via gateway (node: ${message.ack.assigned_node_id})`);
+          console.log(
+            `Agent ${this.name} connected via gateway (node: ${message.ack.assigned_node_id})`
+          );
         } else {
           console.error(`Gateway rejected agent: ${message.ack.message}`);
           stream.end();
         }
       } else if (message.task_request) {
         try {
-          await this.handleGatewayTask(stream, message.request_id, message.task_request);
+          await this.handleGatewayTask(
+            stream,
+            message.request_id,
+            message.task_request
+          );
         } catch (err: any) {
           console.error(`Error handling task request: ${err.message}`);
         }
       } else if (message.thread_spawn) {
         try {
-          await this.handleGatewayThreadSpawn(stream, message.request_id, message.thread_spawn);
+          await this.handleGatewayThreadSpawn(
+            stream,
+            message.request_id,
+            message.thread_spawn
+          );
         } catch (err: any) {
           console.error(`Error handling thread spawn: ${err.message}`);
         }
@@ -574,12 +633,18 @@ export abstract class ParallaxAgent {
         }
       } else if (message.thread_stop) {
         try {
-          await this.handleGatewayThreadStop(stream, message.request_id, message.thread_stop);
+          await this.handleGatewayThreadStop(
+            stream,
+            message.request_id,
+            message.thread_stop
+          );
         } catch (err: any) {
           console.error(`Error handling thread stop: ${err.message}`);
         }
       } else if (message.cancel_task) {
-        console.log(`Task cancelled: ${message.cancel_task.task_id} (${message.cancel_task.reason})`);
+        console.log(
+          `Task cancelled: ${message.cancel_task.task_id} (${message.cancel_task.reason})`
+        );
         // Cancellation support can be extended in subclasses
       } else if (message.ping) {
         // Respond to ping with a heartbeat
@@ -816,18 +881,23 @@ export abstract class ParallaxAgent {
         return;
       }
 
-      const delay = Math.min(initialDelay * Math.pow(2, attempt), maxDelay);
+      const delay = Math.min(initialDelay * 2 ** attempt, maxDelay);
       attempt++;
 
       console.log(`Gateway reconnecting in ${delay}ms (attempt ${attempt})...`);
-      await new Promise(r => setTimeout(r, delay));
+      await new Promise((r) => setTimeout(r, delay));
 
       try {
-        await this.connectViaGateway(this.gatewayEndpoint!, this.gatewayOptions);
+        await this.connectViaGateway(
+          this.gatewayEndpoint!,
+          this.gatewayOptions
+        );
         console.log('Gateway reconnected successfully');
         this.gatewayReconnecting = false;
       } catch (reconnectError: any) {
-        console.error(`Gateway reconnect attempt ${attempt} failed: ${reconnectError.message}`);
+        console.error(
+          `Gateway reconnect attempt ${attempt} failed: ${reconnectError.message}`
+        );
         await reconnect();
       }
     };

@@ -2,9 +2,9 @@
  * Metrics Tool - Get agent metrics
  */
 
-import type { LocalRuntime } from '@parallaxai/runtime-local';
 import type { AgentMetrics } from '@parallaxai/runtime-interface';
-import { MetricsInputSchema, type MetricsInput } from './schemas.js';
+import type { LocalRuntime } from '@parallaxai/runtime-local';
+import { type MetricsInput, MetricsInputSchema } from './schemas.js';
 
 export const METRICS_TOOL = {
   name: 'metrics',
@@ -15,7 +15,9 @@ export const METRICS_TOOL = {
 export async function executeMetrics(
   runtime: LocalRuntime,
   input: MetricsInput
-): Promise<{ success: true; metrics: AgentMetrics } | { success: false; error: string }> {
+): Promise<
+  { success: true; metrics: AgentMetrics } | { success: false; error: string }
+> {
   try {
     // Check if agent exists
     const agent = await runtime.get(input.agentId);
@@ -26,7 +28,10 @@ export async function executeMetrics(
     const metrics = await runtime.metrics(input.agentId);
 
     if (!metrics) {
-      return { success: false, error: `No metrics available for agent ${input.agentId}` };
+      return {
+        success: false,
+        error: `No metrics available for agent ${input.agentId}`,
+      };
     }
 
     return { success: true, metrics };

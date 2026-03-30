@@ -1,7 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-import { PatternClient } from '@parallaxai/sdk-typescript';
+import fs from 'node:fs';
+import path from 'node:path';
 import { ChannelCredentials } from '@grpc/grpc-js';
+import { PatternClient } from '@parallaxai/sdk-typescript';
 
 /**
  * Upload the SignalNoiseStation pattern to the control plane.
@@ -10,8 +10,7 @@ import { ChannelCredentials } from '@grpc/grpc-js';
  *   PARALLAX_REGISTRY=host:port npx tsx src/upload-pattern.ts
  */
 async function main() {
-  const registryEndpoint =
-    process.env.PARALLAX_REGISTRY || 'localhost:50051';
+  const registryEndpoint = process.env.PARALLAX_REGISTRY || 'localhost:50051';
 
   const patternPath = path.resolve(
     __dirname,

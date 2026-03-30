@@ -1,31 +1,48 @@
-import { Pattern, PatternExecution, ExecutionMetrics, PatternWorkspaceConfig } from './types';
-import { PatternLoader } from './pattern-loader';
-import { RuntimeManager } from '../runtime-manager';
-import { EtcdRegistry } from '../registry';
-import { Logger } from 'pino';
-import { v4 as uuidv4 } from 'uuid';
-import { AgentProxy } from '../grpc/agent-proxy';
-import { LocalAgentManager } from './local-agents';
-import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
-import { LicenseEnforcer } from '../licensing/license-enforcer';
-import { DatabaseService } from '../db/database.service';
-import { IPatternEngine, PatternExecutionOptions, PatternWithSource, PatternVersion } from './interfaces';
-import { DatabasePatternService } from './database-pattern-service';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { ExecutionEventBus } from '../execution-events';
-import { WorkspaceService, Workspace, WorkspaceConfig, UserProvidedCredentials } from '../workspace';
-import { AgentRuntimeService } from '../agent-runtime';
-import { AgentHandle, AgentConfig, ThreadHandle } from '@parallaxai/runtime-interface';
-import { ThreadPreparationService } from '../threads';
-import {
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import type {
   ExecutionEngine,
-  ExecutionTask,
   ExecutionResult,
-  ParallelExecutionPlan
+  ExecutionTask,
+  ParallelExecutionPlan,
 } from '@parallaxai/data-plane';
-import { WorkflowExecutor, WorkflowResult } from '../org-patterns/workflow-executor';
-import { OrgPattern } from '../org-patterns/types';
+import type {
+  AgentConfig,
+  AgentHandle,
+  ThreadHandle,
+} from '@parallaxai/runtime-interface';
+import type { Logger } from 'pino';
+import { v4 as uuidv4 } from 'uuid';
+import type { AgentRuntimeService } from '../agent-runtime';
+import type { DatabaseService } from '../db/database.service';
+import type { ExecutionEventBus } from '../execution-events';
+import { AgentProxy } from '../grpc/agent-proxy';
+import { LicenseEnforcer } from '../licensing/license-enforcer';
+import type { OrgPattern } from '../org-patterns/types';
+import {
+  WorkflowExecutor,
+  type WorkflowResult,
+} from '../org-patterns/workflow-executor';
+import type { EtcdRegistry } from '../registry';
+import type { RuntimeManager } from '../runtime-manager';
+import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
+import type { ThreadPreparationService } from '../threads';
+import type {
+  UserProvidedCredentials,
+  Workspace,
+  WorkspaceConfig,
+  WorkspaceService,
+} from '../workspace';
+import type { DatabasePatternService } from './database-pattern-service';
+import type {
+  IPatternEngine,
+  PatternExecutionOptions,
+  PatternVersion,
+  PatternWithSource,
+} from './interfaces';
+import { LocalAgentManager } from './local-agents';
+import { PatternLoader } from './pattern-loader';
+import type { ExecutionMetrics, Pattern, PatternExecution } from './types';
 
 export class PatternEngine implements IPatternEngine {
   private loader: PatternLoader;
@@ -44,7 +61,6 @@ export class PatternEngine implements IPatternEngine {
   private spawnedAgents: Map<string, AgentHandle[]> = new Map(); // executionId -> spawned agents
   private spawnedThreads: Map<string, ThreadHandle[]> = new Map(); // executionId -> spawned threads
   private shuttingDown: boolean = false;
-  private nodeId?: string;
 
   constructor(
     private runtimeManager: RuntimeManager,
@@ -82,7 +98,10 @@ export class PatternEngine implements IPatternEngine {
    * Set the gateway service on the internal AgentProxy (for deferred initialization)
    */
   setGatewayService(service: any): void {
-    if (this.agentProxy && typeof (this.agentProxy as any).setGatewayService === 'function') {
+    if (
+      this.agentProxy &&
+      typeof (this.agentProxy as any).setGatewayService === 'function'
+    ) {
       (this.agentProxy as any).setGatewayService(service);
     }
   }
@@ -137,7 +156,9 @@ export class PatternEngine implements IPatternEngine {
     workspace?: Workspace | null
   ): Promise<AgentHandle[]> {
     if (!this.agentRuntimeService) {
-      this.logger.debug('AgentRuntimeService not available, skipping agent spawn');
+      this.logger.debug(
+        'AgentRuntimeService not available, skipping agent spawn'
+      );
       return [];
     }
 
@@ -206,7 +227,10 @@ export class PatternEngine implements IPatternEngine {
   /**
    * Generate the prompt/instructions for a spawned agent
    */
-  private generateAgentPrompt(pattern: Pattern, workspace?: Workspace | null): string {
+  private generateAgentPrompt(
+    pattern: Pattern,
+    workspace?: Workspace | null
+  ): string {
     const lines: string[] = [
       `You are an AI agent participating in the "${pattern.name}" pattern execution.`,
       '',
@@ -250,7 +274,10 @@ export class PatternEngine implements IPatternEngine {
       await this.agentRuntimeService?.cleanupExecution(executionId);
       this.logger.debug({ executionId }, 'Execution resources cleaned up');
     } catch (error) {
-      this.logger.warn({ executionId, error }, 'Failed to clean up execution resources');
+      this.logger.warn(
+        { executionId, error },
+        'Failed to clean up execution resources'
+      );
     }
 
     this.spawnedAgents.delete(executionId);
@@ -263,7 +290,9 @@ export class PatternEngine implements IPatternEngine {
     input?: any
   ): Promise<ThreadHandle[]> {
     if (!this.agentRuntimeService) {
-      this.logger.debug('AgentRuntimeService not available, skipping thread spawn');
+      this.logger.debug(
+        'AgentRuntimeService not available, skipping thread spawn'
+      );
       return [];
     }
 
@@ -273,15 +302,22 @@ export class PatternEngine implements IPatternEngine {
     const threadConfig = pattern.threads;
 
     // If the thread config has per-role definitions (from org-chart), use those
-    const threadRoles = (threadConfig as any)?.roles as Array<{
-      roleId: string;
-      agentType: string;
-      objective?: string;
-      approvalPreset?: string;
-    }> | undefined;
+    const threadRoles = (threadConfig as any)?.roles as
+      | Array<{
+          roleId: string;
+          agentType: string;
+          objective?: string;
+          approvalPreset?: string;
+        }>
+      | undefined;
 
     this.logger.info(
-      { patternName: pattern.name, count: minAgents, threadAgentType: threadConfig?.agentType || 'claude', roles: threadRoles?.map(r => r.roleId) },
+      {
+        patternName: pattern.name,
+        count: minAgents,
+        threadAgentType: threadConfig?.agentType || 'claude',
+        roles: threadRoles?.map((r) => r.roleId),
+      },
       'Spawning threads for pattern execution'
     );
 
@@ -292,8 +328,11 @@ export class PatternEngine implements IPatternEngine {
           ? await this.threadPreparationService.prepareSpawnInput({
               id: `${executionId}-thread-${i}`,
               executionId,
-              name: roleConfig ? `${pattern.name}-${roleConfig.roleId}` : `${pattern.name}-thread-${i}`,
-              agentType: roleConfig?.agentType || threadConfig?.agentType || 'claude',
+              name: roleConfig
+                ? `${pattern.name}-${roleConfig.roleId}`
+                : `${pattern.name}-thread-${i}`,
+              agentType:
+                roleConfig?.agentType || threadConfig?.agentType || 'claude',
               objective:
                 roleConfig?.objective ||
                 threadConfig?.objective ||
@@ -316,7 +355,8 @@ export class PatternEngine implements IPatternEngine {
                   PARALLAX_PATTERN_NAME: pattern.name,
                   PARALLAX_THREAD_INDEX: i.toString(),
                 },
-                approvalPreset: (roleConfig?.approvalPreset || threadConfig?.approvalPreset) as any,
+                approvalPreset: (roleConfig?.approvalPreset ||
+                  threadConfig?.approvalPreset) as any,
               },
               workspace: workspace
                 ? {
@@ -326,7 +366,7 @@ export class PatternEngine implements IPatternEngine {
                     branch: workspace.branch.name,
                   }
                 : input?.repo
-                  ? { repo: input.repo } as any
+                  ? ({ repo: input.repo } as any)
                   : undefined,
               env: {
                 PARALLAX_EXECUTION_ID: executionId,
@@ -342,59 +382,66 @@ export class PatternEngine implements IPatternEngine {
               policy: threadConfig?.policy,
             })
           : {
-          id: `${executionId}-thread-${i}`,
-          executionId,
-          name: roleConfig ? `${pattern.name}-${roleConfig.roleId}` : `${pattern.name}-thread-${i}`,
-          agentType: roleConfig?.agentType || threadConfig?.agentType || 'claude',
-          objective:
-            roleConfig?.objective ||
-            threadConfig?.objective ||
-            pattern.description ||
-            `Execute pattern ${pattern.name}`,
-          role: roleConfig?.roleId || `pattern-worker-${i}`,
-          preparation: {
-            workspace: workspace
-              ? {
-                  workspaceId: workspace.id,
-                  path: workspace.path,
-                  repo: workspace.repo,
-                  branch: workspace.branch.name,
-                }
-              : input?.repo
-                ? { repo: input.repo }
-                : undefined,
-            env: {
-              PARALLAX_EXECUTION_ID: executionId,
-              PARALLAX_PATTERN_NAME: pattern.name,
-              PARALLAX_THREAD_INDEX: i.toString(),
-            },
-            approvalPreset: (roleConfig?.approvalPreset || threadConfig?.approvalPreset) as any,
-          },
-          workspace: workspace
-            ? {
-                workspaceId: workspace.id,
-                path: workspace.path,
-                repo: workspace.repo,
-                branch: workspace.branch.name,
-              }
-            : input?.repo
-              ? { repo: input.repo } as any
-              : undefined,
-          env: {
-            PARALLAX_EXECUTION_ID: executionId,
-            PARALLAX_PATTERN_NAME: pattern.name,
-            PARALLAX_THREAD_INDEX: i.toString(),
-          },
-          approvalPreset: roleConfig?.approvalPreset || threadConfig?.approvalPreset,
-          metadata: {
-            capabilities,
-            patternName: pattern.name,
-            threadIndex: i,
-          },
-          policy: threadConfig?.policy,
-        };
+              id: `${executionId}-thread-${i}`,
+              executionId,
+              name: roleConfig
+                ? `${pattern.name}-${roleConfig.roleId}`
+                : `${pattern.name}-thread-${i}`,
+              agentType:
+                roleConfig?.agentType || threadConfig?.agentType || 'claude',
+              objective:
+                roleConfig?.objective ||
+                threadConfig?.objective ||
+                pattern.description ||
+                `Execute pattern ${pattern.name}`,
+              role: roleConfig?.roleId || `pattern-worker-${i}`,
+              preparation: {
+                workspace: workspace
+                  ? {
+                      workspaceId: workspace.id,
+                      path: workspace.path,
+                      repo: workspace.repo,
+                      branch: workspace.branch.name,
+                    }
+                  : input?.repo
+                    ? { repo: input.repo }
+                    : undefined,
+                env: {
+                  PARALLAX_EXECUTION_ID: executionId,
+                  PARALLAX_PATTERN_NAME: pattern.name,
+                  PARALLAX_THREAD_INDEX: i.toString(),
+                },
+                approvalPreset: (roleConfig?.approvalPreset ||
+                  threadConfig?.approvalPreset) as any,
+              },
+              workspace: workspace
+                ? {
+                    workspaceId: workspace.id,
+                    path: workspace.path,
+                    repo: workspace.repo,
+                    branch: workspace.branch.name,
+                  }
+                : input?.repo
+                  ? ({ repo: input.repo } as any)
+                  : undefined,
+              env: {
+                PARALLAX_EXECUTION_ID: executionId,
+                PARALLAX_PATTERN_NAME: pattern.name,
+                PARALLAX_THREAD_INDEX: i.toString(),
+              },
+              approvalPreset:
+                roleConfig?.approvalPreset || threadConfig?.approvalPreset,
+              metadata: {
+                capabilities,
+                patternName: pattern.name,
+                threadIndex: i,
+              },
+              policy: threadConfig?.policy,
+            };
 
-        const thread = await this.agentRuntimeService.spawnThread(spawnInput as any);
+        const thread = await this.agentRuntimeService.spawnThread(
+          spawnInput as any
+        );
 
         spawnedThreads.push(thread);
 
@@ -434,7 +481,10 @@ export class PatternEngine implements IPatternEngine {
         await this.agentRuntimeService?.stopThread(thread.id);
         this.logger.debug({ threadId: thread.id }, 'Thread stopped');
       } catch (error) {
-        this.logger.warn({ threadId: thread.id, error }, 'Failed to stop thread');
+        this.logger.warn(
+          { threadId: thread.id, error },
+          'Failed to stop thread'
+        );
       }
     }
 
@@ -484,19 +534,28 @@ export class PatternEngine implements IPatternEngine {
         }
       };
 
-      const unsubscribe = runtimeService.subscribeThread(threadId, async (event) => {
-        if (event.type === 'thread_turn_complete' || event.type === 'thread_completed') {
-          await finalize();
-          return;
-        }
+      const unsubscribe = runtimeService.subscribeThread(
+        threadId,
+        async (event) => {
+          if (
+            event.type === 'thread_turn_complete' ||
+            event.type === 'thread_completed'
+          ) {
+            await finalize();
+            return;
+          }
 
-        if (event.type === 'thread_failed' || event.type === 'thread_stopped') {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          reject(new Error(`Thread ${threadId} ended with ${event.type}`));
+          if (
+            event.type === 'thread_failed' ||
+            event.type === 'thread_stopped'
+          ) {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(new Error(`Thread ${threadId} ended with ${event.type}`));
+          }
         }
-      });
+      );
 
       // Only set timeout if > 0 (0 = no timeout)
       if (timeoutMs > 0) {
@@ -504,7 +563,9 @@ export class PatternEngine implements IPatternEngine {
           if (settled) return;
           settled = true;
           cleanup();
-          reject(new Error(`Thread ${threadId} timed out after ${timeoutMs}ms`));
+          reject(
+            new Error(`Thread ${threadId} timed out after ${timeoutMs}ms`)
+          );
         }, timeoutMs);
       }
 
@@ -539,9 +600,8 @@ export class PatternEngine implements IPatternEngine {
     // Resolve timeout: options > pattern metadata > default
     // Thread-based patterns default to no timeout (0); non-thread patterns default to 5 min
     const defaultTimeout = pattern.threads?.enabled ? 0 : 300000;
-    const timeoutMs = options?.timeout
-      ?? (pattern.metadata as any)?.timeout
-      ?? defaultTimeout;
+    const timeoutMs =
+      options?.timeout ?? (pattern.metadata as any)?.timeout ?? defaultTimeout;
 
     const executionId = options?.executionId || uuidv4();
     const execution: PatternExecution = {
@@ -556,12 +616,22 @@ export class PatternEngine implements IPatternEngine {
     this.currentExecutionId = execution.id;
 
     // Wrap execution in a timeout race (skip if timeout is 0 = no limit)
-    const executionPromise = this._executePatternInner(pattern, execution, executionId, input, options, timeoutMs);
+    const executionPromise = this._executePatternInner(
+      pattern,
+      execution,
+      executionId,
+      input,
+      options,
+      timeoutMs
+    );
 
     try {
       if (timeoutMs > 0) {
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error(`Execution timed out after ${timeoutMs}ms`)), timeoutMs);
+          setTimeout(
+            () => reject(new Error(`Execution timed out after ${timeoutMs}ms`)),
+            timeoutMs
+          );
         });
         return await Promise.race([executionPromise, timeoutPromise]);
       } else {
@@ -572,7 +642,8 @@ export class PatternEngine implements IPatternEngine {
       if (execution.status === 'running') {
         execution.endTime = new Date();
         execution.status = 'failed';
-        execution.error = error instanceof Error ? error.message : String(error);
+        execution.error =
+          error instanceof Error ? error.message : String(error);
       }
       throw error;
     }
@@ -593,7 +664,7 @@ export class PatternEngine implements IPatternEngine {
         executionId,
         type,
         data,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
 
       if (this.database) {
@@ -602,10 +673,13 @@ export class PatternEngine implements IPatternEngine {
           .addEvent(executionId, {
             type,
             agentId,
-            data
+            data,
           })
-          .catch(error => {
-            this.logger.warn({ error, executionId, type }, 'Failed to persist execution event');
+          .catch((error) => {
+            this.logger.warn(
+              { error, executionId, type },
+              'Failed to persist execution event'
+            );
           });
       }
     };
@@ -634,7 +708,12 @@ export class PatternEngine implements IPatternEngine {
     // Provision workspace if pattern requires it (non-org-chart patterns)
     let workspace: Workspace | null = null;
     if (pattern.workspace?.enabled && this.workspaceService) {
-      const workspaceConfig = this.resolveWorkspaceConfig(pattern, input, executionId, options?.credentials);
+      const workspaceConfig = this.resolveWorkspaceConfig(
+        pattern,
+        input,
+        executionId,
+        options?.credentials
+      );
       if (workspaceConfig) {
         try {
           emitEvent('workspace_provisioning', { repo: workspaceConfig.repo });
@@ -652,12 +731,17 @@ export class PatternEngine implements IPatternEngine {
             path: workspace.path,
           });
         } catch (error) {
-          this.logger.error({ error, executionId, patternName }, 'Failed to provision workspace');
+          this.logger.error(
+            { error, executionId, patternName },
+            'Failed to provision workspace'
+          );
           emitEvent('workspace_failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
           });
           if (pattern.workspace.repo) {
-            throw new Error(`Workspace provisioning failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw new Error(
+              `Workspace provisioning failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
           }
         }
       }
@@ -665,27 +749,45 @@ export class PatternEngine implements IPatternEngine {
 
     try {
       // Select agents based on pattern requirements (may spawn agents if needed)
-      const agents = await this.selectAgents(pattern, executionId, workspace, input);
+      const agents = await this.selectAgents(
+        pattern,
+        executionId,
+        workspace,
+        input
+      );
       emitEvent('agents_selected', { count: agents.length });
-      this.logger.info({ agentCount: agents.length, agents: agents.map((a: any) => ({ id: a.id, endpoint: a.address || a.endpoint })) }, 'Agents selected for execution');
+      this.logger.info(
+        {
+          agentCount: agents.length,
+          agents: agents.map((a: any) => ({
+            id: a.id,
+            endpoint: a.address || a.endpoint,
+          })),
+        },
+        'Agents selected for execution'
+      );
 
       // Pre-execute async agent operations based on pattern requirements
       const preProcessedData: any = {
         agentResults: [],
-        successfulResults: []
+        successfulResults: [],
       };
 
       // Check if pattern needs agent analysis results — dispatch fan-out
       // when the pattern declares agent requirements (minAgents or agents config)
-      const needsAgentDispatch = (pattern.minAgents != null && pattern.minAgents >= 1) || !!pattern.agents;
+      const needsAgentDispatch =
+        (pattern.minAgents != null && pattern.minAgents >= 1) ||
+        !!pattern.agents;
       if (needsAgentDispatch) {
-
         let agentResults: any[];
 
-        this.logger.info({ hasExecutionEngine: !!this.executionEngine, patternName }, 'Entering agent dispatch block');
+        this.logger.info(
+          { hasExecutionEngine: !!this.executionEngine, patternName },
+          'Entering agent dispatch block'
+        );
 
         // Use ExecutionEngine if available, otherwise fall back to direct AgentProxy calls
-        if (agents.some(agent => agent.threadId)) {
+        if (agents.some((agent) => agent.threadId)) {
           let completedCount = 0;
           let failedCount = 0;
 
@@ -729,11 +831,15 @@ export class PatternEngine implements IPatternEngine {
                   threadId: agent.threadId,
                 };
               } catch (error) {
-                this.logger.warn({ agentId: agent.id, threadId: agent.threadId, error }, 'Thread task failed');
+                this.logger.warn(
+                  { agentId: agent.id, threadId: agent.threadId, error },
+                  'Thread task failed'
+                );
                 emitEvent('agent_failed', {
                   agentId: agent.id,
                   agentName: agent.name,
-                  error: error instanceof Error ? error.message : 'Unknown error',
+                  error:
+                    error instanceof Error ? error.message : 'Unknown error',
                   threadId: agent.threadId,
                 });
                 failedCount += 1;
@@ -746,7 +852,8 @@ export class PatternEngine implements IPatternEngine {
                   result: null,
                   confidence: 0,
                   reasoning: 'Thread failed to complete task',
-                  error: error instanceof Error ? error.message : 'Unknown error',
+                  error:
+                    error instanceof Error ? error.message : 'Unknown error',
                   timestamp: Date.now(),
                   threadId: agent.threadId,
                 };
@@ -765,15 +872,20 @@ export class PatternEngine implements IPatternEngine {
           await this.registerAgentsWithExecutionEngine(agents);
 
           // Map agents to ExecutionTasks
-          const tasks = this.mapAgentsToExecutionTasks(agents, input, pattern.name, executionId);
+          const tasks = this.mapAgentsToExecutionTasks(
+            agents,
+            input,
+            pattern.name,
+            executionId
+          );
 
           // Emit start events for each agent
-          agents.forEach(agent => {
+          agents.forEach((agent) => {
             emitEvent('agent_started', {
               agentId: agent.id,
               agentName: agent.name,
               capabilities: agent.capabilities,
-              task: input.task || input?.data?.task
+              task: input.task || input?.data?.task,
             });
           });
 
@@ -787,18 +899,37 @@ export class PatternEngine implements IPatternEngine {
           };
 
           // Execute via ExecutionEngine
-          this.logger.info({ planId: plan.id, taskCount: tasks.length }, 'Executing agents via ExecutionEngine');
+          this.logger.info(
+            { planId: plan.id, taskCount: tasks.length },
+            'Executing agents via ExecutionEngine'
+          );
           const results = await this.executionEngine.executeParallel(plan);
-          this.logger.info({ resultCount: results.length, results: results.map((r: any) => ({ taskId: r.taskId, status: r.status, error: r.error, confidence: r.confidence })) }, 'ExecutionEngine results received');
+          this.logger.info(
+            {
+              resultCount: results.length,
+              results: results.map((r: any) => ({
+                taskId: r.taskId,
+                status: r.status,
+                error: r.error,
+                confidence: r.confidence,
+              })),
+            },
+            'ExecutionEngine results received'
+          );
 
           // Map results back to expected format
-          agentResults = this.mapExecutionResultsToAgentResults(results, agents);
+          agentResults = this.mapExecutionResultsToAgentResults(
+            results,
+            agents
+          );
 
           // Emit completion events
-          const completedCount = agentResults.filter(r => r.confidence > 0).length;
+          const completedCount = agentResults.filter(
+            (r) => r.confidence > 0
+          ).length;
           const failedCount = agentResults.length - completedCount;
 
-          agentResults.forEach(result => {
+          agentResults.forEach((result) => {
             if (result.confidence > 0) {
               emitEvent('agent_completed', {
                 agentId: result.agentId,
@@ -819,17 +950,18 @@ export class PatternEngine implements IPatternEngine {
             completed: completedCount,
             failed: failedCount,
           });
-
         } else {
           // Fallback: Execute all agent analyses in parallel using direct AgentProxy
           let completedCount = 0;
           let failedCount = 0;
-          const waitForAgentHealthy = async (address: string): Promise<boolean> => {
+          const waitForAgentHealthy = async (
+            address: string
+          ): Promise<boolean> => {
             const attempts = 5;
             for (let attempt = 0; attempt < attempts; attempt += 1) {
               const healthy = await this.agentProxy.healthCheck(address, 2000);
               if (healthy) return true;
-              await new Promise(resolve => setTimeout(resolve, 300));
+              await new Promise((resolve) => setTimeout(resolve, 300));
             }
             return false;
           };
@@ -840,13 +972,18 @@ export class PatternEngine implements IPatternEngine {
                 agentId: agent.id,
                 agentName: agent.name,
                 capabilities: agent.capabilities,
-                task: input.task || input?.data?.task
+                task: input.task || input?.data?.task,
               });
               try {
-                const healthy = await waitForAgentHealthy(agent.address || agent.endpoint);
+                const healthy = await waitForAgentHealthy(
+                  agent.address || agent.endpoint
+                );
                 if (!healthy) {
                   this.logger.warn(
-                    { agentId: agent.id, agentAddress: agent.address || agent.endpoint },
+                    {
+                      agentId: agent.id,
+                      agentAddress: agent.address || agent.endpoint,
+                    },
                     'Agent health check failed; continuing'
                   );
                 }
@@ -854,20 +991,20 @@ export class PatternEngine implements IPatternEngine {
                   agent.address || agent.endpoint,
                   {
                     description: input.task || 'analyze',
-                    data: input.data || input
+                    data: input.data || input,
                   },
                   30000 // 30 second timeout
                 );
                 emitEvent('agent_completed', {
                   agentId: agent.id,
                   agentName: agent.name,
-                  confidence: result.confidence
+                  confidence: result.confidence,
                 });
                 completedCount += 1;
                 emitEvent('progress', {
                   total: agents.length,
                   completed: completedCount,
-                  failed: failedCount
+                  failed: failedCount,
                 });
                 return {
                   agentId: agent.id,
@@ -877,20 +1014,24 @@ export class PatternEngine implements IPatternEngine {
                   result: result.value,
                   confidence: result.confidence,
                   reasoning: result.reasoning,
-                  timestamp: Date.now()
+                  timestamp: Date.now(),
                 };
               } catch (error) {
-                this.logger.warn({ agentId: agent.id, error }, 'Agent analysis failed');
+                this.logger.warn(
+                  { agentId: agent.id, error },
+                  'Agent analysis failed'
+                );
                 emitEvent('agent_failed', {
                   agentId: agent.id,
                   agentName: agent.name,
-                  error: error instanceof Error ? error.message : 'Unknown error'
+                  error:
+                    error instanceof Error ? error.message : 'Unknown error',
                 });
                 failedCount += 1;
                 emitEvent('progress', {
                   total: agents.length,
                   completed: completedCount,
-                  failed: failedCount
+                  failed: failedCount,
                 });
                 return {
                   agentId: agent.id,
@@ -900,8 +1041,9 @@ export class PatternEngine implements IPatternEngine {
                   result: null,
                   confidence: 0,
                   reasoning: 'Agent failed to respond',
-                  error: error instanceof Error ? error.message : 'Unknown error',
-                  timestamp: Date.now()
+                  error:
+                    error instanceof Error ? error.message : 'Unknown error',
+                  timestamp: Date.now(),
                 };
               }
             })
@@ -910,31 +1052,35 @@ export class PatternEngine implements IPatternEngine {
           emitEvent('agents_completed', {
             total: agents.length,
             completed: completedCount,
-            failed: failedCount
+            failed: failedCount,
           });
         }
 
         preProcessedData.agentResults = agentResults;
-        preProcessedData.successfulResults = agentResults.filter(r => r.confidence > 0);
+        preProcessedData.successfulResults = agentResults.filter(
+          (r) => r.confidence > 0
+        );
       }
-      
+
       // Prepare context with pre-processed results
       const context = {
         input,
         // Include workspace info if available
-        workspace: workspace ? {
-          id: workspace.id,
-          path: workspace.path,
-          repo: workspace.repo,
-          branch: workspace.branch.name,
-          baseBranch: workspace.branch.baseBranch,
-        } : undefined,
-        agentList: agents.map(a => ({
+        workspace: workspace
+          ? {
+              id: workspace.id,
+              path: workspace.path,
+              repo: workspace.repo,
+              branch: workspace.branch.name,
+              baseBranch: workspace.branch.baseBranch,
+            }
+          : undefined,
+        agentList: agents.map((a) => ({
           id: a.id,
           name: a.name,
           capabilities: a.capabilities,
           expertise: a.expertise || 0.7,
-          historicalConfidence: a.historicalConfidence || 0.75
+          historicalConfidence: a.historicalConfidence || 0.75,
         })),
         agentCount: agents.length,
         ...preProcessedData,
@@ -944,13 +1090,13 @@ export class PatternEngine implements IPatternEngine {
         },
         // Helper functions for Prism
         parallax: {
-          agentList: agents.map(a => ({
+          agentList: agents.map((a) => ({
             id: a.id,
             name: a.name,
             capabilities: a.capabilities,
-            expertise: a.expertise || 0.7
+            expertise: a.expertise || 0.7,
           })),
-          patterns: { 
+          patterns: {
             [pattern.name]: {
               name: pattern.name,
               version: pattern.version,
@@ -960,24 +1106,28 @@ export class PatternEngine implements IPatternEngine {
               minAgents: pattern.minAgents || 0,
               maxAgents: pattern.maxAgents || 999,
               script: pattern.script,
-              metadata: pattern.metadata ? (() => {
-                const cleanMetadata: any = {};
-                for (const [key, value] of Object.entries(pattern.metadata)) {
-                  if (key !== 'agents') {
-                    cleanMetadata[key] = value;
-                  } else if (value !== null && value !== undefined) {
-                    cleanMetadata.agentRequirements = value;
-                  }
-                }
-                return cleanMetadata;
-              })() : undefined
-            }
+              metadata: pattern.metadata
+                ? (() => {
+                    const cleanMetadata: any = {};
+                    for (const [key, value] of Object.entries(
+                      pattern.metadata
+                    )) {
+                      if (key !== 'agents') {
+                        cleanMetadata[key] = value;
+                      } else if (value !== null && value !== undefined) {
+                        cleanMetadata.agentRequirements = value;
+                      }
+                    }
+                    return cleanMetadata;
+                  })()
+                : undefined,
+            },
           },
           confidence: {
             // Remove functions as they can't be serialized to Prism
             // track: (value: any, confidence: number) => ({ value, confidence }),
             // propagate: (results: any[]) => results.map(r => r.confidence)
-          }
+          },
         },
         // Remove helper functions as they can't be serialized to Prism
         // highConfidenceAgreement: (results: any[]) => {
@@ -998,33 +1148,34 @@ export class PatternEngine implements IPatternEngine {
 
       // Preprocess the script to handle Prism syntax issues
       const preprocessedScript = pattern.script;
-      
+
       // For debugging, check if this is a test pattern
       const isTestPattern = pattern.name.startsWith('Test');
-      
+
       // Inject Parallax context and execute
-      const enhancedScript = await this.runtimeManager.injectParallaxContext(
-        preprocessedScript
+      const enhancedScript =
+        await this.runtimeManager.injectParallaxContext(preprocessedScript);
+
+      this.logger.debug(
+        {
+          patternName,
+          agentCount: agents.length,
+          scriptLength: enhancedScript.length,
+          isTestPattern,
+        },
+        'Executing pattern script'
       );
-      
-      this.logger.debug({ 
-        patternName, 
-        agentCount: agents.length,
-        scriptLength: enhancedScript.length,
-        isTestPattern
-      }, 'Executing pattern script');
-      
-      
+
       // For test patterns, try running without context to isolate issues
       if (isTestPattern && pattern.name === 'TestEmpty') {
         this.logger.info('Running TestEmpty without context injection');
         await this.runtimeManager.executePrismScript(
-          pattern.script,  // Just the raw script
-          {}  // Empty context
+          pattern.script, // Just the raw script
+          {} // Empty context
         );
         return execution;
       }
-      
+
       emitEvent('runtime_started', { patternName });
       const result = await this.runtimeManager.executePrismScript(
         enhancedScript,
@@ -1071,7 +1222,10 @@ export class PatternEngine implements IPatternEngine {
             });
           }
         } catch (error) {
-          this.logger.warn({ error, workspaceId: workspace.id }, 'Failed to finalize workspace');
+          this.logger.warn(
+            { error, workspaceId: workspace.id },
+            'Failed to finalize workspace'
+          );
           emitEvent('workspace_finalize_failed', {
             workspaceId: workspace.id,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -1104,7 +1258,7 @@ export class PatternEngine implements IPatternEngine {
 
       emitEvent('failed', {
         patternName,
-        error: execution.error
+        error: execution.error,
       });
 
       // Clean up spawned agents even on failure
@@ -1131,7 +1285,8 @@ export class PatternEngine implements IPatternEngine {
     workspace: any,
     emitEvent: (type: string, data?: any) => void
   ): Promise<PatternExecution> {
-    const orgPattern: OrgPattern | undefined = (pattern.metadata as any)?.orgPattern;
+    const orgPattern: OrgPattern | undefined = (pattern.metadata as any)
+      ?.orgPattern;
     if (!orgPattern) {
       throw new Error(
         `Pattern ${pattern.name} is marked as orgChart but has no orgPattern in metadata`
@@ -1139,7 +1294,11 @@ export class PatternEngine implements IPatternEngine {
     }
 
     this.logger.info(
-      { executionId, patternName: pattern.name, steps: orgPattern.workflow.steps.length },
+      {
+        executionId,
+        patternName: pattern.name,
+        steps: orgPattern.workflow.steps.length,
+      },
       'Executing org-chart workflow'
     );
 
@@ -1252,11 +1411,15 @@ export class PatternEngine implements IPatternEngine {
     } catch (error) {
       execution.endTime = new Date();
       execution.status = 'failed';
-      execution.error =
-        error instanceof Error ? error.message : String(error);
+      execution.error = error instanceof Error ? error.message : String(error);
 
       this.logger.error(
-        { executionId, pattern: pattern.name, error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined },
+        {
+          executionId,
+          pattern: pattern.name,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        },
         'Org-chart workflow execution failed'
       );
 
@@ -1276,7 +1439,12 @@ export class PatternEngine implements IPatternEngine {
     input?: any
   ): Promise<any[]> {
     if (pattern.threads?.enabled && this.agentRuntimeService && executionId) {
-      const spawnedHandles = await this.spawnThreadsForPattern(pattern, executionId, workspace, input);
+      const spawnedHandles = await this.spawnThreadsForPattern(
+        pattern,
+        executionId,
+        workspace,
+        input
+      );
 
       const spawnedThreads = spawnedHandles.map((handle, index) => ({
         id: handle.id,
@@ -1308,42 +1476,44 @@ export class PatternEngine implements IPatternEngine {
 
     // First, check for directly registered local agents (for demos)
     if (this.localAgents.length > 0) {
-      this.logger.info(`Using ${this.localAgents.length} directly registered agents`);
+      this.logger.info(
+        `Using ${this.localAgents.length} directly registered agents`
+      );
       agents = this.localAgents;
     } else {
       // Check for local agents from environment (development mode)
       const localAgentConfigs = this.localAgentManager.getAgents();
       if (localAgentConfigs.length > 0) {
         this.logger.info(`Using ${localAgentConfigs.length} local agents`);
-        agents = localAgentConfigs.map(config => ({
+        agents = localAgentConfigs.map((config) => ({
           id: config.id,
           name: config.name,
           address: config.endpoint,
           endpoint: config.endpoint,
           capabilities: config.capabilities,
           expertise: 0.7,
-          historicalConfidence: 0.75
+          historicalConfidence: 0.75,
         }));
       } else {
         // Get all agent services from registry
         const agentServices = await this.agentRegistry.listServices('agent');
 
         // Map agent services to agent info objects
-        agents = agentServices.map(service => ({
+        agents = agentServices.map((service) => ({
           id: service.id,
           name: service.name,
           address: service.endpoint,
           endpoint: service.endpoint,
           capabilities: service.metadata?.capabilities || [],
           expertise: service.metadata?.expertise || 0.7,
-          historicalConfidence: service.metadata?.historicalConfidence || 0.75
+          historicalConfidence: service.metadata?.historicalConfidence || 0.75,
         }));
       }
     }
 
     // Filter by capabilities if specified
     if (pattern.agents?.capabilities) {
-      agents = agents.filter(agent =>
+      agents = agents.filter((agent) =>
         pattern.agents!.capabilities!.every((cap: string) =>
           agent.capabilities.includes(cap)
         )
@@ -1358,7 +1528,11 @@ export class PatternEngine implements IPatternEngine {
         'Not enough agents discovered, attempting to spawn'
       );
 
-      const spawnedHandles = await this.spawnAgentsForPattern(pattern, executionId, workspace);
+      const spawnedHandles = await this.spawnAgentsForPattern(
+        pattern,
+        executionId,
+        workspace
+      );
 
       // Convert spawned agent handles to the expected format
       const spawnedAgents = spawnedHandles.map((handle, index) => ({
@@ -1377,7 +1551,11 @@ export class PatternEngine implements IPatternEngine {
       agents = [...agents, ...spawnedAgents];
 
       this.logger.info(
-        { discovered: agents.length - spawnedAgents.length, spawned: spawnedAgents.length, total: agents.length },
+        {
+          discovered: agents.length - spawnedAgents.length,
+          spawned: spawnedAgents.length,
+          total: agents.length,
+        },
         'Agents ready for pattern execution'
       );
     }
@@ -1395,7 +1573,11 @@ export class PatternEngine implements IPatternEngine {
 
     const runId = process.env.PARALLAX_RUN_ID;
     if (runId) {
-      agents = agents.filter(agent => agent.metadata?.labels?.runId === runId || agent.metadata?.runId === runId);
+      agents = agents.filter(
+        (agent) =>
+          agent.metadata?.labels?.runId === runId ||
+          agent.metadata?.runId === runId
+      );
     }
 
     // No agent limits - all agents are available in open source
@@ -1423,10 +1605,13 @@ export class PatternEngine implements IPatternEngine {
     return this.executions.get(id);
   }
 
-  listExecutions(options?: { limit?: number; status?: string }): PatternExecution[] {
+  listExecutions(options?: {
+    limit?: number;
+    status?: string;
+  }): PatternExecution[] {
     const entries = Array.from(this.executions.values());
     const filtered = options?.status
-      ? entries.filter(entry => entry.status === options.status)
+      ? entries.filter((entry) => entry.status === options.status)
       : entries;
 
     const sorted = filtered.sort(
@@ -1445,7 +1630,7 @@ export class PatternEngine implements IPatternEngine {
     if (this.databasePatterns) {
       // Note: getByName is async but we need sync here for compatibility
       // The pattern should already be in cache after initialize()
-      const dbPatterns = this.databasePatterns['cache'] as Map<string, Pattern>;
+      const dbPatterns = this.databasePatterns.cache as Map<string, Pattern>;
       if (dbPatterns?.has(name)) {
         return dbPatterns.get(name) || null;
       }
@@ -1457,7 +1642,7 @@ export class PatternEngine implements IPatternEngine {
     const filePatterns = this.loader.getAllPatterns();
 
     // Add source: 'file' to file patterns
-    const patternsWithSource: PatternWithSource[] = filePatterns.map(p => ({
+    const patternsWithSource: PatternWithSource[] = filePatterns.map((p) => ({
       ...p,
       source: 'file' as const,
     }));
@@ -1474,7 +1659,10 @@ export class PatternEngine implements IPatternEngine {
     }
 
     // Get database patterns from cache
-    const dbCache = this.databasePatterns['cache'] as Map<string, PatternWithSource>;
+    const dbCache = this.databasePatterns.cache as Map<
+      string,
+      PatternWithSource
+    >;
     if (dbCache) {
       for (const p of dbCache.values()) {
         merged.set(p.name, p);
@@ -1489,16 +1677,16 @@ export class PatternEngine implements IPatternEngine {
   }
 
   getMetrics(): ExecutionMetrics[] {
-    return Array.from(this.executions.values()).map(execution => ({
+    return Array.from(this.executions.values()).map((execution) => ({
       pattern: execution.patternName,
       patternName: execution.patternName,
       timestamp: execution.startTime.toISOString(),
-      duration: execution.endTime 
+      duration: execution.endTime
         ? execution.endTime.getTime() - execution.startTime.getTime()
         : 0,
       confidence: execution.metrics?.confidence || 0,
       success: execution.status === 'completed',
-      agentCount: execution.metrics?.agentCount || 0
+      agentCount: execution.metrics?.agentCount || 0,
     }));
   }
 
@@ -1575,7 +1763,7 @@ export class PatternEngine implements IPatternEngine {
     }
 
     const versions = await this.databasePatterns.getVersions(name);
-    return versions.map(v => ({
+    return versions.map((v) => ({
       id: v.id,
       patternId: v.patternId,
       version: v.version,
@@ -1585,7 +1773,7 @@ export class PatternEngine implements IPatternEngine {
       createdBy: v.createdBy || undefined,
     }));
   }
-  
+
   /**
    * Register local agent instances directly (for demos/testing)
    */
@@ -1593,7 +1781,7 @@ export class PatternEngine implements IPatternEngine {
     this.localAgents = agents;
     this.logger.info(`Registered ${agents.length} local agents`);
   }
-  
+
   /**
    * Get the calibration service for external use
    */
@@ -1606,12 +1794,18 @@ export class PatternEngine implements IPatternEngine {
 
     if (pattern.name) metadataLines.push(`@name ${pattern.name}`);
     if (pattern.version) metadataLines.push(`@version ${pattern.version}`);
-    if (pattern.description) metadataLines.push(`@description ${pattern.description}`);
-    if (pattern.input) metadataLines.push(`@input ${JSON.stringify(pattern.input)}`);
-    if (pattern.agents) metadataLines.push(`@agents ${JSON.stringify(pattern.agents)}`);
-    if (pattern.threads) metadataLines.push(`@threads ${JSON.stringify(pattern.threads)}`);
-    if (typeof pattern.minAgents === 'number') metadataLines.push(`@minAgents ${pattern.minAgents}`);
-    if (typeof pattern.maxAgents === 'number') metadataLines.push(`@maxAgents ${pattern.maxAgents}`);
+    if (pattern.description)
+      metadataLines.push(`@description ${pattern.description}`);
+    if (pattern.input)
+      metadataLines.push(`@input ${JSON.stringify(pattern.input)}`);
+    if (pattern.agents)
+      metadataLines.push(`@agents ${JSON.stringify(pattern.agents)}`);
+    if (pattern.threads)
+      metadataLines.push(`@threads ${JSON.stringify(pattern.threads)}`);
+    if (typeof pattern.minAgents === 'number')
+      metadataLines.push(`@minAgents ${pattern.minAgents}`);
+    if (typeof pattern.maxAgents === 'number')
+      metadataLines.push(`@maxAgents ${pattern.maxAgents}`);
     if (pattern.metadata && Object.keys(pattern.metadata).length > 0) {
       metadataLines.push(`@metadata ${JSON.stringify(pattern.metadata)}`);
     }
@@ -1620,7 +1814,7 @@ export class PatternEngine implements IPatternEngine {
       return pattern.script.trim();
     }
 
-    const header = `/**\n${metadataLines.map(line => ` * ${line}`).join('\n')}\n */\n`;
+    const header = `/**\n${metadataLines.map((line) => ` * ${line}`).join('\n')}\n */\n`;
     return `${header}${pattern.script.trim()}`;
   }
 
@@ -1670,7 +1864,10 @@ export class PatternEngine implements IPatternEngine {
   /**
    * Generate PR body from pattern execution
    */
-  private generatePrBody(pattern: Pattern, execution: PatternExecution): string {
+  private generatePrBody(
+    pattern: Pattern,
+    execution: PatternExecution
+  ): string {
     const lines = [
       '## Summary',
       '',
@@ -1688,12 +1885,16 @@ export class PatternEngine implements IPatternEngine {
     }
 
     if (execution.metrics?.averageConfidence) {
-      lines.push(`- **Confidence**: ${(execution.metrics.averageConfidence * 100).toFixed(1)}%`);
+      lines.push(
+        `- **Confidence**: ${(execution.metrics.averageConfidence * 100).toFixed(1)}%`
+      );
     }
 
     lines.push('');
     lines.push('---');
-    lines.push('*Generated by [Parallax](https://github.com/parallax) agent orchestration platform*');
+    lines.push(
+      '*Generated by [Parallax](https://github.com/parallax) agent orchestration platform*'
+    );
 
     return lines.join('\n');
   }
@@ -1735,9 +1936,9 @@ export class PatternEngine implements IPatternEngine {
     results: ExecutionResult[],
     agents: any[]
   ): any[] {
-    const agentMap = new Map(agents.map(a => [a.id, a]));
+    const agentMap = new Map(agents.map((a) => [a.id, a]));
 
-    return results.map(result => {
+    return results.map((result) => {
       // Extract agent ID from task ID (format: executionId-agentId-index)
       const parts = result.taskId.split('-');
       const agentId = result.metadata?.agentId || parts.slice(1, -1).join('-');
@@ -1773,14 +1974,20 @@ export class PatternEngine implements IPatternEngine {
   /**
    * Register agents with the ExecutionEngine's AgentProxy
    */
-  private async registerAgentsWithExecutionEngine(agents: any[]): Promise<void> {
+  private async registerAgentsWithExecutionEngine(
+    agents: any[]
+  ): Promise<void> {
     if (!this.executionEngine) return;
 
     const agentProxy = this.executionEngine.getAgentProxy();
 
     for (const agent of agents) {
       const endpoint = agent.address || agent.endpoint;
-      const protocol = endpoint.startsWith('gateway://') ? 'gateway' : endpoint.startsWith('http') ? 'http' : 'grpc';
+      const protocol = endpoint.startsWith('gateway://')
+        ? 'gateway'
+        : endpoint.startsWith('http')
+          ? 'http'
+          : 'grpc';
 
       try {
         await agentProxy.registerAgent(agent.id, endpoint, protocol);

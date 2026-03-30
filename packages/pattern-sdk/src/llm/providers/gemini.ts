@@ -4,8 +4,8 @@
 
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateObject } from 'ai';
-import { z } from 'zod';
-import { LLMProvider } from '../../types';
+import type { z } from 'zod';
+import type { LLMProvider } from '../../types';
 
 export interface GeminiProviderOptions {
   apiKey: string;
@@ -23,14 +23,14 @@ export class GeminiProvider implements LLMProvider {
     this.model = options.model || 'gemini-3-pro-preview';
   }
 
-  async generateObject<T>({ 
-    schema, 
-    prompt, 
-    system 
-  }: { 
-    schema: z.ZodSchema<T>; 
-    prompt: string; 
-    system?: string 
+  async generateObject<T>({
+    schema,
+    prompt,
+    system,
+  }: {
+    schema: z.ZodSchema<T>;
+    prompt: string;
+    system?: string;
   }): Promise<{ object: T }> {
     try {
       const result = await generateObject({
@@ -44,7 +44,9 @@ export class GeminiProvider implements LLMProvider {
 
       return { object: result.object };
     } catch (error) {
-      throw new Error(`Gemini generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Gemini generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }
@@ -52,11 +54,16 @@ export class GeminiProvider implements LLMProvider {
 /**
  * Create Gemini provider from environment variables
  */
-export function createGeminiProvider(apiKey?: string, model?: string): GeminiProvider {
+export function createGeminiProvider(
+  apiKey?: string,
+  model?: string
+): GeminiProvider {
   const key = apiKey || process.env.GEMINI_API_KEY;
-  
+
   if (!key) {
-    throw new Error('Gemini API key not found. Set GEMINI_API_KEY environment variable or pass apiKey parameter.');
+    throw new Error(
+      'Gemini API key not found. Set GEMINI_API_KEY environment variable or pass apiKey parameter.'
+    );
   }
 
   return new GeminiProvider({

@@ -5,8 +5,8 @@
  * Catches cases where the model only partially answers or misses sub-questions.
  */
 
-import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ParallaxAgent, serveAgent } from '@parallaxai/sdk-typescript';
 
 const MODEL_NAME = 'gemini-2.0-flash';
 const AGENT_ID = 'completeness-checker';
@@ -21,9 +21,10 @@ class CompletenessAgent extends ParallaxAgent {
       AGENT_NAME,
       ['quality-gate', 'completeness', 'verification', 'rag'],
       {
-        expertise: 0.90,
+        expertise: 0.9,
         model: MODEL_NAME,
-        description: 'Verifies that answers are complete and address all parts of the question'
+        description:
+          'Verifies that answers are complete and address all parts of the question',
       }
     );
 
@@ -37,7 +38,10 @@ class CompletenessAgent extends ParallaxAgent {
     }
   }
 
-  async analyze(_task: string, data?: any): Promise<{
+  async analyze(
+    _task: string,
+    data?: any
+  ): Promise<{
     value: any;
     confidence: number;
     reasoning?: string;
@@ -46,14 +50,16 @@ class CompletenessAgent extends ParallaxAgent {
       return {
         value: { error: 'Model not initialized' },
         confidence: 0,
-        reasoning: 'GEMINI_API_KEY not set'
+        reasoning: 'GEMINI_API_KEY not set',
       };
     }
 
     const question = data?.question || '';
     const answer = data?.answer || data?.generatedAnswer || '';
     const sources = data?.sources || data?.retrievedDocs || [];
-    const sourcesText = Array.isArray(sources) ? sources.join('\n\n---\n\n') : sources;
+    const sourcesText = Array.isArray(sources)
+      ? sources.join('\n\n---\n\n')
+      : sources;
 
     const prompt = `You are a completeness verification agent. Your job is to check if the ANSWER fully addresses ALL parts of the QUESTION.
 
@@ -102,7 +108,7 @@ Consider both explicit sub-questions and implicit information needs.`;
         return {
           value: { passed: false, error: 'Could not parse response' },
           confidence: 0.3,
-          reasoning: text.substring(0, 200)
+          reasoning: text.substring(0, 200),
         };
       }
 
@@ -117,17 +123,21 @@ Consider both explicit sub-questions and implicit information needs.`;
           missingParts: parsed.missingParts || [],
           suggestions: parsed.suggestions || [],
           checkType: 'completeness',
-          model: MODEL_NAME
+          model: MODEL_NAME,
         },
         confidence: score,
-        reasoning: parsed.reasoning || 'Completeness check completed'
+        reasoning: parsed.reasoning || 'Completeness check completed',
       };
     } catch (error) {
       console.error('Analysis error:', error);
       return {
-        value: { passed: false, error: String(error), checkType: 'completeness' },
+        value: {
+          passed: false,
+          error: String(error),
+          checkType: 'completeness',
+        },
         confidence: 0,
-        reasoning: 'Analysis failed'
+        reasoning: 'Analysis failed',
       };
     }
   }

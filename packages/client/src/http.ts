@@ -1,5 +1,9 @@
-import { ParallaxClientConfig, DEFAULT_CONFIG } from './config.js';
-import { ParallaxError, ParallaxTimeoutError, ParallaxNetworkError } from './error.js';
+import { DEFAULT_CONFIG, type ParallaxClientConfig } from './config.js';
+import {
+  ParallaxError,
+  ParallaxNetworkError,
+  ParallaxTimeoutError,
+} from './error.js';
 
 export interface RequestOptions {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -20,18 +24,26 @@ export class HttpClient {
 
   async request<T>(options: RequestOptions): Promise<T> {
     const url = this.buildUrl(options.path, options.query);
-    const timeout = options.timeout ?? this.config.timeout ?? DEFAULT_CONFIG.timeout;
+    const timeout =
+      options.timeout ?? this.config.timeout ?? DEFAULT_CONFIG.timeout;
     const maxRetries = this.config.retries ?? DEFAULT_CONFIG.retries;
 
     let lastError: Error | undefined;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const response = await this.fetchWithTimeout(url, {
-          method: options.method,
-          headers: this.buildHeaders(options.body !== undefined),
-          body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-        }, timeout);
+        const response = await this.fetchWithTimeout(
+          url,
+          {
+            method: options.method,
+            headers: this.buildHeaders(options.body !== undefined),
+            body:
+              options.body !== undefined
+                ? JSON.stringify(options.body)
+                : undefined,
+          },
+          timeout
+        );
 
         if (response.status === 204) {
           return undefined as T;
@@ -53,13 +65,17 @@ export class HttpClient {
 
         return body as T;
       } catch (error) {
-        if (error instanceof ParallaxError && error.status < 500 && error.status !== 429) {
+        if (
+          error instanceof ParallaxError &&
+          error.status < 500 &&
+          error.status !== 429
+        ) {
           throw error;
         }
         lastError = error as Error;
 
         if (attempt < maxRetries) {
-          await this.delay(Math.min(1000 * Math.pow(2, attempt), 5000));
+          await this.delay(Math.min(1000 * 2 ** attempt, 5000));
         }
       }
     }
@@ -67,7 +83,10 @@ export class HttpClient {
     throw lastError ?? new ParallaxNetworkError('Request failed after retries');
   }
 
-  async get<T>(path: string, query?: Record<string, string | number | boolean | undefined>): Promise<T> {
+  async get<T>(
+    path: string,
+    query?: Record<string, string | number | boolean | undefined>
+  ): Promise<T> {
     return this.request<T>({ method: 'GET', path, query });
   }
 
@@ -83,7 +102,10 @@ export class HttpClient {
     return this.request<T>({ method: 'PATCH', path, body });
   }
 
-  async delete<T>(path: string, query?: Record<string, string | number | boolean | undefined>): Promise<T> {
+  async delete<T>(
+    path: string,
+    query?: Record<string, string | number | boolean | undefined>
+  ): Promise<T> {
     return this.request<T>({ method: 'DELETE', path, query });
   }
 
@@ -102,7 +124,10 @@ export class HttpClient {
     return this.buildHeaders(false);
   }
 
-  private buildUrl(path: string, query?: Record<string, string | number | boolean | undefined>): string {
+  private buildUrl(
+    path: string,
+    query?: Record<string, string | number | boolean | undefined>
+  ): string {
     const url = new URL(`${this.config.baseUrl}${path}`);
 
     if (query) {
@@ -127,11 +152,11 @@ export class HttpClient {
 
     // Auth
     if (this.config.apiKey) {
-      headers['Authorization'] = this.config.apiKey.startsWith('plx_')
+      headers.Authorization = this.config.apiKey.startsWith('plx_')
         ? this.config.apiKey
         : `ApiKey ${this.config.apiKey}`;
     } else if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
+      headers.Authorization = `Bearer ${this.accessToken}`;
     }
 
     // Custom headers
@@ -170,7 +195,10 @@ export class HttpClient {
 
   private parseError(status: number, body: unknown): ParallaxError {
     const parsed = body as Record<string, unknown> | undefined;
-    const message = (parsed?.error as string) ?? (parsed?.message as string) ?? `HTTP ${status}`;
+    const message =
+      (parsed?.error as string) ??
+      (parsed?.message as string) ??
+      `HTTP ${status}`;
     const code = (parsed?.code as string) ?? `HTTP_${status}`;
     const upgradeUrl = parsed?.upgradeUrl as string | undefined;
 
@@ -178,6 +206,6 @@ export class HttpClient {
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

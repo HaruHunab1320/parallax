@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import pino from 'pino';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createExecutionsRouter } from '@/api/executions';
 import { ExecutionEventBus } from '@/execution-events';
 import type { PatternEngine } from '@/pattern-engine';
@@ -23,7 +23,10 @@ function createMockPatternEngine(): PatternEngine {
  * Simulate an HTTP request/response to an Express route handler.
  * Extracts the registered handler from the router and calls it directly.
  */
-function createMockReqRes(params: Record<string, string> = {}, query: Record<string, string> = {}) {
+function createMockReqRes(
+  params: Record<string, string> = {},
+  query: Record<string, string> = {}
+) {
   const chunks: string[] = [];
   let headWritten = false;
   let ended = false;
@@ -33,9 +36,15 @@ function createMockReqRes(params: Record<string, string> = {}, query: Record<str
   req.query = query;
 
   const res: any = {
-    writeHead: vi.fn(() => { headWritten = true; }),
-    write: vi.fn((chunk: string) => { chunks.push(chunk); }),
-    end: vi.fn(() => { ended = true; }),
+    writeHead: vi.fn(() => {
+      headWritten = true;
+    }),
+    write: vi.fn((chunk: string) => {
+      chunks.push(chunk);
+    }),
+    end: vi.fn(() => {
+      ended = true;
+    }),
     json: vi.fn(),
     status: vi.fn().mockReturnThis(),
   };
@@ -44,8 +53,12 @@ function createMockReqRes(params: Record<string, string> = {}, query: Record<str
     req,
     res,
     chunks,
-    get headWritten() { return headWritten; },
-    get ended() { return ended; },
+    get headWritten() {
+      return headWritten;
+    },
+    get ended() {
+      return ended;
+    },
     getEvents(): Array<{ event: string; data: any }> {
       const events: Array<{ event: string; data: any }> = [];
       for (const chunk of chunks) {
@@ -54,7 +67,10 @@ function createMockReqRes(params: Record<string, string> = {}, query: Record<str
         const dataMatch = chunk.match(/data: (.+)\n/);
         if (eventMatch && dataMatch) {
           try {
-            events.push({ event: eventMatch[1], data: JSON.parse(dataMatch[1]) });
+            events.push({
+              event: eventMatch[1],
+              data: JSON.parse(dataMatch[1]),
+            });
           } catch {
             events.push({ event: eventMatch[1], data: dataMatch[1] });
           }
@@ -68,7 +84,11 @@ function createMockReqRes(params: Record<string, string> = {}, query: Record<str
 /**
  * Extract route handler from Express router by path pattern.
  */
-function getRouteHandler(router: any, method: string, pathPattern: string): Function | null {
+function getRouteHandler(
+  router: any,
+  method: string,
+  pathPattern: string
+): Function | null {
   for (const layer of router.stack) {
     if (layer.route) {
       const route = layer.route;
@@ -106,9 +126,12 @@ describe('Thread Stream SSE Endpoint', () => {
 
     await handler!(req, res);
 
-    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
-      'Content-Type': 'text/event-stream',
-    }));
+    expect(res.writeHead).toHaveBeenCalledWith(
+      200,
+      expect.objectContaining({
+        'Content-Type': 'text/event-stream',
+      })
+    );
 
     const events = getEvents();
     expect(events).toHaveLength(1);
@@ -136,7 +159,7 @@ describe('Thread Stream SSE Endpoint', () => {
     });
 
     // Should have connected + the thread event
-    const threadChunks = chunks.filter(c => c.includes('thread_output'));
+    const threadChunks = chunks.filter((c) => c.includes('thread_output'));
     expect(threadChunks).toHaveLength(1);
     expect(threadChunks[0]).toContain('event: thread_output');
     expect(threadChunks[0]).toContain('thread-abc');
@@ -175,7 +198,7 @@ describe('Thread Stream SSE Endpoint', () => {
       timestamp: new Date(),
     });
 
-    const threadChunks = chunks.filter(c => c.includes('event: thread_'));
+    const threadChunks = chunks.filter((c) => c.includes('event: thread_'));
     expect(threadChunks).toHaveLength(2);
     expect(threadChunks[0]).toContain('thread-a');
     expect(threadChunks[1]).toContain('thread-b');
@@ -195,7 +218,7 @@ describe('Thread Stream SSE Endpoint', () => {
       timestamp: new Date(),
     });
 
-    const threadChunks = chunks.filter(c => c.includes('event: thread_'));
+    const threadChunks = chunks.filter((c) => c.includes('event: thread_'));
     expect(threadChunks).toHaveLength(0);
   });
 
@@ -216,7 +239,7 @@ describe('Thread Stream SSE Endpoint', () => {
       timestamp: new Date(),
     });
 
-    const threadChunks = chunks.filter(c => c.includes('event: thread_'));
+    const threadChunks = chunks.filter((c) => c.includes('event: thread_'));
     expect(threadChunks).toHaveLength(0);
   });
 });

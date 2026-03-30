@@ -2,9 +2,9 @@
  * Codex Adapter Tests
  */
 
-import { describe, it, expect } from 'vitest';
-import { CodexAdapter } from '../src/codex-adapter';
 import type { SpawnConfig } from 'pty-manager';
+import { describe, expect, it } from 'vitest';
+import { CodexAdapter } from '../src/codex-adapter';
 
 describe('CodexAdapter', () => {
   const adapter = new CodexAdapter();
@@ -192,7 +192,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should detect "Open this link in your browser" device code flow', () => {
-      const result = adapter.detectLogin('Open this link in your browser and sign in: https://auth.openai.com/device');
+      const result = adapter.detectLogin(
+        'Open this link in your browser and sign in: https://auth.openai.com/device'
+      );
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('device_code');
@@ -208,7 +210,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should detect legacy device code flow', () => {
-      const result = adapter.detectLogin('Enter the device code ABC-123 at https://openai.com/auth');
+      const result = adapter.detectLogin(
+        'Enter the device code ABC-123 at https://openai.com/auth'
+      );
 
       expect(result.required).toBe(true);
       expect(result.type).toBe('device_code');
@@ -232,7 +236,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should auto-respond to "run the following command" with keys:enter (approval_overlay.rs)', () => {
-      const result = adapter.detectBlockingPrompt('Would you like to run the following command?');
+      const result = adapter.detectBlockingPrompt(
+        'Would you like to run the following command?'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -241,7 +247,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should auto-respond to "approve access" with keys:enter', () => {
-      const result = adapter.detectBlockingPrompt('Do you want to approve access to "api.example.com"?');
+      const result = adapter.detectBlockingPrompt(
+        'Do you want to approve access to "api.example.com"?'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -250,7 +258,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should auto-respond to "make the following edits" with keys:enter', () => {
-      const result = adapter.detectBlockingPrompt('Would you like to make the following edits?');
+      const result = adapter.detectBlockingPrompt(
+        'Would you like to make the following edits?'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -259,7 +269,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should auto-respond to "Press enter to confirm or esc to cancel"', () => {
-      const result = adapter.detectBlockingPrompt('Press enter to confirm or esc to cancel');
+      const result = adapter.detectBlockingPrompt(
+        'Press enter to confirm or esc to cancel'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -268,7 +280,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should prioritize permission prompt over login-like text', () => {
-      const result = adapter.detectBlockingPrompt('OPENAI_API_KEY ok\nWould you like to run the following command?');
+      const result = adapter.detectBlockingPrompt(
+        'OPENAI_API_KEY ok\nWould you like to run the following command?'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('permission');
@@ -276,7 +290,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should detect Windows sandbox setup (chatwidget.rs)', () => {
-      const result = adapter.detectBlockingPrompt('Set up default sandbox (requires Administrator permissions)');
+      const result = adapter.detectBlockingPrompt(
+        'Set up default sandbox (requires Administrator permissions)'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('config');
@@ -284,7 +300,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should detect multi-step user input (request_user_input)', () => {
-      const result = adapter.detectBlockingPrompt('Type your answer (optional)\nSelect an option to add notes');
+      const result = adapter.detectBlockingPrompt(
+        'Type your answer (optional)\nSelect an option to add notes'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('unknown');
@@ -292,14 +310,18 @@ describe('CodexAdapter', () => {
     });
 
     it('should detect model selection', () => {
-      const result = adapter.detectBlockingPrompt('Select model:\n1) gpt-4\n2) gpt-3.5-turbo');
+      const result = adapter.detectBlockingPrompt(
+        'Select model:\n1) gpt-4\n2) gpt-3.5-turbo'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('model_select');
     });
 
     it('should detect organization selection', () => {
-      const result = adapter.detectBlockingPrompt('You have multiple organizations. Select organization:');
+      const result = adapter.detectBlockingPrompt(
+        'You have multiple organizations. Select organization:'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('config');
@@ -307,7 +329,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should detect rate limit', () => {
-      const result = adapter.detectBlockingPrompt('Rate limit exceeded. Please wait and retry.');
+      const result = adapter.detectBlockingPrompt(
+        'Rate limit exceeded. Please wait and retry.'
+      );
 
       expect(result.detected).toBe(true);
       expect(result.type).toBe('unknown');
@@ -327,8 +351,12 @@ describe('CodexAdapter', () => {
     });
 
     it('should detect idle composer footer hints', () => {
-      expect(adapter.detectReady('? for shortcuts 100% context left')).toBe(true);
-      expect(adapter.detectReady('tab to queue message 98% context left')).toBe(true);
+      expect(adapter.detectReady('? for shortcuts 100% context left')).toBe(
+        true
+      );
+      expect(adapter.detectReady('tab to queue message 98% context left')).toBe(
+        true
+      );
     });
 
     it('should detect placeholder suggestions (chatwidget.rs)', () => {
@@ -346,7 +374,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should NOT detect ready when trust prompt is present', () => {
-      expect(adapter.detectReady('Do you trust the contents of this directory?')).toBe(false);
+      expect(
+        adapter.detectReady('Do you trust the contents of this directory?')
+      ).toBe(false);
     });
 
     it('should NOT detect ready when auth prompt is present', () => {
@@ -359,12 +389,15 @@ describe('CodexAdapter', () => {
     });
 
     it('should detect ready even with stale update text when composer is present', () => {
-      const output = 'Update available! 1.0.0 -> 1.1.0\n...\n› Ask Codex to do anything';
+      const output =
+        'Update available! 1.0.0 -> 1.1.0\n...\n› Ask Codex to do anything';
       expect(adapter.detectReady(output)).toBe(true);
     });
 
     it('should NOT detect ready when update prompt is present', () => {
-      expect(adapter.detectReady('Update available! 1.0.0 -> 1.1.0')).toBe(false);
+      expect(adapter.detectReady('Update available! 1.0.0 -> 1.1.0')).toBe(
+        false
+      );
     });
 
     it('should NOT detect ready when full access prompt is present', () => {
@@ -372,7 +405,9 @@ describe('CodexAdapter', () => {
     });
 
     it('should NOT detect ready when cwd selection is present', () => {
-      expect(adapter.detectReady('Choose working directory to resume this session')).toBe(false);
+      expect(
+        adapter.detectReady('Choose working directory to resume this session')
+      ).toBe(false);
     });
 
     it('should return false for loading output', () => {
@@ -410,7 +445,7 @@ describe('CodexAdapter', () => {
 
   describe('autoResponseRules', () => {
     it('should have update skip rule with Down+Enter key sequence', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('update')
       );
 
@@ -420,7 +455,7 @@ describe('CodexAdapter', () => {
     });
 
     it('should match update prompt from catalog (update_prompt.rs)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('update')
       );
       expect(rule?.pattern.test('Update available! 1.0.0 -> 1.1.0')).toBe(true);
@@ -429,7 +464,7 @@ describe('CodexAdapter', () => {
     });
 
     it('should have trust directory rule with Enter key and once: true', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust directory')
       );
 
@@ -440,22 +475,26 @@ describe('CodexAdapter', () => {
     });
 
     it('should match exact trust text from source (trust_directory.rs)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust directory')
       );
-      expect(rule?.pattern.test('Do you trust the contents of this directory? Working with untrusted contents comes with higher risk of prompt injection.')).toBe(true);
+      expect(
+        rule?.pattern.test(
+          'Do you trust the contents of this directory? Working with untrusted contents comes with higher risk of prompt injection.'
+        )
+      ).toBe(true);
       expect(rule?.pattern.test('Yes, continue')).toBe(true);
     });
 
     it('should match trust prompt with stripped spaces (cursor codes removed)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('trust directory')
       );
       expect(rule?.pattern.test('trust this directory')).toBe(true);
     });
 
     it('should have model migration rule with once: true (model_migration.rs)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('model migration')
       );
 
@@ -466,16 +505,18 @@ describe('CodexAdapter', () => {
     });
 
     it('should match model migration text from source', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('model migration')
       );
-      expect(rule?.pattern.test("Choose how you'd like Codex to proceed.")).toBe(true);
+      expect(
+        rule?.pattern.test("Choose how you'd like Codex to proceed.")
+      ).toBe(true);
       expect(rule?.pattern.test('Try new model')).toBe(true);
       expect(rule?.pattern.test('Use existing model')).toBe(true);
     });
 
     it('should have cwd selection rule (cwd_prompt.rs)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('working directory')
       );
 
@@ -485,15 +526,19 @@ describe('CodexAdapter', () => {
     });
 
     it('should match cwd selection text from source', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('working directory')
       );
-      expect(rule?.pattern.test('Choose working directory to resume this session')).toBe(true);
-      expect(rule?.pattern.test('Choose working directory to fork this session')).toBe(true);
+      expect(
+        rule?.pattern.test('Choose working directory to resume this session')
+      ).toBe(true);
+      expect(
+        rule?.pattern.test('Choose working directory to fork this session')
+      ).toBe(true);
     });
 
     it('should have full access confirmation rule with once: true (chatwidget.rs)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('full access')
       );
 
@@ -504,14 +549,14 @@ describe('CodexAdapter', () => {
     });
 
     it('should match full access prompt', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('full access')
       );
       expect(rule?.pattern.test('Enable full access?')).toBe(true);
     });
 
     it('should have dumb terminal confirmation rule as text type (main.rs)', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('dumb terminal')
       );
 
@@ -521,7 +566,7 @@ describe('CodexAdapter', () => {
     });
 
     it('should match dumb terminal prompt', () => {
-      const rule = adapter.autoResponseRules.find(r =>
+      const rule = adapter.autoResponseRules.find((r) =>
         r.description.toLowerCase().includes('dumb terminal')
       );
       expect(rule?.pattern.test('Continue anyway? [y/N]:')).toBe(true);
@@ -530,14 +575,18 @@ describe('CodexAdapter', () => {
 
   describe('detectExit()', () => {
     it('should detect session end with resume command (main.rs:404)', () => {
-      const result = adapter.detectExit('To continue this session, run codex --resume abc123');
+      const result = adapter.detectExit(
+        'To continue this session, run codex --resume abc123'
+      );
 
       expect(result.exited).toBe(true);
       expect(result.code).toBe(0);
     });
 
     it('should detect update completed (main.rs:461)', () => {
-      const result = adapter.detectExit('Update ran successfully! Please restart Codex.');
+      const result = adapter.detectExit(
+        'Update ran successfully! Please restart Codex.'
+      );
 
       expect(result.exited).toBe(true);
       expect(result.code).toBe(0);
@@ -566,7 +615,7 @@ describe('CodexAdapter', () => {
   describe('getWorkspaceFiles()', () => {
     it('should return AGENTS.md as primary memory file', () => {
       const files = adapter.getWorkspaceFiles();
-      const memory = files.find(f => f.type === 'memory');
+      const memory = files.find((f) => f.type === 'memory');
       expect(memory).toBeDefined();
       expect(memory!.relativePath).toBe('AGENTS.md');
       expect(memory!.autoLoaded).toBe(true);
@@ -575,7 +624,7 @@ describe('CodexAdapter', () => {
 
     it('should include codex.md as secondary memory', () => {
       const files = adapter.getWorkspaceFiles();
-      const codexMd = files.find(f => f.relativePath === 'codex.md');
+      const codexMd = files.find((f) => f.relativePath === 'codex.md');
       expect(codexMd).toBeDefined();
       expect(codexMd!.type).toBe('memory');
       expect(codexMd!.autoLoaded).toBe(true);
@@ -583,7 +632,7 @@ describe('CodexAdapter', () => {
 
     it('should include config.json', () => {
       const files = adapter.getWorkspaceFiles();
-      const config = files.find(f => f.relativePath === '.codex/config.json');
+      const config = files.find((f) => f.relativePath === '.codex/config.json');
       expect(config).toBeDefined();
       expect(config!.type).toBe('config');
       expect(config!.format).toBe('json');

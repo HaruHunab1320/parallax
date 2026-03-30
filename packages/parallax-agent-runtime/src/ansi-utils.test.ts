@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { stripAnsi, cleanForChat, extractCompletionSummary, extractDevServerUrl } from './ansi-utils';
+import {
+  cleanForChat,
+  extractCompletionSummary,
+  extractDevServerUrl,
+  stripAnsi,
+} from './ansi-utils';
 
 describe('stripAnsi', () => {
   it('removes ANSI escape codes', () => {
@@ -11,7 +16,9 @@ describe('stripAnsi', () => {
   });
 
   it('removes OSC sequences', () => {
-    expect(stripAnsi('\x1b]0;window title\x07real content')).toBe('real content');
+    expect(stripAnsi('\x1b]0;window title\x07real content')).toBe(
+      'real content'
+    );
   });
 
   it('handles empty input', () => {
@@ -63,7 +70,9 @@ describe('cleanForChat', () => {
 describe('extractCompletionSummary', () => {
   it('extracts PR URLs', () => {
     const input = 'Created PR at https://github.com/org/repo/pull/42 done';
-    expect(extractCompletionSummary(input)).toContain('https://github.com/org/repo/pull/42');
+    expect(extractCompletionSummary(input)).toContain(
+      'https://github.com/org/repo/pull/42'
+    );
   });
 
   it('extracts commit hashes', () => {
@@ -83,11 +92,15 @@ describe('extractCompletionSummary', () => {
 
 describe('extractDevServerUrl', () => {
   it('extracts localhost URLs', () => {
-    expect(extractDevServerUrl('Server running at http://localhost:3000')).toBe('http://localhost:3000');
+    expect(extractDevServerUrl('Server running at http://localhost:3000')).toBe(
+      'http://localhost:3000'
+    );
   });
 
   it('extracts 127.0.0.1 URLs', () => {
-    expect(extractDevServerUrl('→ http://127.0.0.1:8080/api')).toBe('http://127.0.0.1:8080/api');
+    expect(extractDevServerUrl('→ http://127.0.0.1:8080/api')).toBe(
+      'http://127.0.0.1:8080/api'
+    );
   });
 
   it('returns null when no URL found', () => {

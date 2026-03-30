@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import request from 'supertest';
-import express from 'express';
+import type express from 'express';
 import jwt from 'jsonwebtoken';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer } from '@/server';
 
 describe('Patterns API', () => {
@@ -17,7 +17,12 @@ describe('Patterns API', () => {
     // Generate a valid JWT for authenticated test requests
     const secret = process.env.JWT_SECRET || 'test-secret';
     authToken = jwt.sign(
-      { sub: 'test-user', email: 'test@test.com', role: 'admin', type: 'access' },
+      {
+        sub: 'test-user',
+        email: 'test@test.com',
+        role: 'admin',
+        type: 'access',
+      },
       secret,
       { expiresIn: 3600 }
     );
@@ -52,7 +57,9 @@ describe('Patterns API', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      const consensus = response.body.patterns.find((p: any) => p.name === 'ConsensusBuilder');
+      const consensus = response.body.patterns.find(
+        (p: any) => p.name === 'ConsensusBuilder'
+      );
       expect(consensus).toBeDefined();
       expect(consensus).toHaveProperty('name', 'ConsensusBuilder');
       expect(consensus).toHaveProperty('version');
@@ -60,9 +67,7 @@ describe('Patterns API', () => {
     });
 
     it('should return 401 without auth token', async () => {
-      await request(app)
-        .get('/api/patterns')
-        .expect(401);
+      await request(app).get('/api/patterns').expect(401);
     });
   });
 
@@ -97,8 +102,8 @@ describe('Patterns API', () => {
         .send({
           input: {
             task: 'analyze code',
-            data: { test: true }
-          }
+            data: { test: true },
+          },
         })
         .expect(200);
 
@@ -132,7 +137,7 @@ describe('Patterns API', () => {
         .post('/api/patterns/non-existent/execute')
         .set('Authorization', `Bearer ${authToken}`)
         .send({
-          input: { test: 'data' }
+          input: { test: 'data' },
         })
         .expect(404);
 

@@ -5,10 +5,10 @@
  * Provides CRUD operations and versioning support.
  */
 
-import { Logger } from 'pino';
-import { PatternRepository } from '../db/repositories/pattern.repository';
-import { Pattern } from './types';
-import { Pattern as PrismaPattern, PatternVersion } from '@prisma/client';
+import type { PatternVersion, Pattern as PrismaPattern } from '@prisma/client';
+import type { Logger } from 'pino';
+import type { PatternRepository } from '../db/repositories/pattern.repository';
+import type { Pattern } from './types';
 
 export interface SavePatternOptions {
   overwrite?: boolean;
@@ -48,10 +48,7 @@ export class DatabasePatternService {
         this.cache.set(converted.name, converted);
       }
       this.initialized = true;
-      this.logger.info(
-        { count: this.cache.size },
-        'Database patterns loaded'
-      );
+      this.logger.info({ count: this.cache.size }, 'Database patterns loaded');
     } catch (error) {
       this.logger.error({ error }, 'Failed to load database patterns');
       throw error;
@@ -170,13 +167,19 @@ export class DatabasePatternService {
   /**
    * Restore a specific version of a pattern
    */
-  async restoreVersion(name: string, version: string): Promise<PatternWithSource> {
+  async restoreVersion(
+    name: string,
+    version: string
+  ): Promise<PatternWithSource> {
     const existing = await this.repository.findByName(name);
     if (!existing) {
       throw new Error(`Pattern '${name}' not found`);
     }
 
-    const versionRecord = await this.repository.getVersion(existing.id, version);
+    const versionRecord = await this.repository.getVersion(
+      existing.id,
+      version
+    );
     if (!versionRecord) {
       throw new Error(`Version '${version}' not found for pattern '${name}'`);
     }
@@ -239,7 +242,7 @@ export class DatabasePatternService {
 
   private incrementVersion(version: string): string {
     const parts = version.split('.').map(Number);
-    if (parts.length !== 3 || parts.some(isNaN)) {
+    if (parts.length !== 3 || parts.some(Number.isNaN)) {
       return '1.0.1';
     }
     parts[2] += 1;

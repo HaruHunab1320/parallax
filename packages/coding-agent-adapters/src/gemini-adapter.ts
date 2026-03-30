@@ -5,14 +5,20 @@
  */
 
 import type {
-  SpawnConfig,
-  ParsedOutput,
-  LoginDetection,
-  BlockingPromptDetection,
   AutoResponseRule,
+  BlockingPromptDetection,
+  LoginDetection,
+  ParsedOutput,
+  SpawnConfig,
   ToolRunningInfo,
 } from 'adapter-types';
-import { BaseCodingAdapter, type InstallationInfo, type ModelRecommendations, type AgentCredentials, type AgentFileDescriptor } from './base-coding-adapter';
+import {
+  type AgentCredentials,
+  type AgentFileDescriptor,
+  BaseCodingAdapter,
+  type InstallationInfo,
+  type ModelRecommendations,
+} from './base-coding-adapter';
 
 const GEMINI_HOOK_MARKER_PREFIX = 'PARALLAX_GEMINI_HOOK';
 
@@ -35,9 +41,7 @@ export class GeminiAdapter extends BaseCodingAdapter {
 
   readonly installation: InstallationInfo = {
     command: 'npm install -g @google/gemini-cli',
-    alternatives: [
-      'See documentation for latest installation method',
-    ],
+    alternatives: ['See documentation for latest installation method'],
     docsUrl: 'https://github.com/google-gemini/gemini-cli#installation',
   };
 
@@ -48,7 +52,8 @@ export class GeminiAdapter extends BaseCodingAdapter {
    */
   readonly autoResponseRules: AutoResponseRule[] = [
     {
-      pattern: /do.?you.?trust.?this.?folder|trust.?folder|trust.?parent.?folder/i,
+      pattern:
+        /do.?you.?trust.?this.?folder|trust.?folder|trust.?parent.?folder/i,
       type: 'permission',
       response: '',
       responseType: 'keys',
@@ -90,7 +95,8 @@ export class GeminiAdapter extends BaseCodingAdapter {
       },
       {
         relativePath: '.gemini/settings.json',
-        description: 'Project-scoped settings (tool permissions, sandbox config)',
+        description:
+          'Project-scoped settings (tool permissions, sandbox config)',
         autoLoaded: true,
         type: 'config',
         format: 'json',
@@ -144,7 +150,9 @@ export class GeminiAdapter extends BaseCodingAdapter {
   getEnv(config: SpawnConfig): Record<string, string> {
     const env: Record<string, string> = {};
     const credentials = this.getCredentials(config);
-    const adapterConfig = config.adapterConfig as GeminiAdapterConfig | undefined;
+    const adapterConfig = config.adapterConfig as
+      | GeminiAdapterConfig
+      | undefined;
 
     // Google API key from credentials
     if (credentials.googleKey) {
@@ -199,8 +207,15 @@ export class GeminiAdapter extends BaseCodingAdapter {
         ` -H "Content-Type: application/json"${sessionHeader}` +
         ` -d @- --max-time 4 2>/dev/null || echo "{\\"continue\\":true}"'`;
 
-      const hookEntry = [{ matcher: '', hooks: [{ type: 'command', command: curlCommand, timeout: 5000 }] }];
-      const hookEntryNoMatcher = [{ hooks: [{ type: 'command', command: curlCommand, timeout: 5000 }] }];
+      const hookEntry = [
+        {
+          matcher: '',
+          hooks: [{ type: 'command', command: curlCommand, timeout: 5000 }],
+        },
+      ];
+      const hookEntryNoMatcher = [
+        { hooks: [{ type: 'command', command: curlCommand, timeout: 5000 }] },
+      ];
 
       const settingsHooks: Record<string, unknown> = {
         BeforeTool: hookEntry,
@@ -220,9 +235,12 @@ export class GeminiAdapter extends BaseCodingAdapter {
 
     // Command hook mode (fallback): emit marker lines via systemMessage
     const markerPrefix = options?.markerPrefix || GEMINI_HOOK_MARKER_PREFIX;
-    const scriptPath = options?.scriptPath || '.gemini/hooks/parallax-hook-telemetry.sh';
+    const scriptPath =
+      options?.scriptPath || '.gemini/hooks/parallax-hook-telemetry.sh';
     const scriptCommand = `"${'$'}GEMINI_PROJECT_ROOT"/${scriptPath}`;
-    const hookEntry = [{ matcher: '', hooks: [{ type: 'command', command: scriptCommand }] }];
+    const hookEntry = [
+      { matcher: '', hooks: [{ type: 'command', command: scriptCommand }] },
+    ];
 
     const settingsHooks: Record<string, unknown> = {
       Notification: hookEntry,
@@ -287,13 +305,19 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
       const payload = match[2];
       try {
         const parsed = JSON.parse(payload) as Record<string, unknown>;
-        const event = typeof parsed.event === 'string' ? parsed.event : undefined;
+        const event =
+          typeof parsed.event === 'string' ? parsed.event : undefined;
         if (!event) continue;
         markers.push({
           event,
-          notification_type: typeof parsed.notification_type === 'string' ? parsed.notification_type : undefined,
-          tool_name: typeof parsed.tool_name === 'string' ? parsed.tool_name : undefined,
-          message: typeof parsed.message === 'string' ? parsed.message : undefined,
+          notification_type:
+            typeof parsed.notification_type === 'string'
+              ? parsed.notification_type
+              : undefined,
+          tool_name:
+            typeof parsed.tool_name === 'string' ? parsed.tool_name : undefined,
+          message:
+            typeof parsed.message === 'string' ? parsed.message : undefined,
         });
       } catch {
         // Ignore malformed marker payloads.
@@ -309,7 +333,10 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
   }
 
   private stripHookMarkers(output: string): string {
-    return output.replace(/(?:^|\n)\s*[A-Z0-9_]*GEMINI_HOOK[A-Z0-9_]*\s+\{[^\n\r]+\}\s*/g, '\n');
+    return output.replace(
+      /(?:^|\n)\s*[A-Z0-9_]*GEMINI_HOOK[A-Z0-9_]*\s+\{[^\n\r]+\}\s*/g,
+      '\n'
+    );
   }
 
   detectLogin(output: string): LoginDetection {
@@ -328,7 +355,8 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
       return {
         required: true,
         type: 'api_key',
-        instructions: 'Set GOOGLE_API_KEY or GEMINI_API_KEY environment variable',
+        instructions:
+          'Set GOOGLE_API_KEY or GEMINI_API_KEY environment variable',
       };
     }
 
@@ -337,17 +365,22 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
       return {
         required: true,
         type: 'api_key',
-        instructions: 'Enter a Gemini API key or set GEMINI_API_KEY environment variable',
+        instructions:
+          'Enter a Gemini API key or set GEMINI_API_KEY environment variable',
       };
     }
 
     // Auth dialog — initial auth choice (AuthDialog.tsx)
-    if (/how.?would.?you.?like.?to.?authenticate/i.test(stripped) ||
-        (/get.?started/i.test(stripped) && /login.?with.?google|use.?gemini.?api.?key|vertex/i.test(stripped))) {
+    if (
+      /how.?would.?you.?like.?to.?authenticate/i.test(stripped) ||
+      (/get.?started/i.test(stripped) &&
+        /login.?with.?google|use.?gemini.?api.?key|vertex/i.test(stripped))
+    ) {
       return {
         required: true,
         type: 'oauth',
-        instructions: 'Gemini CLI authentication required — select an auth method',
+        instructions:
+          'Gemini CLI authentication required — select an auth method',
       };
     }
 
@@ -394,7 +427,10 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
     const stripped = this.stripAnsi(output);
     const marker = this.getLatestHookMarker(stripped);
 
-    if (marker?.event === 'Notification' && marker.notification_type === 'ToolPermission') {
+    if (
+      marker?.event === 'Notification' &&
+      marker.notification_type === 'ToolPermission'
+    ) {
       return {
         detected: true,
         type: 'permission',
@@ -409,31 +445,37 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
     // Check BEFORE login — permission prompts contain "API key" banner text
     // that would otherwise false-positive the login detector.
     // TUI arrow-key menu — use keys:enter to select "Allow once" (default)
-    if (/apply.?this.?change\??/i.test(stripped) ||
-        /allow.?execution.?of/i.test(stripped) ||
-        /do.?you.?want.?to.?proceed\??/i.test(stripped) ||
-        /waiting.?for.?user.?confirmation/i.test(stripped)) {
+    if (
+      /apply.?this.?change\??/i.test(stripped) ||
+      /allow.?execution.?of/i.test(stripped) ||
+      /do.?you.?want.?to.?proceed\??/i.test(stripped) ||
+      /waiting.?for.?user.?confirmation/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'permission',
         prompt: 'Gemini tool execution confirmation',
         suggestedResponse: 'keys:enter',
         canAutoRespond: true,
-        instructions: 'Gemini is asking to apply a change (file write, shell command, etc.)',
+        instructions:
+          'Gemini is asking to apply a change (file write, shell command, etc.)',
       };
     }
 
     // Interactive shell command confirmation prompts (inside tool output).
     // Example from captures: "Do you want to continue (Y/n)?"
-    if (/do.?you.?want.?to.?continue\s*\([yY]\/[nN]\)\??/i.test(stripped) ||
-        /continue\??\s*\([yY]\/[nN]\)\??/i.test(stripped) ||
-        /are.?you.?sure\??\s*\([yY]\/[nN]\)\??/i.test(stripped)) {
+    if (
+      /do.?you.?want.?to.?continue\s*\([yY]\/[nN]\)\??/i.test(stripped) ||
+      /continue\??\s*\([yY]\/[nN]\)\??/i.test(stripped) ||
+      /are.?you.?sure\??\s*\([yY]\/[nN]\)\??/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'tool_wait',
         prompt: 'Interactive shell confirmation required (y/n)',
         canAutoRespond: false,
-        instructions: 'Focus shell input (Tab) and answer the y/n confirmation prompt',
+        instructions:
+          'Focus shell input (Tab) and answer the y/n confirmation prompt',
       };
     }
 
@@ -444,18 +486,24 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
         type: 'tool_wait',
         prompt: 'Gemini interactive shell needs user focus',
         canAutoRespond: false,
-        instructions: 'Press Tab to focus the interactive shell, or wait for it to complete',
+        instructions:
+          'Press Tab to focus the interactive shell, or wait for it to complete',
       };
     }
 
     // Session checkpoint prompt
-    if (/enable.?checkpointing.?to.?recover.?your.?session.?after.?a.?crash/i.test(stripped)) {
+    if (
+      /enable.?checkpointing.?to.?recover.?your.?session.?after.?a.?crash/i.test(
+        stripped
+      )
+    ) {
       return {
         detected: true,
         type: 'config',
         prompt: 'Gemini checkpoint setup prompt',
         canAutoRespond: false,
-        instructions: 'Respond to checkpoint setup prompt (for example: press "s" to configure or dismiss)',
+        instructions:
+          'Respond to checkpoint setup prompt (for example: press "s" to configure or dismiss)',
       };
     }
 
@@ -473,21 +521,26 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
     }
 
     // Account validation required (ValidationDialog.tsx)
-    if (/further.?action.?is.?required/i.test(stripped) ||
-        /verify.?your.?account/i.test(stripped) ||
-        /waiting.?for.?verification/i.test(stripped)) {
+    if (
+      /further.?action.?is.?required/i.test(stripped) ||
+      /verify.?your.?account/i.test(stripped) ||
+      /waiting.?for.?verification/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'config',
         prompt: 'Account verification required',
         canAutoRespond: false,
-        instructions: 'Your Gemini account requires verification before continuing',
+        instructions:
+          'Your Gemini account requires verification before continuing',
       };
     }
 
     // Model selection
-    if (/select.*model|choose.*model|gemini-/i.test(stripped) &&
-        /\d+\)/i.test(stripped)) {
+    if (
+      /select.*model|choose.*model|gemini-/i.test(stripped) &&
+      /\d+\)/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'model_select',
@@ -498,7 +551,9 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
     }
 
     // Project selection
-    if (/select.*project|choose.*project|google cloud project/i.test(stripped)) {
+    if (
+      /select.*project|choose.*project|google cloud project/i.test(stripped)
+    ) {
       return {
         detected: true,
         type: 'project_select',
@@ -599,7 +654,10 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
     const stripped = this.stripAnsi(output);
     const marker = this.getLatestHookMarker(stripped);
 
-    if (marker?.event === 'Notification' && marker.notification_type === 'ToolPermission') {
+    if (
+      marker?.event === 'Notification' &&
+      marker.notification_type === 'ToolPermission'
+    ) {
       return false;
     }
     if (marker?.event === 'AfterAgent') {
@@ -607,10 +665,18 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
     }
 
     const hasActiveOverlay =
-      /interactive\s+shell\s+awaiting\s+input|press\s+tab\s+to\s+focus\s+shell/i.test(stripped) ||
-      /waiting\s+for\s+user\s+confirmation|apply.?this.?change|allow.?execution|do.?you.?want.?to.?proceed/i.test(stripped) ||
-      /do.?you.?want.?to.?continue\s*\([yY]\/[nN]\)\??|are.?you.?sure\??\s*\([yY]\/[nN]\)\??/i.test(stripped) ||
-      /enable.?checkpointing.?to.?recover.?your.?session.?after.?a.?crash/i.test(stripped) ||
+      /interactive\s+shell\s+awaiting\s+input|press\s+tab\s+to\s+focus\s+shell/i.test(
+        stripped
+      ) ||
+      /waiting\s+for\s+user\s+confirmation|apply.?this.?change|allow.?execution|do.?you.?want.?to.?proceed/i.test(
+        stripped
+      ) ||
+      /do.?you.?want.?to.?continue\s*\([yY]\/[nN]\)\??|are.?you.?sure\??\s*\([yY]\/[nN]\)\??/i.test(
+        stripped
+      ) ||
+      /enable.?checkpointing.?to.?recover.?your.?session.?after.?a.?crash/i.test(
+        stripped
+      ) ||
       /esc\s+to\s+cancel|esc\s+to\s+interrupt/i.test(stripped);
 
     if (hasActiveOverlay) {
@@ -627,10 +693,12 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
 
     // Guard: if output contains a trust or auth prompt, we're NOT ready
     // (only checked when no definitive positive indicator is present)
-    if (/do.?you.?trust.?this.?folder/i.test(stripped) ||
-        /how.?would.?you.?like.?to.?authenticate/i.test(stripped) ||
-        /waiting.?for.?auth/i.test(stripped) ||
-        /allow.?google.?to.?use.?this.?data/i.test(stripped)) {
+    if (
+      /do.?you.?trust.?this.?folder/i.test(stripped) ||
+      /how.?would.?you.?like.?to.?authenticate/i.test(stripped) ||
+      /waiting.?for.?auth/i.test(stripped) ||
+      /allow.?google.?to.?use.?this.?data/i.test(stripped)
+    ) {
       return false;
     }
 
@@ -678,7 +746,11 @@ jq -nc --arg m "${'$'}MARKER" '{continue: true, suppressOutput: true, systemMess
    * Detect exit conditions specific to Gemini CLI.
    * Source: FolderTrustDialog.tsx:127, LogoutConfirmationDialog.tsx:64
    */
-  override detectExit(output: string): { exited: boolean; code?: number; error?: string } {
+  override detectExit(output: string): {
+    exited: boolean;
+    code?: number;
+    error?: string;
+  } {
     const stripped = this.stripAnsi(output);
     const marker = this.getLatestHookMarker(stripped);
 

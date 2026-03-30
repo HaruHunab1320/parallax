@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParallaxClient } from '../../src/index';
 
 describe('ManagedThreadsResource', () => {
@@ -98,7 +98,9 @@ describe('ManagedThreadsResource', () => {
   it('should stop a thread', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
 
-    await expect(client.managedThreads.stop('thread-1')).resolves.toBeUndefined();
+    await expect(
+      client.managedThreads.stop('thread-1')
+    ).resolves.toBeUndefined();
   });
 
   it('should send input to a thread', async () => {
@@ -121,7 +123,9 @@ describe('ManagedThreadsResource', () => {
 
   it('should get thread shared decisions', async () => {
     mockFetch({
-      decisions: [{ id: 'dec-1', category: 'architecture', summary: 'Use REST' }],
+      decisions: [
+        { id: 'dec-1', category: 'architecture', summary: 'Use REST' },
+      ],
       count: 1,
     });
 

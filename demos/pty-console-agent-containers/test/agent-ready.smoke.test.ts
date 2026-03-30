@@ -1,15 +1,19 @@
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { homedir } from 'node:os';
-import { resolve, join } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
-import { PTYManager, type SessionHandle, type SpawnConfig } from '../../../packages/pty-manager/src/index';
-import { PTYConsoleBridge } from '../../../packages/pty-console/src/index';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
 import { AiderAdapter } from '../../../packages/coding-agent-adapters/src/aider-adapter';
 import { ClaudeAdapter } from '../../../packages/coding-agent-adapters/src/claude-adapter';
 import { CodexAdapter } from '../../../packages/coding-agent-adapters/src/codex-adapter';
 import { GeminiAdapter } from '../../../packages/coding-agent-adapters/src/gemini-adapter';
-import { afterEach, describe, expect, it } from 'vitest';
+import { PTYConsoleBridge } from '../../../packages/pty-console/src/index';
+import {
+  PTYManager,
+  type SessionHandle,
+  type SpawnConfig,
+} from '../../../packages/pty-manager/src/index';
 
 type StartupResult = 'ready' | 'login_required' | 'blocking_prompt';
 type AgentType = 'claude' | 'codex' | 'gemini' | 'aider';
@@ -21,9 +25,12 @@ const AGENTS: Array<{ type: AgentType; image: string }> = [
   { type: 'aider', image: 'parallax/agent-aider:latest' },
 ];
 
-const STARTUP_TIMEOUT_MS = Number(process.env.PTY_CONSOLE_STARTUP_TIMEOUT_MS ?? 45_000);
+const STARTUP_TIMEOUT_MS = Number(
+  process.env.PTY_CONSOLE_STARTUP_TIMEOUT_MS ?? 45_000
+);
 const STRICT_READY = process.env.PTY_CONSOLE_STRICT_READY === '1';
-const FALLBACK_OPENAI_KEY = process.env.OPENAI_API_KEY ?? readOpenAIKeyFromCodexAuthFile() ?? '';
+const FALLBACK_OPENAI_KEY =
+  process.env.OPENAI_API_KEY ?? readOpenAIKeyFromCodexAuthFile() ?? '';
 
 class DockerizedClaudeAdapter extends ClaudeAdapter {
   override getCommand(): string {
@@ -153,14 +160,16 @@ describe('pty-console agent container smoke', () => {
       manager.registerAdapter(new DockerizedGeminiAdapter());
       manager.registerAdapter(new DockerizedAiderAdapter());
 
-      const bridge = new PTYConsoleBridge(manager, { maxBufferedCharsPerSession: 200_000 });
+      const bridge = new PTYConsoleBridge(manager, {
+        maxBufferedCharsPerSession: 200_000,
+      });
       activeBridge = bridge;
 
       const outputCharsBySession = new Map<string, number>();
       bridge.on('session_output', (event) => {
         outputCharsBySession.set(
           event.sessionId,
-          (outputCharsBySession.get(event.sessionId) ?? 0) + event.data.length,
+          (outputCharsBySession.get(event.sessionId) ?? 0) + event.data.length
         );
       });
 
@@ -178,8 +187,8 @@ describe('pty-console agent container smoke', () => {
               GOOGLE_API_KEY: process.env.GOOGLE_API_KEY ?? '',
               GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
             },
-          }),
-        ),
+          })
+        )
       );
 
       const startupResults = await Promise.all(
@@ -190,8 +199,8 @@ describe('pty-console agent container smoke', () => {
             session,
             timeoutMs: STARTUP_TIMEOUT_MS,
             requireReady: STRICT_READY,
-          }),
-        ),
+          })
+        )
       );
 
       const snapshot = bridge.getSnapshot();
@@ -208,11 +217,13 @@ describe('pty-console agent container smoke', () => {
         }
       } else {
         for (const result of startupResults) {
-          expect(['ready', 'login_required', 'blocking_prompt']).toContain(result.result);
+          expect(['ready', 'login_required', 'blocking_prompt']).toContain(
+            result.result
+          );
         }
       }
     },
-    180_000,
+    180_000
   );
 });
 
@@ -223,7 +234,9 @@ function hasDocker(): boolean {
 
 function allImagesExist(images: string[]): boolean {
   for (const image of images) {
-    const result = spawnSync('docker', ['image', 'inspect', image], { encoding: 'utf-8' });
+    const result = spawnSync('docker', ['image', 'inspect', image], {
+      encoding: 'utf-8',
+    });
     if (result.status !== 0) {
       return false;
     }
@@ -234,7 +247,7 @@ function allImagesExist(images: string[]): boolean {
 function mergeEnvMaps(
   adapterEnv: Record<string, string>,
   spawnEnv: Record<string, string> | undefined,
-  passthroughKeys: string[],
+  passthroughKeys: string[]
 ): Record<string, string> {
   const merged: Record<string, string> = { ...adapterEnv, ...(spawnEnv ?? {}) };
   for (const key of passthroughKeys) {
@@ -274,7 +287,9 @@ function buildDockerArgs(options: {
   return args;
 }
 
-function getAuthMounts(agentType: AgentType): Array<{ hostPath: string; containerPath: string }> {
+function getAuthMounts(
+  agentType: AgentType
+): Array<{ hostPath: string; containerPath: string }> {
   const home = homedir();
   const mounts: Array<{ hostPath: string; containerPath: string }> = [];
   const maybeAdd = (hostPath: string, containerPath: string) => {
@@ -306,14 +321,14 @@ function inferStartupStateFromOutput(output: string): StartupResult | null {
   const text = output.toLowerCase();
   if (
     /api key|authentication required|invalid api key|unauthorized|sign in|device code|oauth/.test(
-      text,
+      text
     )
   ) {
     return 'login_required';
   }
   if (
     /trust|permission|allow|confirm|apply this change|continue|select|choose/.test(
-      text,
+      text
     )
   ) {
     return 'blocking_prompt';
@@ -325,7 +340,10 @@ function readOpenAIKeyFromCodexAuthFile(): string | null {
   try {
     const authPath = join(homedir(), '.codex', 'auth.json');
     if (!existsSync(authPath)) return null;
-    const parsed = JSON.parse(readFileSync(authPath, 'utf-8')) as Record<string, unknown>;
+    const parsed = JSON.parse(readFileSync(authPath, 'utf-8')) as Record<
+      string,
+      unknown
+    >;
     const key = parsed.OPENAI_API_KEY;
     return typeof key === 'string' && key.length > 0 ? key : null;
   } catch {
@@ -359,7 +377,9 @@ async function waitForStartupState(options: {
       if (finished) return;
       finished = true;
       cleanup();
-      reject(new Error(`${session.name} (${session.id}) failed startup: ${reason}`));
+      reject(
+        new Error(`${session.name} (${session.id}) failed startup: ${reason}`)
+      );
     };
 
     const onStatus = (event: {

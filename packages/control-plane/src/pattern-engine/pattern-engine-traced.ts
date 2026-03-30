@@ -1,21 +1,17 @@
-import { Pattern, PatternExecution } from './types';
-import { RuntimeManager } from '../runtime-manager';
-import { EtcdRegistry } from '../registry';
-import { Logger } from 'pino';
-import {
-  PatternTracer
-} from '@parallaxai/telemetry';
-import { DatabaseService } from '../db/database.service';
-import { PatternExecutionOptions } from './interfaces';
-import { DatabasePatternService } from './database-pattern-service';
-import { ExecutionEventBus } from '../execution-events';
-import { WorkspaceService, Workspace } from '../workspace';
-import { AgentRuntimeService } from '../agent-runtime';
-import { ThreadPreparationService } from '../threads';
-import {
-  ExecutionEngine,
-} from '@parallaxai/data-plane';
+import type { ExecutionEngine } from '@parallaxai/data-plane';
+import { PatternTracer } from '@parallaxai/telemetry';
+import type { Logger } from 'pino';
+import type { AgentRuntimeService } from '../agent-runtime';
+import type { DatabaseService } from '../db/database.service';
+import type { ExecutionEventBus } from '../execution-events';
+import type { EtcdRegistry } from '../registry';
+import type { RuntimeManager } from '../runtime-manager';
+import type { ThreadPreparationService } from '../threads';
+import type { Workspace, WorkspaceService } from '../workspace';
+import type { DatabasePatternService } from './database-pattern-service';
+import type { PatternExecutionOptions } from './interfaces';
 import { PatternEngine } from './pattern-engine';
+import type { Pattern, PatternExecution } from './types';
 
 export class TracedPatternEngine extends PatternEngine {
   private tracer: PatternTracer;
@@ -54,46 +50,44 @@ export class TracedPatternEngine extends PatternEngine {
     input: any,
     options?: PatternExecutionOptions
   ): Promise<PatternExecution> {
-    return this.tracer.tracePatternExecution(
-      patternName,
-      input,
-      async () => {
-        // Add pattern metadata to the tracing span
-        const pattern = this.getPattern(patternName);
-        if (pattern) {
-          this.tracer.addPatternMetadata({
-            minAgents: pattern.minAgents,
-            confidenceThreshold: pattern.metadata?.defaultThreshold,
-            timeout: options?.timeout?.toString(),
-            retries: pattern.metadata?.retryPolicy?.maxRetries
-          });
-        }
-
-        // Create database execution record for event persistence
-        const executionId = options?.executionId;
-        if (this.database && executionId && pattern) {
-          try {
-            const dbPattern = await this.database.patterns.findByName(pattern.name);
-            if (dbPattern) {
-              await this.database.executions.create({
-                id: executionId,
-                pattern: { connect: { id: dbPattern.id } },
-                input: input,
-                status: 'running',
-              });
-            }
-          } catch (dbError) {
-            this.logger.warn(
-              { error: dbError, executionId },
-              'Failed to persist execution to database'
-            );
-          }
-        }
-
-        // Delegate to parent for all actual execution logic
-        return super.executePattern(patternName, input, options);
+    return this.tracer.tracePatternExecution(patternName, input, async () => {
+      // Add pattern metadata to the tracing span
+      const pattern = this.getPattern(patternName);
+      if (pattern) {
+        this.tracer.addPatternMetadata({
+          minAgents: pattern.minAgents,
+          confidenceThreshold: pattern.metadata?.defaultThreshold,
+          timeout: options?.timeout?.toString(),
+          retries: pattern.metadata?.retryPolicy?.maxRetries,
+        });
       }
-    );
+
+      // Create database execution record for event persistence
+      const executionId = options?.executionId;
+      if (this.database && executionId && pattern) {
+        try {
+          const dbPattern = await this.database.patterns.findByName(
+            pattern.name
+          );
+          if (dbPattern) {
+            await this.database.executions.create({
+              id: executionId,
+              pattern: { connect: { id: dbPattern.id } },
+              input: input,
+              status: 'running',
+            });
+          }
+        } catch (dbError) {
+          this.logger.warn(
+            { error: dbError, executionId },
+            'Failed to persist execution to database'
+          );
+        }
+      }
+
+      // Delegate to parent for all actual execution logic
+      return super.executePattern(patternName, input, options);
+    });
   }
 
   protected async selectAgents(
@@ -108,7 +102,7 @@ export class TracedPatternEngine extends PatternEngine {
     this.tracer.traceAgentSelection(
       pattern.name,
       requiredCapabilities.join(','),
-      agents.map(a => a.id as string)
+      agents.map((a) => a.id as string)
     );
 
     return agents;

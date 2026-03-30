@@ -11,7 +11,7 @@ export interface PatternTemplate {
 }
 
 export const templates: Record<string, PatternTemplate> = {
-  'consensus': {
+  consensus: {
     description: 'Multiple agents reach agreement on a decision',
     minAgents: 3,
     defaultConfidence: 0.8,
@@ -28,10 +28,10 @@ agreement = consensus(results, 0.7)
 finalResult = threshold(agreement, 0.8)
 
 // Return with confidence
-finalResult ~> 0.85`
+finalResult ~> 0.85`,
   },
-  
-  'pipeline': {
+
+  pipeline: {
     description: 'Sequential processing through multiple stages',
     minAgents: 2,
     defaultConfidence: 0.7,
@@ -47,10 +47,10 @@ result = sequential(validationAgents, stage2)
 finalResult = fallback(result, "senior-expert")
 
 // Return with confidence
-finalResult ~> 0.7`
+finalResult ~> 0.7`,
   },
-  
-  'voting': {
+
+  voting: {
     description: 'Democratic decision making with voting',
     minAgents: 5,
     defaultConfidence: 0.6,
@@ -67,10 +67,10 @@ decision = voting(votes, "majority")
 finalResult = threshold(decision, 0.6)
 
 // Return with confidence
-finalResult ~> confidence`
+finalResult ~> confidence`,
   },
-  
-  'hierarchical': {
+
+  hierarchical: {
     description: 'Tiered decision making with escalation',
     minAgents: 4,
     defaultConfidence: 0.75,
@@ -90,10 +90,10 @@ if (result1.confidence < 0.7) {
 }
 
 // Return with confidence
-result ~> result.confidence`
+result ~> result.confidence`,
   },
-  
-  'resilient': {
+
+  resilient: {
     description: 'Fault-tolerant pattern with retries and circuit breaker',
     minAgents: 3,
     defaultConfidence: 0.8,
@@ -116,9 +116,9 @@ execution = cache(300)( // 5 min cache
 result = fallback(execution, "backup-service")
 
 // Return with confidence
-result ~> 0.8`
+result ~> 0.8`,
   },
-  
+
   'map-reduce': {
     description: 'Distributed processing with aggregation',
     minAgents: 10,
@@ -138,6 +138,6 @@ mapped = parallel(10)(
 result = reduce(mapped, "aggregate")
 
 // Return with confidence
-result ~> 0.7`
-  }
+result ~> 0.7`,
+  },
 };

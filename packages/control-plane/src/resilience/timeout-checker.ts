@@ -4,8 +4,8 @@
  * and marks them as failed.
  */
 
-import { Logger } from 'pino';
-import { ExecutionRepository } from '../db/repositories/execution.repository';
+import type { Logger } from 'pino';
+import type { ExecutionRepository } from '../db/repositories/execution.repository';
 
 export interface TimeoutCheckerOptions {
   /** How often to check for timeouts (default: 15000ms) */
@@ -31,8 +31,9 @@ export class TimeoutChecker {
   ) {
     this.logger = logger.child({ component: 'TimeoutChecker' });
     this.checkIntervalMs = options?.checkIntervalMs || 15000;
-    this.defaultTimeoutMs = options?.defaultTimeoutMs
-      || parseInt(process.env.PARALLAX_DEFAULT_EXECUTION_TIMEOUT || '300000');
+    this.defaultTimeoutMs =
+      options?.defaultTimeoutMs ||
+      parseInt(process.env.PARALLAX_DEFAULT_EXECUTION_TIMEOUT || '300000', 10);
     this.isLeader = options?.isLeader || (() => true);
   }
 
@@ -44,7 +45,10 @@ export class TimeoutChecker {
     this.running = true;
 
     this.logger.info(
-      { checkIntervalMs: this.checkIntervalMs, defaultTimeoutMs: this.defaultTimeoutMs },
+      {
+        checkIntervalMs: this.checkIntervalMs,
+        defaultTimeoutMs: this.defaultTimeoutMs,
+      },
       'Timeout checker started'
     );
 
@@ -73,7 +77,9 @@ export class TimeoutChecker {
     if (!this.isLeader()) return 0;
 
     try {
-      const timedOut = await this.executionRepo.findTimedOutExecutions(this.defaultTimeoutMs);
+      const timedOut = await this.executionRepo.findTimedOutExecutions(
+        this.defaultTimeoutMs
+      );
 
       if (timedOut.length === 0) return 0;
 

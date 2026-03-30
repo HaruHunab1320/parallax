@@ -4,15 +4,6 @@
  * K8s operator-based runtime for CLI agent pods.
  */
 
-// Main runtime
-export { K8sRuntime, K8sRuntimeOptions } from './k8s-runtime';
-
-// Controller
-export { AgentController, ControllerOptions } from './controllers/agent-controller';
-
-// Server
-export { RuntimeServer, RuntimeServerOptions } from './server';
-
 // Re-export interface types for convenience
 export {
   AgentConfig,
@@ -22,3 +13,13 @@ export {
   AgentType,
   RuntimeProvider,
 } from '@parallaxai/runtime-interface';
+
+// Controller
+export {
+  AgentController,
+  ControllerOptions,
+} from './controllers/agent-controller';
+// Main runtime
+export { K8sRuntime, K8sRuntimeOptions } from './k8s-runtime';
+// Server
+export { RuntimeServer, RuntimeServerOptions } from './server';
