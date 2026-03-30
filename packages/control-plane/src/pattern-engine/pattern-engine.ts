@@ -48,7 +48,7 @@ export class PatternEngine implements IPatternEngine {
   private loader: PatternLoader;
   private executions: Map<string, PatternExecution> = new Map();
   private localAgentManager: LocalAgentManager;
-  private localAgents: any[] = []; // Direct agent instances for demo
+  private injectedAgents: any[] = []; // Direct agent instances for testing and programmatic control
   private _calibrationService: ConfidenceCalibrationService;
   protected licenseEnforcer: LicenseEnforcer;
   protected currentExecutionId?: string;
@@ -1474,12 +1474,12 @@ export class PatternEngine implements IPatternEngine {
 
     let agents: any[] = [];
 
-    // First, check for directly registered local agents (for demos)
-    if (this.localAgents.length > 0) {
+    // First, check for directly registered injected agents (for testing and programmatic control)
+    if (this.injectedAgents.length > 0) {
       this.logger.info(
-        `Using ${this.localAgents.length} directly registered agents`
+        `Using ${this.injectedAgents.length} directly registered agents`
       );
-      agents = this.localAgents;
+      agents = this.injectedAgents;
     } else {
       // Check for local agents from environment (development mode)
       const localAgentConfigs = this.localAgentManager.getAgents();
@@ -1775,11 +1775,11 @@ export class PatternEngine implements IPatternEngine {
   }
 
   /**
-   * Register local agent instances directly (for demos/testing)
+   * Register agent instances directly (for testing and programmatic control)
    */
-  registerLocalAgents(agents: any[]): void {
-    this.localAgents = agents;
-    this.logger.info(`Registered ${agents.length} local agents`);
+  registerInjectedAgents(agents: any[]): void {
+    this.injectedAgents = agents;
+    this.logger.info(`Registered ${agents.length} injected agents`);
   }
 
   /**

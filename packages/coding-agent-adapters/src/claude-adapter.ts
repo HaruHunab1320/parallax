@@ -450,6 +450,20 @@ jq -nc \
     const stripped = this.stripAnsi(output);
     const marker = this.getLatestHookMarker(stripped);
 
+    // Skip blocking prompt detection when the output is just spinner/loading text.
+    // Claude Code's TUI renders spinner words ("Tomfoolering…", "Recombobulating…")
+    // that produce partial fragments across buffer boundaries (e.g. "lculating…\n").
+    // These fragments can false-positive as blocking prompts if not filtered early.
+    if (this.detectLoading(output)) {
+      return { detected: false };
+    }
+    // Spinner fragment: a single short word fragment ending in … or ... with trailing whitespace.
+    // Catches partial spinner words split across buffer boundaries.
+    const trimmedTail = stripped.slice(-200).trim();
+    if (/^[a-zA-Z]{1,30}(?:…|\.{3})\s*$/.test(trimmedTail)) {
+      return { detected: false };
+    }
+
     // First check for login (highest priority)
     const loginDetection = this.detectLogin(output);
     if (loginDetection.required) {

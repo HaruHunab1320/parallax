@@ -239,17 +239,17 @@ describe('PatternEngine', () => {
     });
   });
 
-  describe('registerLocalAgents', () => {
-    it('should register local agent instances', () => {
+  describe('registerInjectedAgents', () => {
+    it('should register injected agent instances', () => {
       const mockAgents = [
         { id: 'agent-1', name: 'Test Agent 1' },
         { id: 'agent-2', name: 'Test Agent 2' },
       ];
 
-      engine.registerLocalAgents(mockAgents);
+      engine.registerInjectedAgents(mockAgents);
 
       // Verify agents are stored
-      expect((engine as any).localAgents).toEqual(mockAgents);
+      expect((engine as any).injectedAgents).toEqual(mockAgents);
     });
   });
 
