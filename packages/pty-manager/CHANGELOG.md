@@ -2,6 +2,11 @@
 
 All notable changes to `pty-manager` will be documented in this file.
 
+## [1.10.2] - 2026-03-30
+
+### Fixed
+- **Blocking prompt debounce** — added 250ms time-based debounce for `blocking_prompt` event emissions. Spinner fragments produce slightly different hashes on each animation frame, bypassing the hash-based dedup and flooding consumers with events. The debounce suppresses rapid re-emissions within the window while still allowing genuinely new prompts through. The debounce timestamp is reset on all state transitions (ready, task_complete, auto-response, hook events).
+
 ## [1.10.1] - 2026-03-23
 
 ### Fixed

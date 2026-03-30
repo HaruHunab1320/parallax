@@ -254,6 +254,8 @@ export class PTYSession extends EventEmitter {
   private sessionRules: AutoResponseRule[] = [];
   private _firedOnceRules: Set<string> = new Set();
   private _lastBlockingPromptHash: string | null = null;
+  private _lastBlockingPromptEmitAt = 0;
+  private static readonly BLOCKING_PROMPT_DEBOUNCE_MS = 250;
   private _ruleOverrides: Map<string, Partial<AutoResponseRule>> = new Map();
   private _disabledRulePatterns: Set<string> = new Set();
 
@@ -504,6 +506,7 @@ export class PTYSession extends EventEmitter {
     ) {
       this._status = 'ready';
       this._lastBlockingPromptHash = null;
+      this._lastBlockingPromptEmitAt = 0;
       this.outputBuffer = '';
       this.clearStallTimer();
       this.emit('status_changed', 'ready');
@@ -853,6 +856,7 @@ export class PTYSession extends EventEmitter {
       case 'task_complete':
         this._status = 'ready';
         this._lastBlockingPromptHash = null;
+        this._lastBlockingPromptEmitAt = 0;
         this.outputBuffer = '';
         this.clearStallTimer();
         this.emit('ready');
@@ -916,6 +920,7 @@ export class PTYSession extends EventEmitter {
 
       this._status = 'ready';
       this._lastBlockingPromptHash = null;
+      this._lastBlockingPromptEmitAt = 0;
       this.outputBuffer = '';
       this.clearStallTimer();
       this.emit('status_changed', 'ready');
@@ -1025,6 +1030,7 @@ export class PTYSession extends EventEmitter {
       if (!this.adapter.detectReady(this.outputBuffer)) return;
       this._status = 'ready';
       this._lastBlockingPromptHash = null;
+      this._lastBlockingPromptEmitAt = 0;
       this.outputBuffer = '';
       this.clearStallTimer();
       this.emit('ready');
@@ -1289,7 +1295,14 @@ export class PTYSession extends EventEmitter {
           // Still blocked by same prompt, but don't spam events
           return true;
         }
+        // Time-based debounce: suppress rapid re-emissions within 250ms.
+        // Spinner fragments produce slightly different hashes on each frame.
+        const now = Date.now();
+        if (now - this._lastBlockingPromptEmitAt < PTYSession.BLOCKING_PROMPT_DEBOUNCE_MS) {
+          return true;
+        }
         this._lastBlockingPromptHash = promptHash;
+        this._lastBlockingPromptEmitAt = now;
 
         const promptInfo: BlockingPromptInfo = {
           type: detection.type || 'unknown',
@@ -1360,6 +1373,7 @@ export class PTYSession extends EventEmitter {
       } else {
         // No blocking prompt detected - clear the hash
         this._lastBlockingPromptHash = null;
+        this._lastBlockingPromptEmitAt = 0;
       }
     }
 
@@ -1592,6 +1606,7 @@ export class PTYSession extends EventEmitter {
     const normalized = PTYSession.normalizeKeyList(keyList);
     this._stallEmissionCount = 0;
     this._lastBlockingPromptHash = null;
+    this._lastBlockingPromptEmitAt = 0;
     this.outputBuffer = '';
     this.resetStallTimer();
 
@@ -1765,6 +1780,7 @@ export class PTYSession extends EventEmitter {
         // Hook says the agent finished — transition to ready.
         this._status = 'ready';
         this._lastBlockingPromptHash = null;
+        this._lastBlockingPromptEmitAt = 0;
         this.outputBuffer = '';
         this.clearStallTimer();
         this.emit('status_changed', 'ready');
