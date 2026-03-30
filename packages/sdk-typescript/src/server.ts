@@ -1,4 +1,7 @@
+import pino from 'pino';
 import type { ParallaxAgent } from './agent-base';
+
+const logger = pino({ name: 'parallax-sdk:server' });
 
 /**
  * Start an agent as a gRPC server
@@ -11,13 +14,13 @@ export async function serveAgent(
 
   // Handle graceful shutdown
   process.on('SIGINT', async () => {
-    console.log('Shutting down agent...');
+    logger.info({ signal: 'SIGINT' }, 'Shutting down agent');
     await agent.shutdown();
     process.exit(0);
   });
 
   process.on('SIGTERM', async () => {
-    console.log('Shutting down agent...');
+    logger.info({ signal: 'SIGTERM' }, 'Shutting down agent');
     await agent.shutdown();
     process.exit(0);
   });

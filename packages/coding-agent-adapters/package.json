@@ -48,7 +48,8 @@
   "author": "Parallax",
   "license": "MIT",
   "dependencies": {
-    "adapter-types": "workspace:^"
+    "adapter-types": "workspace:^",
+    "pino": "^9.6.0"
   },
   "peerDependencies": {
     "agent-adapter-monitor": "workspace:^"

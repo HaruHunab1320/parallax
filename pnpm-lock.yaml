@@ -911,6 +911,9 @@ importers:
       agent-adapter-monitor:
         specifier: workspace:^
         version: link:../adapter-monitor
+      pino:
+        specifier: ^9.6.0
+        version: 9.7.0
     devDependencies:
       '@types/node':
         specifier: ^20.0.0

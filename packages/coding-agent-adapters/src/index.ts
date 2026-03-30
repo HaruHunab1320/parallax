@@ -36,6 +36,10 @@
  * ```
  */
 
+import pino from 'pino';
+
+const logger = pino({ name: 'coding-agent-adapters' });
+
 export { AiderAdapter } from './aider-adapter';
 export type {
   ApprovalConfig,
@@ -216,18 +220,20 @@ export async function printMissingAdapters(
   const missing = results.filter((r) => !r.installed);
 
   if (missing.length === 0) {
-    console.log('All CLI tools are installed!');
+    logger.info('All CLI tools are installed');
     return;
   }
 
-  console.log('\nMissing CLI tools:\n');
+  logger.info({ count: missing.length }, 'Missing CLI tools detected');
   for (const m of missing) {
-    console.log(`${m.adapter}`);
-    console.log(`  Install: ${m.installCommand}`);
-    console.log(`  Docs: ${m.docsUrl}`);
-    if (m.error) {
-      console.log(`  Error: ${m.error}`);
-    }
-    console.log();
+    logger.warn(
+      {
+        adapter: m.adapter,
+        installCommand: m.installCommand,
+        docsUrl: m.docsUrl,
+        ...(m.error ? { error: m.error } : {}),
+      },
+      'CLI tool not installed'
+    );
   }
 }
