@@ -38,6 +38,8 @@ export class CircuitBreaker extends EventEmitter {
   private lastSuccessTime?: Date;
   private nextAttemptTime?: Date;
 
+  private halfOpenAttempts: number = 0;
+
   // Lifetime metrics
   private totalExecutions: number = 0;
   private totalSuccesses: number = 0;
