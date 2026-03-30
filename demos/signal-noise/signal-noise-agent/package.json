@@ -20,6 +20,7 @@
     "@parallaxai/sdk-typescript": "workspace:*",
     "@parallaxai/client": "workspace:*",
     "@google/generative-ai": "^0.21.0",
+    "@grpc/grpc-js": "^1.12.4",
     "express": "^4.21.2"
   },
   "optionalDependencies": {
