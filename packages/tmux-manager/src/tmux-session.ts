@@ -873,13 +873,15 @@ export class TmuxSession extends EventEmitter {
     const formatted = this.adapter.formatInput(message);
     this.transport.sendText(this.tmuxSessionName, formatted);
 
-    // Send Enter after text. Use execSync sleep to ensure the TUI
-    // has processed the text before Enter arrives.
-    const { execSync } = require('child_process');
-    try {
-      execSync('sleep 1.5');
-    } catch { /* ignore */ }
-    this.transport.sendKey(this.tmuxSessionName, 'enter');
+    // Send Enter after text delivery. The transport.sendText is synchronous
+    // (execSync per chunk), so all text is delivered when it returns.
+    // Use setTimeout (not execSync sleep) to avoid blocking the event loop
+    // which would prevent gateway heartbeats and output monitoring.
+    const sessionName = this.tmuxSessionName;
+    const transport = this.transport;
+    setTimeout(() => {
+      transport.sendKey(sessionName, 'enter');
+    }, 1500);
 
     return msg;
   }
