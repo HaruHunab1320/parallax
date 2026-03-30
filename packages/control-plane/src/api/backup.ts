@@ -5,7 +5,7 @@
  */
 
 import type { PrismaClient } from '@prisma/client';
-import { Router } from 'express';
+import { type NextFunction, type Request, type Response, Router } from 'express';
 import type { Logger } from 'pino';
 import type { AuditService } from '../audit/audit-service';
 import { createAuthMiddleware } from '../auth/auth-middleware';
@@ -41,16 +41,17 @@ export function createBackupRouter(
   const log = logger.child({ component: 'BackupAPI' });
 
   // Middleware to check enterprise license
-  const requireBackupFeature = (_req: any, res: any, next: any) => {
+  const requireBackupFeature = (_req: Request, res: Response, next: NextFunction) => {
     try {
       licenseEnforcer.requireFeature('backup_restore', 'Backup & Restore');
       next();
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('Backup/restore feature not available');
+      const err = error as { message?: string; upgradeUrl?: string };
       res.status(403).json({
-        error: error.message,
+        error: err.message ?? 'Feature not available',
         code: 'FEATURE_NOT_AVAILABLE',
-        upgradeUrl: error.upgradeUrl || 'https://parallax.ai/enterprise',
+        upgradeUrl: err.upgradeUrl || 'https://parallax.ai/enterprise',
       });
     }
   };
@@ -64,9 +65,9 @@ export function createBackupRouter(
    * GET /backup
    * Export database backup as JSON
    */
-  router.get('/', async (req: any, res: any) => {
+  router.get('/', async (req: Request, res: Response) => {
     try {
-      log.info({ userId: req.user?.sub }, 'Starting database backup');
+      log.info({ userId: (req as any).user?.sub }, 'Starting database backup');
 
       // Fetch all data (excluding sensitive fields)
       const [patterns, agents, users, schedules, triggers, licenses] =
@@ -151,7 +152,7 @@ export function createBackupRouter(
             schedules.length +
             triggers.length +
             licenses.length,
-          exportedBy: req.user?.email,
+          exportedBy: (req as any).user?.email,
         },
       };
 
@@ -171,7 +172,7 @@ export function createBackupRouter(
       }
 
       log.info(
-        { userId: req.user?.sub, totalRecords: backup.metadata.totalRecords },
+        { userId: (req as any).user?.sub, totalRecords: backup.metadata.totalRecords },
         'Database backup completed'
       );
 
@@ -211,7 +212,7 @@ export function createBackupRouter(
    * GET /backup/info
    * Get backup information without downloading
    */
-  router.get('/info', async (_req: any, res: any) => {
+  router.get('/info', async (_req: Request, res: Response) => {
     try {
       const [
         patternCount,
@@ -257,7 +258,7 @@ export function createBackupRouter(
    * POST /backup/restore
    * Restore database from backup JSON
    */
-  router.post('/restore', async (req: any, res: any) => {
+  router.post('/restore', async (req: Request, res: Response) => {
     try {
       const backup: BackupData = req.body;
 
@@ -279,11 +280,11 @@ export function createBackupRouter(
       }
 
       log.info(
-        { userId: req.user?.sub, backupTimestamp: backup.timestamp },
+        { userId: (req as any).user?.sub, backupTimestamp: backup.timestamp },
         'Starting database restore'
       );
 
-      const mode = req.query.mode || 'merge'; // 'merge' or 'replace'
+      const mode = (req.query.mode as string) || 'merge'; // 'merge' or 'replace'
       const results: Record<
         string,
         { created: number; updated: number; skipped: number }
@@ -477,7 +478,7 @@ export function createBackupRouter(
       }
 
       log.info(
-        { userId: req.user?.sub, mode, results },
+        { userId: (req as any).user?.sub, mode, results },
         'Database restore completed'
       );
 
@@ -514,7 +515,7 @@ export function createBackupRouter(
    * POST /backup/validate
    * Validate a backup file without restoring
    */
-  router.post('/validate', async (req: any, res: any) => {
+  router.post('/validate', async (req: Request, res: Response) => {
     try {
       const backup: BackupData = req.body;
 

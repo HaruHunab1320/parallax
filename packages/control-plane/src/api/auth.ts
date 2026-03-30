@@ -4,7 +4,7 @@
  * REST API endpoints for user authentication (login, register, refresh, etc.)
  */
 
-import { Router } from 'express';
+import { type NextFunction, type Request, type Response, Router } from 'express';
 import type { Logger } from 'pino';
 import { createAuthMiddleware } from '../auth/auth-middleware';
 import { AuthError, type AuthService } from '../auth/auth-service';
@@ -19,16 +19,17 @@ export function createAuthRouter(
   const log = logger.child({ component: 'AuthAPI' });
 
   // Middleware to check if multi_user feature is enabled
-  const requireMultiUser = (_req: any, res: any, next: any) => {
+  const requireMultiUser = (_req: Request, res: Response, next: NextFunction) => {
     try {
       licenseEnforcer.requireFeature('multi_user', 'Multi-User Authentication');
       next();
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('Multi-user feature not available');
+      const err = error as { message?: string; upgradeUrl?: string };
       res.status(403).json({
-        error: error.message,
+        error: err.message ?? 'Feature not available',
         code: 'FEATURE_NOT_AVAILABLE',
-        upgradeUrl: error.upgradeUrl || 'https://parallax.ai/enterprise',
+        upgradeUrl: err.upgradeUrl || 'https://parallax.ai/enterprise',
       });
     }
   };
@@ -40,7 +41,7 @@ export function createAuthRouter(
    * POST /auth/register
    * Register a new user account
    */
-  router.post('/register', async (req: any, res: any) => {
+  router.post('/register', async (req: Request, res: Response) => {
     try {
       const { email, password, name } = req.body;
 
@@ -81,7 +82,7 @@ export function createAuthRouter(
    * POST /auth/login
    * Login with email and password
    */
-  router.post('/login', async (req: any, res: any) => {
+  router.post('/login', async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
 
@@ -122,7 +123,7 @@ export function createAuthRouter(
    * POST /auth/refresh
    * Refresh access token using refresh token
    */
-  router.post('/refresh', async (req: any, res: any) => {
+  router.post('/refresh', async (req: Request, res: Response) => {
     try {
       const { refreshToken } = req.body;
 
@@ -160,7 +161,7 @@ export function createAuthRouter(
    * POST /auth/forgot-password
    * Request a password reset token
    */
-  router.post('/forgot-password', async (req: any, res: any) => {
+  router.post('/forgot-password', async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
 
@@ -205,7 +206,7 @@ export function createAuthRouter(
    * POST /auth/reset-password
    * Reset password using reset token
    */
-  router.post('/reset-password', async (req: any, res: any) => {
+  router.post('/reset-password', async (req: Request, res: Response) => {
     try {
       const { token, newPassword } = req.body;
 
@@ -249,10 +250,10 @@ export function createAuthRouter(
   router.post(
     '/change-password',
     createAuthMiddleware(authService, logger),
-    async (req: any, res: any) => {
+    async (req: Request, res: Response) => {
       try {
         const { currentPassword, newPassword } = req.body;
-        const userId = req.user?.sub;
+        const userId = (req as any).user?.sub;
 
         if (!userId) {
           res.status(401).json({
@@ -303,9 +304,9 @@ export function createAuthRouter(
   router.get(
     '/me',
     createAuthMiddleware(authService, logger),
-    async (req: any, res: any) => {
+    async (req: Request, res: Response) => {
       try {
-        const userId = req.user?.sub;
+        const userId = (req as any).user?.sub;
 
         if (!userId) {
           res.status(401).json({
@@ -345,7 +346,7 @@ export function createAuthRouter(
    * - Add tokens to a blocklist (if using Redis)
    * - Log the logout event for audit purposes
    */
-  router.post('/logout', async (_req: any, res: any) => {
+  router.post('/logout', async (_req: Request, res: Response) => {
     // In a stateless JWT system, we just acknowledge the logout
     // The client should discard their tokens
     log.debug('Logout acknowledged');
@@ -359,7 +360,7 @@ export function createAuthRouter(
    * POST /auth/verify
    * Verify a token is valid (for external services)
    */
-  router.post('/verify', async (req: any, res: any) => {
+  router.post('/verify', async (req: Request, res: Response) => {
     try {
       const { token } = req.body;
 
