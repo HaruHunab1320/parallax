@@ -15,7 +15,9 @@
     "docker:build:codex": "./scripts/build-images.sh codex",
     "docker:build:gemini": "./scripts/build-images.sh gemini",
     "docker:build:aider": "./scripts/build-images.sh aider",
-    "docker:push": "./scripts/build-images.sh --push"
+    "docker:push": "./scripts/build-images.sh --push",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@parallaxai/runtime-interface": "workspace:*",
@@ -33,6 +35,7 @@
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.5.10",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.1.1"
   }
 }

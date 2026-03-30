@@ -579,8 +579,10 @@ export class DockerRuntime extends BaseRuntimeProvider {
   }
 
   private parseMemory(memory?: string): number | undefined {
-    if (!memory) return this.parseMemory(this.options.defaultResources?.memory);
-    if (!memory) return undefined;
+    if (!memory) {
+      const fallback = this.options.defaultResources?.memory;
+      return fallback ? this.parseMemory(fallback) : undefined;
+    }
 
     const match = memory.match(/^(\d+)(Mi|Gi|M|G)?$/i);
     if (!match) return undefined;
@@ -598,8 +600,10 @@ export class DockerRuntime extends BaseRuntimeProvider {
   }
 
   private parseCpu(cpu?: string): number | undefined {
-    if (!cpu) return this.parseCpu(this.options.defaultResources?.cpu);
-    if (!cpu) return undefined;
+    if (!cpu) {
+      const fallback = this.options.defaultResources?.cpu;
+      return fallback ? this.parseCpu(fallback) : undefined;
+    }
 
     // Convert CPU string to Docker CPU quota
     // "1" = 1 CPU = 100000 quota (with 100000 period)
