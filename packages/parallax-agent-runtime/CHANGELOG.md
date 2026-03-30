@@ -2,6 +2,13 @@
 
 All notable changes to `parallax-agent-runtime` will be documented in this file.
 
+## [0.8.9] - 2026-03-30
+
+### Changed
+- Bumped `pty-manager` from `^1.9.8` to `^1.10.2` (blocking prompt debounce)
+- Bumped `coding-agent-adapters` from `^0.12.0` to `^0.15.0` (auto-response busy guard, Pino logging, approval-preset tests)
+- Bumped `git-workspace-service` from `^0.4.4` to `^0.4.5` (optional credential service, Pino logging)
+
 ## [0.8.8] - 2026-03-09
 
 ### Added

@@ -44,6 +44,7 @@ export interface AuthContext {
 }
 
 export class McpAuthHandler {
+  private logger: Logger;
   private apiKeys: Map<string, ApiKeyConfig> = new Map();
   private jwtSecret?: string;
   private jwtIssuer?: string;
