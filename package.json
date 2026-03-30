@@ -22,7 +22,6 @@
     "test:runtime:verbose": "npx tsx scripts/test-runtime.ts --verbose",
     "test:runtime:full": "npx tsx scripts/test-runtime.ts --claude --verbose",
     "clean": "turbo clean",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "type-check": "turbo run type-check",
     "start": "./start-local.sh",
     "dev": "./start-local.sh",
