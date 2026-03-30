@@ -36,6 +36,7 @@ import type {
 import type { DatabasePatternService } from './database-pattern-service';
 import type {
   IPatternEngine,
+  PatternEngineServices,
   PatternExecutionOptions,
   PatternVersion,
   PatternWithSource,
@@ -45,6 +46,12 @@ import { PatternLoader } from './pattern-loader';
 import type { ExecutionMetrics, Pattern, PatternExecution } from './types';
 
 export class PatternEngine implements IPatternEngine {
+  private runtimeManager: RuntimeManager;
+  private agentRegistry: EtcdRegistry;
+  private patternsDir: string;
+  protected logger: Logger;
+  protected database?: DatabaseService;
+  protected executionEvents?: ExecutionEventBus;
   private loader: PatternLoader;
   private executions: Map<string, PatternExecution> = new Map();
   private localAgentManager: LocalAgentManager;
@@ -58,33 +65,30 @@ export class PatternEngine implements IPatternEngine {
   private executionEngine?: ExecutionEngine;
   private agentRuntimeService?: AgentRuntimeService;
   private threadPreparationService?: ThreadPreparationService;
-  private spawnedAgents: Map<string, AgentHandle[]> = new Map(); // executionId -> spawned agents
-  private spawnedThreads: Map<string, ThreadHandle[]> = new Map(); // executionId -> spawned threads
+  private nodeId?: string;
+  private spawnedAgents: Map<string, AgentHandle[]> = new Map();
+  private spawnedThreads: Map<string, ThreadHandle[]> = new Map();
   private shuttingDown: boolean = false;
 
-  constructor(
-    private runtimeManager: RuntimeManager,
-    private agentRegistry: EtcdRegistry,
-    private patternsDir: string,
-    protected logger: Logger,
-    protected database?: DatabaseService,
-    protected executionEvents?: ExecutionEventBus,
-    databasePatterns?: DatabasePatternService,
-    workspaceService?: WorkspaceService,
-    executionEngine?: ExecutionEngine,
-    agentRuntimeService?: AgentRuntimeService,
-    threadPreparationService?: ThreadPreparationService
-  ) {
-    this.loader = new PatternLoader(patternsDir, logger);
+  constructor(services: PatternEngineServices) {
+    this.runtimeManager = services.runtimeManager;
+    this.agentRegistry = services.agentRegistry;
+    this.patternsDir = services.patternsDir;
+    this.logger = services.logger;
+    this.database = services.database;
+    this.executionEvents = services.executionEvents;
+    this.loader = new PatternLoader(services.patternsDir, services.logger);
     this.localAgentManager = LocalAgentManager.fromEnv();
-    this._calibrationService = new ConfidenceCalibrationService(logger);
-    this.licenseEnforcer = new LicenseEnforcer(logger);
-    this.agentProxy = new AgentProxy(logger);
-    this.databasePatterns = databasePatterns;
-    this.workspaceService = workspaceService;
-    this.executionEngine = executionEngine;
-    this.agentRuntimeService = agentRuntimeService;
-    this.threadPreparationService = threadPreparationService;
+    this._calibrationService = new ConfidenceCalibrationService(
+      services.logger
+    );
+    this.licenseEnforcer = new LicenseEnforcer(services.logger);
+    this.agentProxy = new AgentProxy(services.logger);
+    this.databasePatterns = services.databasePatterns;
+    this.workspaceService = services.workspaceService;
+    this.executionEngine = services.executionEngine;
+    this.agentRuntimeService = services.agentRuntimeService;
+    this.threadPreparationService = services.threadPreparationService;
   }
 
   async initialize(): Promise<void> {
@@ -97,13 +101,10 @@ export class PatternEngine implements IPatternEngine {
   /**
    * Set the gateway service on the internal AgentProxy (for deferred initialization)
    */
-  setGatewayService(service: any): void {
-    if (
-      this.agentProxy &&
-      typeof (this.agentProxy as any).setGatewayService === 'function'
-    ) {
-      (this.agentProxy as any).setGatewayService(service);
-    }
+  setGatewayService(
+    service: import('../grpc/services/gateway-service').GatewayService
+  ): void {
+    this.agentProxy.setGatewayService(service);
   }
 
   /**
@@ -1630,9 +1631,9 @@ export class PatternEngine implements IPatternEngine {
     if (this.databasePatterns) {
       // Note: getByName is async but we need sync here for compatibility
       // The pattern should already be in cache after initialize()
-      const dbPatterns = this.databasePatterns.cache as Map<string, Pattern>;
-      if (dbPatterns?.has(name)) {
-        return dbPatterns.get(name) || null;
+      const dbPatterns = this.databasePatterns.cachedPatterns;
+      if (dbPatterns.has(name)) {
+        return (dbPatterns.get(name) as Pattern) || null;
       }
     }
     return this.loader.getPattern(name) || null;
@@ -1659,14 +1660,8 @@ export class PatternEngine implements IPatternEngine {
     }
 
     // Get database patterns from cache
-    const dbCache = this.databasePatterns.cache as Map<
-      string,
-      PatternWithSource
-    >;
-    if (dbCache) {
-      for (const p of dbCache.values()) {
-        merged.set(p.name, p);
-      }
+    for (const p of this.databasePatterns.cachedPatterns.values()) {
+      merged.set(p.name, p);
     }
 
     return Array.from(merged.values());

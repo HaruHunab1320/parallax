@@ -303,32 +303,21 @@ export async function createServer(): Promise<express.Application> {
 
   // Use traced pattern engine if tracing is enabled
   // Note: workspaceService and agentRuntimeService will be set later after they're initialized
+  const patternEngineServices = {
+    runtimeManager,
+    agentRegistry: registry,
+    patternsDir,
+    logger,
+    database,
+    executionEvents,
+    databasePatterns,
+    executionEngine,
+    // workspaceService and agentRuntimeService set later via setters
+  };
   const patternEngine: IPatternEngine =
     tracingConfig.exporterType !== 'none'
-      ? new TracedPatternEngine(
-          runtimeManager,
-          registry,
-          patternsDir,
-          logger,
-          database,
-          executionEvents,
-          databasePatterns,
-          undefined, // workspaceService - set later
-          executionEngine,
-          undefined // agentRuntimeService - set later
-        )
-      : new PatternEngine(
-          runtimeManager,
-          registry,
-          patternsDir,
-          logger,
-          database,
-          executionEvents,
-          databasePatterns,
-          undefined, // workspaceService - set later
-          executionEngine,
-          undefined // agentRuntimeService - set later
-        );
+      ? new TracedPatternEngine(patternEngineServices)
+      : new PatternEngine(patternEngineServices);
   await patternEngine.initialize();
 
   // Wire up nested pattern execution support
@@ -1012,7 +1001,7 @@ export async function createServer(): Promise<express.Application> {
   }
 
   // Wire gateway service into control-plane AgentProxy (used by PatternEngine)
-  (patternEngine as any).setGatewayService?.(gatewayService);
+  (patternEngine as PatternEngine).setGatewayService(gatewayService);
 
   logger.info('Route setup complete, initializing gRPC server...');
 

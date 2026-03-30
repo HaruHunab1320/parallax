@@ -1,47 +1,14 @@
-import type { ExecutionEngine } from '@parallaxai/data-plane';
 import { PatternTracer } from '@parallaxai/telemetry';
-import type { Logger } from 'pino';
-import type { AgentRuntimeService } from '../agent-runtime';
-import type { DatabaseService } from '../db/database.service';
-import type { ExecutionEventBus } from '../execution-events';
-import type { EtcdRegistry } from '../registry';
-import type { RuntimeManager } from '../runtime-manager';
-import type { ThreadPreparationService } from '../threads';
-import type { Workspace, WorkspaceService } from '../workspace';
-import type { DatabasePatternService } from './database-pattern-service';
-import type { PatternExecutionOptions } from './interfaces';
+import type { PatternEngineServices, PatternExecutionOptions } from './interfaces';
 import { PatternEngine } from './pattern-engine';
 import type { Pattern, PatternExecution } from './types';
+import type { Workspace } from '../workspace';
 
 export class TracedPatternEngine extends PatternEngine {
   private tracer: PatternTracer;
 
-  constructor(
-    runtimeManager: RuntimeManager,
-    agentRegistry: EtcdRegistry,
-    patternsDir: string,
-    logger: Logger,
-    database?: DatabaseService,
-    executionEvents?: ExecutionEventBus,
-    databasePatterns?: DatabasePatternService,
-    workspaceService?: WorkspaceService,
-    executionEngine?: ExecutionEngine,
-    agentRuntimeService?: AgentRuntimeService,
-    threadPreparationService?: ThreadPreparationService
-  ) {
-    super(
-      runtimeManager,
-      agentRegistry,
-      patternsDir,
-      logger,
-      database,
-      executionEvents,
-      databasePatterns,
-      workspaceService,
-      executionEngine,
-      agentRuntimeService,
-      threadPreparationService
-    );
+  constructor(services: PatternEngineServices) {
+    super(services);
     this.tracer = new PatternTracer('control-plane', '0.1.0');
   }
 

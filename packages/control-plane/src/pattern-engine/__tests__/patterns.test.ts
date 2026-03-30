@@ -33,12 +33,12 @@ describe('Pattern Execution Tests', () => {
 
     // Create pattern engine
     const patternsDir = path.join(__dirname, '../../../../../patterns');
-    patternEngine = new PatternEngine(
+    patternEngine = new PatternEngine({
       runtimeManager,
-      registry,
+      agentRegistry: registry,
       patternsDir,
-      logger
-    );
+      logger,
+    });
 
     // Create mock agents
     mockAgents = createMockAgents(5);

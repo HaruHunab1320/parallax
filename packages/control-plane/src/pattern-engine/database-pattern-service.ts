@@ -25,8 +25,13 @@ export interface PatternWithSource extends Pattern {
 
 export class DatabasePatternService {
   private logger: Logger;
-  private cache: Map<string, PatternWithSource> = new Map();
+  private _cache: Map<string, PatternWithSource> = new Map();
   private initialized = false;
+
+  /** Read-only access to the cached patterns */
+  get cachedPatterns(): ReadonlyMap<string, PatternWithSource> {
+    return this._cache;
+  }
 
   constructor(
     private repository: PatternRepository,
@@ -45,10 +50,10 @@ export class DatabasePatternService {
       const patterns = await this.repository.findAll();
       for (const pattern of patterns) {
         const converted = this.fromPrisma(pattern);
-        this.cache.set(converted.name, converted);
+        this._cache.set(converted.name, converted);
       }
       this.initialized = true;
-      this.logger.info({ count: this.cache.size }, 'Database patterns loaded');
+      this.logger.info({ count: this._cache.size }, 'Database patterns loaded');
     } catch (error) {
       this.logger.error({ error }, 'Failed to load database patterns');
       throw error;
@@ -62,7 +67,7 @@ export class DatabasePatternService {
     if (!this.initialized) {
       await this.initialize();
     }
-    return Array.from(this.cache.values());
+    return Array.from(this._cache.values());
   }
 
   /**
@@ -72,7 +77,7 @@ export class DatabasePatternService {
     if (!this.initialized) {
       await this.initialize();
     }
-    return this.cache.get(name) || null;
+    return this._cache.get(name) || null;
   }
 
   /**
@@ -134,7 +139,7 @@ export class DatabasePatternService {
     }
 
     const result = this.fromPrisma(saved);
-    this.cache.set(result.name, result);
+    this._cache.set(result.name, result);
     return result;
   }
 
@@ -148,7 +153,7 @@ export class DatabasePatternService {
     }
 
     await this.repository.delete(existing.id);
-    this.cache.delete(name);
+    this._cache.delete(name);
     this.logger.info({ pattern: name }, 'Pattern deleted');
   }
 
@@ -204,7 +209,7 @@ export class DatabasePatternService {
     );
 
     const result = this.fromPrisma(saved);
-    this.cache.set(result.name, result);
+    this._cache.set(result.name, result);
     return result;
   }
 
@@ -212,7 +217,7 @@ export class DatabasePatternService {
    * Reload all patterns from the database
    */
   async reload(): Promise<void> {
-    this.cache.clear();
+    this._cache.clear();
     this.initialized = false;
     await this.initialize();
   }

@@ -36,13 +36,13 @@ describe('PatternEngine', () => {
     };
 
     const patternsDir = path.join(__dirname, '../../../../../patterns');
-    engine = new PatternEngine(
+    engine = new PatternEngine({
       runtimeManager,
-      registry,
+      agentRegistry: registry,
       patternsDir,
       logger,
-      database
-    );
+      database,
+    });
   });
 
   describe('initialize', () => {

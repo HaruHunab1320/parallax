@@ -56,6 +56,7 @@ export class LeaderElectionService extends EventEmitter {
   private instanceId: string;
   private metadata: Record<string, any>;
   private electionName: string;
+  private _leaseTTL: number;
   private isRunning = false;
   private _isLeader = false;
   private currentLeaderId: string | null = null;

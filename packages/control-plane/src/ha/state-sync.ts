@@ -54,6 +54,7 @@ export class StateSyncService extends EventEmitter {
   private channelPrefix: string;
   private keyPrefix: string;
   private subscriptions: Set<string> = new Set();
+  private _isConnected = false;
 
   constructor(config: StateSyncConfig, logger: Logger) {
     super();
