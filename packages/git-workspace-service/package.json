@@ -63,7 +63,8 @@
   },
   "dependencies": {
     "@octokit/rest": "^20.0.0",
-    "@octokit/auth-app": "^6.0.0"
+    "@octokit/auth-app": "^6.0.0",
+    "pino": "^9.0.0"
   },
   "peerDependencies": {
     "@octokit/rest": ">=20.0.0",

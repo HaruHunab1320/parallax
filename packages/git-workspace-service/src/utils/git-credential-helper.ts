@@ -19,6 +19,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { logger } from './logger';
 
 /**
  * Credential context stored per-workspace
@@ -123,6 +124,7 @@ export async function configureCredentialHelper(
 ): Promise<string> {
   // Create the .git-workspace directory in the workspace
   const helperDir = path.join(workspacePath, '.git-workspace');
+  logger.debug({ workspacePath, workspaceId: context.workspaceId }, 'Configuring credential helper');
   await fs.promises.mkdir(helperDir, { recursive: true });
 
   // Write the context file
@@ -178,6 +180,8 @@ export async function updateCredentials(
     'credential-context.json'
   );
 
+  logger.debug({ workspacePath }, 'Updating workspace credentials');
+
   // Read existing context
   const existingContent = await fs.promises.readFile(contextFilePath, 'utf8');
   const context: CredentialHelperContext = JSON.parse(existingContent);
@@ -201,6 +205,7 @@ export async function cleanupCredentialFiles(
   workspacePath: string
 ): Promise<void> {
   const helperDir = path.join(workspacePath, '.git-workspace');
+  logger.debug({ workspacePath }, 'Cleaning up credential files');
   try {
     await fs.promises.rm(helperDir, { recursive: true, force: true });
   } catch {

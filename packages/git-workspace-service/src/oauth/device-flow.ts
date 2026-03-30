@@ -20,6 +20,7 @@ import type {
   GitProvider,
   OAuthToken,
 } from '../types';
+import { logger as defaultLogger } from '../utils/logger';
 
 // Response types for GitHub OAuth API
 interface DeviceCodeApiResponse {
@@ -100,7 +101,7 @@ export class OAuthDeviceFlow {
   private readonly permissions: AgentPermissions;
   private readonly promptEmitter?: AuthPromptEmitter;
   private readonly timeout: number;
-  private readonly logger?: OAuthDeviceFlowLogger;
+  private readonly logger: OAuthDeviceFlowLogger;
 
   constructor(config: OAuthDeviceFlowConfig, logger?: OAuthDeviceFlowLogger) {
     this.clientId = config.clientId;
@@ -119,7 +120,7 @@ export class OAuthDeviceFlow {
     };
     this.promptEmitter = config.promptEmitter;
     this.timeout = config.timeout || 900;
-    this.logger = logger;
+    this.logger = logger || defaultLogger.child({ component: 'OAuthDeviceFlow' });
   }
 
   /**
@@ -434,9 +435,7 @@ export class OAuthDeviceFlow {
     data: Record<string, unknown>,
     message: string
   ): void {
-    if (this.logger) {
-      this.logger[level](data, message);
-    }
+    this.logger[level](data, message);
   }
 }
 

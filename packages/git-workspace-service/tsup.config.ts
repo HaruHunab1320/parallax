@@ -8,5 +8,5 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   treeshake: true,
-  external: ['@octokit/rest', '@octokit/auth-app'],
+  external: ['@octokit/rest', '@octokit/auth-app', 'pino'],
 });
