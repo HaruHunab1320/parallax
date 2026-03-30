@@ -11,6 +11,10 @@ export type { CLIAdapter } from './adapter-interface.js';
 export { AdapterRegistry } from './adapter-registry.js';
 export { BaseCLIAdapter } from './base-adapter.js';
 
+// Output sanitization
+export { sanitizeOutput } from './output-sanitizer.js';
+export type { SanitizeOptions } from './output-sanitizer.js';
+
 // Types
 export type {
   // Factory types

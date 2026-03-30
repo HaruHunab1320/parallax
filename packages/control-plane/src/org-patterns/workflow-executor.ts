@@ -930,20 +930,10 @@ export class WorkflowExecutor extends EventEmitter {
             if (dataJson) {
               try {
                 const parsed = JSON.parse(dataJson);
-                let raw = parsed.output || '';
-                // Strip ANSI escape codes from terminal output
-                // eslint-disable-next-line no-control-regex
-                raw = raw.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
-                // Strip literal \u001b[...] sequences (JSON-escaped ANSI)
-                raw = raw.replace(/\\u001b\[[0-9;]*[a-zA-Z]/g, '');
-                // Strip TUI chrome: box drawing, repeated dashes, blank lines
-                raw = raw.replace(/[─│╭╮╰╯┌┐└┘├┤┬┴┼▐▛▜▝▘║═╔╗╚╝╠╣╦╩╬]+/g, '');
-                raw = raw.replace(/\n{3,}/g, '\n\n');
-                // Take only the last 8KB — the plan is at the end of the output
-                if (raw.length > 8000) {
-                  raw = raw.slice(-8000);
-                }
-                output = raw.trim();
+                const { sanitizeOutput } = require('adapter-types');
+                output = sanitizeOutput(parsed.output || '', {
+                  maxLength: 8000,
+                });
               } catch {
                 /* ignore parse errors */
               }

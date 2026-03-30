@@ -985,7 +985,11 @@ export class TmuxSession extends EventEmitter {
       timestamp: new Date(),
     };
 
-    const formatted = this.adapter.formatInput(message);
+    let formatted = this.adapter.formatInput(message);
+    // tmux send-keys -l treats \n as Enter — collapse newlines to spaces
+    // to prevent premature prompt submission in TUI apps.
+    // This is tmux-specific; pty-manager handles newlines natively.
+    formatted = formatted.replace(/\n+/g, ' ').trim();
     this.transport.sendText(this.tmuxSessionName, formatted);
 
     // Send Enter after text delivery. The transport.sendText is synchronous

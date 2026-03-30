@@ -243,16 +243,16 @@ export abstract class BaseCLIAdapter implements CLIAdapter {
   }
 
   /**
-   * Default input formatting for TUI compatibility:
-   * - Strip ANSI escape codes (colors, cursor movement)
-   * - Collapse newlines to spaces (prevent premature Enter in TUI)
+   * Default input formatting — strip ANSI escape codes from input text.
+   * Newlines are preserved (pty-manager handles them natively).
+   * Transport-specific formatting (e.g., tmux newline collapsing) is
+   * handled by the transport layer, not the adapter.
    */
   formatInput(message: string): string {
     // eslint-disable-next-line no-control-regex
     return message
       .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
       .replace(/\\u001b\[[0-9;]*[a-zA-Z]/g, '')
-      .replace(/\n+/g, ' ')
       .trim();
   }
 
