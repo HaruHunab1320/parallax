@@ -1172,9 +1172,15 @@ export class PatternEngine implements IPatternEngine {
           }
         : input;
 
+      // Pass credentials into the workflow input so thread workspaces can use them
+      const workflowInputWithCreds = {
+        ...workflowInput,
+        credentials: options?.credentials,
+      };
+
       const workflowResult: WorkflowResult = await executor.execute(
         orgPattern,
-        workflowInput
+        workflowInputWithCreds
       );
 
       // Map workflow result back to PatternExecution format

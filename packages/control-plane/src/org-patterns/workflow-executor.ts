@@ -155,8 +155,8 @@ export class WorkflowExecutor extends EventEmitter {
         unsubscribeMessages();
       }
 
-      // Cleanup agents
-      await this.cleanupAgents(context);
+      // Don't cleanup agents — threads stay alive so engineers can
+      // finish pushing code and creating PRs after the workflow completes.
 
       const completedAt = new Date();
       const finalOutput = this.extractOutput(pattern.workflow.output, context);
@@ -294,7 +294,11 @@ export class WorkflowExecutor extends EventEmitter {
         role: roleId,
         preparation: {
           workspace: (role.threadConfig.workspace as any)?.inherit
-            ? { ...(role.threadConfig.workspace || {}), repo: context.variables.get('input')?.repo }
+            ? {
+                ...(role.threadConfig.workspace || {}),
+                repo: context.variables.get('input')?.repo,
+                credentialsToken: context.variables.get('credentials')?.token,
+              }
             : role.threadConfig.workspace,
           env: role.threadConfig.env,
           approvalPreset: role.threadConfig.approvalPreset,
