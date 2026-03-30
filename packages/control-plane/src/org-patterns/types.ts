@@ -200,24 +200,13 @@ export interface OrgPattern {
   metadata?: Record<string, any>;
 }
 
-/**
- * Agent instance in an org execution
- */
-export interface OrgAgentInstance {
-  /** Agent ID */
+/** Shared fields for all org execution units */
+interface OrgInstanceBase {
+  /** Instance ID (agent ID or thread ID) */
   id: string;
-
-  /** Whether this instance is backed by an agent or thread */
-  kind?: 'agent' | 'thread';
-
-  /** Backing thread ID when kind=thread */
-  threadId?: string;
 
   /** Assigned role */
   role: string;
-
-  /** Agent endpoint */
-  endpoint: string;
 
   /** Current status */
   status: 'idle' | 'busy' | 'waiting' | 'error';
@@ -232,6 +221,28 @@ export interface OrgAgentInstance {
     askedAt: Date;
   }>;
 }
+
+/** An agent-backed execution unit (direct gRPC connection) */
+export interface OrgAgentUnit extends OrgInstanceBase {
+  kind: 'agent';
+  /** Agent gRPC endpoint */
+  endpoint: string;
+  threadId?: undefined;
+}
+
+/** A thread-backed execution unit (managed via gateway) */
+export interface OrgThreadUnit extends OrgInstanceBase {
+  kind: 'thread';
+  /** Backing thread ID */
+  threadId: string;
+  endpoint?: string;
+}
+
+/**
+ * Agent or thread instance in an org execution.
+ * Discriminated union on `kind` — use narrowing to access variant-specific fields.
+ */
+export type OrgAgentInstance = OrgAgentUnit | OrgThreadUnit;
 
 /**
  * Org pattern execution context
