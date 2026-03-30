@@ -15,7 +15,10 @@ import type {
   AgentHandle,
   AgentMessage,
   AgentMetrics,
+  AgentStatus,
+  AgentType,
   SpawnThreadInput,
+  ThreadEvent,
   ThreadFilter,
   ThreadHandle,
   ThreadInput,
@@ -25,24 +28,50 @@ import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import type { RuntimeHealthStatus } from './runtime-client';
 
+/** Result from a gateway thread spawn dispatch. */
+export interface GatewayThreadSpawnResult {
+  thread_id: string;
+  success: boolean;
+  error_message?: string;
+  workspace_dir?: string;
+}
+
+/** Result from a gateway task dispatch. */
+export interface GatewayTaskResult {
+  value?: unknown;
+  confidence: number;
+  reasoning?: string;
+  metadata?: Record<string, string>;
+  error?: string;
+}
+
+/** Shape of a gateway-connected agent session. */
+export interface GatewayAgentSessionInfo {
+  agentId: string;
+  agentName: string;
+  capabilities: string[];
+  metadata: Record<string, string>;
+  connectedAt: Date;
+  lastHeartbeat: Date;
+  status: string;
+  activeThreads: Map<string, { executionId: string; status: string }>;
+}
+
+/** Gateway thread event payload forwarded to subscribers. */
+export interface GatewayThreadEventPayload {
+  event_type?: string;
+  type?: string;
+  thread_id?: string;
+  data_json?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Minimal interface for the GatewayService methods we need.
  * Avoids circular dependency by not importing the full GatewayService class.
  */
 export interface GatewayServiceAdapter {
-  getConnectedAgents(): Map<
-    string,
-    {
-      agentId: string;
-      agentName: string;
-      capabilities: string[];
-      metadata: Record<string, string>;
-      connectedAt: Date;
-      lastHeartbeat: Date;
-      status: string;
-      activeThreads: Map<string, { executionId: string; status: string }>;
-    }
-  >;
+  getConnectedAgents(): Map<string, GatewayAgentSessionInfo>;
 
   dispatchThreadSpawn(
     agentId: string,
@@ -55,7 +84,7 @@ export interface GatewayServiceAdapter {
       timeoutMs?: number;
     },
     timeout?: number
-  ): Promise<any>;
+  ): Promise<GatewayThreadSpawnResult>;
 
   dispatchThreadInput(
     agentId: string,
@@ -68,17 +97,17 @@ export interface GatewayServiceAdapter {
     agentId: string,
     threadId: string,
     options?: { force?: boolean }
-  ): Promise<any>;
+  ): Promise<void>;
 
   dispatchTask(
     agentId: string,
-    request: { task_id: string; task_description: string; data?: any },
+    request: { task_id: string; task_description: string; data?: unknown },
     timeout?: number
-  ): Promise<any>;
+  ): Promise<GatewayTaskResult>;
 
   subscribeThreadEvents(
     threadId: string,
-    callback: (event: any) => void
+    callback: (event: GatewayThreadEventPayload) => void
   ): () => void;
 }
 
@@ -257,7 +286,7 @@ export class GatewayRuntimeAdapter extends EventEmitter {
 
   subscribeThread(
     threadId: string,
-    callback: (event: any) => void
+    callback: (event: GatewayThreadEventPayload) => void
   ): () => void {
     return this.gateway.subscribeThreadEvents(threadId, callback);
   }
@@ -295,8 +324,8 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     return {
       id: session.agentId,
       name: session.agentName,
-      type: (session.metadata?.agentType as any) || 'unknown',
-      status: 'running' as any,
+      type: (session.metadata?.agentType as AgentType) || 'custom',
+      status: 'ready' as AgentStatus,
       capabilities: session.capabilities,
     };
   }
@@ -306,8 +335,8 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     return Array.from(agents.values()).map((session) => ({
       id: session.agentId,
       name: session.agentName,
-      type: (session.metadata?.agentType as any) || 'unknown',
-      status: 'running' as any,
+      type: (session.metadata?.agentType as AgentType) || 'custom',
+      status: 'ready' as AgentStatus,
       capabilities: session.capabilities,
     }));
   }
@@ -326,7 +355,20 @@ export class GatewayRuntimeAdapter extends EventEmitter {
       },
       options?.timeout
     );
-    return result;
+
+    if (!result || result.error) return undefined;
+
+    return {
+      id: taskId,
+      agentId,
+      direction: 'inbound',
+      type: 'response',
+      content: typeof result.value === 'string'
+        ? result.value
+        : JSON.stringify(result.value ?? ''),
+      timestamp: new Date(),
+      metadata: result.metadata,
+    };
   }
 
   async logs(): Promise<string[]> {
@@ -354,8 +396,8 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     const agents = this.gateway.getConnectedAgents();
 
     // Match by agent type, with optional metadata constraints
-    const agentType = input.agentType as string;
-    const requiredMetadata = (input.metadata as Record<string, any>) || {};
+    const agentType = String(input.agentType);
+    const requiredMetadata: Record<string, unknown> = input.metadata ?? {};
     this.logger.info(
       {
         agentType,

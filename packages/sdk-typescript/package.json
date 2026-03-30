@@ -19,9 +19,11 @@
     "@grpc/proto-loader": "^0.7.13",
     "@prism-lang/confidence": "^1.2.7",
     "google-protobuf": "^3.21.4",
+    "pino": "^9.6.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@types/pino": "^7.0.5",
     "@bufbuild/buf": "^1.50.0",
     "@protobuf-ts/plugin": "^2.11.1",
     "@protobuf-ts/protoc": "^2.11.1",

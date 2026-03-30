@@ -8,6 +8,8 @@
 
 import type { AdapterType } from './base-coding-adapter';
 
+let _autonomousSandboxWarningLogged = false;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -303,6 +305,12 @@ export function generateClaudeApprovalConfig(
   // Autonomous: skip all permission prompts and pass all tools
   if (preset === 'autonomous') {
     cliFlags.push('--dangerously-skip-permissions');
+    if (!_autonomousSandboxWarningLogged) {
+      console.warn(
+        'Autonomous preset uses --dangerously-skip-permissions. Ensure agents run in a sandboxed environment.'
+      );
+      _autonomousSandboxWarningLogged = true;
+    }
     const allTools = Object.keys(CLAUDE_TOOL_CATEGORIES);
     cliFlags.push('--tools', allTools.join(','));
   }

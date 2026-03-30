@@ -5,7 +5,12 @@
  */
 
 import { EventEmitter } from 'node:events';
-import type { AgentConfig } from '@parallaxai/runtime-interface';
+import type {
+  AgentConfig,
+  AgentMessage,
+  ThreadHandle,
+  ThreadWorkspaceRef,
+} from '@parallaxai/runtime-interface';
 import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import type { AgentRuntimeService } from '../agent-runtime';
@@ -27,6 +32,22 @@ export interface WorkflowExecutorOptions {
   maxParallel?: number;
 }
 
+/** The resolved value from sendToThreadAndWait. */
+export interface ThreadCompletionResult {
+  threadId: string;
+  result: string | ThreadHandle | null;
+  summary: string;
+}
+
+/** Union of possible step result types. */
+export type StepResult =
+  | ThreadCompletionResult
+  | AgentMessage
+  | StepResult[]
+  | string
+  | null
+  | undefined;
+
 export interface WorkflowResult {
   /** Execution ID */
   executionId: string;
@@ -35,7 +56,7 @@ export interface WorkflowResult {
   patternName: string;
 
   /** Final output */
-  output: any;
+  output: StepResult;
 
   /** Execution metrics */
   metrics: {
@@ -50,7 +71,7 @@ export interface WorkflowResult {
   steps: Array<{
     step: number;
     type: string;
-    result: any;
+    result: StepResult;
     durationMs: number;
   }>;
 }
@@ -305,7 +326,7 @@ export class WorkflowExecutor extends EventEmitter {
         objective: '', // Task sent later by workflow step execution
         role: roleId,
         preparation: {
-          workspace: (role.threadConfig.workspace as any)?.inherit
+          workspace: (role.threadConfig.workspace as ThreadWorkspaceRef & { inherit?: boolean })?.inherit
             ? {
                 ...(role.threadConfig.workspace || {}),
                 repo: context.variables.get('input')?.repo,
@@ -394,7 +415,7 @@ export class WorkflowExecutor extends EventEmitter {
     step: WorkflowStep,
     context: OrgExecutionContext,
     router: MessageRouter
-  ): Promise<any> {
+  ): Promise<StepResult> {
     switch (step.type) {
       case 'assign':
         return this.executeAssignStep(step, context);
@@ -431,7 +452,7 @@ export class WorkflowExecutor extends EventEmitter {
   private async executeAssignStep(
     step: Extract<WorkflowStep, { type: 'assign' }>,
     context: OrgExecutionContext
-  ): Promise<any> {
+  ): Promise<StepResult> {
     const role = context.pattern.structure.roles[step.role];
     if (!role) {
       throw new Error(`Role ${step.role} not found in pattern`);
@@ -485,7 +506,7 @@ export class WorkflowExecutor extends EventEmitter {
     step: Extract<WorkflowStep, { type: 'parallel' }>,
     context: OrgExecutionContext,
     router: MessageRouter
-  ): Promise<any[]> {
+  ): Promise<StepResult[]> {
     const results = await Promise.all(
       step.steps.map((s) => this.executeStep(s, context, router))
     );
@@ -499,8 +520,8 @@ export class WorkflowExecutor extends EventEmitter {
     step: Extract<WorkflowStep, { type: 'sequential' }>,
     context: OrgExecutionContext,
     router: MessageRouter
-  ): Promise<any[]> {
-    const results: any[] = [];
+  ): Promise<StepResult[]> {
+    const results: StepResult[] = [];
     for (const s of step.steps) {
       const result = await this.executeStep(s, context, router);
       results.push(result);
@@ -546,7 +567,7 @@ export class WorkflowExecutor extends EventEmitter {
   private async executeReviewStep(
     step: Extract<WorkflowStep, { type: 'review' }>,
     context: OrgExecutionContext
-  ): Promise<any> {
+  ): Promise<StepResult> {
     const agentIds = context.roleAssignments.get(step.reviewer);
     if (!agentIds || agentIds.length === 0) {
       throw new Error(`No agents for reviewer role: ${step.reviewer}`);
@@ -573,7 +594,7 @@ export class WorkflowExecutor extends EventEmitter {
   private async executeApproveStep(
     step: Extract<WorkflowStep, { type: 'approve' }>,
     context: OrgExecutionContext
-  ): Promise<any> {
+  ): Promise<StepResult> {
     const agentIds = context.roleAssignments.get(step.approver);
     if (!agentIds || agentIds.length === 0) {
       throw new Error(`No agents for approver role: ${step.approver}`);
@@ -600,7 +621,7 @@ export class WorkflowExecutor extends EventEmitter {
   private async executeAggregateStep(
     step: Extract<WorkflowStep, { type: 'aggregate' }>,
     context: OrgExecutionContext
-  ): Promise<any> {
+  ): Promise<StepResult> {
     // Get results from previous parallel step
     const lastStepIndex = (context.currentStep || 1) - 1;
     const previousResults = context.variables.get(
@@ -673,7 +694,7 @@ export class WorkflowExecutor extends EventEmitter {
     step: Extract<WorkflowStep, { type: 'condition' }>,
     context: OrgExecutionContext,
     router: MessageRouter
-  ): Promise<any> {
+  ): Promise<StepResult> {
     // Evaluate condition (simple variable check for now)
     const condition = this.resolveVariables(step.check, context);
 
@@ -882,8 +903,8 @@ export class WorkflowExecutor extends EventEmitter {
   private async sendToExecutionUnit(
     unit: OrgAgentInstance,
     message: string,
-    input?: any
-  ): Promise<any> {
+    input?: unknown
+  ): Promise<StepResult> {
     if (unit.kind === 'thread' && unit.threadId) {
       return this.sendToThreadAndWait(unit.threadId, message, input);
     }
@@ -900,122 +921,131 @@ export class WorkflowExecutor extends EventEmitter {
    * Subscribes to thread events and resolves when the thread signals
    * turn_complete or completed. Rejects on failure/stop/timeout.
    */
-  private sendToThreadAndWait(
+  private async sendToThreadAndWait(
     threadId: string,
     message: string,
-    _input?: any
-  ): Promise<any> {
+    _input?: unknown
+  ): Promise<ThreadCompletionResult> {
     const runtimeService = this.runtimeService;
 
-    return new Promise(async (resolve, reject) => {
-      let settled = false;
-      let timeoutHandle: NodeJS.Timeout | undefined;
+    // Subscribe to completion events before sending so we don't miss fast responses.
+    const completionPromise = new Promise<ThreadCompletionResult>(
+      (resolve, reject) => {
+        let settled = false;
+        let timeoutHandle: NodeJS.Timeout | undefined;
 
-      const cleanup = () => {
-        if (timeoutHandle) clearTimeout(timeoutHandle);
-        unsubscribe();
-      };
+        const cleanup = () => {
+          if (timeoutHandle) clearTimeout(timeoutHandle);
+          unsubscribe();
+        };
 
-      const finalize = async (eventData?: any) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-
-        try {
-          // Extract output from event data (sent by ManagedThread with turn_complete)
-          let output = '';
-          if (eventData) {
-            const dataJson =
-              eventData.data_json || (eventData as any).data_json;
-            if (dataJson) {
-              try {
-                const parsed = JSON.parse(dataJson);
-                const { sanitizeOutput } = require('adapter-types');
-                output = sanitizeOutput(parsed.output || '', {
-                  maxLength: 8000,
-                });
-              } catch {
-                /* ignore parse errors */
-              }
-            }
-          }
-
-          const thread = await runtimeService.getThread(threadId);
-          const summary =
-            output ||
-            (thread as any)?.completion?.summary ||
-            (thread as any)?.summary ||
-            '';
-          resolve({
-            threadId,
-            result: summary || thread,
-            summary,
-          });
-        } catch (error) {
-          reject(error);
-        }
-      };
-
-      const unsubscribe = runtimeService.subscribeThread(
-        threadId,
-        async (event) => {
-          const eventType = (event.type || (event as any).event_type) as string;
-          if (
-            eventType === 'thread_turn_complete' ||
-            eventType === 'turn_complete' ||
-            eventType === 'thread_completed' ||
-            eventType === 'completed'
-          ) {
-            await finalize(event);
-            return;
-          }
-
-          if (
-            eventType === 'thread_failed' ||
-            eventType === 'failed' ||
-            eventType === 'thread_stopped' ||
-            eventType === 'stopped'
-          ) {
-            if (settled) return;
-            settled = true;
-            cleanup();
-            reject(new Error(`Thread ${threadId} ended with ${event.type}`));
-          }
-        }
-      );
-
-      if (this.stepTimeout > 0) {
-        timeoutHandle = setTimeout(() => {
+        const finalize = async (
+          eventData?: Record<string, unknown>
+        ): Promise<void> => {
           if (settled) return;
           settled = true;
           cleanup();
-          reject(
-            new Error(
-              `Thread ${threadId} timed out after ${this.stepTimeout}ms`
-            )
-          );
-        }, this.stepTimeout);
-      }
 
-      try {
-        // Send only the task message — the input data is already interpolated
-        // into the message via ${step_N_result}. Don't append raw input as
-        // JSON which can be 100KB+.
-        await runtimeService.sendToThread(threadId, {
-          message,
-        });
-      } catch (error) {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(error);
+          try {
+            // Extract output from event data (sent by ManagedThread with turn_complete)
+            let output = '';
+            if (eventData) {
+              const dataJson = eventData.data_json;
+              if (typeof dataJson === 'string') {
+                try {
+                  const parsed = JSON.parse(dataJson) as {
+                    output?: string;
+                  };
+                  const { sanitizeOutput } = require('adapter-types') as {
+                    sanitizeOutput: (
+                      text: string,
+                      opts: { maxLength: number }
+                    ) => string;
+                  };
+                  output = sanitizeOutput(parsed.output || '', {
+                    maxLength: 8000,
+                  });
+                } catch {
+                  /* ignore parse errors */
+                }
+              }
+            }
+
+            const thread = await runtimeService.getThread(threadId);
+            const threadMeta = thread?.metadata as
+              | Record<string, unknown>
+              | undefined;
+            const completion = threadMeta?.completion as
+              | { summary?: string }
+              | undefined;
+            const summary =
+              output ||
+              completion?.summary ||
+              (threadMeta?.summary as string) ||
+              '';
+            resolve({
+              threadId,
+              result: summary || thread,
+              summary,
+            });
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        const unsubscribe = runtimeService.subscribeThread(
+          threadId,
+          (event) => {
+            const eventType = event.type;
+            if (
+              eventType === 'thread_turn_complete' ||
+              eventType === 'thread_completed'
+            ) {
+              void finalize(event.data);
+              return;
+            }
+
+            if (
+              eventType === 'thread_failed' ||
+              eventType === 'thread_stopped'
+            ) {
+              if (settled) return;
+              settled = true;
+              cleanup();
+              reject(
+                new Error(`Thread ${threadId} ended with ${event.type}`)
+              );
+            }
+          }
+        );
+
+        if (this.stepTimeout > 0) {
+          timeoutHandle = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(
+              new Error(
+                `Thread ${threadId} timed out after ${this.stepTimeout}ms`
+              )
+            );
+          }, this.stepTimeout);
+        }
       }
-    });
+    );
+
+    // Send the task message after subscription is in place.
+    await runtimeService.sendToThread(threadId, { message });
+
+    return completionPromise;
   }
 
-  private extractResponseText(response: any): string {
+  private extractResponseText(response: StepResult): string {
     if (typeof response === 'string') return response;
-    if (response?.content) return response.content;
+    if (response == null) return '';
+    if (Array.isArray(response)) return JSON.stringify(response);
+    if ('summary' in response && response.summary) return response.summary;
+    if ('content' in response) return String(response.content);
     return JSON.stringify(response);
   }
 
@@ -1094,7 +1124,7 @@ export class WorkflowExecutor extends EventEmitter {
   private extractOutput(
     outputSpec: string | undefined,
     context: OrgExecutionContext
-  ): any {
+  ): StepResult {
     if (!outputSpec) {
       // Return last step result
       const lastStep = context.currentStep || 0;

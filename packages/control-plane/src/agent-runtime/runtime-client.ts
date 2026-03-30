@@ -38,6 +38,49 @@ export interface RuntimeHealthStatus {
 }
 
 /**
+ * Public interface shared by RuntimeClient and in-process adapters
+ * (e.g., GatewayRuntimeAdapter). Used for RuntimeRegistration so that
+ * both HTTP-backed and in-process runtimes are interchangeable.
+ */
+export interface RuntimeClientInterface extends EventEmitter {
+  connect(): Promise<void>;
+  disconnect(): void;
+  isConnected(): boolean;
+  healthCheck(): Promise<RuntimeHealthStatus>;
+  spawn(config: AgentConfig): Promise<AgentHandle>;
+  stop(
+    agentId: string,
+    options?: { force?: boolean; timeout?: number }
+  ): Promise<void>;
+  get(agentId: string): Promise<AgentHandle | null>;
+  list(filter?: AgentFilter): Promise<AgentHandle[]>;
+  send(
+    agentId: string,
+    message: string,
+    options?: { expectResponse?: boolean; timeout?: number }
+  ): Promise<AgentMessage | undefined>;
+  logs(agentId: string, options?: { tail?: number }): Promise<string[]>;
+  metrics(agentId: string): Promise<AgentMetrics | null>;
+  subscribe(
+    agentId: string,
+    callback: (message: AgentMessage) => void
+  ): () => void;
+  spawnThread(input: SpawnThreadInput): Promise<ThreadHandle>;
+  stopThread(
+    threadId: string,
+    options?: { force?: boolean; timeout?: number }
+  ): Promise<void>;
+  getThread(threadId: string): Promise<ThreadHandle | null>;
+  listThreads(filter?: ThreadFilter): Promise<ThreadHandle[]>;
+  sendToThread(threadId: string, input: ThreadInput): Promise<void>;
+  subscribeThread(
+    threadId: string,
+    callback: (event: ThreadEvent) => void
+  ): () => void;
+  cleanupExecution(executionId: string): Promise<void>;
+}
+
+/**
  * Client for communicating with a runtime server
  */
 export class RuntimeClient extends EventEmitter {

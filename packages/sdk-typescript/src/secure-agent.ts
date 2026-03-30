@@ -146,7 +146,6 @@ export class MTLSCredentialsProvider {
  */
 export abstract class SecureParallaxAgent extends ParallaxAgent {
   protected mtlsConfig?: MTLSConfig;
-  protected logger?: Logger;
   protected credentialsProvider?: MTLSCredentialsProvider;
 
   constructor(
@@ -157,14 +156,13 @@ export abstract class SecureParallaxAgent extends ParallaxAgent {
     mtlsConfig?: MTLSConfig,
     logger?: Logger
   ) {
-    super(id, name, capabilities, metadata);
+    super(id, name, capabilities, logger ? { ...metadata, logger } : metadata);
     this.mtlsConfig = mtlsConfig;
-    this.logger = logger || console;
 
     if (mtlsConfig?.enabled) {
       this.credentialsProvider = new MTLSCredentialsProvider(
         mtlsConfig,
-        this.logger!
+        this.logger
       );
     }
   }

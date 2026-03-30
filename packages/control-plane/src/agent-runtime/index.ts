@@ -25,11 +25,16 @@ export {
   RuntimeRegistration,
 } from './agent-runtime-service';
 export {
+  GatewayAgentSessionInfo,
   GatewayRuntimeAdapter,
   GatewayServiceAdapter,
+  GatewayTaskResult,
+  GatewayThreadEventPayload,
+  GatewayThreadSpawnResult,
 } from './gateway-runtime-adapter';
 export {
   RuntimeClient,
+  RuntimeClientInterface,
   RuntimeClientOptions,
   RuntimeHealthStatus,
 } from './runtime-client';

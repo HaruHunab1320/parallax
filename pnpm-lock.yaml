@@ -1681,6 +1681,9 @@ importers:
       google-protobuf:
         specifier: ^3.21.4
         version: 3.21.4
+      pino:
+        specifier: ^9.6.0
+        version: 9.7.0
       uuid:
         specifier: ^9.0.0
         version: 9.0.1
@@ -1700,6 +1703,9 @@ importers:
       '@types/node':
         specifier: ^22.14.1
         version: 22.16.5
+      '@types/pino':
+        specifier: ^7.0.5
+        version: 7.0.5
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0
@@ -5997,6 +6003,10 @@ packages:
 
   '@types/node@25.5.0':
     resolution: {integrity: sha512-jp2P3tQMSxWugkCUKLRPVUpGaL5MVFwF8RDuSRztfwgN1wmqJeMSbKlnEtQqU8UrhTmzEmZdu2I6v2dpp7XIxw==}
+
+  '@types/pino@7.0.5':
+    resolution: {integrity: sha512-wKoab31pknvILkxAF8ss+v9iNyhw5Iu/0jLtRkUD74cNfOOLJNnqfFKAv0r7wVaTQxRZtWrMpGfShwwBjOcgcg==}
+    deprecated: This is a stub types definition. pino provides its own type definitions, so you do not need this installed.
 
   '@types/prismjs@1.26.5':
     resolution: {integrity: sha512-AUZTa7hQ2KY5L7AmtSiqxlhWxb4ina0yd8hNbl4TWuqnv/pFP0nDMb3YrfSBf4hJVGLh2YEIBfKaBW/9UEl6IQ==}
@@ -18331,6 +18341,10 @@ snapshots:
   '@types/node@25.5.0':
     dependencies:
       undici-types: 7.18.2
+
+  '@types/pino@7.0.5':
+    dependencies:
+      pino: 9.7.0
 
   '@types/prismjs@1.26.5': {}
 

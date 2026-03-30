@@ -21,6 +21,7 @@ import type {
 import type { Logger } from 'pino';
 import {
   RuntimeClient,
+  type RuntimeClientInterface,
   type RuntimeClientOptions,
   type RuntimeHealthStatus,
 } from './runtime-client';
@@ -28,7 +29,7 @@ import {
 export interface RuntimeRegistration {
   name: string;
   type: 'local' | 'docker' | 'kubernetes' | 'gateway';
-  client: RuntimeClient;
+  client: RuntimeClientInterface;
   priority: number; // Lower = higher priority for agent placement
   healthy: boolean;
 }
@@ -65,24 +66,26 @@ export class AgentRuntimeService extends EventEmitter {
   registerRuntimeDirect(
     name: string,
     type: 'local' | 'docker' | 'kubernetes' | 'gateway',
-    client: RuntimeClient,
+    client: RuntimeClientInterface,
     priority: number = 100
   ): void {
     // Set up event forwarding
-    client.on('thread_event', (data: any) =>
-      this.emit('thread_event', { ...data, runtime: name })
+    client.on(
+      'thread_event',
+      (data: { event: ThreadEvent; thread: ThreadHandle }) =>
+        this.emit('thread_event', { ...data, runtime: name })
     );
-    client.on('agent_started', (data: any) =>
+    client.on('agent_started', (data: { agentId: string }) =>
       this.emit('agent_started', { ...data, runtime: name })
     );
-    client.on('agent_stopped', (data: any) =>
+    client.on('agent_stopped', (data: { agentId: string }) =>
       this.emit('agent_stopped', { ...data, runtime: name })
     );
 
     const registration: RuntimeRegistration = {
       name,
       type,
-      client: client as any,
+      client,
       priority,
       healthy: true,
     };

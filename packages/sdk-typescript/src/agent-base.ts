@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
+import pino from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import { type AgentResponse, ensureConfidence } from './types/agent-response';
 import type {
@@ -102,6 +103,7 @@ export abstract class ParallaxAgent {
   protected gatewayProto: any;
   protected leaseId?: string;
   protected renewInterval?: NodeJS.Timeout;
+  protected logger: pino.Logger;
   private gatewayStream?: grpc.ClientDuplexStream<any, any>;
   private gatewayHeartbeatTimer?: NodeJS.Timeout;
   private gatewayReconnecting: boolean = false;
@@ -116,6 +118,9 @@ export abstract class ParallaxAgent {
     public readonly metadata: Record<string, any> = {}
   ) {
     this.uuid = uuidv4();
+    this.logger =
+      (metadata?.logger as pino.Logger) ??
+      pino({ name: `parallax-agent:${name}` });
     this.server = new grpc.Server();
     this.loadProtos();
   }
@@ -296,7 +301,8 @@ export abstract class ParallaxAgent {
             return;
           }
 
-          console.log(
+          this.logger.info(
+            { agentId: this.id, port: actualPort },
             `Agent ${this.name} (${this.id}) listening on port ${actualPort}`
           );
 
@@ -314,7 +320,7 @@ export abstract class ParallaxAgent {
             );
             resolve(actualPort);
           } catch (regError) {
-            console.error('Failed to register with control plane:', regError);
+            this.logger.error({ err: regError }, 'Failed to register with control plane');
             // Still resolve - agent can work without registration
             resolve(actualPort);
           }
@@ -363,18 +369,18 @@ export abstract class ParallaxAgent {
     return new Promise((resolve, reject) => {
       this.registryClient.register(request, (error: any, response: any) => {
         if (error) {
-          console.error('Agent registration failed:', {
+          this.logger.error({
             agentId: this.id,
             endpoint,
             message: error.message,
             code: error.code,
             details: error.details,
-          });
+          }, 'Agent registration failed');
           reject(error);
           return;
         }
 
-        console.log(`Agent ${this.name} registered with control plane`);
+        this.logger.info({ agentId: this.id }, `Agent ${this.name} registered with control plane`);
         this.leaseId = response.lease_id;
 
         // Start lease renewal
@@ -395,7 +401,7 @@ export abstract class ParallaxAgent {
       try {
         await this.renewLease();
       } catch (error) {
-        console.error('Failed to renew lease:', error);
+        this.logger.error({ err: error }, 'Failed to renew lease');
       }
     }, 30000);
   }
@@ -574,7 +580,8 @@ export abstract class ParallaxAgent {
       },
     });
 
-    console.log(
+    this.logger.info(
+      { agentId: this.id, endpoint },
       `Agent ${this.name} (${this.id}) connecting via gateway to ${endpoint}`
     );
 
@@ -598,11 +605,12 @@ export abstract class ParallaxAgent {
     stream.on('data', async (message: any) => {
       if (message.ack) {
         if (message.ack.accepted) {
-          console.log(
+          this.logger.info(
+            { agentId: this.id, nodeId: message.ack.assigned_node_id },
             `Agent ${this.name} connected via gateway (node: ${message.ack.assigned_node_id})`
           );
         } else {
-          console.error(`Gateway rejected agent: ${message.ack.message}`);
+          this.logger.error({ agentId: this.id, reason: message.ack.message }, 'Gateway rejected agent');
           stream.end();
         }
       } else if (message.task_request) {
@@ -613,7 +621,7 @@ export abstract class ParallaxAgent {
             message.task_request
           );
         } catch (err: any) {
-          console.error(`Error handling task request: ${err.message}`);
+          this.logger.error({ err }, 'Error handling task request');
         }
       } else if (message.thread_spawn) {
         try {
@@ -623,13 +631,13 @@ export abstract class ParallaxAgent {
             message.thread_spawn
           );
         } catch (err: any) {
-          console.error(`Error handling thread spawn: ${err.message}`);
+          this.logger.error({ err }, 'Error handling thread spawn');
         }
       } else if (message.thread_input) {
         try {
           await this.handleGatewayThreadInput(message.thread_input);
         } catch (err: any) {
-          console.error(`Error handling thread input: ${err.message}`);
+          this.logger.error({ err }, 'Error handling thread input');
         }
       } else if (message.thread_stop) {
         try {
@@ -639,11 +647,12 @@ export abstract class ParallaxAgent {
             message.thread_stop
           );
         } catch (err: any) {
-          console.error(`Error handling thread stop: ${err.message}`);
+          this.logger.error({ err }, 'Error handling thread stop');
         }
       } else if (message.cancel_task) {
-        console.log(
-          `Task cancelled: ${message.cancel_task.task_id} (${message.cancel_task.reason})`
+        this.logger.info(
+          { taskId: message.cancel_task.task_id, reason: message.cancel_task.reason },
+          `Task cancelled: ${message.cancel_task.task_id}`
         );
         // Cancellation support can be extended in subclasses
       } else if (message.ping) {
@@ -660,12 +669,12 @@ export abstract class ParallaxAgent {
     });
 
     stream.on('error', (error: any) => {
-      console.error(`Gateway stream error: ${error.message}`);
+      this.logger.error({ err: error }, 'Gateway stream error');
       this.handleGatewayDisconnect(error);
     });
 
     stream.on('end', () => {
-      console.log('Gateway stream ended');
+      this.logger.info('Gateway stream ended');
       this.handleGatewayDisconnect(new Error('Stream ended'));
     });
 
@@ -876,7 +885,7 @@ export abstract class ParallaxAgent {
     let attempt = 0;
     const reconnect = async () => {
       if (attempt >= maxAttempts) {
-        console.error(`Gateway reconnect failed after ${attempt} attempts`);
+        this.logger.error({ attempts: attempt }, `Gateway reconnect failed after ${attempt} attempts`);
         this.gatewayReconnecting = false;
         return;
       }
@@ -884,7 +893,7 @@ export abstract class ParallaxAgent {
       const delay = Math.min(initialDelay * 2 ** attempt, maxDelay);
       attempt++;
 
-      console.log(`Gateway reconnecting in ${delay}ms (attempt ${attempt})...`);
+      this.logger.info({ delay, attempt }, `Gateway reconnecting in ${delay}ms (attempt ${attempt})...`);
       await new Promise((r) => setTimeout(r, delay));
 
       try {
@@ -892,11 +901,12 @@ export abstract class ParallaxAgent {
           this.gatewayEndpoint!,
           this.gatewayOptions
         );
-        console.log('Gateway reconnected successfully');
+        this.logger.info('Gateway reconnected successfully');
         this.gatewayReconnecting = false;
       } catch (reconnectError: any) {
-        console.error(
-          `Gateway reconnect attempt ${attempt} failed: ${reconnectError.message}`
+        this.logger.error(
+          { err: reconnectError, attempt },
+          `Gateway reconnect attempt ${attempt} failed`
         );
         await reconnect();
       }
@@ -951,7 +961,7 @@ export abstract class ParallaxAgent {
           });
         });
       } catch (error) {
-        console.error('Failed to unregister:', error);
+        this.logger.error({ err: error }, 'Failed to unregister');
       }
     }
 
