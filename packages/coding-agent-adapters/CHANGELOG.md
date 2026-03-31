@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.15.1] - 2026-03-31
+
+### Added
+- **Exact turn completion verbs** — detection now matches all 8 known verbs (Baked, Brewed, Churned, Cogitated, Cooked, Crunched, Sautéed, Worked) with a generic fallback for future additions.
+- **Spinner verb loading detection** — 40 spinner verbs (Cogitating…, Vibing…, Clauding…, etc.) now trigger loading state, preventing false blocking prompt detection from partial spinner text.
+- **Spinner frame detection** — TUI spinner characters (✢, ✳, ✶, ✻, ✽) at line start detected as loading state.
+- **New auto-response rules**:
+  - `"Do you want to proceed?"` — permission dialog
+  - `"Do you want to make this edit to"` — file edit permission
+  - `"Context limit reached"` — auto-sends `/compact` to continue execution
+  - `"Press X again to exit"` — cancels accidental exit with Escape
+- **New blocking prompt detections**:
+  - `"Credit balance too low"` — halts with billing instructions
+  - `"Context limit reached"` — detected with `/compact` suggestion
+  - `"Claude Code needs your attention"` / `"needs your approval"` — generic notification prompts
+  - Improved bypass permissions dialog matching with exact title text
+- **New CLI flag support** via `ClaudeAdapterConfig`:
+  - `bare: true` → `--bare` (lightweight automation — skips hooks, LSP, plugins, CLAUDE.md discovery)
+  - `maxTurns: N` → `--max-turns N` (limit agentic turns in --print mode)
+  - `maxBudgetUsd: N` → `--max-budget-usd N` (API spend limit in dollars)
+  - `permissionMode: 'acceptEdits'` → `--permission-mode acceptEdits`
+- **Permissive preset uses `--permission-mode acceptEdits`** — auto-accepts file edits without requiring full bypass mode.
+
+### Fixed
+- **Spinner frame false positive** — middle dot `·` separator in dialog text (e.g. "Enter · Esc") no longer triggers loading detection. Only unique spinner characters (✢, ✳, ✶, ✻, ✽) at line start are matched.
+- **Vim mode guard** — `-- INSERT --` in output tail suppresses ready detection (user is typing in vim mode).
+
 ## [0.15.0] - 2026-03-30
 
 ### Added

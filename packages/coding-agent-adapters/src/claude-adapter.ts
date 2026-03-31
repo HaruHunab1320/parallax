@@ -22,6 +22,33 @@ import {
 
 const CLAUDE_HOOK_MARKER_PREFIX = 'PARALLAX_CLAUDE_HOOK';
 
+/**
+ * All 8 turn-completion verbs from Claude Code source.
+ * Randomly selected by the TUI when a turn finishes.
+ */
+const TURN_COMPLETION_VERBS = [
+  'Baked',
+  'Brewed',
+  'Churned',
+  'Cogitated',
+  'Cooked',
+  'Crunched',
+  'Sautéed',
+  'Worked',
+] as const;
+
+/** Turn duration pattern matching all known completion verbs */
+const TURN_DURATION_RE = new RegExp(
+  `(?:${TURN_COMPLETION_VERBS.join('|')})\\s+for\\s+\\d+(?:h\\s+\\d{1,2}m\\s+\\d{1,2}s|m\\s+\\d{1,2}s|s)`
+);
+
+/**
+ * Sample of the 204 spinner verbs from Claude Code source.
+ * Used to detect loading state from spinner text like "Cogitating…"
+ */
+const SPINNER_VERB_RE =
+  /(?:Accomplishing|Architecting|Baking|Brewing|Calculating|Churning|Clauding|Cogitating|Computing|Concocting|Cooking|Crafting|Creating|Crunching|Deliberating|Determining|Doing|Fermenting|Forging|Generating|Imagining|Incubating|Inferring|Kneading|Manifesting|Mulling|Musing|Percolating|Pondering|Processing|Ruminating|Sautéing|Simmering|Synthesizing|Thinking|Tinkering|Vibing|Working|Wrangling)(?:…|\.{3})/;
+
 interface ClaudeHookMarker {
   event: string;
   notification_type?: string;
@@ -34,6 +61,14 @@ interface ClaudeAdapterConfig {
   resume?: string;
   claudeHookTelemetry?: boolean;
   claudeHookMarkerPrefix?: string;
+  /** Use --bare mode for lightweight automation (skips hooks, LSP, plugins, CLAUDE.md) */
+  bare?: boolean;
+  /** Maximum agentic turns (--print mode only) */
+  maxTurns?: number;
+  /** Maximum API spend in USD (--print mode only) */
+  maxBudgetUsd?: number;
+  /** Permission mode: 'default' | 'plan' | 'acceptEdits' | 'bypassPermissions' | 'dontAsk' */
+  permissionMode?: string;
 }
 
 export class ClaudeAdapter extends BaseCodingAdapter {
@@ -144,6 +179,50 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       description: 'Continue without optional feature',
       safe: true,
     },
+    // From leaked source: exact "Do you want to proceed?" permission text
+    {
+      pattern: /Do you want to proceed\?/,
+      type: 'permission',
+      response: '',
+      responseType: 'keys',
+      keys: ['enter'],
+      description: 'Accept Claude "Do you want to proceed?" permission dialog',
+      safe: true,
+      once: true,
+    },
+    // From leaked source: file edit permission dialog
+    {
+      pattern: /Do you want to make this edit to/,
+      type: 'permission',
+      response: '',
+      responseType: 'keys',
+      keys: ['enter'],
+      description: 'Accept Claude file edit permission',
+      safe: true,
+      once: true,
+    },
+    // From leaked source: context limit / compact prompt
+    {
+      pattern:
+        /Context limit reached|\/compact or \/clear to continue/i,
+      type: 'config',
+      response: '/compact',
+      responseType: 'text',
+      description:
+        'Auto-compact when context limit reached to continue execution',
+      safe: true,
+    },
+    // From leaked source: exit confirmation
+    {
+      pattern: /Press .{1,10} again to exit/,
+      type: 'config',
+      response: '',
+      responseType: 'keys',
+      keys: ['escape'],
+      description: 'Cancel accidental exit confirmation',
+      safe: true,
+      once: true,
+    },
   ];
 
   getWorkspaceFiles(): AgentFileDescriptor[] {
@@ -200,11 +279,31 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       }
     }
 
+    // Bare mode: lightweight automation — skips hooks, LSP, plugins, CLAUDE.md
+    if (adapterConfig?.bare) {
+      args.push('--bare');
+    }
+
     // Pass-through resume flags for interactive sessions
     if (adapterConfig?.resume) {
       args.push('--resume', adapterConfig.resume);
     } else if (adapterConfig?.continue) {
       args.push('--continue');
+    }
+
+    // Permission mode override (acceptEdits, plan, dontAsk, etc.)
+    if (adapterConfig?.permissionMode) {
+      args.push('--permission-mode', adapterConfig.permissionMode);
+    }
+
+    // Execution limits (--print mode only)
+    if (!this.isInteractive(config)) {
+      if (adapterConfig?.maxTurns) {
+        args.push('--max-turns', String(adapterConfig.maxTurns));
+      }
+      if (adapterConfig?.maxBudgetUsd) {
+        args.push('--max-budget-usd', String(adapterConfig.maxBudgetUsd));
+      }
     }
 
     // Append approval preset CLI flags
@@ -459,8 +558,12 @@ jq -nc \
     }
     // Spinner fragment: a single short word fragment ending in … or ... with trailing whitespace.
     // Catches partial spinner words split across buffer boundaries.
+    // Also catches spinner frame characters (·, ✢, ✳, ✶, ✻, ✽) from leaked source.
     const trimmedTail = stripped.slice(-200).trim();
     if (/^[a-zA-Z]{1,30}(?:…|\.{3})\s*$/.test(trimmedTail)) {
+      return { detected: false };
+    }
+    if (/^[·✢✳✶✻✽\*]\s+[A-Z]/.test(trimmedTail)) {
       return { detected: false };
     }
 
@@ -499,12 +602,14 @@ jq -nc \
       }
     }
 
-    // Bypass Permissions confirmation prompt — only match the actual modal dialog,
-    // NOT the status bar hint "bypass permissions on". The dialog has numbered options.
+    // From leaked source: exact bypass permissions dialog text.
+    // Title: "WARNING: Claude Code running in Bypass Permissions mode"
+    // Options: "No, exit" and "Yes, I accept"
     if (
-      /Bypass Permissions mode.*accept all responsibility/is.test(stripped) &&
-      /❯\s*1\.\s*No.*exit/i.test(stripped) &&
-      /2\.\s*Yes.*I accept/i.test(stripped)
+      /WARNING.*Bypass Permissions mode|Bypass Permissions mode.*accept all responsibility/is.test(
+        stripped
+      ) &&
+      (/No,?\s*exit/i.test(stripped) || /Yes,?\s*I accept/i.test(stripped))
     ) {
       return {
         detected: true,
@@ -515,6 +620,33 @@ jq -nc \
         canAutoRespond: true,
         instructions:
           'Claude is asking to confirm bypass permissions mode; reply 2 to accept',
+      };
+    }
+
+    // From leaked source: credit balance too low
+    if (/Credit balance too low/i.test(stripped)) {
+      return {
+        detected: true,
+        type: 'config',
+        prompt: 'Credit balance too low',
+        canAutoRespond: false,
+        instructions:
+          'Anthropic account credit balance is too low to continue. Add funds at https://platform.claude.com/settings/billing',
+      };
+    }
+
+    // From leaked source: context limit reached (non-auto-respond version)
+    if (
+      /Context limit reached/i.test(stripped) &&
+      !/\/compact or \/clear/i.test(stripped)
+    ) {
+      return {
+        detected: true,
+        type: 'config',
+        prompt: 'Context limit reached',
+        suggestedResponse: '/compact',
+        canAutoRespond: true,
+        instructions: 'Context window full — run /compact to continue',
       };
     }
 
@@ -577,9 +709,13 @@ jq -nc \
       };
     }
 
-    // Claude-specific: Tool permission prompt (TUI menu — use keys:enter)
+    // From leaked source: exact permission prompt texts.
+    // - "Do you want to proceed?" (generic permission)
+    // - "Do you want to make this edit to {filename}?" (file edit)
+    // - "Claude needs your permission to use {toolName}" (tool use)
+    // - "Claude Code needs your attention" (generic fallback)
     if (
-      /Do you want to|wants? (your )?permission|needs your permission/i.test(
+      /Do you want to|wants? (?:your )?permission|needs your permission|needs your (?:approval|attention)/i.test(
         stripped
       )
     ) {
@@ -693,6 +829,18 @@ jq -nc \
       return true;
     }
 
+    // Spinner verb from Claude Code source (e.g. "Cogitating…", "Vibing…")
+    if (SPINNER_VERB_RE.test(tail)) {
+      return true;
+    }
+
+    // Spinner frame characters (·, ✢, ✳, ✶, ✻, ✽) at start of a line
+    // followed by a capitalized word — indicates active thinking animation.
+    // Must be at line start to avoid matching middle-dot separators like "Enter · Esc".
+    if (/(?:^|\n)\s*[✢✳✶✻✽]\s+[A-Z][a-z]/.test(tail)) {
+      return true;
+    }
+
     return false;
   }
 
@@ -784,8 +932,12 @@ jq -nc \
       return false;
     }
 
-    // Turn duration pattern: "<Verb> for <duration>" (customizable verb)
+    // Turn duration pattern: known completion verbs from Claude Code source
+    // (Baked, Brewed, Churned, Cogitated, Cooked, Crunched, Sautéed, Worked).
+    // Also allow unknown verbs as fallback — Claude Code may add more.
+    // Budget info may follow: "· 1,234 / 2,048 (60%)"
     const hasDuration =
+      TURN_DURATION_RE.test(stripped) ||
       /[A-Z][A-Za-z' -]{2,40}\s+for\s+\d+(?:h\s+\d{1,2}m\s+\d{1,2}s|m\s+\d{1,2}s|s)/.test(
         stripped
       );
@@ -828,11 +980,17 @@ jq -nc \
     // Same rationale as detectTaskComplete: don't let stale loading patterns
     // in the buffer suppress ready detection.
 
-    // Guard: if the output contains a trust prompt, we're NOT ready yet —
-    // the user (or auto-response) still needs to confirm.
+    // Guard: if the output contains a trust prompt or permission, not ready.
     if (
-      /trust.*directory|do you want to|needs? your permission/i.test(stripped)
+      /trust.*directory|do you want to|needs? your permission|needs your (?:approval|attention)/i.test(
+        stripped
+      )
     ) {
+      return false;
+    }
+
+    // From leaked source: vim mode indicator means user is typing, not ready
+    if (/-- INSERT --/.test(stripped.slice(-200))) {
       return false;
     }
 

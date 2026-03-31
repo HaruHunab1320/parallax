@@ -302,6 +302,12 @@ export function generateClaudeApprovalConfig(
 
   const cliFlags: string[] = [];
 
+  // Permissive: auto-accept file edits via --permission-mode acceptEdits
+  // (from leaked source: valid modes are default, plan, acceptEdits, bypassPermissions, dontAsk)
+  if (preset === 'permissive') {
+    cliFlags.push('--permission-mode', 'acceptEdits');
+  }
+
   // Autonomous: skip all permission prompts and pass all tools
   if (preset === 'autonomous') {
     cliFlags.push('--dangerously-skip-permissions');
