@@ -193,9 +193,53 @@ export class CodexAdapter extends BaseCodingAdapter {
     return 'codex';
   }
 
+  /**
+   * When using a cloud proxy, create an isolated CODEX_HOME directory with
+   * an `auth.json` set to apikey mode and a `config.toml` pointing at the
+   * proxy. This bypasses the user's `~/.codex/auth.json` (which may have a
+   * persisted ChatGPT subscription session) so requests actually route
+   * through the proxy with our API key instead of being silently routed
+   * back to OpenAI's chat backend via the user's stored OAuth tokens.
+   *
+   * Returns the path to the temp dir, or null if no proxy is configured.
+   */
+  private prepareIsolatedCodexHome(
+    credentials: AgentCredentials,
+  ): string | null {
+    if (!credentials.openaiBaseUrl) return null;
+
+    // biome-ignore lint: synchronous setup is fine in adapter init path
+    const fs = require('node:fs') as typeof import('node:fs');
+    // biome-ignore lint: synchronous setup is fine in adapter init path
+    const os = require('node:os') as typeof import('node:os');
+    // biome-ignore lint: synchronous setup is fine in adapter init path
+    const path = require('node:path') as typeof import('node:path');
+
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-cloud-'));
+
+    // Write auth.json with apikey mode and the cloud key
+    fs.writeFileSync(
+      path.join(home, 'auth.json'),
+      JSON.stringify({
+        auth_mode: 'apikey',
+        OPENAI_API_KEY: credentials.openaiKey ?? null,
+        tokens: null,
+        last_refresh: null,
+      }),
+    );
+
+    // Write minimal config.toml with proxy base URL.
+    // Don't carry over user model preferences — let the cloud proxy choose.
+    fs.writeFileSync(
+      path.join(home, 'config.toml'),
+      `openai_base_url = "${credentials.openaiBaseUrl}"\n`,
+    );
+
+    return home;
+  }
+
   getArgs(config: SpawnConfig): string[] {
     const args: string[] = [];
-    const credentials = this.getCredentials(config);
 
     // Quiet mode for less verbose output (skip if interactive mode)
     if (!this.isInteractive(config)) {
@@ -206,16 +250,6 @@ export class CodexAdapter extends BaseCodingAdapter {
       if (config.workdir) {
         args.push('--cwd', config.workdir);
       }
-    }
-
-    // Cloud proxy base URL: Codex deprecated OPENAI_BASE_URL env var in favor
-    // of `openai_base_url` in config.toml. Pass it via -c flag so it overrides
-    // the user's persisted config without modifying the file. Also force
-    // auth_mode=apikey so Codex bypasses any existing ChatGPT subscription
-    // session and uses the cloud API key directly.
-    if (credentials.openaiBaseUrl) {
-      args.push('-c', `openai_base_url="${credentials.openaiBaseUrl}"`);
-      args.push('-c', 'auth_mode="apikey"');
     }
 
     // Append approval preset CLI flags
@@ -236,9 +270,13 @@ export class CodexAdapter extends BaseCodingAdapter {
       env.OPENAI_API_KEY = credentials.openaiKey;
     }
 
-    // Base URL override is passed via `-c openai_base_url` in getArgs()
-    // because Codex deprecated the OPENAI_BASE_URL env var in favor of
-    // the config.toml setting. Don't set it as an env var here.
+    // Cloud proxy mode: isolate from the user's ~/.codex/ via CODEX_HOME so
+    // any persisted ChatGPT subscription session is ignored and requests
+    // actually route through the proxy with our API key.
+    const isolatedHome = this.prepareIsolatedCodexHome(credentials);
+    if (isolatedHome) {
+      env.CODEX_HOME = isolatedHome;
+    }
 
     // Model selection from config env
     if (config.env?.OPENAI_MODEL) {

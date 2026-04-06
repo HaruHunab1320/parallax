@@ -158,8 +158,10 @@ describe('CodexAdapter', () => {
     });
   });
 
-  describe('getArgs() cloud proxy', () => {
-    it('should pass openai_base_url via -c flag when proxy URL is set', () => {
+  describe('cloud proxy isolation via CODEX_HOME', () => {
+    it('should set CODEX_HOME to an isolated dir when proxy URL is set', () => {
+      const fs = require('node:fs') as typeof import('node:fs');
+      const path = require('node:path') as typeof import('node:path');
       const config: SpawnConfig = {
         name: 'test',
         type: 'codex',
@@ -168,23 +170,41 @@ describe('CodexAdapter', () => {
           openaiBaseUrl: 'https://cloud.example.com/api/v1',
         },
       };
-      const args = adapter.getArgs(config);
+      const env = adapter.getEnv(config);
 
-      expect(args).toContain('-c');
-      expect(args).toContain('openai_base_url="https://cloud.example.com/api/v1"');
-      expect(args).toContain('auth_mode="apikey"');
+      expect(env.CODEX_HOME).toBeTruthy();
+      const home = env.CODEX_HOME as string;
+      expect(fs.existsSync(home)).toBe(true);
+
+      // auth.json should be in apikey mode with the cloud key, NOT chatgpt mode
+      const authJson = JSON.parse(
+        fs.readFileSync(path.join(home, 'auth.json'), 'utf-8'),
+      );
+      expect(authJson.auth_mode).toBe('apikey');
+      expect(authJson.OPENAI_API_KEY).toBe('sk-cloud-key');
+
+      // config.toml should point at the proxy
+      const configToml = fs.readFileSync(
+        path.join(home, 'config.toml'),
+        'utf-8',
+      );
+      expect(configToml).toContain(
+        'openai_base_url = "https://cloud.example.com/api/v1"',
+      );
+
+      // Cleanup
+      fs.rmSync(home, { recursive: true, force: true });
     });
 
-    it('should NOT pass openai_base_url flag when no proxy URL', () => {
+    it('should NOT set CODEX_HOME when no proxy URL', () => {
       const config: SpawnConfig = {
         name: 'test',
         type: 'codex',
         adapterConfig: { openaiKey: 'sk-key' },
       };
-      const args = adapter.getArgs(config);
+      const env = adapter.getEnv(config);
 
-      expect(args.some((a) => a.startsWith('openai_base_url='))).toBe(false);
-      expect(args.some((a) => a.startsWith('auth_mode='))).toBe(false);
+      expect(env.CODEX_HOME).toBeUndefined();
     });
   });
 

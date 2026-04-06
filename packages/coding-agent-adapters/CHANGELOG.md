@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.16.2] - 2026-04-06
+
+### Fixed
+- **Codex cloud proxy now actually routes through the proxy**: 0.16.1 tried to force apikey mode via `-c auth_mode="apikey"` but `auth_mode` lives in Codex's `auth.json` file, NOT in `config.toml`, so the override did nothing. Codex would silently keep using the persisted ChatGPT subscription tokens from `~/.codex/auth.json` and bypass the proxy entirely. Now creates an isolated `CODEX_HOME` temp directory containing a fresh `auth.json` with `auth_mode: "apikey"` and a `config.toml` with `openai_base_url`. Codex reads from this temp dir instead of the user's `~/.codex/`, so requests actually route through the cloud proxy with the cloud API key.
+
 ## [0.16.1] - 2026-04-06
 
 ### Fixed
