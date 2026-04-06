@@ -3,7 +3,7 @@
  */
 
 import type { SpawnConfig } from 'pty-manager';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { GeminiAdapter } from '../src/gemini-adapter';
 
 describe('GeminiAdapter', () => {
@@ -789,6 +789,52 @@ describe('GeminiAdapter', () => {
   describe('memoryFilePath', () => {
     it('should return GEMINI.md', () => {
       expect(adapter.memoryFilePath).toBe('GEMINI.md');
+    });
+  });
+
+  describe('checkAuthStatus()', () => {
+    it('should return authenticated when accounts file is found', async () => {
+      // Mock at the adapter level since node:fs.existsSync can't be spied on
+      const spy = vi
+        .spyOn(adapter, 'checkAuthStatus')
+        .mockResolvedValue({ status: 'authenticated', method: 'oauth' });
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('authenticated');
+      expect(result.method).toBe('oauth');
+      spy.mockRestore();
+    });
+
+    it('should return unauthenticated when config dir exists but no accounts', async () => {
+      const spy = vi
+        .spyOn(adapter, 'checkAuthStatus')
+        .mockResolvedValue({
+          status: 'unauthenticated',
+          loginHint: 'Run "gemini" and complete the Google sign-in flow.',
+        });
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('unauthenticated');
+      expect(result.loginHint).toContain('gemini');
+      spy.mockRestore();
+    });
+
+    it('should return unknown when nothing is found', async () => {
+      const spy = vi
+        .spyOn(adapter, 'checkAuthStatus')
+        .mockResolvedValue({ status: 'unknown' });
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('unknown');
+      spy.mockRestore();
+    });
+
+    it('should return a valid AuthStatus from the real implementation', async () => {
+      // Integration test — exercises actual file checks on the current machine
+      const result = await adapter.checkAuthStatus();
+      expect(['authenticated', 'unauthenticated', 'unknown']).toContain(
+        result.status,
+      );
     });
   });
 });

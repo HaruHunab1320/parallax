@@ -3,7 +3,7 @@
  */
 
 import type { SpawnConfig } from 'pty-manager';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CodexAdapter } from '../src/codex-adapter';
 
 describe('CodexAdapter', () => {
@@ -139,6 +139,32 @@ describe('CodexAdapter', () => {
 
       expect(env.OPENAI_API_KEY).toBe('sk-openai-test-key');
       expect(env.NO_COLOR).toBeUndefined();
+    });
+
+    it('should set OPENAI_BASE_URL from credentials', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'codex',
+        adapterConfig: {
+          openaiKey: 'sk-cloud-key',
+          openaiBaseUrl: 'https://cloud.example.com/api/v1',
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.OPENAI_BASE_URL).toBe('https://cloud.example.com/api/v1');
+      expect(env.OPENAI_API_KEY).toBe('sk-cloud-key');
+    });
+
+    it('should not set OPENAI_BASE_URL when not provided', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'codex',
+        adapterConfig: { openaiKey: 'sk-key' },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.OPENAI_BASE_URL).toBeUndefined();
     });
   });
 
@@ -642,6 +668,51 @@ describe('CodexAdapter', () => {
   describe('memoryFilePath', () => {
     it('should return AGENTS.md (first memory file)', () => {
       expect(adapter.memoryFilePath).toBe('AGENTS.md');
+    });
+  });
+
+  describe('checkAuthStatus()', () => {
+    it('should return authenticated with subscription when logged in via ChatGPT', async () => {
+      const spy = vi
+        .spyOn(adapter as any, 'execQuiet')
+        .mockResolvedValue('Logged in using ChatGPT');
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('authenticated');
+      expect(result.method).toBe('subscription');
+      spy.mockRestore();
+    });
+
+    it('should return authenticated with api_key when logged in without ChatGPT', async () => {
+      const spy = vi
+        .spyOn(adapter as any, 'execQuiet')
+        .mockResolvedValue('Logged in using API key');
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('authenticated');
+      expect(result.method).toBe('api_key');
+      spy.mockRestore();
+    });
+
+    it('should return unauthenticated when not logged in', async () => {
+      const spy = vi
+        .spyOn(adapter as any, 'execQuiet')
+        .mockResolvedValue('Not logged in');
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('unauthenticated');
+      expect(result.loginHint).toContain('codex login');
+      spy.mockRestore();
+    });
+
+    it('should return unknown when command fails', async () => {
+      const spy = vi
+        .spyOn(adapter as any, 'execQuiet')
+        .mockResolvedValue(null);
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('unknown');
+      spy.mockRestore();
     });
   });
 });

@@ -918,6 +918,9 @@ importers:
         specifier: ^9.6.0
         version: 9.7.0
     devDependencies:
+      '@pinojs/redact':
+        specifier: ^0.4.0
+        version: 0.4.0
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.9
@@ -1191,10 +1194,10 @@ importers:
         specifier: ^1.0.0
         version: 1.26.0(zod@3.25.76)
       coding-agent-adapters:
-        specifier: workspace:^0.12.0
+        specifier: workspace:^0.15.0
         version: link:../coding-agent-adapters
       git-workspace-service:
-        specifier: workspace:^0.4.4
+        specifier: workspace:^0.4.5
         version: link:../git-workspace-service
       jsonwebtoken:
         specifier: ^9.0.0
@@ -1206,7 +1209,7 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       pty-manager:
-        specifier: workspace:^1.9.8
+        specifier: workspace:^1.10.2
         version: link:../pty-manager
       uuid:
         specifier: ^11.0.5
@@ -4891,6 +4894,9 @@ packages:
   '@peculiar/x509@1.14.3':
     resolution: {integrity: sha512-C2Xj8FZ0uHWeCXXqX5B4/gVFQmtSkiuOolzAgutjTfseNOHT3pUjljDZsTSxXFGgio54bCzVFqmEOUrIVk8RDA==}
     engines: {node: '>=20.0.0'}
+
+  '@pinojs/redact@0.4.0':
+    resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -17165,6 +17171,8 @@ snapshots:
       reflect-metadata: 0.2.2
       tslib: 2.8.1
       tsyringe: 4.10.0
+
+  '@pinojs/redact@0.4.0': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true

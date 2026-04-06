@@ -15,6 +15,7 @@ import type {
 import {
   type AgentCredentials,
   type AgentFileDescriptor,
+  type AuthStatus,
   BaseCodingAdapter,
   type InstallationInfo,
   type ModelRecommendations,
@@ -115,6 +116,46 @@ export class GeminiAdapter extends BaseCodingAdapter {
     return {
       powerful: 'gemini-3-pro',
       fast: 'gemini-3-flash',
+    };
+  }
+
+  override async checkAuthStatus(): Promise<AuthStatus> {
+    // Gemini CLI has no dedicated auth status command.
+    // Check for credential files cross-platform.
+    const { existsSync } = await import('node:fs');
+    const { homedir } = await import('node:os');
+    const { join } = await import('node:path');
+
+    const base =
+      process.platform === 'win32'
+        ? join(process.env.APPDATA || join(homedir(), 'AppData', 'Roaming'), 'gemini')
+        : join(homedir(), '.gemini');
+
+    // google_accounts.json is created after OAuth login
+    if (existsSync(join(base, 'google_accounts.json'))) {
+      return { status: 'authenticated', method: 'oauth' };
+    }
+    // If the config dir exists but no accounts file, likely not authenticated
+    if (existsSync(base)) {
+      return {
+        status: 'unauthenticated',
+        loginHint: 'Run "gemini" and complete the Google sign-in flow.',
+      };
+    }
+    return { status: 'unknown' };
+  }
+
+  override async triggerAuth(): Promise<{
+    launched: boolean;
+    url?: string;
+    instructions: string;
+  } | null> {
+    // Gemini CLI has no dedicated auth command — auth is embedded in startup.
+    // Best we can do: tell the user to run it manually.
+    return {
+      launched: false,
+      instructions:
+        'Run "gemini" in your terminal and complete the Google sign-in flow.',
     };
   }
 

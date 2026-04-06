@@ -14,6 +14,7 @@ import type {
 import {
   type AgentCredentials,
   type AgentFileDescriptor,
+  type AuthStatus,
   BaseCodingAdapter,
   type InstallationInfo,
   type ModelRecommendations,
@@ -129,6 +130,65 @@ export class CodexAdapter extends BaseCodingAdapter {
     };
   }
 
+  override async checkAuthStatus(): Promise<AuthStatus> {
+    const out = await this.execQuiet('codex login status 2>&1');
+    if (!out) return { status: 'unknown' };
+
+    // Check negative patterns first ("Not logged in" contains "logged in")
+    if (/not.logged.in|no.active.session/i.test(out)) {
+      return {
+        status: 'unauthenticated',
+        loginHint: 'Run "codex login" to sign in with your ChatGPT account.',
+      };
+    }
+    if (/logged.in/i.test(out)) {
+      // e.g. "Logged in using ChatGPT"
+      const method = /chatgpt/i.test(out) ? 'subscription' : 'api_key';
+      return { status: 'authenticated', method, detail: out.trim() };
+    }
+    return { status: 'unknown' };
+  }
+
+  override async triggerAuth(): Promise<{
+    launched: boolean;
+    url?: string;
+    deviceCode?: string;
+    instructions: string;
+  } | null> {
+    // codex login --device-auth requests a device code from OpenAI.
+    // Stores token in ~/.codex/auth.json — works for all subsequent launches.
+    const raw = await this.execQuiet('codex login --device-auth 2>&1', 15000);
+
+    // Strip ANSI escape codes before parsing
+    const out = raw ? raw.replace(/\x1b\[[0-9;]*m/g, '') : '';
+
+    if (!raw || /429|too many requests|rate.limit/i.test(out)) {
+      return {
+        launched: false,
+        instructions: 'Rate limited by OpenAI. Wait a minute and try again.',
+      };
+    }
+    if (/error/i.test(out) && !out.includes('auth.openai.com')) {
+      return {
+        launched: false,
+        instructions: out.split('\n').pop()?.trim() || 'Sign-in failed. Try again.',
+      };
+    }
+
+    const urlMatch = out.match(/https?:\/\/[^\s]+/);
+    // Match the one-time code line: "XY5F-UHM74" (uppercase alphanumeric with hyphen)
+    const codeMatch = out.match(/^\s*([A-Z0-9]+-[A-Z0-9]+)\s*$/m);
+
+    return {
+      launched: true,
+      url: urlMatch?.[0],
+      deviceCode: codeMatch?.[1],
+      instructions: codeMatch?.[1]
+        ? `Open the URL and enter code: ${codeMatch[1]}`
+        : 'Complete sign-in in your browser.',
+    };
+  }
+
   getCommand(): string {
     return 'codex';
   }
@@ -163,6 +223,11 @@ export class CodexAdapter extends BaseCodingAdapter {
     // OpenAI API key from credentials
     if (credentials.openaiKey) {
       env.OPENAI_API_KEY = credentials.openaiKey;
+    }
+
+    // Base URL override (e.g. route through cloud proxy)
+    if (credentials.openaiBaseUrl) {
+      env.OPENAI_BASE_URL = credentials.openaiBaseUrl;
     }
 
     // Model selection from config env

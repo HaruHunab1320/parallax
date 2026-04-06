@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.16.0] - 2026-04-05
+
+### Added
+- **Cloud proxy base URL support**: `AgentCredentials` now accepts `anthropicBaseUrl` and `openaiBaseUrl` fields. When set, adapters inject `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`, or `OPENAI_API_BASE` into the spawned agent environment, routing LLM calls through a proxy (e.g. Eliza Cloud).
+  - Claude adapter: sets `ANTHROPIC_BASE_URL` env var + `CLAUDE_CODE_SIMPLE=1` to bypass subscription auth conflict
+  - Codex adapter: sets `OPENAI_BASE_URL` env var
+  - Aider adapter: sets `ANTHROPIC_API_KEY`, `ANTHROPIC_API_BASE`, `OPENAI_API_KEY`, `OPENAI_API_BASE` env vars for interactive mode; `--openai-api-base` CLI flag for automation mode; `--no-show-model-warnings` when proxy URLs are set
+- **Auth status detection**: New `checkAuthStatus()` method on `BaseCodingAdapter` checks whether a CLI is logged in via its subscription/OAuth.
+  - Claude: parses `claude auth status` JSON output
+  - Codex: pattern-matches `codex login status` output
+  - Gemini: checks for `~/.gemini/google_accounts.json` (cross-platform: `%APPDATA%\gemini\` on Windows)
+  - Aider: returns `unknown` (no subscription auth)
+  - Default base class: returns `unknown`
+- **Auth trigger**: New `triggerAuth()` method on `BaseCodingAdapter` initiates CLI authentication flows. Claude runs `claude auth login` (browser OAuth), Codex runs `codex login --device-auth` (device code with ANSI stripping), Gemini returns manual instructions.
+- **`AuthStatus` type**: Exported from `base-coding-adapter.ts` — `authenticated | unauthenticated | unknown` with optional `method`, `detail`, and `loginHint` fields.
+- **`PreflightResult.auth`**: `checkAdapters()` now includes auth status for installed CLIs, with error handling (falls back to `unknown` on failure).
+- **Claude API key acceptance rule**: Auto-response rule selects "Yes" on the "Do you want to use this API key?" prompt (Up + Enter) when `ANTHROPIC_API_KEY` is injected.
+- **Aider interactive mode env vars**: API keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`) are now set as env vars in interactive mode (previously only passed as `--api-key` flags in automation mode).
+
+### Fixed
+- **Pattern matching order**: Negative patterns ("Not logged in") are now checked before positive patterns ("logged in") in Claude and Codex auth detection to avoid false positives.
+- **`execQuiet` returns output on non-zero exit**: CLI commands like `codex login status` that exit with code 1 on "Not logged in" now return stdout/stderr instead of null.
+- **Aider model selection no longer sniffs `process.env`**: Removed `process.env.GEMINI_API_KEY` / `process.env.GOOGLE_API_KEY` checks that leaked the server's env into model selection. Now uses only credentials from spawn config and the `provider` metadata field.
+- **Aider false blocking prompt detection**: `detectBlockingPrompt` no longer falls back to the base class's broad "any line ending with ?" heuristic. Only detects auth/login, model selection, validation errors, and explicit y/n prompts. Normal LLM streaming output no longer triggers false positives.
+- **Aider interactive mode test**: Corrected assertion — `--auto-commits` is correctly omitted in interactive mode.
+- **`printMissingAdapters` tests**: Fixed tests that referenced `console.log` when the function uses pino logger.
+- **Missing `@pinojs/redact` dev dependency**: Added to fix index.test.ts module load failure.
+
 ## [0.15.1] - 2026-03-31
 
 ### Added

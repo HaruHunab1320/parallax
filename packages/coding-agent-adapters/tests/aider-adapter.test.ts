@@ -87,7 +87,7 @@ describe('AiderAdapter', () => {
       expect(args).not.toContain('--no-show-diffs');
     });
 
-    it('should still include --auto-commits in interactive mode', () => {
+    it('should NOT include --auto-commits in interactive mode', () => {
       const config: SpawnConfig = {
         name: 'test',
         type: 'aider',
@@ -95,7 +95,7 @@ describe('AiderAdapter', () => {
       };
       const args = adapter.getArgs(config);
 
-      expect(args).toContain('--auto-commits');
+      expect(args).not.toContain('--auto-commits');
     });
 
     it('should include model from config env', () => {
@@ -255,6 +255,35 @@ describe('AiderAdapter', () => {
 
       expect(args).toContain('gemini=google-test-key');
     });
+
+    it('should pass --openai-api-base flag in automation mode', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          openaiBaseUrl: 'https://cloud.example.com/api/v1',
+          openaiKey: 'sk-cloud',
+        },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('--openai-api-base');
+      expect(args).toContain('https://cloud.example.com/api/v1');
+    });
+
+    it('should NOT pass --openai-api-base in interactive mode', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          openaiBaseUrl: 'https://cloud.example.com/api/v1',
+          interactive: true,
+        },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).not.toContain('--openai-api-base');
+    });
   });
 
   describe('getEnv()', () => {
@@ -303,6 +332,29 @@ describe('AiderAdapter', () => {
       const env = adapter.getEnv(config);
 
       expect(env.AIDER_NO_GIT).toBe('true');
+    });
+
+    it('should set OPENAI_API_BASE from credentials', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+        adapterConfig: {
+          openaiBaseUrl: 'https://cloud.example.com/api/v1',
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.OPENAI_API_BASE).toBe('https://cloud.example.com/api/v1');
+    });
+
+    it('should not set OPENAI_API_BASE when not provided', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'aider',
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.OPENAI_API_BASE).toBeUndefined();
     });
   });
 
@@ -834,6 +886,13 @@ describe('AiderAdapter', () => {
   describe('memoryFilePath', () => {
     it('should return .aider.conventions.md', () => {
       expect(adapter.memoryFilePath).toBe('.aider.conventions.md');
+    });
+  });
+
+  describe('checkAuthStatus()', () => {
+    it('should return unknown (aider has no subscription auth)', async () => {
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('unknown');
     });
   });
 });

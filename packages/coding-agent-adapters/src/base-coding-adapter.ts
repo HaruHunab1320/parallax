@@ -5,6 +5,7 @@
  * for AI coding agents.
  */
 
+import { exec } from 'node:child_process';
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { SpawnConfig } from 'adapter-types';
@@ -21,6 +22,20 @@ import {
 export type AdapterType = 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes';
 
 /**
+ * Authentication status for a CLI agent's subscription/login.
+ */
+export interface AuthStatus {
+  /** Whether auth status could be determined */
+  status: 'authenticated' | 'unauthenticated' | 'unknown';
+  /** Auth method if authenticated (e.g. "subscription", "api_key", "oauth") */
+  method?: string;
+  /** Human-readable detail (e.g. email, account name) */
+  detail?: string;
+  /** Instruction to authenticate if not logged in */
+  loginHint?: string;
+}
+
+/**
  * Credentials that can be passed via SpawnConfig.adapterConfig
  */
 export interface AgentCredentials {
@@ -29,6 +44,10 @@ export interface AgentCredentials {
   googleKey?: string;
   githubToken?: string;
   custom?: Record<string, string>;
+  /** Override Anthropic API base URL (e.g. cloud proxy) */
+  anthropicBaseUrl?: string;
+  /** Override OpenAI API base URL (e.g. cloud proxy) */
+  openaiBaseUrl?: string;
 }
 
 /**
@@ -192,6 +211,52 @@ export abstract class BaseCodingAdapter extends BaseCLIAdapter {
   abstract getRecommendedModels(
     credentials?: AgentCredentials
   ): ModelRecommendations;
+
+  /**
+   * Check whether the CLI is authenticated via its subscription/login.
+   * Override in subclasses that support a status check command.
+   * Default: returns 'unknown' (no way to check).
+   */
+  async checkAuthStatus(): Promise<AuthStatus> {
+    return { status: 'unknown' };
+  }
+
+  /**
+   * Trigger the CLI's authentication flow.
+   * Returns info about what was launched (URL to open, instructions, etc.).
+   * Override in subclasses. Default: returns null (no auth flow available).
+   */
+  async triggerAuth(): Promise<{
+    launched: boolean;
+    /** URL the user should open (if browser-based auth) */
+    url?: string;
+    /** Device code to enter (Codex) */
+    deviceCode?: string;
+    /** Human-readable instructions */
+    instructions: string;
+  } | null> {
+    return null;
+  }
+
+  /**
+   * Helper: run a command and return stdout, or null on any failure.
+   */
+  protected execQuiet(
+    command: string,
+    timeoutMs = 5000,
+  ): Promise<string | null> {
+    return new Promise((resolve) => {
+      exec(command, { timeout: timeoutMs }, (err, stdout, stderr) => {
+        // Return output even on non-zero exit (e.g. "Not logged in" exits 1)
+        const output = (stdout || stderr || '').trim();
+        if (err && !output) {
+          resolve(null);
+          return;
+        }
+        resolve(output || null);
+      });
+    });
+  }
 
   /**
    * Override stripAnsi to handle TUI cursor movement codes, spinner/box-drawing

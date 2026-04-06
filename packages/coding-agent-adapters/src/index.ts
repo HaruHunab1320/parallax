@@ -71,6 +71,7 @@ export type {
   AdapterType,
   AgentCredentials,
   AgentFileDescriptor,
+  AuthStatus,
   CodingAgentConfig,
   InstallationInfo,
   ModelRecommendations,
@@ -117,7 +118,7 @@ export function createAllAdapters() {
 /**
  * Adapter type to class mapping
  */
-import type { AdapterType } from './base-coding-adapter';
+import type { AdapterType, AuthStatus } from './base-coding-adapter';
 
 export const ADAPTER_TYPES: Record<
   AdapterType,
@@ -155,6 +156,8 @@ export interface PreflightResult {
   error?: string;
   installCommand: string;
   docsUrl: string;
+  /** Subscription/login auth status (only checked if installed) */
+  auth?: AuthStatus;
 }
 
 /**
@@ -178,6 +181,16 @@ export async function checkAdapters(
       const adapter = createAdapter(type);
       const validation = await adapter.validateInstallation();
 
+      // Only check auth if the CLI is installed
+      let auth: AuthStatus | undefined;
+      if (validation.installed) {
+        try {
+          auth = await adapter.checkAuthStatus();
+        } catch {
+          auth = { status: 'unknown' };
+        }
+      }
+
       return {
         adapter: adapter.displayName,
         installed: validation.installed,
@@ -185,6 +198,7 @@ export async function checkAdapters(
         error: validation.error,
         installCommand: adapter.installation.command,
         docsUrl: adapter.installation.docsUrl,
+        auth,
       };
     })
   );

@@ -276,38 +276,30 @@ export class AiderAdapter extends BaseCodingAdapter {
       args.push('--no-show-diffs');
     }
 
+    // Suppress model warnings when using a proxy (keys won't match expected format)
+    const creds = this.getCredentials(config);
+    if (creds.anthropicBaseUrl || creds.openaiBaseUrl) {
+      args.push('--no-show-model-warnings');
+    }
+
     // Set working directory via --file flag prefix
     // Aider uses current directory, so we rely on PTY cwd
 
-    // Model: explicit > provider metadata > inferred from API keys > aider default
+    // Model: explicit > provider metadata > inferred from credentials > aider default
     // Aliases (sonnet, 4o, gemini) are maintained by Aider and auto-update
     const provider = (config.adapterConfig as { provider?: string } | undefined)
       ?.provider;
     const credentials = this.getCredentials(config);
     if (config.env?.AIDER_MODEL) {
       args.push('--model', config.env.AIDER_MODEL);
-    } else if (
-      interactive &&
-      (credentials.googleKey ||
-        process.env.GEMINI_API_KEY ||
-        process.env.GOOGLE_API_KEY)
-    ) {
-      args.push('--model', 'gemini');
-    } else if (!interactive && provider === 'anthropic') {
+    } else if (provider === 'anthropic' || (!provider && credentials.anthropicKey && !credentials.googleKey)) {
       args.push('--model', 'sonnet');
-    } else if (!interactive && provider === 'openai') {
+    } else if (provider === 'openai' || (!provider && credentials.openaiKey && !credentials.anthropicKey)) {
       args.push('--model', '4o');
-    } else if (!interactive && provider === 'google') {
-      args.push('--model', 'gemini');
-    } else if (!interactive && credentials.anthropicKey) {
-      // No explicit provider — infer from available API keys
-      args.push('--model', 'sonnet');
-    } else if (!interactive && credentials.openaiKey) {
-      args.push('--model', '4o');
-    } else if (!interactive && credentials.googleKey) {
+    } else if (provider === 'google' || (!provider && credentials.googleKey)) {
       args.push('--model', 'gemini');
     }
-    // No keys at all → don't force a model, let aider use its own default
+    // No provider or keys → don't force a model, let aider use its own default
 
     // API keys via --api-key flag only in automation mode.
     if (!interactive) {
@@ -317,6 +309,11 @@ export class AiderAdapter extends BaseCodingAdapter {
         args.push('--api-key', `openai=${credentials.openaiKey}`);
       if (credentials.googleKey)
         args.push('--api-key', `gemini=${credentials.googleKey}`);
+
+      // Base URL override (e.g. cloud proxy) — CLI flag for automation mode
+      if (credentials.openaiBaseUrl) {
+        args.push('--openai-api-base', credentials.openaiBaseUrl);
+      }
     }
 
     // Append approval preset CLI flags
@@ -329,8 +326,32 @@ export class AiderAdapter extends BaseCodingAdapter {
   }
 
   getEnv(config: SpawnConfig): Record<string, string> {
-    // API keys are passed via --api-key args, not env vars
+    // API keys are passed via --api-key args in automation mode,
+    // but env vars are needed for interactive mode and base URL overrides.
     const env: Record<string, string> = {};
+    const credentials = this.getCredentials(config);
+
+    // When a proxy base URL is set, litellm needs both provider keys
+    // and base URLs since it routes by model name (anthropic models
+    // use ANTHROPIC_API_KEY, openai models use OPENAI_API_KEY).
+    if (credentials.anthropicBaseUrl) {
+      env.ANTHROPIC_API_BASE = credentials.anthropicBaseUrl;
+    }
+    if (credentials.openaiBaseUrl) {
+      env.OPENAI_API_BASE = credentials.openaiBaseUrl;
+    }
+    // Set API keys via env for interactive mode (--api-key flags only work in automation)
+    if (this.isInteractive(config)) {
+      if (credentials.anthropicKey) {
+        env.ANTHROPIC_API_KEY = credentials.anthropicKey;
+      }
+      if (credentials.openaiKey) {
+        env.OPENAI_API_KEY = credentials.openaiKey;
+      }
+      if (credentials.googleKey) {
+        env.GEMINI_API_KEY = credentials.googleKey;
+      }
+    }
 
     // Disable color for parsing (skip if interactive mode)
     if (!this.isInteractive(config)) {
@@ -408,12 +429,18 @@ export class AiderAdapter extends BaseCodingAdapter {
 
   /**
    * Detect blocking prompts specific to Aider CLI.
+   *
+   * IMPORTANT: Does NOT fall back to base class detection because the base
+   * class has broad heuristics (any line ending with "?") that trigger on
+   * normal LLM output. Aider uses --yes-always to auto-accept most prompts,
+   * so we only need to detect auth/login and the few prompts that bypass it.
+   *
    * Source: io.py, onboarding.py, base_coder.py, report.py
    */
   detectBlockingPrompt(output: string): BlockingPromptDetection {
     const stripped = this.stripAnsi(output);
 
-    // First check for login / auth
+    // Auth / login (highest priority)
     const loginDetection = this.detectLogin(output);
     if (loginDetection.required) {
       return {
@@ -426,7 +453,7 @@ export class AiderAdapter extends BaseCodingAdapter {
       };
     }
 
-    // Model selection
+    // Model selection (onboarding — not handled by --yes-always)
     if (/select.*model|choose.*model|which model/i.test(stripped)) {
       return {
         detected: true,
@@ -449,24 +476,23 @@ export class AiderAdapter extends BaseCodingAdapter {
       };
     }
 
-    // Destructive operations — NOT auto-responded
+    // Explicit y/n prompt NOT already handled by --yes-always
+    // (e.g. destructive ops, git reset confirmations)
     if (
-      /delete|remove|overwrite/i.test(stripped) &&
-      (/\[y\/n\]/i.test(stripped) || /\(Y\)es\/\(N\)o/i.test(stripped))
+      /\[y\/n\]/i.test(stripped) || /\(Y\)es\/\(N\)o/i.test(stripped)
     ) {
       return {
         detected: true,
         type: 'permission',
-        prompt: 'Destructive operation confirmation',
+        prompt: stripped.slice(-200),
         options: ['y', 'n'],
         canAutoRespond: false,
-        instructions:
-          'Aider is asking to perform a potentially destructive operation',
+        instructions: 'Aider is asking for confirmation',
       };
     }
 
-    // Fall back to base class detection
-    return super.detectBlockingPrompt(output);
+    // No blocking prompt detected — normal output
+    return { detected: false };
   }
 
   /**

@@ -3,7 +3,7 @@
  */
 
 import type { SpawnConfig } from 'pty-manager';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ClaudeAdapter } from '../src/claude-adapter';
 
 describe('ClaudeAdapter', () => {
@@ -163,6 +163,34 @@ describe('ClaudeAdapter', () => {
 
       expect(env.ANTHROPIC_API_KEY).toBe('sk-ant-test-key');
       expect(env.CLAUDE_CODE_DISABLE_INTERACTIVE).toBeUndefined();
+    });
+
+    it('should set ANTHROPIC_BASE_URL from credentials', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'claude',
+        adapterConfig: {
+          anthropicKey: 'sk-cloud-key',
+          anthropicBaseUrl: 'https://cloud.example.com/api/v1',
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.ANTHROPIC_BASE_URL).toBe(
+        'https://cloud.example.com/api/v1'
+      );
+      expect(env.ANTHROPIC_API_KEY).toBe('sk-cloud-key');
+    });
+
+    it('should not set ANTHROPIC_BASE_URL when not provided', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'claude',
+        adapterConfig: { anthropicKey: 'sk-key' },
+      };
+      const env = adapter.getEnv(config);
+
+      expect(env.ANTHROPIC_BASE_URL).toBeUndefined();
     });
 
     it('should enable hook telemetry env vars when configured', () => {
@@ -781,6 +809,58 @@ describe('ClaudeAdapter', () => {
       );
       expect(result.exited).toBe(true);
       expect(result.code).toBe(0);
+    });
+  });
+
+  describe('checkAuthStatus()', () => {
+    it('should return authenticated when claude auth status returns loggedIn', async () => {
+      const spy = vi
+        .spyOn(adapter as any, 'execQuiet')
+        .mockResolvedValue(
+          JSON.stringify({
+            loggedIn: true,
+            authMethod: 'claude.ai',
+            email: 'user@example.com',
+            subscriptionType: 'max',
+          }),
+        );
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('authenticated');
+      expect(result.method).toBe('claude.ai');
+      expect(result.detail).toBe('user@example.com');
+      spy.mockRestore();
+    });
+
+    it('should return unauthenticated when loggedIn is false', async () => {
+      const spy = vi
+        .spyOn(adapter as any, 'execQuiet')
+        .mockResolvedValue(JSON.stringify({ loggedIn: false }));
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('unauthenticated');
+      expect(result.loginHint).toContain('claude auth login');
+      spy.mockRestore();
+    });
+
+    it('should return unknown when command fails', async () => {
+      const spy = vi
+        .spyOn(adapter as any, 'execQuiet')
+        .mockResolvedValue(null);
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('unknown');
+      spy.mockRestore();
+    });
+
+    it('should handle non-JSON output with known patterns', async () => {
+      const spy = vi
+        .spyOn(adapter as any, 'execQuiet')
+        .mockResolvedValue('Not logged in. Run claude auth login.');
+
+      const result = await adapter.checkAuthStatus();
+      expect(result.status).toBe('unauthenticated');
+      spy.mockRestore();
     });
   });
 });

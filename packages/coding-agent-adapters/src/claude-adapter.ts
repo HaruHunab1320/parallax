@@ -15,6 +15,7 @@ import type {
 import {
   type AgentCredentials,
   type AgentFileDescriptor,
+  type AuthStatus,
   BaseCodingAdapter,
   type InstallationInfo,
   type ModelRecommendations,
@@ -223,6 +224,19 @@ export class ClaudeAdapter extends BaseCodingAdapter {
       safe: true,
       once: true,
     },
+    // API key detected in environment — accept it (API Keys / Cloud mode)
+    {
+      pattern:
+        /(?:custom|detected).*API key.*(?:environment|ANTHROPIC_API_KEY)|Do you want to use this API key/i,
+      type: 'config',
+      response: '',
+      responseType: 'keys',
+      // Cursor defaults to "2. No" — move up to "1. Yes" then confirm
+      keys: ['up', 'enter'],
+      description: 'Accept detected ANTHROPIC_API_KEY from environment',
+      safe: true,
+      once: true,
+    },
   ];
 
   getWorkspaceFiles(): AgentFileDescriptor[] {
@@ -255,6 +269,60 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     return {
       powerful: 'claude-sonnet-4-20250514',
       fast: 'claude-haiku-4-5-20251001',
+    };
+  }
+
+  override async checkAuthStatus(): Promise<AuthStatus> {
+    const out = await this.execQuiet('claude auth status 2>&1');
+    if (!out) return { status: 'unknown' };
+
+    try {
+      const parsed = JSON.parse(out);
+      if (parsed.loggedIn) {
+        return {
+          status: 'authenticated',
+          method: parsed.authMethod ?? 'subscription',
+          detail: parsed.email || parsed.orgName || parsed.subscriptionType || undefined,
+        };
+      }
+      return {
+        status: 'unauthenticated',
+        loginHint: 'Run "claude auth login" to sign in.',
+      };
+    } catch {
+      // Non-JSON output — check negative patterns first
+      if (/not.logged.in|unauthenticated/i.test(out)) {
+        return {
+          status: 'unauthenticated',
+          loginHint: 'Run "claude auth login" to sign in.',
+        };
+      }
+      if (/logged.in|authenticated/i.test(out)) {
+        return { status: 'authenticated', method: 'subscription' };
+      }
+      return { status: 'unknown' };
+    }
+  }
+
+  override async triggerAuth(): Promise<{
+    launched: boolean;
+    url?: string;
+    instructions: string;
+  } | null> {
+    // claude auth login opens a browser for OAuth
+    const out = await this.execQuiet('claude auth login 2>&1', 15000);
+    if (out && /open.*url|browser/i.test(out)) {
+      const urlMatch = out.match(/https?:\/\/[^\s]+/);
+      return {
+        launched: true,
+        url: urlMatch?.[0],
+        instructions: 'Complete sign-in in your browser.',
+      };
+    }
+    // May have auto-completed or failed
+    return {
+      launched: !!out,
+      instructions: out || 'Run "claude auth login" in your terminal.',
     };
   }
 
@@ -325,6 +393,14 @@ export class ClaudeAdapter extends BaseCodingAdapter {
     // API key from credentials or env
     if (credentials.anthropicKey) {
       env.ANTHROPIC_API_KEY = credentials.anthropicKey;
+      // Skip keychain/subscription auth when an API key is explicitly provided.
+      // Prevents "Auth conflict" error when user is also logged in via subscription.
+      env.CLAUDE_CODE_SIMPLE = '1';
+    }
+
+    // Base URL override (e.g. route through cloud proxy)
+    if (credentials.anthropicBaseUrl) {
+      env.ANTHROPIC_BASE_URL = credentials.anthropicBaseUrl;
     }
 
     // Model selection (if specified in config env)
