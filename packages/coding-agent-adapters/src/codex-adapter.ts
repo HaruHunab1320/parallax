@@ -195,6 +195,7 @@ export class CodexAdapter extends BaseCodingAdapter {
 
   getArgs(config: SpawnConfig): string[] {
     const args: string[] = [];
+    const credentials = this.getCredentials(config);
 
     // Quiet mode for less verbose output (skip if interactive mode)
     if (!this.isInteractive(config)) {
@@ -205,6 +206,16 @@ export class CodexAdapter extends BaseCodingAdapter {
       if (config.workdir) {
         args.push('--cwd', config.workdir);
       }
+    }
+
+    // Cloud proxy base URL: Codex deprecated OPENAI_BASE_URL env var in favor
+    // of `openai_base_url` in config.toml. Pass it via -c flag so it overrides
+    // the user's persisted config without modifying the file. Also force
+    // auth_mode=apikey so Codex bypasses any existing ChatGPT subscription
+    // session and uses the cloud API key directly.
+    if (credentials.openaiBaseUrl) {
+      args.push('-c', `openai_base_url="${credentials.openaiBaseUrl}"`);
+      args.push('-c', 'auth_mode="apikey"');
     }
 
     // Append approval preset CLI flags
@@ -225,10 +236,9 @@ export class CodexAdapter extends BaseCodingAdapter {
       env.OPENAI_API_KEY = credentials.openaiKey;
     }
 
-    // Base URL override (e.g. route through cloud proxy)
-    if (credentials.openaiBaseUrl) {
-      env.OPENAI_BASE_URL = credentials.openaiBaseUrl;
-    }
+    // Base URL override is passed via `-c openai_base_url` in getArgs()
+    // because Codex deprecated the OPENAI_BASE_URL env var in favor of
+    // the config.toml setting. Don't set it as an env var here.
 
     // Model selection from config env
     if (config.env?.OPENAI_MODEL) {

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.16.1] - 2026-04-06
+
+### Fixed
+- **Codex cloud proxy routing**: Codex CLI deprecated the `OPENAI_BASE_URL` env var in favor of `openai_base_url` in `~/.codex/config.toml`. The Codex adapter now passes the proxy base URL via `-c openai_base_url="..."` CLI flag instead of the env var, eliminating the deprecation warning and ensuring requests actually route through the proxy.
+- **Codex auth mode override**: When a proxy base URL is set, the adapter also passes `-c auth_mode="apikey"` so Codex bypasses any persisted ChatGPT subscription session in `~/.codex/auth.json` and uses the provided API key directly. Without this, users with a ChatGPT login would have their requests silently fall back to OpenAI's chat backend, ignoring the cloud proxy entirely.
+
 ## [0.16.0] - 2026-04-05
 
 ### Added

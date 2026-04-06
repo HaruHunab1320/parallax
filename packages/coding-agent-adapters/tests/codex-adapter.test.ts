@@ -141,7 +141,7 @@ describe('CodexAdapter', () => {
       expect(env.NO_COLOR).toBeUndefined();
     });
 
-    it('should set OPENAI_BASE_URL from credentials', () => {
+    it('should NOT set OPENAI_BASE_URL env var (deprecated by Codex)', () => {
       const config: SpawnConfig = {
         name: 'test',
         type: 'codex',
@@ -152,19 +152,39 @@ describe('CodexAdapter', () => {
       };
       const env = adapter.getEnv(config);
 
-      expect(env.OPENAI_BASE_URL).toBe('https://cloud.example.com/api/v1');
+      // Codex deprecated OPENAI_BASE_URL — base URL is passed via -c flag instead
+      expect(env.OPENAI_BASE_URL).toBeUndefined();
       expect(env.OPENAI_API_KEY).toBe('sk-cloud-key');
     });
+  });
 
-    it('should not set OPENAI_BASE_URL when not provided', () => {
+  describe('getArgs() cloud proxy', () => {
+    it('should pass openai_base_url via -c flag when proxy URL is set', () => {
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'codex',
+        adapterConfig: {
+          openaiKey: 'sk-cloud-key',
+          openaiBaseUrl: 'https://cloud.example.com/api/v1',
+        },
+      };
+      const args = adapter.getArgs(config);
+
+      expect(args).toContain('-c');
+      expect(args).toContain('openai_base_url="https://cloud.example.com/api/v1"');
+      expect(args).toContain('auth_mode="apikey"');
+    });
+
+    it('should NOT pass openai_base_url flag when no proxy URL', () => {
       const config: SpawnConfig = {
         name: 'test',
         type: 'codex',
         adapterConfig: { openaiKey: 'sk-key' },
       };
-      const env = adapter.getEnv(config);
+      const args = adapter.getArgs(config);
 
-      expect(env.OPENAI_BASE_URL).toBeUndefined();
+      expect(args.some((a) => a.startsWith('openai_base_url='))).toBe(false);
+      expect(args.some((a) => a.startsWith('auth_mode='))).toBe(false);
     });
   });
 
