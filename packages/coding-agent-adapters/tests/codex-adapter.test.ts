@@ -206,6 +206,97 @@ describe('CodexAdapter', () => {
 
       expect(env.CODEX_HOME).toBeUndefined();
     });
+
+    it('appends extraConfigToml verbatim to the generated config.toml', () => {
+      const fs = require('node:fs') as typeof import('node:fs');
+      const path = require('node:path') as typeof import('node:path');
+      const extra =
+        '[features]\nresponses_websockets = false\nresponses_websockets_v2 = false\n';
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'codex',
+        adapterConfig: {
+          openaiKey: 'sk-cloud-key',
+          openaiBaseUrl: 'https://cloud.example.com/api/v1',
+          extraConfigToml: extra,
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      const home = env.CODEX_HOME as string;
+      const configToml = fs.readFileSync(
+        path.join(home, 'config.toml'),
+        'utf-8',
+      );
+
+      // Base content still present.
+      expect(configToml).toContain(
+        'openai_base_url = "https://cloud.example.com/api/v1"',
+      );
+      // Extra TOML appended verbatim.
+      expect(configToml).toContain('[features]');
+      expect(configToml).toContain('responses_websockets = false');
+      expect(configToml).toContain('responses_websockets_v2 = false');
+      // Base must come BEFORE the extras (caller's settings can't shadow
+      // the openai_base_url that the adapter is responsible for).
+      const baseIdx = configToml.indexOf('openai_base_url');
+      const extraIdx = configToml.indexOf('[features]');
+      expect(baseIdx).toBeLessThan(extraIdx);
+
+      fs.rmSync(home, { recursive: true, force: true });
+    });
+
+    it('writes only base config when extraConfigToml is omitted', () => {
+      const fs = require('node:fs') as typeof import('node:fs');
+      const path = require('node:path') as typeof import('node:path');
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'codex',
+        adapterConfig: {
+          openaiKey: 'sk-cloud-key',
+          openaiBaseUrl: 'https://cloud.example.com/api/v1',
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      const home = env.CODEX_HOME as string;
+      const configToml = fs.readFileSync(
+        path.join(home, 'config.toml'),
+        'utf-8',
+      );
+      expect(configToml).not.toContain('[features]');
+      expect(configToml.trim()).toBe(
+        'openai_base_url = "https://cloud.example.com/api/v1"',
+      );
+
+      fs.rmSync(home, { recursive: true, force: true });
+    });
+
+    it('ignores empty/whitespace extraConfigToml', () => {
+      const fs = require('node:fs') as typeof import('node:fs');
+      const path = require('node:path') as typeof import('node:path');
+      const config: SpawnConfig = {
+        name: 'test',
+        type: 'codex',
+        adapterConfig: {
+          openaiKey: 'sk-cloud-key',
+          openaiBaseUrl: 'https://cloud.example.com/api/v1',
+          extraConfigToml: '   \n   ',
+        },
+      };
+      const env = adapter.getEnv(config);
+
+      const home = env.CODEX_HOME as string;
+      const configToml = fs.readFileSync(
+        path.join(home, 'config.toml'),
+        'utf-8',
+      );
+      expect(configToml.trim()).toBe(
+        'openai_base_url = "https://cloud.example.com/api/v1"',
+      );
+
+      fs.rmSync(home, { recursive: true, force: true });
+    });
   });
 
   describe('detectLogin()', () => {
