@@ -417,6 +417,14 @@ export class BunCompatiblePTYManager extends EventEmitter {
         break;
       }
 
+      case 'isSessionLoading': {
+        this.resolvePending(
+          `isSessionLoading:${id}`,
+          Boolean(event.loading),
+        );
+        break;
+      }
+
       case 'rules': {
         // Convert serialized rules back to AutoResponseRule objects
         const serializedRules = event.rules as SerializedRule[];
@@ -621,6 +629,34 @@ export class BunCompatiblePTYManager extends EventEmitter {
    */
   has(id: string): boolean {
     return this.sessions.has(id);
+  }
+
+  /**
+   * Whether the adapter currently classifies the session as actively
+   * processing work.
+   *
+   * This round-trips to the worker since the adapter lives in the
+   * worker process. Orchestrators (like milady's swarm idle watchdog)
+   * should consult this before assuming a session is idle based on
+   * output byte diffs — TUIs that redraw their status row in place
+   * (Codex's "Working… esc to interrupt") can fool a raw text diff
+   * even while the model is actively reasoning.
+   *
+   * Returns `false` for unknown sessions, adapters that don't
+   * implement `detectLoading`, or on IPC errors.
+   */
+  async isSessionLoading(id: string): Promise<boolean> {
+    if (!this.sessions.has(id)) return false;
+    await this.waitForReady();
+    this.sendCommand({ cmd: 'isSessionLoading', id });
+    try {
+      const result = (await this.createPending(
+        `isSessionLoading:${id}`,
+      )) as boolean;
+      return Boolean(result);
+    } catch {
+      return false;
+    }
   }
 
   /**

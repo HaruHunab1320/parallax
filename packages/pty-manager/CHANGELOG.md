@@ -2,6 +2,18 @@
 
 All notable changes to `pty-manager` will be documented in this file.
 
+## [1.11.0] - 2026-04-07
+
+### Added
+- **`PTYSession.isLoading()`** — public method that wraps `adapter.detectLoading?.(outputBuffer)` so consumers outside the PTY layer can consult the adapter's "is the agent busy right now" signal without reimplementing heuristics over raw terminal output. Returns `false` if the adapter does not implement `detectLoading`.
+- **`PTYManager.isSessionLoading(id)`** — convenience wrapper that forwards to the session's `isLoading()`. Returns `false` for unknown session ids.
+- **`BunCompatiblePTYManager.isSessionLoading(id)`** — async counterpart that round-trips to the worker process via a new `isSessionLoading` IPC command. Returns `false` for unknown sessions, adapters without `detectLoading`, or IPC errors.
+
+### Why
+Higher-level orchestrators (e.g. milady's swarm idle watchdog) track session activity by diffing the last N lines of terminal output. TUIs like Codex redraw their status row (`Working (Xs • esc to interrupt)`) in place via cursor positioning, so consecutive ANSI-stripped tails can collapse to identical text even while the model is actively reasoning for minutes. When the diff fails, the watchdog falsely classifies the session as idle and nudges it with an LLM-generated message — which the agent then receives as user input mid-turn.
+
+Adapters already implement `detectLoading()` (it runs against the full output buffer, not a tail, and uses adapter-specific patterns like `esc to interrupt`, `Booting MCP server`, `Searching the web` for Codex). This release exposes that signal as the source of truth for "is the agent processing" so orchestrators can trust the adapter instead of reinventing heuristics.
+
 ## [1.10.2] - 2026-03-30
 
 ### Fixed

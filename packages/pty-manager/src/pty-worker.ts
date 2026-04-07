@@ -369,6 +369,20 @@ async function handleKill(id: string, signal?: string): Promise<void> {
   }
 }
 
+function handleIsSessionLoading(id: string): void {
+  try {
+    const loading = manager.isSessionLoading(id);
+    emit({ event: 'isSessionLoading', id, loading });
+  } catch (err) {
+    emit({
+      event: 'isSessionLoading',
+      id,
+      loading: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 function handleList(): void {
   const sessions = manager.list();
   const sessionList: SessionInfo[] = sessions.map((s) => ({
@@ -693,6 +707,14 @@ function processCommand(line: string): void {
 
     case 'list':
       handleList();
+      break;
+
+    case 'isSessionLoading':
+      if (!command.id) {
+        ack('isSessionLoading', command.id, false, 'Missing id');
+        return;
+      }
+      handleIsSessionLoading(command.id);
       break;
 
     case 'shutdown':

@@ -465,6 +465,21 @@ export class PTYManager extends EventEmitter {
     return this.sessions.get(sessionId);
   }
 
+  /**
+   * Whether the adapter currently classifies the session as actively
+   * processing work (e.g. Codex's "esc to interrupt" status row).
+   *
+   * Orchestrators (like milady's swarm idle watchdog) should consult
+   * this before assuming a session is idle based on output byte diffs,
+   * which are fooled by TUIs that redraw the same status row in place.
+   *
+   * Returns `false` for unknown sessions or adapters that don't
+   * implement `detectLoading`.
+   */
+  isSessionLoading(sessionId: string): boolean {
+    return this.sessions.get(sessionId)?.isLoading() ?? false;
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Stall Detection Configuration
   // ─────────────────────────────────────────────────────────────────────────────

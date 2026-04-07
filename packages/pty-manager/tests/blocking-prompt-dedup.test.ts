@@ -190,6 +190,13 @@ describe('blocking prompt deduplication', () => {
     ).processOutputBuffer();
     expect(handler).toHaveBeenCalledOnce();
 
+    // Advance past the blocking-prompt debounce window (250ms) before
+    // emitting a genuinely different prompt. Without this, the time-based
+    // debounce — which exists to collapse spinner-frame re-detections
+    // that produce slightly different hashes per frame — would suppress
+    // the second legitimate emit.
+    vi.advanceTimersByTime(300);
+
     // Different prompt entirely
     (session as unknown as { adapter: CLIAdapter }).adapter =
       createBlockingAdapter('Allow delete of /src/main.ts?');

@@ -934,6 +934,21 @@ export class PTYSession extends EventEmitter {
   }
 
   /**
+   * Whether the adapter's `detectLoading()` currently classifies the
+   * session as actively processing work.
+   *
+   * This wraps `adapter.detectLoading(outputBuffer)` for consumers outside
+   * the PTY layer (e.g. milady's swarm idle watchdog) that need a
+   * reliable "is the agent busy right now?" signal without reimplementing
+   * heuristics over raw terminal output.
+   *
+   * Returns `false` if the adapter does not implement `detectLoading`.
+   */
+  public isLoading(): boolean {
+    return this.adapter.detectLoading?.(this.outputBuffer) ?? false;
+  }
+
+  /**
    * Adapter-level task completion check with compatibility fallback.
    * Prefer detectTaskComplete() because detectReady() may be broad for TUIs.
    */
