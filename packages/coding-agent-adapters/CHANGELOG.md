@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.16.3] - 2026-04-07
+
+### Added
+- **`AgentCredentials.extraConfigToml`**: Optional TOML snippet appended verbatim to the per-spawn `config.toml` the Codex adapter generates under its isolated `CODEX_HOME`. Lets orchestrators set Codex-specific knobs the adapter does not model directly without forking the adapter — for example disabling experimental features when routing through a proxy that doesn't support them:
+
+  ```ts
+  {
+    openaiBaseUrl: 'https://proxy.example/v1',
+    extraConfigToml: '[features]\nresponses_websockets_v2 = false\n',
+  }
+  ```
+
+  The string is appended after the base config with a leading newline; no merging or validation is performed. Adapters that don't generate a config file ignore this field.
+
+  Motivating case: Codex 0.118+ tries to upgrade `/v1/responses` to a WebSocket transport before falling back to POST streaming. Cloud proxies that don't support WebSocket upgrades on that route (Eliza Cloud's Next.js handler, Vercel AI Gateway) return 405, causing ~7s of "Reconnecting…" + a URL-error banner before Codex falls back. Orchestrators can now disable the feature per-spawn instead of touching the user's global `~/.codex/config.toml`.
+
 ## [0.16.2] - 2026-04-06
 
 ### Fixed

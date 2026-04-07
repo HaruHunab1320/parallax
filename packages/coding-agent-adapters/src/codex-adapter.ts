@@ -230,10 +230,18 @@ export class CodexAdapter extends BaseCodingAdapter {
 
     // Write minimal config.toml with proxy base URL.
     // Don't carry over user model preferences — let the cloud proxy choose.
-    fs.writeFileSync(
-      path.join(home, 'config.toml'),
-      `openai_base_url = "${credentials.openaiBaseUrl}"\n`,
-    );
+    //
+    // If the caller provided `extraConfigToml`, append it verbatim. This
+    // is the orchestrator's escape hatch for Codex-specific knobs the
+    // adapter does not model (e.g. disabling experimental features like
+    // the Responses API WebSocket transport when proxying through a
+    // gateway that does not support WS upgrades).
+    let configToml = `openai_base_url = "${credentials.openaiBaseUrl}"\n`;
+    if (credentials.extraConfigToml?.trim()) {
+      configToml += `\n${credentials.extraConfigToml}`;
+      if (!configToml.endsWith('\n')) configToml += '\n';
+    }
+    fs.writeFileSync(path.join(home, 'config.toml'), configToml);
 
     return home;
   }

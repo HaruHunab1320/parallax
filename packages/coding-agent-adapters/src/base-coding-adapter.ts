@@ -48,6 +48,23 @@ export interface AgentCredentials {
   anthropicBaseUrl?: string;
   /** Override OpenAI API base URL (e.g. cloud proxy) */
   openaiBaseUrl?: string;
+  /**
+   * Extra TOML appended to the adapter's generated config file when the
+   * adapter writes one (currently: Codex's per-spawn `config.toml` under
+   * the isolated `CODEX_HOME`).
+   *
+   * Use this when the orchestrator needs to set CLI-specific knobs the
+   * adapter does not model directly — for example disabling Codex's
+   * experimental Responses API WebSocket transport when routing through
+   * a proxy that does not support WebSocket upgrades:
+   *
+   *   extraConfigToml: '[features]\nresponses_websockets_v2 = false\n'
+   *
+   * The string is appended verbatim with a leading newline; no merging
+   * or validation is performed. Adapters that don't generate a config
+   * file ignore this field.
+   */
+  extraConfigToml?: string;
 }
 
 /**
