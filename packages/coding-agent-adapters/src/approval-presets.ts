@@ -317,8 +317,6 @@ export function generateClaudeApprovalConfig(
       );
       _autonomousSandboxWarningLogged = true;
     }
-    const allTools = Object.keys(CLAUDE_TOOL_CATEGORIES);
-    cliFlags.push('--tools', allTools.join(','));
   }
 
   return {
