@@ -155,6 +155,14 @@ describe('Approval Presets', () => {
         generateApprovalConfig('unknown' as never, 'standard')
       ).toThrow('Unknown adapter type');
     });
+
+    it('forwards claude options to generateClaudeApprovalConfig', () => {
+      const config = generateApprovalConfig('claude', 'autonomous', {
+        claude: { disableToolsFlag: true },
+      });
+      expect(config.cliFlags).not.toContain('--tools');
+      expect(config.cliFlags).toContain('--dangerously-skip-permissions');
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -197,6 +205,21 @@ describe('Approval Presets', () => {
       expect(settings.sandbox?.enabled).toBe(true);
       expect(settings.sandbox?.autoAllowBashIfSandboxed).toBe(true);
       expect(settings.permissions.allow).toContain('Bash');
+      expect(config.cliFlags).toContain('--tools');
+    });
+
+    it('autonomous with disableToolsFlag: omits --tools, keeps --dangerously-skip-permissions', () => {
+      const config = generateClaudeApprovalConfig('autonomous', {
+        disableToolsFlag: true,
+      });
+      expect(config.cliFlags).toContain('--dangerously-skip-permissions');
+      expect(config.cliFlags).not.toContain('--tools');
+    });
+
+    it('autonomous with disableToolsFlag: false behaves like default (adds --tools)', () => {
+      const config = generateClaudeApprovalConfig('autonomous', {
+        disableToolsFlag: false,
+      });
       expect(config.cliFlags).toContain('--tools');
     });
 

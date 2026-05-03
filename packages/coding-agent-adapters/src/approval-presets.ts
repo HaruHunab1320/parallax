@@ -57,6 +57,31 @@ export interface ApprovalConfig {
   summary: string;
 }
 
+/**
+ * Per-adapter options that fine-tune the generated approval config without
+ * changing the preset semantics themselves.
+ */
+export interface ClaudePresetOptions {
+  /**
+   * When set, omit the `--tools <list>` flag from the generated `cliFlags`
+   * for the autonomous preset.
+   *
+   * The `--tools` list is built from `CLAUDE_TOOL_CATEGORIES`, whose entries
+   * (Bash, Edit, Write, Read, Grep, Glob, ...) are the tool names exposed by
+   * Claude Code's developer-tier tool registry. When `claude` is run against
+   * the claude.ai OAuth tier (an Anthropic subscription account, no
+   * `ANTHROPIC_API_KEY`) the available tool names differ, so passing this
+   * list filters the model down to a tiny read-only subset instead of
+   * unlocking everything. Set `disableToolsFlag: true` to skip the filter
+   * entirely; `--dangerously-skip-permissions` still bypasses approval.
+   */
+  disableToolsFlag?: boolean;
+}
+
+export interface GenerateApprovalConfigOptions {
+  claude?: ClaudePresetOptions;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
@@ -270,7 +295,8 @@ function getToolsForCategories(
 }
 
 export function generateClaudeApprovalConfig(
-  preset: ApprovalPreset
+  preset: ApprovalPreset,
+  options: ClaudePresetOptions = {}
 ): ApprovalConfig {
   const def = getPresetDefinition(preset);
 
@@ -317,8 +343,14 @@ export function generateClaudeApprovalConfig(
       );
       _autonomousSandboxWarningLogged = true;
     }
-    const allTools = Object.keys(CLAUDE_TOOL_CATEGORIES);
-    cliFlags.push('--tools', allTools.join(','));
+    // Skip `--tools <list>` when the caller requests it. The CLAUDE_TOOL_CATEGORIES
+    // names are the dev-tier registry; on the claude.ai OAuth tier they do not
+    // match the registry and passing them filters tools down to a read-only
+    // subset. See ClaudePresetOptions.disableToolsFlag.
+    if (!options.disableToolsFlag) {
+      const allTools = Object.keys(CLAUDE_TOOL_CATEGORIES);
+      cliFlags.push('--tools', allTools.join(','));
+    }
   }
 
   return {
@@ -523,11 +555,12 @@ export function generateHermesApprovalConfig(
 
 export function generateApprovalConfig(
   adapterType: AdapterType,
-  preset: ApprovalPreset
+  preset: ApprovalPreset,
+  options: GenerateApprovalConfigOptions = {}
 ): ApprovalConfig {
   switch (adapterType) {
     case 'claude':
-      return generateClaudeApprovalConfig(preset);
+      return generateClaudeApprovalConfig(preset, options.claude);
     case 'gemini':
       return generateGeminiApprovalConfig(preset);
     case 'codex':

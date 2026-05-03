@@ -44,6 +44,8 @@ export { AiderAdapter } from './aider-adapter';
 export type {
   ApprovalConfig,
   ApprovalPreset,
+  ClaudePresetOptions,
+  GenerateApprovalConfigOptions,
   PresetDefinition,
   RiskLevel,
   ToolCategory,
