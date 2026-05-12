@@ -136,6 +136,27 @@ const BASELINE_PATTERNS: Record<AdapterType, AdapterPatterns> = {
     exit: ['Goodbye! ⚕'],
     source: 'baseline',
   },
+  opencode: {
+    // OpenCode emits a "> build · <model>" header at the top of every
+    // session (interactive TUI prints `> ` as the input prompt; `run`
+    // mode shows the build header then streams agent output).
+    ready: ['>', 'build · ', 'opencode'],
+    auth: [
+      'no provider configured',
+      'opencode auth login',
+      'missing api key',
+      'api key not found',
+      'Invalid API key',
+      '401',
+      '403',
+    ],
+    blocking: ['permission requested:', 'auto-rejecting'],
+    loading: ['> build · ', '> chat · ', '> plan · ', '> run · '],
+    turnComplete: ['Wrote file successfully.', 'Done.', 'Finished.'],
+    toolWait: ['permission requested:'],
+    exit: [],
+    source: 'baseline',
+  },
 };
 
 /**

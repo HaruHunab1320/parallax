@@ -21,6 +21,7 @@ import {
   GeminiAdapter,
   HermesAdapter,
   type InstallationInfo,
+  OpencodeAdapter,
   type PreflightResult,
   printMissingAdapters,
 } from '../src/index';
@@ -69,10 +70,11 @@ describe('Exports', () => {
       expect(ADAPTER_TYPES.codex).toBe(CodexAdapter);
       expect(ADAPTER_TYPES.aider).toBe(AiderAdapter);
       expect(ADAPTER_TYPES.hermes).toBe(HermesAdapter);
+      expect(ADAPTER_TYPES.opencode).toBe(OpencodeAdapter);
     });
 
-    it('should have exactly 5 adapter types', () => {
-      expect(Object.keys(ADAPTER_TYPES)).toHaveLength(5);
+    it('should have exactly 6 adapter types', () => {
+      expect(Object.keys(ADAPTER_TYPES)).toHaveLength(6);
     });
   });
 });
@@ -111,9 +113,9 @@ describe('createAdapter()', () => {
 });
 
 describe('createAllAdapters()', () => {
-  it('should create all 5 adapters', () => {
+  it('should create all 6 adapters', () => {
     const adapters = createAllAdapters();
-    expect(adapters).toHaveLength(5);
+    expect(adapters).toHaveLength(6);
   });
 
   it('should include ClaudeAdapter', () => {
@@ -301,10 +303,10 @@ describe('checkAllAdapters()', () => {
     vi.restoreAllMocks();
   });
 
-  it('should check all 5 adapters', async () => {
+  it('should check all 6 adapters', async () => {
     const results = await checkAllAdapters();
 
-    expect(results).toHaveLength(5);
+    expect(results).toHaveLength(6);
   });
 
   it('should include all adapter names', async () => {

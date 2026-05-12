@@ -19,7 +19,13 @@ import {
 /**
  * Supported adapter types
  */
-export type AdapterType = 'claude' | 'gemini' | 'codex' | 'aider' | 'hermes';
+export type AdapterType =
+  | 'claude'
+  | 'gemini'
+  | 'codex'
+  | 'aider'
+  | 'hermes'
+  | 'opencode';
 
 /**
  * Authentication status for a CLI agent's subscription/login.

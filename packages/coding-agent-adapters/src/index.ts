@@ -84,6 +84,7 @@ export { ClaudeAdapter } from './claude-adapter';
 export { CodexAdapter } from './codex-adapter';
 export { GeminiAdapter } from './gemini-adapter';
 export { HermesAdapter } from './hermes-adapter';
+export { OpencodeAdapter } from './opencode-adapter';
 export type { AdapterPatterns } from './pattern-loader';
 // Pattern loading (dynamic patterns from adapter-monitor, with baseline fallback)
 export {
@@ -101,6 +102,7 @@ import { ClaudeAdapter } from './claude-adapter';
 import { CodexAdapter } from './codex-adapter';
 import { GeminiAdapter } from './gemini-adapter';
 import { HermesAdapter } from './hermes-adapter';
+import { OpencodeAdapter } from './opencode-adapter';
 
 /**
  * Create instances of all available adapters
@@ -112,6 +114,7 @@ export function createAllAdapters() {
     new CodexAdapter(),
     new AiderAdapter(),
     new HermesAdapter(),
+    new OpencodeAdapter(),
   ];
 }
 
@@ -127,12 +130,14 @@ export const ADAPTER_TYPES: Record<
   | typeof CodexAdapter
   | typeof AiderAdapter
   | typeof HermesAdapter
+  | typeof OpencodeAdapter
 > = {
   claude: ClaudeAdapter,
   gemini: GeminiAdapter,
   codex: CodexAdapter,
   aider: AiderAdapter,
   hermes: HermesAdapter,
+  opencode: OpencodeAdapter,
 };
 
 /**
