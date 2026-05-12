@@ -100,10 +100,17 @@ export class OpencodeAdapter extends BaseCodingAdapter {
       return [];
     }
     const args = ['run', '--dangerously-skip-permissions'];
-    // The caller may pass the task as `config.initialTask`; we don't
-    // append it here because pty-manager's PTYManager.spawn flow uses
-    // the initialTask separately. If the orchestrator wants the task on
-    // the command line, it can wrap via the `toOpencodeCommand` helper.
+    // OpenCode `run` mode requires the task as a positional argument
+    // (it does NOT read from stdin like Claude / Codex). Callers pass
+    // the prompt via `config.adapterConfig.initialPrompt` (mirroring
+    // codex's exec-mode convention). Without this arg the session
+    // spawns idle.
+    const initialPrompt = (
+      config.adapterConfig as { initialPrompt?: unknown } | undefined
+    )?.initialPrompt;
+    if (typeof initialPrompt === 'string' && initialPrompt.trim()) {
+      args.push(initialPrompt.trim());
+    }
     return args;
   }
 

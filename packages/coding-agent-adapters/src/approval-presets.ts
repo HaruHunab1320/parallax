@@ -536,9 +536,54 @@ export function generateApprovalConfig(
       return generateAiderApprovalConfig(preset);
     case 'hermes':
       return generateHermesApprovalConfig(preset);
+    case 'opencode':
+      return generateOpencodeApprovalConfig(preset);
     default:
       throw new Error(`Unknown adapter type: ${adapterType}`);
   }
+}
+
+/**
+ * OpenCode approval-preset → CLI flag mapping.
+ *
+ * OpenCode has a single permission switch: `--dangerously-skip-permissions`
+ * (a flag of the `run` subcommand). Either you accept all tool actions
+ * unsupervised or you don't. The readonly / standard / permissive
+ * presets map to "no flag" (opencode falls back to its own interactive
+ * permission prompts); only `autonomous` opts into the bypass.
+ *
+ * Tools are not declared explicitly to opencode at spawn time — it picks
+ * them up from its built-in registry and the loaded plugins. `tools: {}`
+ * is kept for shape-consistency with the other adapters.
+ */
+export function generateOpencodeApprovalConfig(
+  preset: ApprovalPreset
+): ApprovalConfig {
+  const cliFlags: string[] = [];
+  let summary: string;
+  switch (preset) {
+    case 'autonomous':
+      cliFlags.push('--dangerously-skip-permissions');
+      summary =
+        'OpenCode: all tool actions auto-approved (--dangerously-skip-permissions)';
+      break;
+    case 'readonly':
+      summary = 'OpenCode: interactive permissions (read-heavy session)';
+      break;
+    case 'standard':
+      summary = 'OpenCode: interactive permissions (standard session)';
+      break;
+    case 'permissive':
+      summary = 'OpenCode: interactive permissions (permissive session)';
+      break;
+  }
+  return {
+    preset,
+    cliFlags,
+    workspaceFiles: [],
+    envVars: {},
+    summary,
+  };
 }
 
 export function listPresets(): PresetDefinition[] {
