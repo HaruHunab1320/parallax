@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@parallaxai/sdk-typescript": "workspace:*",
-    "tmux-manager": "workspace:*",
-    "coding-agent-adapters": "workspace:*",
-    "adapter-types": "workspace:*",
+    "tmux-manager": "^0.1.1",
+    "coding-agent-adapters": "^0.16.4",
+    "adapter-types": "^0.2.1",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0"

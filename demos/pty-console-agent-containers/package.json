@@ -18,9 +18,9 @@
     "capture:aider:interactive": "tsx scripts/aider-interactive-capture.ts"
   },
   "dependencies": {
-    "coding-agent-adapters": "workspace:*",
-    "pty-console": "workspace:*",
-    "pty-manager": "workspace:*"
+    "coding-agent-adapters": "^0.16.4",
+    "pty-console": "^0.3.2",
+    "pty-manager": "^1.11.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

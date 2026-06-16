@@ -144,8 +144,6 @@ Optional local infra from `packages/control-plane/docker-compose.dev.yml` may al
 | `packages/runtime-docker` | Docker runtime |
 | `packages/runtime-k8s` | Kubernetes runtime |
 | `packages/runtime-mcp` | MCP server for agent/thread operations |
-| `packages/coding-agent-adapters` | Claude/Codex/Gemini/Aider adapters |
-| `packages/pty-manager` | PTY session engine |
 | `patterns/` | Example and generated patterns |
 | `docs/` | Internal architecture and implementation docs |
 
@@ -244,10 +242,11 @@ pnpm --filter @parallaxai/control-plane db:studio
 ### Rebuild runtime-facing packages
 
 ```bash
-pnpm --filter coding-agent-adapters build
 pnpm --filter @parallaxai/runtime-local build
 pnpm --filter @parallaxai/runtime-mcp build
 ```
+
+> `coding-agent-adapters`, `pty-manager`, and related agent-tooling libraries now live in their own repos (see [HaruHunab1320 on GitHub](https://github.com/HaruHunab1320)) and are consumed from npm.
 
 ## More Resources
 

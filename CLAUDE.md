@@ -52,17 +52,26 @@ Not all packages use the `@parallaxai` npm scope. Several published packages are
 
 | Package | npm name | Description |
 |---------|----------|-------------|
-| pty-manager | `pty-manager` | PTY session manager with pluggable adapters |
-| pty-state-capture | `pty-state-capture` | VT-aware frame reduction from CLI sessions |
-| pty-console | `pty-console` | Operator console bridge for PTY grid UIs |
-| tmux-manager | `tmux-manager` | Tmux-based session manager |
-| adapter-types | `adapter-types` | Shared adapter interface/base class |
-| coding-agent-adapters | `coding-agent-adapters` | CLI adapters (Claude Code, Gemini, Codex, Aider) |
 | agent-adapter-monitor | `agent-adapter-monitor` | Automated CLI adapter monitoring |
-| git-workspace-service | `git-workspace-service` | Git workspace provisioning with OAuth |
 | parallax-agent-runtime | `parallax-agent-runtime` | MCP server for agent orchestration |
 
 There is also `pty-manager-internal-tracing` (private, internal fork for research).
+
+### External packages (extracted from this monorepo)
+
+These libraries used to live under `packages/` and have been moved to standalone repos. parallax consumes them from npm like any other dependency:
+
+| Package | Repo | Description |
+|---------|------|-------------|
+| `adapter-types` | [HaruHunab1320/adapter-types](https://github.com/HaruHunab1320/adapter-types) | Shared adapter interface/base class |
+| `pty-manager` | [HaruHunab1320/pty-manager](https://github.com/HaruHunab1320/pty-manager) | PTY session manager with pluggable adapters |
+| `pty-state-capture` | [HaruHunab1320/pty-state-capture](https://github.com/HaruHunab1320/pty-state-capture) | VT-aware frame reduction from CLI sessions |
+| `pty-console` | [HaruHunab1320/pty-console](https://github.com/HaruHunab1320/pty-console) | Operator console bridge for PTY grid UIs |
+| `tmux-manager` | [HaruHunab1320/tmux-manager](https://github.com/HaruHunab1320/tmux-manager) | Tmux-based session manager |
+| `coding-agent-adapters` | [HaruHunab1320/coding-agent-adapters](https://github.com/HaruHunab1320/coding-agent-adapters) | CLI adapters (Claude Code, Gemini, Codex, Aider) |
+| `git-workspace-service` | [HaruHunab1320/git-workspace-service](https://github.com/HaruHunab1320/git-workspace-service) | Git workspace provisioning with OAuth |
+
+To iterate locally on one of these against parallax, use pnpm `overrides` in the root `package.json` to point at the sibling clone (`"<pkg>": "link:../../<pkg>"`).
 
 The Python SDK uses `@prism-coordination/python` scope (private).
 
@@ -86,10 +95,8 @@ The Python SDK uses `@prism-coordination/python` scope (private).
 - **sdk-go**, **sdk-rust** — Go and Rust SDKs
 
 ### Agent Tooling
-- **pty-manager** — PTY lifecycle management with pluggable adapters
-- **coding-agent-adapters** — CLI adapters for Claude Code, Gemini CLI, Codex, Aider, Hermes
-- **tmux-manager** — Tmux-based session manager (uses adapter-types)
-- **adapter-types** — Shared base class and interfaces for pty-manager and tmux-manager
+
+Agent-tooling packages (`pty-manager`, `coding-agent-adapters`, `tmux-manager`, `adapter-types`, `pty-console`, `pty-state-capture`, `git-workspace-service`) have been extracted to standalone repos — see the table above. parallax depends on them via npm.
 
 ## Code Conventions
 

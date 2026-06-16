@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { ClaudeAdapter } from '../../../packages/coding-agent-adapters/src/claude-adapter.ts';
+import { ClaudeAdapter } from 'coding-agent-adapters';
 import * as InternalPTYManagerModule from '../../../packages/pty-manager-internal-tracing/src/pty-manager.ts';
 import type { SessionHandle } from '../../../packages/pty-manager-internal-tracing/src/types.ts';
 

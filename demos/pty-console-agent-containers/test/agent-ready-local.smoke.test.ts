@@ -1,13 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { AiderAdapter } from '../../../packages/coding-agent-adapters/src/aider-adapter';
-import { ClaudeAdapter } from '../../../packages/coding-agent-adapters/src/claude-adapter';
-import { CodexAdapter } from '../../../packages/coding-agent-adapters/src/codex-adapter';
-import { GeminiAdapter } from '../../../packages/coding-agent-adapters/src/gemini-adapter';
-import { PTYConsoleBridge } from '../../../packages/pty-console/src/index';
 import {
-  PTYManager,
-  type SessionHandle,
-} from '../../../packages/pty-manager/src/index';
+  AiderAdapter,
+  ClaudeAdapter,
+  CodexAdapter,
+  GeminiAdapter,
+} from 'coding-agent-adapters';
+import { PTYConsoleBridge } from 'pty-console';
+import { PTYManager, type SessionHandle } from 'pty-manager';
 
 type StartupResult = 'ready' | 'login_required' | 'blocking_prompt';
 type AgentType = 'claude' | 'codex' | 'gemini' | 'aider';

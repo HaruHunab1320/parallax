@@ -22,12 +22,12 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "coding-agent-adapters": "workspace:^0.15.0",
-    "git-workspace-service": "workspace:^0.4.5",
+    "coding-agent-adapters": "^0.16.4",
+    "git-workspace-service": "^0.4.6",
     "jsonwebtoken": "^9.0.0",
     "pino": "^9.5.0",
     "pino-pretty": "^13.0.0",
-    "pty-manager": "workspace:^1.10.2",
+    "pty-manager": "^1.11.1",
     "uuid": "^11.0.5",
     "zod": "^3.25.0"
   },
