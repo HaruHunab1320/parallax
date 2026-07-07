@@ -9,7 +9,21 @@ Parallax has two kinds of patterns:
 
 - **Org-chart patterns** are the YAML files in this directory. They declare
   an agent team topology (roles, hierarchy, workflow steps) and execute via
-  the workflow executor with managed CLI-agent threads:
+  the workflow executor with managed CLI-agent threads. Roles can carry a
+  confidence policy applied to every step result that reports a confidence
+  signal:
+
+  ```yaml
+  roles:
+    engineer:
+      reportsTo: architect
+      confidence:
+        accept: 0.8          # done
+        retryBelow: 0.6      # one retry with critique; best attempt wins
+        escalateBelow: 0.4   # supervisor (reportsTo) reviews and decides
+  ```
+
+  Examples:
 
   - `org-pair-programming.yaml` — driver/navigator pair
   - `org-threaded-code-review.yaml` — author + reviewers over threads

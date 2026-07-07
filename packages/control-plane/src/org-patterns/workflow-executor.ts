@@ -5,12 +5,14 @@
  */
 
 import { EventEmitter } from 'node:events';
+import { best, cf } from '@parallaxai/confidence';
 import type {
   AgentConfig,
   AgentMessage,
   ThreadHandle,
   ThreadWorkspaceRef,
 } from '@parallaxai/runtime-interface';
+import { sanitizeOutput } from 'adapter-types';
 import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import type { AgentRuntimeService } from '../agent-runtime';
@@ -37,6 +39,8 @@ export interface ThreadCompletionResult {
   threadId: string;
   result: string | ThreadHandle | null;
   summary: string;
+  /** Confidence reported by the agent in its turn completion, if any. */
+  confidence?: number;
 }
 
 /** Union of possible step result types. */
@@ -458,26 +462,7 @@ export class WorkflowExecutor extends EventEmitter {
       throw new Error(`Role ${step.role} not found in pattern`);
     }
 
-    // Spawn the agent on-demand if not already spawned
-    let agentIds = context.roleAssignments.get(step.role);
-    if (!agentIds || agentIds.length === 0) {
-      this.logger.info(
-        { role: step.role },
-        'Spawning agent on-demand for workflow step'
-      );
-      await this.spawnAgentForRole(step.role, role, context, 0);
-      agentIds = context.roleAssignments.get(step.role);
-    }
-
-    if (!agentIds || agentIds.length === 0) {
-      throw new Error(`Failed to spawn agent for role: ${step.role}`);
-    }
-
-    const agentId = agentIds[0];
-    const agent = context.agents.get(agentId);
-    if (!agent) {
-      throw new Error(`Agent ${agentId} not found after spawn`);
-    }
+    const agent = await this.getOrSpawnRoleUnit(step.role, role, context);
 
     // Resolve variables in both task description and input
     const resolvedTask = this.resolveVariables(step.task, context);
@@ -491,11 +476,193 @@ export class WorkflowExecutor extends EventEmitter {
 
     const input = this.resolveVariables(step.input, context);
 
-    const response = await this.sendToExecutionUnit(agent, taskStr, input);
+    let response = await this.sendToExecutionUnit(agent, taskStr, input);
+
+    if (role.confidence) {
+      response = await this.applyConfidencePolicy(
+        role,
+        agent,
+        taskStr,
+        response,
+        context
+      );
+    }
 
     agent.status = 'idle';
     agent.currentTask = undefined;
 
+    return response;
+  }
+
+  /**
+   * Get the first execution unit assigned to a role, spawning on demand.
+   */
+  private async getOrSpawnRoleUnit(
+    roleId: string,
+    role: OrgRole,
+    context: OrgExecutionContext
+  ): Promise<OrgAgentInstance> {
+    let agentIds = context.roleAssignments.get(roleId);
+    if (!agentIds || agentIds.length === 0) {
+      this.logger.info(
+        { role: roleId },
+        'Spawning agent on-demand for workflow step'
+      );
+      await this.spawnAgentForRole(roleId, role, context, 0);
+      agentIds = context.roleAssignments.get(roleId);
+    }
+
+    if (!agentIds || agentIds.length === 0) {
+      throw new Error(`Failed to spawn agent for role: ${roleId}`);
+    }
+
+    const unit = context.agents.get(agentIds[0]);
+    if (!unit) {
+      throw new Error(`Agent ${agentIds[0]} not found after spawn`);
+    }
+    return unit;
+  }
+
+  /**
+   * Confidence signal carried by a step result, if any.
+   */
+  private extractConfidence(response: StepResult): number | undefined {
+    if (
+      response == null ||
+      typeof response === 'string' ||
+      Array.isArray(response)
+    ) {
+      return undefined;
+    }
+    const confidence = (response as { confidence?: unknown }).confidence;
+    if (typeof confidence === 'number') return confidence;
+    const meta = (response as { metadata?: Record<string, unknown> }).metadata;
+    if (meta && typeof meta.confidence === 'number') return meta.confidence;
+    return undefined;
+  }
+
+  /**
+   * Apply a role's confidence policy to a step result.
+   *
+   * Bands (most severe first): below `escalateBelow` the supervisor
+   * (`reportsTo`) reviews and produces the final result; below `retryBelow`
+   * the unit gets one critique-driven retry and the more confident attempt
+   * wins (escalation is then re-checked); at/above `accept` (default 0.8)
+   * the result passes; in between it is accepted with a warning.
+   *
+   * Results without a confidence signal pass through untouched.
+   */
+  private async applyConfidencePolicy(
+    role: OrgRole,
+    unit: OrgAgentInstance,
+    taskStr: string,
+    initialResponse: StepResult,
+    context: OrgExecutionContext
+  ): Promise<StepResult> {
+    const policy = role.confidence!;
+    const accept = policy.accept ?? 0.8;
+
+    let response = initialResponse;
+    let confidence = this.extractConfidence(response);
+
+    if (confidence === undefined) {
+      this.logger.debug(
+        { role: role.id },
+        'Confidence policy configured but result carries no signal — accepting as-is'
+      );
+      this.emit('step_confidence', { role: role.id, action: 'no_signal' });
+      return response;
+    }
+
+    // Retry band: one critique-driven retry; more confident attempt wins
+    if (
+      policy.retryBelow !== undefined &&
+      confidence < policy.retryBelow &&
+      (policy.escalateBelow === undefined || confidence >= policy.escalateBelow)
+    ) {
+      this.logger.info(
+        { role: role.id, confidence, retryBelow: policy.retryBelow },
+        'Low confidence — retrying step with critique'
+      );
+      this.emit('step_confidence', {
+        role: role.id,
+        confidence,
+        action: 'retry',
+      });
+
+      const critique =
+        `Your previous response had low confidence (${confidence.toFixed(2)}). ` +
+        'Review your work, address the weakest parts, and provide an ' +
+        `improved result.\n\nOriginal task: ${taskStr}\n\n` +
+        `Your previous result:\n${this.extractResponseText(response)}`;
+      const retryResponse = await this.sendToExecutionUnit(unit, critique);
+
+      const winner = best(
+        cf(response, confidence),
+        cf(retryResponse, this.extractConfidence(retryResponse) ?? 0)
+      );
+      response = winner.value;
+      confidence = winner.confidence;
+    }
+
+    // Escalation band: the supervisor reviews and owns the final result
+    if (
+      policy.escalateBelow !== undefined &&
+      confidence < policy.escalateBelow
+    ) {
+      const supervisorRoleId = role.reportsTo;
+      const supervisorRole = supervisorRoleId
+        ? context.pattern.structure.roles[supervisorRoleId]
+        : undefined;
+
+      if (!supervisorRoleId || !supervisorRole) {
+        this.logger.warn(
+          { role: role.id, confidence, escalateBelow: policy.escalateBelow },
+          'Escalation triggered but role has no supervisor (reportsTo) — surfacing low-confidence result'
+        );
+        this.emit('step_confidence', {
+          role: role.id,
+          confidence,
+          action: 'escalation_unrouted',
+        });
+        return response;
+      }
+
+      this.logger.info(
+        { role: role.id, supervisor: supervisorRoleId, confidence },
+        'Low confidence — escalating to supervisor'
+      );
+      this.emit('step_confidence', {
+        role: role.id,
+        confidence,
+        action: 'escalate',
+        supervisor: supervisorRoleId,
+      });
+
+      const supervisor = await this.getOrSpawnRoleUnit(
+        supervisorRoleId,
+        supervisorRole,
+        context
+      );
+      const escalation =
+        `Your report (${role.name}) completed a task with low confidence ` +
+        `(${confidence.toFixed(2)}).\n\nTask: ${taskStr}\n\n` +
+        `Their result:\n${this.extractResponseText(response)}\n\n` +
+        'Review their work and provide the final, corrected result.';
+      return this.sendToExecutionUnit(supervisor, escalation);
+    }
+
+    this.emit('step_confidence', {
+      role: role.id,
+      confidence,
+      action: confidence >= accept ? 'accept' : 'accept_with_warning',
+    });
+    if (confidence < accept) {
+      this.logger.warn(
+        { role: role.id, confidence, accept },
+        'Result accepted below target confidence'
+      );
+    }
     return response;
   }
 
@@ -955,24 +1122,24 @@ export class WorkflowExecutor extends EventEmitter {
           cleanup();
 
           try {
-            // Extract output from event data (sent by ManagedThread with turn_complete)
+            // Extract output + confidence from event data (sent by
+            // ManagedThread with turn_complete)
             let output = '';
+            let eventConfidence: number | undefined;
             if (eventData) {
               const dataJson = eventData.data_json;
               if (typeof dataJson === 'string') {
                 try {
                   const parsed = JSON.parse(dataJson) as {
                     output?: string;
-                  };
-                  const { sanitizeOutput } = require('adapter-types') as {
-                    sanitizeOutput: (
-                      text: string,
-                      opts: { maxLength: number }
-                    ) => string;
+                    confidence?: number;
                   };
                   output = sanitizeOutput(parsed.output || '', {
                     maxLength: 8000,
                   });
+                  if (typeof parsed.confidence === 'number') {
+                    eventConfidence = parsed.confidence;
+                  }
                 } catch {
                   /* ignore parse errors */
                 }
@@ -995,6 +1162,7 @@ export class WorkflowExecutor extends EventEmitter {
               threadId,
               result: summary || thread,
               summary,
+              confidence: eventConfidence,
             });
           } catch (error) {
             reject(error);

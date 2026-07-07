@@ -34,6 +34,7 @@
     "@parallaxai/runtime-interface": "workspace:*",
     "@parallaxai/telemetry": "workspace:*",
     "@prisma/client": "^6.12.0",
+    "adapter-types": "^0.2.1",
     "cors": "^2.8.5",
     "cron-parser": "^4.9.0",
     "etcd3": "^1.1.2",

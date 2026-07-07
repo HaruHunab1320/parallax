@@ -38,6 +38,12 @@ class MockThreadRuntimeService extends EventEmitter {
   /** If set, the next thread will emit this event type instead of completing */
   public nextEventType: string | null = null;
 
+  /**
+   * Confidence values attached to successive turn completions (shifted per
+   * sendToThread). Undefined entries emit no confidence signal.
+   */
+  public confidenceQueue: Array<number | undefined> = [];
+
   async spawnThread(input: any): Promise<ThreadHandle> {
     const id = `thread-${this.threadCounter++}`;
     this.spawnedThreads.push({ id, input });
@@ -83,11 +89,16 @@ class MockThreadRuntimeService extends EventEmitter {
       // Simulate the thread completing asynchronously
       const eventType = this.nextEventType || 'thread_turn_complete';
       this.nextEventType = null;
+      const confidence = this.confidenceQueue.shift();
       setTimeout(() => {
         this.emitThreadEvent(threadId, {
           type: eventType,
           threadId,
           timestamp: new Date().toISOString(),
+          data:
+            confidence !== undefined
+              ? { data_json: JSON.stringify({ confidence }) }
+              : undefined,
         } as any);
       }, 5);
     }
@@ -498,5 +509,141 @@ describe('WorkflowExecutor thread integration', () => {
     // (the parallel results), meaning it was stored even though it's not an assign step
     expect(result.steps).toHaveLength(2);
     expect(result.output).toBeDefined();
+  });
+
+  describe('confidence policy', () => {
+    function policyPattern(policy: {
+      accept?: number;
+      retryBelow?: number;
+      escalateBelow?: number;
+    }): OrgPattern {
+      return {
+        name: 'policy-test',
+        structure: {
+          name: 'test',
+          roles: {
+            lead: makeRole({ id: 'lead', name: 'Lead', singleton: true }),
+            worker: makeRole({
+              id: 'worker',
+              name: 'Worker',
+              singleton: true,
+              reportsTo: 'lead',
+              confidence: policy,
+            }),
+          },
+        },
+        workflow: {
+          name: 'default',
+          steps: [{ type: 'assign', role: 'worker', task: 'do the thing' }],
+          output: 'step_0_result',
+        },
+      };
+    }
+
+    const fullPolicy = { accept: 0.8, retryBelow: 0.6, escalateBelow: 0.4 };
+    // Boot order: lead spawns first (thread-0), worker second (thread-1)
+    const LEAD = 'thread-0';
+    const WORKER = 'thread-1';
+
+    function makeExecutor() {
+      return new WorkflowExecutor(
+        runtime as unknown as AgentRuntimeService,
+        logger,
+        { stepTimeout: 5000 }
+      );
+    }
+
+    it('accepts a confident result without retry or escalation', async () => {
+      runtime.confidenceQueue = [0.9];
+      const executor = makeExecutor();
+      const actions: string[] = [];
+      executor.on('step_confidence', (e) => actions.push(e.action));
+
+      await executor.execute(policyPattern(fullPolicy), {});
+
+      expect(runtime.sentMessages).toHaveLength(1);
+      expect(runtime.sentMessages[0].threadId).toBe(WORKER);
+      expect(actions).toEqual(['accept']);
+    });
+
+    it('retries once with critique below retryBelow; best attempt wins', async () => {
+      runtime.confidenceQueue = [0.5, 0.9];
+      const executor = makeExecutor();
+      const actions: string[] = [];
+      executor.on('step_confidence', (e) => actions.push(e.action));
+
+      await executor.execute(policyPattern(fullPolicy), {});
+
+      // Two messages, both to the worker; the retry carries the critique
+      expect(runtime.sentMessages).toHaveLength(2);
+      expect(runtime.sentMessages[0].threadId).toBe(WORKER);
+      expect(runtime.sentMessages[1].threadId).toBe(WORKER);
+      expect(runtime.sentMessages[1].input.message).toContain(
+        'low confidence (0.50)'
+      );
+      expect(actions).toEqual(['retry', 'accept']);
+    });
+
+    it('escalates to the supervisor below escalateBelow', async () => {
+      // Worker answers at 0.2; the supervisor's review completes at 0.95
+      runtime.confidenceQueue = [0.2, 0.95];
+      const executor = makeExecutor();
+      const actions: string[] = [];
+      executor.on('step_confidence', (e) => actions.push(e.action));
+
+      await executor.execute(policyPattern(fullPolicy), {});
+
+      expect(runtime.sentMessages).toHaveLength(2);
+      expect(runtime.sentMessages[0].threadId).toBe(WORKER);
+      // Escalation goes to the lead with the low-confidence context
+      expect(runtime.sentMessages[1].threadId).toBe(LEAD);
+      expect(runtime.sentMessages[1].input.message).toContain(
+        'low confidence (0.20)'
+      );
+      expect(runtime.sentMessages[1].input.message).toContain('Worker');
+      expect(actions).toEqual(['escalate']);
+    });
+
+    it('surfaces low confidence unrouted when the role has no supervisor', async () => {
+      runtime.confidenceQueue = [0.2];
+      const pattern = policyPattern(fullPolicy);
+      pattern.structure.roles.worker.reportsTo = undefined;
+      const executor = makeExecutor();
+      const actions: string[] = [];
+      executor.on('step_confidence', (e) => actions.push(e.action));
+
+      await executor.execute(pattern, {});
+
+      expect(runtime.sentMessages).toHaveLength(1);
+      expect(actions).toEqual(['escalation_unrouted']);
+    });
+
+    it('passes results without a confidence signal through untouched', async () => {
+      runtime.confidenceQueue = [undefined];
+      const executor = makeExecutor();
+      const actions: string[] = [];
+      executor.on('step_confidence', (e) => actions.push(e.action));
+
+      const result = await executor.execute(policyPattern(fullPolicy), {});
+
+      expect(runtime.sentMessages).toHaveLength(1);
+      expect(actions).toEqual(['no_signal']);
+      expect(result.metrics.stepsExecuted).toBe(1);
+    });
+
+    it('accepts with a warning between escalateBelow and accept', async () => {
+      runtime.confidenceQueue = [0.7];
+      const executor = makeExecutor();
+      const actions: string[] = [];
+      executor.on('step_confidence', (e) => actions.push(e.action));
+
+      await executor.execute(
+        policyPattern({ accept: 0.8, escalateBelow: 0.4 }),
+        {}
+      );
+
+      expect(runtime.sentMessages).toHaveLength(1);
+      expect(actions).toEqual(['accept_with_warning']);
+    });
   });
 });

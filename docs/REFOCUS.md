@@ -342,19 +342,20 @@ Prism's `uncertain if` semantics return as **workflow policy** where they
 always belonged. `message-router.ts` already has `escalationPath` plumbing —
 extend it:
 
-- [ ] Per-role thresholds in org-chart YAML:
-      ```yaml
-      roles:
-        implementer:
-          confidence:
-            accept: 0.8        # done
-            retry_below: 0.6   # one retry with critique appended
-            escalate_below: 0.4  # route to supervisor role
-      ```
-- [ ] Wire into `workflow-executor.ts` step completion: accept / retry /
-      escalate / surface-to-user, driven by `Confident` results and
-      implemented with `gate()`/`uncertain()` from A1 (the library must be
-      good enough to build the product on — that's the dogfood test).
+- [x] Per-role thresholds in org-chart YAML (camelCase, matching the
+      schema): `confidence: { accept: 0.8, retryBelow: 0.6,
+      escalateBelow: 0.4 }` — see `patterns/org-startup-team.yaml`.
+      **(Done C2)**
+- [x] Wired into `workflow-executor.ts` step completion: accept /
+      accept-with-warning / retry-once-with-critique (best attempt wins,
+      via the library's `best()`/`cf()`) / escalate-to-supervisor
+      (`reportsTo` reviews and owns the final result) / unrouted-surface
+      when no supervisor exists. Results without a confidence signal pass
+      through untouched. `step_confidence` events emitted for every
+      decision. Thread completions now carry `confidence` parsed from the
+      turn's `data_json` (which also fixed a latent bug: `adapter-types`
+      was never a control-plane dep, so turn output extraction silently
+      no-opped). 6 new tests cover every band. **(Done C2)**
 - [ ] Surface confidence trajectory per thread in the dashboard (the
       `confidence-tracker` package's anomaly detection finally gets a
       consumer: flag a role whose confidence is degrading mid-workflow).

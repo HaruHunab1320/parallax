@@ -73,6 +73,33 @@ export interface OrgRole {
 
   /** Optional thread-backed execution config */
   threadConfig?: OrgThreadConfig;
+
+  /** Per-role confidence policy applied to workflow step results */
+  confidence?: OrgConfidencePolicy;
+}
+
+/**
+ * Confidence-driven step-result policy. Applied when a step result carries
+ * a confidence signal; results without one pass through untouched.
+ *
+ * Evaluation order: escalateBelow (most severe) → retryBelow → accept.
+ */
+export interface OrgConfidencePolicy {
+  /** Accept outright at/above this confidence (default 0.8). */
+  accept?: number;
+
+  /**
+   * Below this, retry the step once with a critique appended; the more
+   * confident of the two attempts wins (then escalation is re-checked).
+   */
+  retryBelow?: number;
+
+  /**
+   * Below this, escalate to the role's supervisor (`reportsTo`): the
+   * supervisor reviews the low-confidence result and produces the final
+   * step result.
+   */
+  escalateBelow?: number;
 }
 
 /**

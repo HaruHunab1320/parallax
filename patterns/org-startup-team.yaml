@@ -47,6 +47,13 @@ structure:
       expertise:
         - implementation
         - testing
+      # Confidence-driven step policy: results the engineer reports with
+      # low confidence are retried once with a critique, and escalated to
+      # the architect (reportsTo) when confidence stays critically low.
+      confidence:
+        accept: 0.8
+        retryBelow: 0.6
+        escalateBelow: 0.4
 
   routing:
     - from: engineer
