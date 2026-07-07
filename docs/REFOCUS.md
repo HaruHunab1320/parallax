@@ -121,21 +121,26 @@ average(xs); majorityVote(xs); consensus(xs, opts); weightedMerge(xs)
 ```
 
 Tasks:
-- [ ] Create `packages/confidence/` (tsup dual CJS/ESM — it's a published lib).
-- [ ] Port propagation rules; property-test them (fast-check) against the
+- [x] Create `packages/confidence/` (tsup dual CJS/ESM — it's a published lib).
+      **(Done M1)**
+- [x] Port propagation rules; property-test them (fast-check) against the
       documented Prism semantics in `docs/prism-specs.md` before that doc is
-      deleted.
-- [ ] Move `average` / `synthesize` / `majorityVote` out of
-      `runtime-manager.ts:314-400` into this package.
-- [ ] Replace the keyword-heuristic mock in
-      `packages/sdk-typescript/src/confidence.ts` (the "certainly/probably/
-      maybe" scorer) with re-exports from this package; keep the
-      `withConfidence` decorator but have it accept an explicit extractor.
-- [ ] README with the Prism→TS operator mapping table, so existing mental
-      models transfer.
+      deleted. **(Done M1 — 27 tests: property tests for all 6 propagation
+      rules + the spec's worked examples verbatim)**
+- [x] Implement `average` / `synthesize` / `majorityVote` in this package
+      (the runtime-manager copies at `runtime-manager.ts:314-400` die with
+      that file in M2). **(Done M1)**
+- [x] Replace the keyword-heuristic mock in
+      `packages/sdk-typescript/src/confidence.ts` with re-exports from this
+      package; `withConfidence` kept, `withConfidenceWrapper` now accepts an
+      explicit extractor (`defaultExtractor` reads only real confidence
+      fields — no keyword magic). **(Done M1)**
+- [x] README with the Prism→TS operator mapping table. **(Done M1)**
 
 **Acceptance:** the five consensus patterns' math is expressible in ≤ 20 lines
-each using only this library; package publishes to npm independently.
+each using only this library (simple-consensus is a test case in
+`test/spec-examples.test.ts`); package is npm-publishable (not yet published —
+publish alongside M3 when the proto surface settles).
 
 ### A2. Patterns become registered TypeScript modules
 

@@ -1,0 +1,61 @@
+{
+  "name": "@parallaxai/confidence",
+  "version": "0.1.0",
+  "description": "Confidence-carrying values and uncertainty-aware control flow for AI orchestration",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
+  },
+  "keywords": [
+    "confidence",
+    "uncertainty",
+    "ai",
+    "agents",
+    "orchestration",
+    "llm",
+    "consensus",
+    "typescript"
+  ],
+  "author": "Parallax AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HaruHunab1320/parallax.git",
+    "directory": "packages/confidence"
+  },
+  "bugs": {
+    "url": "https://github.com/HaruHunab1320/parallax/issues"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "fast-check": "^3.23.1",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

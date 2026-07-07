@@ -1,7 +1,7 @@
 export * from './agent';
 export type { GatewayOptions } from './agent-base';
 export * from './agent-base';
-export { withConfidence, withConfidenceWrapper } from './confidence';
+export * from './confidence';
 export * from './coordinator-client';
 export * from './executions';
 // Generated gRPC clients and types (preferred over manual types)

@@ -1,52 +1,48 @@
 /**
- * Confidence extraction decorator using @prism-lang/confidence
+ * Confidence utilities for agents — built on @parallaxai/confidence.
+ *
+ * The full combinator library (cf, conf, best, coalesce, uncertain,
+ * consensus, …) is re-exported here so agents can express confidence logic
+ * without a separate import.
  */
+import { isConfident } from '@parallaxai/confidence';
 
-// Mock implementation until @prism-lang/confidence is properly configured
-function extractConfidence(result: any): number {
-  // Extract confidence from result based on keywords
-  if (typeof result === 'object' && result !== null) {
-    // Check for explicit confidence field
-    if (typeof result.confidence === 'number') {
-      return result.confidence;
+export * from '@parallaxai/confidence';
+
+/**
+ * Extracts a confidence level from an agent's raw return value.
+ *
+ * Order: an explicit numeric `confidence` field wins; a `Confident`-shaped
+ * value uses its confidence; anything else gets `fallback` (default 0.5 —
+ * an honest "unknown", not a claim).
+ */
+export type ConfidenceExtractor = (result: unknown) => number;
+
+export function defaultExtractor(fallback = 0.5): ConfidenceExtractor {
+  return (result: unknown): number => {
+    if (isConfident(result)) return result.confidence;
+    if (
+      typeof result === 'object' &&
+      result !== null &&
+      typeof (result as { confidence?: unknown }).confidence === 'number'
+    ) {
+      return (result as { confidence: number }).confidence;
     }
-
-    // Check for confidence keywords
-    let confidence = 0.5; // default
-
-    if (result.certainly || result.definitely || result.absolutely) {
-      confidence = 0.95;
-    } else if (result.probably || result.likely) {
-      confidence = 0.8;
-    } else if (result.maybe || result.possibly || result.perhaps) {
-      confidence = 0.6;
-    } else if (result.unlikely || result.doubtful) {
-      confidence = 0.3;
-    }
-
-    // Adjust based on uncertainties
-    if (result.uncertainties && Array.isArray(result.uncertainties)) {
-      confidence -= result.uncertainties.length * 0.1;
-    }
-
-    return Math.max(0.1, Math.min(1, confidence));
-  }
-
-  return 0.5; // default confidence
+    return fallback;
+  };
 }
 
 /**
- * Decorator that automatically extracts confidence from agent responses
- * using the @prism-lang/confidence package
+ * Decorator that normalizes an agent method's return value to a
+ * `[result, confidence]` tuple. Pass a custom extractor to control how
+ * confidence is derived when the method doesn't return one explicitly.
  *
  * @example
  * ```typescript
  * class MyAgent extends ParallaxAgent {
  *   @withConfidence
  *   async analyze(task: string, data?: any): Promise<[any, number]> {
- *     const result = await this.llm.analyze(data);
- *     // Decorator will extract confidence automatically
- *     return result;
+ *     return await this.llm.analyze(data); // { ..., confidence: 0.83 }
  *   }
  * }
  * ```
@@ -61,11 +57,11 @@ export function withConfidence(
   }
 
   const originalMethod = descriptor.value;
+  const extract = defaultExtractor();
 
   descriptor.value = async function (...args: any[]) {
     const result = await originalMethod.apply(this, args);
 
-    // Check if the result is already in the expected format [result, confidence]
     if (
       Array.isArray(result) &&
       result.length === 2 &&
@@ -74,33 +70,32 @@ export function withConfidence(
       return result;
     }
 
-    // Extract confidence using @prism-lang/confidence
-    const confidence = extractConfidence(result);
-
-    // Return as tuple [result, confidence]
-    return [result, confidence];
+    return [result, extract(result)];
   };
 
   return descriptor;
 }
 
 /**
- * Alternative functional wrapper for confidence extraction
+ * Functional form of `withConfidence`, with an optional custom extractor.
  *
  * @example
  * ```typescript
- * const analyzeWithConfidence = withConfidenceWrapper(async (task, data) => {
- *   return await llm.analyze(data);
- * });
+ * const analyze = withConfidenceWrapper(
+ *   async (task, data) => llm.analyze(data),
+ *   (r) => r.certainty ?? 0.5
+ * );
  * ```
  */
 export function withConfidenceWrapper<
   T extends (...args: any[]) => Promise<any>,
->(fn: T): (...args: Parameters<T>) => Promise<[any, number]> {
+>(
+  fn: T,
+  extractor: ConfidenceExtractor = defaultExtractor()
+): (...args: Parameters<T>) => Promise<[any, number]> {
   return async (...args: Parameters<T>) => {
     const result = await fn(...args);
 
-    // Check if already has confidence
     if (
       Array.isArray(result) &&
       result.length === 2 &&
@@ -109,9 +104,6 @@ export function withConfidenceWrapper<
       return result as [any, number];
     }
 
-    // Extract confidence
-    const confidence = extractConfidence(result);
-
-    return [result, confidence] as [any, number];
+    return [result, extractor(result)] as [any, number];
   };
 }
