@@ -905,11 +905,20 @@ export class WorkflowExecutor extends EventEmitter {
     message: string,
     input?: unknown
   ): Promise<StepResult> {
+    // A step's resolved `input` travels inside the message — execution units
+    // (CLI threads and agents alike) consume a single text prompt
+    const fullMessage =
+      input === undefined || input === null || input === ''
+        ? message
+        : `${message}\n\nInput:\n${
+            typeof input === 'string' ? input : JSON.stringify(input, null, 2)
+          }`;
+
     if (unit.kind === 'thread' && unit.threadId) {
-      return this.sendToThreadAndWait(unit.threadId, message, input);
+      return this.sendToThreadAndWait(unit.threadId, fullMessage);
     }
 
-    return this.runtimeService.send(unit.id, message, {
+    return this.runtimeService.send(unit.id, fullMessage, {
       expectResponse: true,
       timeout: this.stepTimeout,
     });
@@ -923,8 +932,7 @@ export class WorkflowExecutor extends EventEmitter {
    */
   private async sendToThreadAndWait(
     threadId: string,
-    message: string,
-    _input?: unknown
+    message: string
   ): Promise<ThreadCompletionResult> {
     const runtimeService = this.runtimeService;
 

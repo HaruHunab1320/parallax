@@ -41,6 +41,13 @@ class MockThreadRuntimeService extends EventEmitter {
   async spawnThread(input: any): Promise<ThreadHandle> {
     const id = `thread-${this.threadCounter++}`;
     this.spawnedThreads.push({ id, input });
+    // Simulate the CLI agent booting: the executor's ready gate listens for
+    // 'thread_event' emissions with type ready/thread_ready on the runtime
+    setTimeout(() => {
+      this.emit('thread_event', {
+        event: { type: 'ready', thread_id: id },
+      });
+    }, 1);
     return {
       id,
       status: 'running',
@@ -52,11 +59,14 @@ class MockThreadRuntimeService extends EventEmitter {
   }
 
   async getThread(threadId: string): Promise<any> {
+    // The executor reads completion/summary from thread.metadata
     return {
       id: threadId,
       status: 'completed',
-      completion: { summary: this.autoCompleteSummary },
-      summary: this.autoCompleteSummary,
+      metadata: {
+        completion: { summary: this.autoCompleteSummary },
+        summary: this.autoCompleteSummary,
+      },
     };
   }
 
@@ -429,9 +439,14 @@ describe('WorkflowExecutor thread integration', () => {
     await expect(promise).rejects.toThrow(
       'Thread thread-0 ended with thread_failed'
     );
+
+    // Failure path DOES clean up: all spawned threads get stopped
+    expect(runtime.stoppedThreads.size).toBe(runtime.spawnedThreads.length);
   });
 
-  it('cleans up all threads after execution', async () => {
+  it('leaves threads alive after successful execution', async () => {
+    // Intentional lifecycle: threads survive workflow completion so agents
+    // can finish pushing code / creating PRs; cleanup only runs on failure
     const pattern = makeOrgPattern();
     const executor = new WorkflowExecutor(
       runtime as unknown as AgentRuntimeService,
@@ -441,8 +456,8 @@ describe('WorkflowExecutor thread integration', () => {
 
     await executor.execute(pattern, { task: 'test' });
 
-    // All 4 threads should be stopped during cleanup
-    expect(runtime.stoppedThreads.size).toBe(4);
+    expect(runtime.spawnedThreads).toHaveLength(4);
+    expect(runtime.stoppedThreads.size).toBe(0);
   });
 
   it('stores all step results in context variables, not just assign steps', async () => {

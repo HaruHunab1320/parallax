@@ -175,14 +175,17 @@ describe('ParallaxAgent Gateway', () => {
         autoReconnect: false,
       });
 
-      // The stream should have been created and a hello written
+      // The stream should have been created and a hello written.
+      // The wire agent_id is the auto-generated UUID; the constructor id
+      // travels as metadata.legacyId (see agent-base.ts).
       await vi.advanceTimersByTimeAsync(0);
       expect(mockStream.write).toHaveBeenCalledWith(
         expect.objectContaining({
           hello: expect.objectContaining({
-            agent_id: 'test-gw',
+            agent_id: agent.uuid,
             agent_name: 'Test Gateway Agent',
             capabilities: ['analysis', 'gateway'],
+            metadata: expect.objectContaining({ legacyId: 'test-gw' }),
           }),
         })
       );
@@ -304,7 +307,7 @@ describe('ParallaxAgent Gateway', () => {
       expect(mockStream.write).toHaveBeenCalledWith(
         expect.objectContaining({
           heartbeat: expect.objectContaining({
-            agent_id: 'test-gw',
+            agent_id: agent.uuid,
             status: 'healthy',
           }),
         })

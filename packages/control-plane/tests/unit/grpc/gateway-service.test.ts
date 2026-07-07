@@ -513,10 +513,12 @@ describe('GatewayService', () => {
       );
     });
 
-    it('throws when agent not connected', () => {
+    it('is fire-and-forget when agent not connected (no throw)', () => {
+      // Intentional contract since 0a8bce0: the workflow surfaces the missing
+      // response via its own timeout instead of an eager throw here
       expect(() =>
         service.dispatchThreadInput('unknown', 'thread-1', 'test')
-      ).toThrow('not connected');
+      ).not.toThrow();
     });
   });
 
