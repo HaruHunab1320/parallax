@@ -1,0 +1,26 @@
+{
+  "name": "@parallaxai/patterns",
+  "version": "0.1.0",
+  "description": "Parallax pattern contract and built-in pattern library — patterns are TypeScript modules, deployed with the control plane",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@parallaxai/confidence": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

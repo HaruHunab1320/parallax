@@ -4,7 +4,6 @@ import type { AgentRuntimeService } from '../agent-runtime';
 import type { DatabaseService } from '../db/database.service';
 import type { ExecutionEventBus } from '../execution-events';
 import type { EtcdRegistry } from '../registry';
-import type { RuntimeManager } from '../runtime-manager';
 import type { ThreadPreparationService } from '../threads';
 import type { UserProvidedCredentials, WorkspaceService } from '../workspace';
 import type { DatabasePatternService } from './database-pattern-service';
@@ -15,8 +14,6 @@ import type { ExecutionMetrics, Pattern, PatternExecution } from './types';
  * Groups the 11 constructor parameters into required core deps and optional services.
  */
 export interface PatternEngineServices {
-  /** Runtime manager for agent lifecycle */
-  runtimeManager: RuntimeManager;
   /** Agent registry (etcd-backed) */
   agentRegistry: EtcdRegistry;
   /** Directory containing pattern files */

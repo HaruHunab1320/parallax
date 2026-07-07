@@ -2,29 +2,16 @@ import path from 'node:path';
 import { pino } from 'pino';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { EtcdRegistry } from '../../registry';
-import { RuntimeManager } from '../../runtime-manager';
 import { PatternEngine } from '../pattern-engine';
 import { createMockAgents, type MockAgent } from './pattern-test-utils';
 
 describe('Pattern Execution Tests', () => {
   let patternEngine: PatternEngine;
-  let runtimeManager: RuntimeManager;
   let registry: EtcdRegistry;
   let mockAgents: MockAgent[];
   const logger = pino({ level: 'silent' });
 
   beforeEach(async () => {
-    // Create real RuntimeManager with Prism runtime
-    runtimeManager = new RuntimeManager(
-      {
-        maxInstances: 2,
-        instanceTimeout: 30000,
-        warmupInstances: 1,
-        metricsEnabled: false,
-      },
-      logger
-    );
-
     registry = {
       listServices: async () => [],
       registerService: async () => {},
@@ -34,7 +21,6 @@ describe('Pattern Execution Tests', () => {
     // Create pattern engine
     const patternsDir = path.join(__dirname, '../../../../../patterns');
     patternEngine = new PatternEngine({
-      runtimeManager,
       agentRegistry: registry,
       patternsDir,
       logger,

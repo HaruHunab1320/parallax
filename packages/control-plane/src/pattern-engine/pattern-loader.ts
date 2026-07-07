@@ -2,11 +2,20 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import type { Logger } from 'pino';
+import { patternManifest, type PatternModule } from '@parallaxai/patterns';
 import { compileOrgPattern, type OrgPattern } from '../org-patterns';
 import type { Pattern } from './types';
 
+/**
+ * Sources patterns from two places:
+ *  - TypeScript modules registered in @parallaxai/patterns (custom logic,
+ *    deployed with the control plane)
+ *  - Org-chart YAML files in the patterns directory (declarative topology,
+ *    executed by the workflow executor)
+ */
 export class PatternLoader {
   private patterns: Map<string, Pattern> = new Map();
+  private modules: Map<string, PatternModule> = new Map();
   private logger: Logger;
 
   constructor(
@@ -18,32 +27,25 @@ export class PatternLoader {
 
   async loadPatterns(): Promise<void> {
     try {
-      // Ensure patterns directory exists
+      this.patterns.clear();
+      this.modules.clear();
+
+      this.loadModulePatterns();
+
+      // Load YAML org-chart files from the patterns directory
       await fs.mkdir(this.patternsDir, { recursive: true });
       const files = await fs.readdir(this.patternsDir);
-
-      // Load both .prism and .yaml/.yml files
-      const prismFiles = files.filter((f) => f.endsWith('.prism'));
       const yamlFiles = files.filter(
         (f) => f.endsWith('.yaml') || f.endsWith('.yml')
       );
-
-      // Load Prism files directly
-      for (const file of prismFiles) {
-        const filePath = path.join(this.patternsDir, file);
-        await this.loadPrismPattern(filePath);
-      }
-
-      // Compile and load YAML org-chart files
       for (const file of yamlFiles) {
-        const filePath = path.join(this.patternsDir, file);
-        await this.loadYamlPattern(filePath);
+        await this.loadYamlPattern(path.join(this.patternsDir, file));
       }
 
       this.logger.info(
         {
           total: this.patterns.size,
-          prism: prismFiles.length,
+          modules: this.modules.size,
           yaml: yamlFiles.length,
         },
         'Patterns loaded'
@@ -55,7 +57,44 @@ export class PatternLoader {
   }
 
   /**
-   * Load a YAML org-chart pattern by compiling it to Prism
+   * Register the TypeScript pattern modules shipped in @parallaxai/patterns.
+   */
+  private loadModulePatterns(): void {
+    for (const module of Object.values(patternManifest)) {
+      const meta = module.meta;
+      const pattern: Pattern = {
+        name: meta.name,
+        version: meta.version,
+        description: meta.description,
+        input: (meta.input as Pattern['input']) ?? { type: 'any' },
+        agents:
+          meta.capabilities || meta.minConfidence !== undefined
+            ? {
+                capabilities: meta.capabilities,
+                minConfidence: meta.minConfidence,
+              }
+            : undefined,
+        minAgents: meta.minAgents,
+        maxAgents: meta.maxAgents,
+        script: `module:${meta.name}`,
+        metadata: { ...(meta.metadata ?? {}), source: 'module' },
+      };
+
+      if (this.patterns.has(meta.name)) {
+        this.logger.warn(
+          { pattern: meta.name },
+          'Duplicate pattern name in module manifest — overwriting'
+        );
+      }
+      this.patterns.set(meta.name, pattern);
+      this.modules.set(meta.name, module);
+      this.logger.debug({ pattern: meta.name, source: 'module' }, 'Pattern loaded');
+    }
+  }
+
+  /**
+   * Load a YAML org-chart pattern. The compiled workflow executes via
+   * WorkflowExecutor; the raw YAML is kept for persistence.
    */
   private async loadYamlPattern(filePath: string): Promise<void> {
     try {
@@ -66,15 +105,8 @@ export class PatternLoader {
         orgPattern.name = path.basename(filePath).replace(/\.ya?ml$/, '');
       }
 
-      // Compile org-chart YAML to Prism
       const compiled = compileOrgPattern(orgPattern, { includeComments: true });
 
-      this.logger.debug(
-        { pattern: compiled.name, source: 'yaml' },
-        'Compiled org-chart pattern to Prism'
-      );
-
-      // Create Pattern object from compiled result
       // Ensure input has required 'type' property for PatternInput
       const inputConfig = compiled.metadata.input;
       const patternInput =
@@ -97,6 +129,7 @@ export class PatternLoader {
         metadata: {
           source: 'yaml',
           compiledFrom: filePath,
+          sourceYaml: content,
           orgChart: true,
           ...(compiled.metadata.metadata || {}),
         },
@@ -114,96 +147,11 @@ export class PatternLoader {
     }
   }
 
-  /**
-   * Load a Prism pattern file directly
-   */
-  private async loadPrismPattern(filePath: string): Promise<void> {
-    try {
-      const content = await fs.readFile(filePath, 'utf-8');
-      const pattern = this.parsePrismPatternInstance(content, filePath);
-
-      if (this.validatePattern(pattern)) {
-        this.patterns.set(pattern.name, pattern);
-        this.logger.debug(
-          { pattern: pattern.name, source: 'prism' },
-          'Pattern loaded'
-        );
-      }
-    } catch (error) {
-      this.logger.error({ filePath, error }, 'Failed to load pattern');
-    }
-  }
-
-  private parsePrismPatternInstance(
-    content: string,
-    filePath: string
-  ): Pattern {
-    return PatternLoader.parsePrismPattern(
-      content,
-      path.basename(filePath, '.prism')
-    );
-  }
-
-  static parsePrismPattern(content: string, fallbackName: string): Pattern {
-    // Parse pattern metadata from comments
-    const metadataMatch = content.match(/\/\*\*([\s\S]*?)\*\//);
-    const metadata = metadataMatch
-      ? PatternLoader.parseMetadata(metadataMatch[1])
-      : {};
-
-    // Extract the actual script by removing the metadata comment block
-    const script = metadataMatch
-      ? content.replace(metadataMatch[0], '').trim()
-      : content.trim();
-
-    const name = metadata.name || fallbackName;
-
-    return {
-      name,
-      version: metadata.version || '1.0.0',
-      description: metadata.description || '',
-      input: metadata.input || { type: 'any' },
-      agents: metadata.agents,
-      minAgents: metadata.minAgents,
-      maxAgents: metadata.maxAgents,
-      script,
-      metadata,
-    };
-  }
-
-  static parseMetadata(metadataText: string): any {
-    // Simple metadata parser for pattern files
-    const lines = metadataText.split('\n');
-    const metadata: any = {};
-
-    for (const line of lines) {
-      const match = line.match(/@(\w+)\s+(.+)/);
-      if (match) {
-        const [, key, value] = match;
-        try {
-          // Try to parse as JSON
-          metadata[key] = JSON.parse(value);
-        } catch {
-          // Otherwise store as string
-          metadata[key] = value.trim();
-        }
-      }
-    }
-
-    return metadata;
-  }
-
   private validatePattern(pattern: Pattern): boolean {
     if (!pattern.name) {
       this.logger.warn({ pattern }, 'Pattern missing name');
       return false;
     }
-
-    if (!pattern.script) {
-      this.logger.warn({ pattern: pattern.name }, 'Pattern missing script');
-      return false;
-    }
-
     return true;
   }
 
@@ -211,34 +159,24 @@ export class PatternLoader {
     return this.patterns.get(name);
   }
 
+  /** The executable module for a pattern, when it is module-backed. */
+  getModule(name: string): PatternModule | undefined {
+    return this.modules.get(name);
+  }
+
   getAllPatterns(): Pattern[] {
     return Array.from(this.patterns.values());
   }
 
   async reloadPattern(name: string): Promise<void> {
-    // Try .prism first, then .yaml, then .yml
-    const prismPath = path.join(this.patternsDir, `${name}.prism`);
-    const yamlPath = path.join(this.patternsDir, `${name}.yaml`);
-    const ymlPath = path.join(this.patternsDir, `${name}.yml`);
-
-    try {
-      await fs.access(prismPath);
-      await this.loadPrismPattern(prismPath);
-      return;
-    } catch {}
-
-    try {
-      await fs.access(yamlPath);
-      await this.loadYamlPattern(yamlPath);
-      return;
-    } catch {}
-
-    try {
-      await fs.access(ymlPath);
-      await this.loadYamlPattern(ymlPath);
-      return;
-    } catch {}
-
+    for (const ext of ['yaml', 'yml']) {
+      const filePath = path.join(this.patternsDir, `${name}.${ext}`);
+      try {
+        await fs.access(filePath);
+        await this.loadYamlPattern(filePath);
+        return;
+      } catch {}
+    }
     this.logger.warn({ name }, 'Pattern file not found');
   }
 }

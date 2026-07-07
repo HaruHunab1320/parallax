@@ -4,28 +4,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatabaseService } from '@/db/database.service';
 import { PatternEngine } from '@/pattern-engine/pattern-engine';
 import { EtcdRegistry } from '@/registry';
-import { RuntimeManager } from '@/runtime-manager';
 
 // Mock dependencies
-vi.mock('@/runtime-manager');
 vi.mock('@/registry');
 vi.mock('@/db/database.service');
 
 describe('PatternEngine', () => {
   let engine: PatternEngine;
-  let runtimeManager: RuntimeManager;
   let registry: EtcdRegistry;
   let database: DatabaseService;
   let logger: pino.Logger;
 
   beforeEach(() => {
     logger = pino({ level: 'silent' });
-    runtimeManager = new RuntimeManager({} as any, logger);
-    // Auto-mock returns undefined for methods — provide proper return values
-    vi.mocked(runtimeManager.injectParallaxContext).mockImplementation(
-      async (s: string) => s
-    );
-    vi.mocked(runtimeManager.executePrismScript).mockResolvedValue({});
     registry = new EtcdRegistry(['localhost:2379'], 'test', logger);
     database = new DatabaseService(logger);
     // Auto-mock doesn't create nested repository objects
@@ -37,7 +28,6 @@ describe('PatternEngine', () => {
 
     const patternsDir = path.join(__dirname, '../../../../../patterns');
     engine = new PatternEngine({
-      runtimeManager,
       agentRegistry: registry,
       patternsDir,
       logger,
@@ -121,10 +111,18 @@ describe('PatternEngine', () => {
         minAgents: 1,
       };
 
-      // Mock the pattern loader to include our test pattern
+      // Mock the pattern loader to include our test pattern and its module
       const _getPatternSpy = vi
         .spyOn(engine, 'getPattern')
         .mockReturnValue(testPattern);
+      vi.spyOn((engine as any).loader, 'getModule').mockReturnValue({
+        meta: {
+          name: 'test-pattern',
+          version: '1.0.0',
+          description: 'Test pattern',
+        },
+        execute: async () => ({ value: 'success', confidence: 1 }),
+      });
 
       const result = await engine.executePattern('test-pattern', {
         test: 'data',
@@ -159,6 +157,16 @@ describe('PatternEngine', () => {
       };
 
       vi.spyOn(engine, 'getPattern').mockReturnValue(failingPattern);
+      vi.spyOn((engine as any).loader, 'getModule').mockReturnValue({
+        meta: {
+          name: 'failing-pattern',
+          version: '1.0.0',
+          description: 'Failing pattern',
+        },
+        execute: async () => {
+          throw new Error('Intentional failure');
+        },
+      });
       vi.spyOn(registry, 'listServices').mockResolvedValue([]);
 
       await expect(

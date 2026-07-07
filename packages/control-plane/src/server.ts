@@ -54,8 +54,6 @@ import {
   StartupRecoveryService,
   TimeoutChecker,
 } from './resilience';
-import { RuntimeManager } from './runtime-manager';
-import type { RuntimeConfig } from './runtime-manager/types';
 // Scheduler imports
 import {
   createSchedulerService,
@@ -148,19 +146,6 @@ export async function createServer(): Promise<express.Application> {
   ).split(',');
   const registry = new EtcdRegistry(etcdEndpoints, 'parallax', logger);
 
-  const runtimeConfig: RuntimeConfig = {
-    maxInstances: parseInt(
-      process.env.PARALLAX_RUNTIME_MAX_INSTANCES || '10',
-      10
-    ),
-    instanceTimeout: parseInt(
-      process.env.PARALLAX_RUNTIME_TIMEOUT || '30000',
-      10
-    ),
-    warmupInstances: parseInt(process.env.PARALLAX_RUNTIME_WARMUP || '2', 10),
-    metricsEnabled: process.env.PARALLAX_METRICS_ENABLED === 'true',
-  };
-  const runtimeManager = new RuntimeManager(runtimeConfig, logger);
 
   const patternsDir =
     process.env.PARALLAX_PATTERNS_DIR || path.join(process.cwd(), 'patterns');
@@ -304,7 +289,6 @@ export async function createServer(): Promise<express.Application> {
   // Use traced pattern engine if tracing is enabled
   // Note: workspaceService and agentRuntimeService will be set later after they're initialized
   const patternEngineServices = {
-    runtimeManager,
     agentRegistry: registry,
     patternsDir,
     logger,
@@ -691,7 +675,6 @@ export async function createServer(): Promise<express.Application> {
   // Health checks
   const healthService = new HealthCheckService(
     patternEngine as PatternEngine,
-    runtimeManager,
     registry,
     logger
   );

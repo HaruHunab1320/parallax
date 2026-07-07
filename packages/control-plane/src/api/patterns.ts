@@ -16,7 +16,6 @@ import {
   createExecutionInDb,
   updateExecutionInDb,
 } from '../pattern-engine/pattern-engine-db';
-import { PatternLoader } from '../pattern-engine/pattern-loader';
 
 export function createPatternsRouter(
   patternEngine: PatternEngine,
@@ -529,10 +528,11 @@ export function createPatternsRouter(
     const ext = path.extname(filename).toLowerCase();
 
     if (ext === '.prism') {
-      const fallbackName = path.basename(filename, '.prism');
-      const parsed = PatternLoader.parsePrismPattern(content, fallbackName);
-      const pattern = await patternEngine.savePattern(parsed, { overwrite });
-      return { pattern };
+      throw new Error(
+        'Prism patterns are no longer supported. Custom-logic patterns are ' +
+          'TypeScript modules deployed with the control plane ' +
+          '(@parallaxai/patterns); upload org-chart YAML instead.'
+      );
     }
 
     if (ext === '.yaml' || ext === '.yml') {

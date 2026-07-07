@@ -23,8 +23,8 @@ import {
   WorkflowExecutor,
   type WorkflowResult,
 } from '../org-patterns/workflow-executor';
+import type { PatternContext } from '@parallaxai/patterns';
 import type { EtcdRegistry } from '../registry';
-import type { RuntimeManager } from '../runtime-manager';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 import type { ThreadPreparationService } from '../threads';
 import type {
@@ -46,7 +46,6 @@ import { PatternLoader } from './pattern-loader';
 import type { ExecutionMetrics, Pattern, PatternExecution } from './types';
 
 export class PatternEngine implements IPatternEngine {
-  private runtimeManager: RuntimeManager;
   private agentRegistry: EtcdRegistry;
   private patternsDir: string;
   protected logger: Logger;
@@ -71,7 +70,6 @@ export class PatternEngine implements IPatternEngine {
   private shuttingDown: boolean = false;
 
   constructor(services: PatternEngineServices) {
-    this.runtimeManager = services.runtimeManager;
     this.agentRegistry = services.agentRegistry;
     this.patternsDir = services.patternsDir;
     this.logger = services.logger;
@@ -1063,10 +1061,28 @@ export class PatternEngine implements IPatternEngine {
         );
       }
 
-      // Prepare context with pre-processed results
-      const context = {
+      // Execute the pattern's TypeScript module with the collected results.
+      // Custom-logic patterns are deployed code (@parallaxai/patterns), not
+      // uploaded scripts; org-chart YAML patterns run via WorkflowExecutor.
+      const patternModule = this.loader.getModule(patternName);
+      if (!patternModule) {
+        throw new Error(
+          `Pattern '${patternName}' has no executable module. Register it ` +
+            'in @parallaxai/patterns, or use an org-chart YAML pattern.'
+        );
+      }
+
+      const patternContext: PatternContext = {
         input,
-        // Include workspace info if available
+        agents: agents.map((a) => ({
+          id: a.id,
+          name: a.name,
+          capabilities: a.capabilities,
+          expertise: a.expertise || 0.7,
+          historicalConfidence: a.historicalConfidence || 0.75,
+        })),
+        results: preProcessedData.agentResults,
+        successfulResults: preProcessedData.successfulResults,
         workspace: workspace
           ? {
               id: workspace.id,
@@ -1076,112 +1092,22 @@ export class PatternEngine implements IPatternEngine {
               baseBranch: workspace.branch.baseBranch,
             }
           : undefined,
-        agentList: agents.map((a) => ({
-          id: a.id,
-          name: a.name,
-          capabilities: a.capabilities,
-          expertise: a.expertise || 0.7,
-          historicalConfidence: a.historicalConfidence || 0.75,
-        })),
-        agentCount: agents.length,
-        ...preProcessedData,
-        pattern: {
-          name: pattern.name,
-          version: pattern.version,
-        },
-        // Helper functions for Prism
-        parallax: {
-          agentList: agents.map((a) => ({
-            id: a.id,
-            name: a.name,
-            capabilities: a.capabilities,
-            expertise: a.expertise || 0.7,
-          })),
-          patterns: {
-            [pattern.name]: {
-              name: pattern.name,
-              version: pattern.version,
-              description: pattern.description,
-              input: pattern.input,
-              // Omit 'agents' property to avoid reserved word issue
-              minAgents: pattern.minAgents || 0,
-              maxAgents: pattern.maxAgents || 999,
-              script: pattern.script,
-              metadata: pattern.metadata
-                ? (() => {
-                    const cleanMetadata: any = {};
-                    for (const [key, value] of Object.entries(
-                      pattern.metadata
-                    )) {
-                      if (key !== 'agents') {
-                        cleanMetadata[key] = value;
-                      } else if (value !== null && value !== undefined) {
-                        cleanMetadata.agentRequirements = value;
-                      }
-                    }
-                    return cleanMetadata;
-                  })()
-                : undefined,
-            },
-          },
-          confidence: {
-            // Remove functions as they can't be serialized to Prism
-            // track: (value: any, confidence: number) => ({ value, confidence }),
-            // propagate: (results: any[]) => results.map(r => r.confidence)
-          },
-        },
-        // Remove helper functions as they can't be serialized to Prism
-        // highConfidenceAgreement: (results: any[]) => {
-        //   const highConf = results.filter(r => r.confidence > 0.8);
-        //   return highConf.length > results.length * 0.6;
-        // },
-        // parallel: async (tasks: any[]) => {
-        //   return Promise.all(tasks);
-        // },
-        // range: (start: number, end: number) => {
-        //   const result = [];
-        //   for (let i = start; i < end; i++) {
-        //     result.push(i);
-        //   }
-        //   return result;
-        // }
+        pattern: { name: pattern.name, version: pattern.version },
+        logger: this.logger.child({ pattern: pattern.name, executionId }),
       };
 
-      // Preprocess the script to handle Prism syntax issues
-      const preprocessedScript = pattern.script;
-
-      // For debugging, check if this is a test pattern
-      const isTestPattern = pattern.name.startsWith('Test');
-
-      // Inject Parallax context and execute
-      const enhancedScript =
-        await this.runtimeManager.injectParallaxContext(preprocessedScript);
-
       this.logger.debug(
-        {
-          patternName,
-          agentCount: agents.length,
-          scriptLength: enhancedScript.length,
-          isTestPattern,
-        },
-        'Executing pattern script'
+        { patternName, agentCount: agents.length },
+        'Executing pattern module'
       );
-
-      // For test patterns, try running without context to isolate issues
-      if (isTestPattern && pattern.name === 'TestEmpty') {
-        this.logger.info('Running TestEmpty without context injection');
-        await this.runtimeManager.executePrismScript(
-          pattern.script, // Just the raw script
-          {} // Empty context
-        );
-        return execution;
-      }
 
       emitEvent('runtime_started', { patternName });
-      const result = await this.runtimeManager.executePrismScript(
-        enhancedScript,
-        context
-      );
+      const moduleResult = await patternModule.execute(patternContext);
+      const result = {
+        value: moduleResult.value,
+        confidence: moduleResult.confidence,
+        executedAt: new Date(),
+      };
       emitEvent('runtime_completed', { patternName });
 
       // Update execution record
@@ -1708,9 +1634,18 @@ export class PatternEngine implements IPatternEngine {
       });
     }
 
-    // Fall back to file-based storage
+    // File-based storage only applies to org-chart YAML patterns; custom
+    // logic patterns are TypeScript modules deployed with the control plane.
+    if (!(pattern.metadata as any)?.orgChart) {
+      throw new Error(
+        `Pattern '${pattern.name}' cannot be saved at runtime. Custom-logic ` +
+          'patterns are TypeScript modules registered in @parallaxai/patterns; ' +
+          'only org-chart YAML patterns can be uploaded.'
+      );
+    }
+
     await fs.mkdir(this.patternsDir, { recursive: true });
-    const filePath = path.join(this.patternsDir, `${pattern.name}.prism`);
+    const filePath = path.join(this.patternsDir, `${pattern.name}.yaml`);
 
     if (!options?.overwrite) {
       try {
@@ -1723,8 +1658,14 @@ export class PatternEngine implements IPatternEngine {
       }
     }
 
-    const content = this.buildPatternFileContent(pattern);
-    await fs.writeFile(filePath, content, 'utf-8');
+    const source = (pattern.metadata as any)?.sourceYaml;
+    if (typeof source !== 'string' || !source.trim()) {
+      throw new Error(
+        `Org-chart pattern '${pattern.name}' is missing its YAML source ` +
+          '(metadata.sourceYaml) — cannot persist.'
+      );
+    }
+    await fs.writeFile(filePath, source, 'utf-8');
     await this.loader.reloadPattern(pattern.name);
 
     const saved = this.loader.getPattern(pattern.name);
@@ -1742,10 +1683,12 @@ export class PatternEngine implements IPatternEngine {
       throw new Error(`Pattern '${name}' not found`);
     }
 
-    // Cannot delete file-based patterns through this API
+    // Cannot delete file/module patterns through this API
     if (pattern.source === 'file' || !this.databasePatterns) {
       throw new Error(
-        `Cannot delete file-based pattern '${name}'. Remove the .prism file from the filesystem.`
+        `Cannot delete pattern '${name}' through this API. Module patterns ` +
+          'are removed from @parallaxai/patterns; YAML patterns by deleting ' +
+          'the file from the patterns directory.'
       );
     }
 
@@ -1784,34 +1727,6 @@ export class PatternEngine implements IPatternEngine {
     return this._calibrationService;
   }
 
-  private buildPatternFileContent(pattern: Pattern): string {
-    const metadataLines: string[] = [];
-
-    if (pattern.name) metadataLines.push(`@name ${pattern.name}`);
-    if (pattern.version) metadataLines.push(`@version ${pattern.version}`);
-    if (pattern.description)
-      metadataLines.push(`@description ${pattern.description}`);
-    if (pattern.input)
-      metadataLines.push(`@input ${JSON.stringify(pattern.input)}`);
-    if (pattern.agents)
-      metadataLines.push(`@agents ${JSON.stringify(pattern.agents)}`);
-    if (pattern.threads)
-      metadataLines.push(`@threads ${JSON.stringify(pattern.threads)}`);
-    if (typeof pattern.minAgents === 'number')
-      metadataLines.push(`@minAgents ${pattern.minAgents}`);
-    if (typeof pattern.maxAgents === 'number')
-      metadataLines.push(`@maxAgents ${pattern.maxAgents}`);
-    if (pattern.metadata && Object.keys(pattern.metadata).length > 0) {
-      metadataLines.push(`@metadata ${JSON.stringify(pattern.metadata)}`);
-    }
-
-    if (metadataLines.length === 0) {
-      return pattern.script.trim();
-    }
-
-    const header = `/**\n${metadataLines.map((line) => ` * ${line}`).join('\n')}\n */\n`;
-    return `${header}${pattern.script.trim()}`;
-  }
 
   /**
    * Resolve workspace configuration from pattern and input

@@ -6,7 +6,6 @@ import { type Request, type Response, Router } from 'express';
 import type { Logger } from 'pino';
 import type { PatternEngine } from '../pattern-engine';
 import type { EtcdRegistry } from '../registry';
-import type { RuntimeManager } from '../runtime-manager';
 
 export interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -24,7 +23,6 @@ export interface HealthStatus {
 export class HealthCheckService {
   constructor(
     private patternEngine: PatternEngine | any,
-    private runtimeManager: RuntimeManager,
     private registry: EtcdRegistry,
     _logger: Logger
   ) {}
@@ -32,15 +30,13 @@ export class HealthCheckService {
   async checkHealth(): Promise<HealthStatus> {
     const checks = await Promise.allSettled([
       this.checkPatternEngine(),
-      this.checkRuntimeManager(),
       this.checkRegistry(),
     ]);
 
-    const [patternEngineCheck, runtimeCheck, registryCheck] = checks;
+    const [patternEngineCheck, registryCheck] = checks;
 
     const services: HealthStatus['services'] = {
       patternEngine: this.getServiceStatus(patternEngineCheck),
-      runtime: this.getServiceStatus(runtimeCheck),
       registry: this.getServiceStatus(registryCheck),
     };
 
@@ -67,12 +63,6 @@ export class HealthCheckService {
     if (patterns.length === 0) {
       throw new Error('No patterns loaded');
     }
-  }
-
-  private async checkRuntimeManager(): Promise<void> {
-    // Check if runtime can execute a simple script
-    const testScript = 'let result = 1 + 1\nresult ~> 1.0';
-    await this.runtimeManager.executePrismScript(testScript, {});
   }
 
   private async checkRegistry(): Promise<void> {

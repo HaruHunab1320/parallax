@@ -178,23 +178,26 @@ with the control plane. `PatternLoader` resolves names from the manifest first,
 then the DB (which now stores a module reference + version, not source).
 
 Control-plane changes:
-- [ ] `pattern-engine.ts` (~1997 LOC): keep agent selection/dispatch/eventing
-      untouched; replace the `runtimeManager.executePrismScript(script, ctx)`
-      call with `module.execute(ctx)` wrapped in the same
-      timeout/metrics/eventing.
-- [ ] **Delete** `runtime-manager/runtime-manager.ts` (401 LOC),
-      `prism-runtime-pool.ts` (108 LOC), and the whole context-injection /
-      value-unwrapping layer. Nothing replaces them — a function call needs
-      no serialization boundary.
-- [ ] `pattern-loader.ts` (244 LOC): drop `.prism` parsing + JSDoc-annotation
-      extraction; load from the manifest; keep DB-backed listing.
-- [ ] `UploadPattern` RPC: repurpose to accept **org-chart YAML only** (safe,
-      declarative). Executable-code upload is removed; custom logic patterns
-      arrive via deployment, like Temporal workers.
+- [x] `pattern-engine.ts`: agent selection/dispatch/eventing untouched;
+      Prism execution block replaced with `module.execute(ctx)` under the
+      same timeout/metrics/eventing. **(Done M2)**
+- [x] **Deleted** `runtime-manager/` entirely (context-injection and
+      value-unwrapping layers included) plus the `@prism-lang/*`
+      dependencies. **(Done M2)**
+- [x] `pattern-loader.ts`: loads modules from the @parallaxai/patterns
+      manifest + org-chart YAML from the patterns dir; `.prism` parsing
+      deleted. `savePattern` persists org-chart YAML only. **(Done M2 —
+      note: the contract lives in the new `packages/patterns`, not
+      pattern-sdk, which remains legacy and dies in A5/A6.)**
+- [x] Upload paths: REST rejects `.prism` with a pointer to the module
+      workflow; gRPC `UploadPattern` of a prism script now fails in
+      `savePattern` with the same guidance (proto field rename lands in
+      M3/A4). **(Done M2)**
 
-**Acceptance:** control plane builds with no `@prism-lang/*` import;
-`ExecutePattern` works end-to-end against a TS pattern with identical gRPC
-response shape (execution events, metrics, confidence).
+**Acceptance (met):** control plane builds with no `@prism-lang/*` import;
+`ExecutePattern` runs TS modules end-to-end — the engine integration tests
+execute ConsensusBuilder / ConfidenceCascade / UncertaintyRouter through the
+real engine and assert on the exact legacy output shapes.
 
 ### A3. Convert the pattern library
 
@@ -224,14 +227,17 @@ export const simpleConsensus: PatternModule = {
 ```
 
 Order of conversion (each is a working checkpoint):
-- [ ] `simple-consensus`, `enhanced-consensus` (pure aggregation)
-- [ ] `confidence-cascade` (sequential + early exit → `gate`/`coalesce`)
-- [ ] `multi-validator` (fast path + fallback)
-- [ ] `parallel-exploration` (`best()` over divergent attempts)
-- [ ] Remaining ~15, then **delete `/patterns/*.prism`**. The `org-*.yaml`
-      files are untouched — they never were Prism.
-- [ ] Port pattern tests; delete `pattern-sdk/test/learn-prism*.ts`,
-      `debug-*.ts`, `test-prism-*.ts` (~20 files of language archaeology).
+- [x] All 22 patterns converted to `packages/patterns/src/patterns/*.ts`
+      and `/patterns/*.prism` deleted (`test-parallel-primitive` and
+      `signal-noise-station` dropped — test artifact / personal-demo copy).
+      Conversion notes are inline in each file where original behavior was
+      buggy or unreachable (dead `uncertain if` branches, last-vs-first
+      reduce idioms, unrolled loop caps). The `org-*.yaml` files are
+      untouched — they never were Prism. **(Done M2)**
+- [x] Engine pattern tests ported to the module path and passing.
+      **(Done M2)**
+- [ ] Delete `pattern-sdk/test/learn-prism*.ts`, `debug-*.ts`,
+      `test-prism-*.ts` (~20 files of language archaeology) — with A5.
 
 ### A4. Proto and client surface
 
