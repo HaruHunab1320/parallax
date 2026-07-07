@@ -1242,6 +1242,9 @@ importers:
 
   packages/runtime-local:
     dependencies:
+      '@parallaxai/confidence':
+        specifier: workspace:*
+        version: link:../confidence
       '@parallaxai/runtime-interface':
         specifier: workspace:*
         version: link:../runtime-interface

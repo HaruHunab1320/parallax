@@ -28,6 +28,7 @@ import {
   type ThreadRuntimeProvider,
   type ThreadStatus,
 } from '@parallaxai/runtime-interface';
+import { parseConfidenceMarker } from '@parallaxai/confidence';
 import type { Logger } from 'pino';
 import {
   type BlockingPromptInfo,
@@ -316,10 +317,13 @@ export class LocalRuntime
 
     this.manager.on('task_complete', (handle: SessionHandle) => {
       let completion: ThreadCompletion | undefined;
+      let confidence: number | undefined;
+      let output = '';
       const session = this.manager.getSession(handle.id);
       if (session) {
-        const output = session.getOutputBuffer().trim();
+        output = session.getOutputBuffer().trim();
         if (output) {
+          confidence = parseConfidenceMarker(output);
           completion = {
             state: 'partial',
             summary: output.split('\n').slice(-5).join('\n').slice(-1000),
@@ -327,11 +331,19 @@ export class LocalRuntime
         }
       }
 
-      this.emitThreadEvent(handle.id, 'thread_turn_complete', undefined, {
-        status: 'ready',
-        completion,
-        summary: completion?.summary,
-      });
+      this.emitThreadEvent(
+        handle.id,
+        'thread_turn_complete',
+        {
+          output: output.slice(-8000),
+          ...(confidence !== undefined ? { confidence } : {}),
+        },
+        {
+          status: 'ready',
+          completion,
+          summary: completion?.summary,
+        }
+      );
     });
 
     this.manager.on('tool_running', (handle: SessionHandle, info: unknown) => {

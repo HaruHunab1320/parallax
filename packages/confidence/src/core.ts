@@ -189,3 +189,23 @@ export function prop<T = unknown>(
   }
   return cf(current as T, confidence);
 }
+
+/**
+ * Extract a trailing confidence marker from free text — the convention CLI
+ * agents use to report confidence in a turn:
+ *
+ *   CONFIDENCE: 0.85
+ *
+ * Case-insensitive; the LAST marker wins (agents may quote the instruction
+ * earlier in their output). Values are clamped to [0, 1]. Returns
+ * undefined when no marker is present.
+ */
+export function parseConfidenceMarker(text: string): number | undefined {
+  if (!text) return undefined;
+  const matches = text.match(/confidence:\s*([0-9]*\.?[0-9]+)/gi);
+  if (!matches || matches.length === 0) return undefined;
+  const last = matches[matches.length - 1]!;
+  const value = Number.parseFloat(last.replace(/confidence:\s*/i, ''));
+  if (Number.isNaN(value)) return undefined;
+  return clamp01(value);
+}

@@ -1,0 +1,156 @@
+# Coding Swarm — Local (laptop) variant
+#
+# The 10-minute quickstart pattern: one architect and two engineers, all
+# running as Claude Code PTY threads on your machine. Same topology as the
+# distributed fleet pattern (coding-swarm.org.yaml) — only the hardware
+# changes.
+#
+# Engineers carry a confidence policy: low-confidence results are retried
+# once with a critique; critically low results escalate to the architect.
+
+name: coding-swarm-local
+version: "1.0.0"
+description: |
+  Laptop coding swarm: an architect decomposes the task, two engineers
+  implement in parallel, the architect reviews. Confidence-driven retry
+  and escalation via each engineer's reportsTo relationship.
+
+structure:
+  name: Local Coding Swarm
+  description: Architect + 2 engineer CLI agents in local PTYs
+
+  roles:
+    architect:
+      id: architect
+      name: Architect
+      description: Decomposes the task, assigns work, reviews results
+      agentType: claude
+      singleton: true
+      capabilities:
+        - system_design
+        - code_review
+        - task_decomposition
+      expertise:
+        - architecture
+        - design
+      threadConfig:
+        enabled: true
+        objective: |
+          You are the architect of a two-engineer team. When given a task,
+          produce a plan that splits it into exactly two independently
+          implementable subtasks. When given results to review, judge them
+          critically and produce the final merged answer.
+
+          End EVERY response with a line of the form
+          `CONFIDENCE: <0.0-1.0>` reflecting how confident you are in it.
+        approvalPreset: standard
+
+    engineer_a:
+      id: engineer_a
+      name: Engineer A
+      description: Implements subtask 1
+      agentType: claude
+      singleton: true
+      reportsTo: architect
+      capabilities:
+        - implementation
+        - testing
+      expertise:
+        - implementation
+      confidence:
+        accept: 0.8
+        retryBelow: 0.6
+        escalateBelow: 0.4
+      threadConfig:
+        enabled: true
+        objective: |
+          You are an engineer. Implement the assigned subtask completely,
+          including tests.
+
+          End EVERY response with a line of the form
+          `CONFIDENCE: <0.0-1.0>` honestly reflecting how confident you are
+          that your implementation is complete and correct. Do not inflate
+          it — low confidence gets you help from the architect.
+        approvalPreset: standard
+
+    engineer_b:
+      id: engineer_b
+      name: Engineer B
+      description: Implements subtask 2
+      agentType: claude
+      singleton: true
+      reportsTo: architect
+      capabilities:
+        - implementation
+        - testing
+      expertise:
+        - implementation
+      confidence:
+        accept: 0.8
+        retryBelow: 0.6
+        escalateBelow: 0.4
+      threadConfig:
+        enabled: true
+        objective: |
+          You are an engineer. Implement the assigned subtask completely,
+          including tests.
+
+          End EVERY response with a line of the form
+          `CONFIDENCE: <0.0-1.0>` honestly reflecting how confident you are
+          that your implementation is complete and correct. Do not inflate
+          it — low confidence gets you help from the architect.
+        approvalPreset: standard
+
+  routing:
+    - from: [engineer_a, engineer_b]
+      to: architect
+      messageTypes:
+        - question
+        - status
+
+  escalation:
+    defaultBehavior: route_to_reports_to
+    timeoutMs: 300000
+    maxDepth: 2
+    onMaxDepth: surface_to_user
+
+workflow:
+  name: Local Swarm Build
+  input:
+    task:
+      type: string
+      description: What to build
+
+  steps:
+    # Step 0: architect decomposes the task into two subtasks
+    - type: assign
+      role: architect
+      task: |
+        Create an implementation plan for the following task, split into
+        exactly two independently implementable subtasks labeled
+        "Subtask 1" and "Subtask 2":
+
+        ${input.task}
+
+    # Step 1: engineers implement in parallel
+    - type: parallel
+      steps:
+        - type: assign
+          role: engineer_a
+          task: |
+            Implement Subtask 1 from this plan:
+
+            ${step_0_result}
+        - type: assign
+          role: engineer_b
+          task: |
+            Implement Subtask 2 from this plan:
+
+            ${step_0_result}
+
+    # Step 2: architect reviews and merges
+    - type: review
+      reviewer: architect
+      subject: ${step_1_result}
+
+  output: step_2_result

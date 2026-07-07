@@ -30,6 +30,7 @@ export {
   best,
   gate,
   prop,
+  parseConfidenceMarker,
 } from './core';
 
 export type { UncertainHandlers } from './uncertain';

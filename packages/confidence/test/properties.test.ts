@@ -26,6 +26,7 @@ import {
   lift,
   majorityVote,
   or,
+  parseConfidenceMarker,
   prop,
   uncertain,
   val,
@@ -289,5 +290,27 @@ describe('aggregation', () => {
     const majority = consensus([cf('a', 0.9), cf('a', 0.8), cf('b', 0.9)]);
     expect(majority.value.status).toBe('majority');
     expect(majority.value.winner).toBe('a');
+  });
+});
+
+describe('parseConfidenceMarker', () => {
+  it('extracts the last marker, case-insensitively, clamped', () => {
+    // Markers are plain decimals (the convention agents are prompted with)
+    fc.assert(
+      fc.property(fc.double({ min: 0, max: 1, noNaN: true }), (c) => {
+        const rendered = c.toFixed(4);
+        const text = `Some work summary.\nCONFIDENCE: ${rendered}`;
+        expect(parseConfidenceMarker(text)).toBeCloseTo(Number(rendered), 6);
+      })
+    );
+    expect(parseConfidenceMarker('confidence: 0.7')).toBe(0.7);
+    expect(
+      parseConfidenceMarker(
+        'End with CONFIDENCE: 0.9 they said.\nDone.\nCONFIDENCE: 0.42'
+      )
+    ).toBe(0.42);
+    expect(parseConfidenceMarker('Confidence: 7')).toBe(1); // clamped
+    expect(parseConfidenceMarker('no marker here')).toBeUndefined();
+    expect(parseConfidenceMarker('')).toBeUndefined();
   });
 });

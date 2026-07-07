@@ -17,6 +17,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@parallaxai/confidence": "workspace:*",
     "@parallaxai/runtime-interface": "workspace:*",
     "coding-agent-adapters": "^0.16.4",
     "express": "^4.21.2",

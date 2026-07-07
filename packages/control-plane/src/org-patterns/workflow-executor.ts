@@ -1129,6 +1129,7 @@ export class WorkflowExecutor extends EventEmitter {
             if (eventData) {
               const dataJson = eventData.data_json;
               if (typeof dataJson === 'string') {
+                // Gateway shape: JSON-encoded ThreadEventReport payload
                 try {
                   const parsed = JSON.parse(dataJson) as {
                     output?: string;
@@ -1142,6 +1143,16 @@ export class WorkflowExecutor extends EventEmitter {
                   }
                 } catch {
                   /* ignore parse errors */
+                }
+              } else {
+                // Local runtime shape: plain fields on event data
+                if (typeof eventData.output === 'string') {
+                  output = sanitizeOutput(eventData.output, {
+                    maxLength: 8000,
+                  });
+                }
+                if (typeof eventData.confidence === 'number') {
+                  eventConfidence = eventData.confidence;
                 }
               }
             }
