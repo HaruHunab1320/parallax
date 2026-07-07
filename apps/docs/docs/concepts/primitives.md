@@ -523,4 +523,3 @@ const customScorer = definePrimitive({
 
 - [Patterns](/docs/concepts/patterns) - How primitives combine into patterns
 - [YAML Syntax](/docs/patterns/yaml-syntax) - Complete primitive reference
-- [Pattern Builder](/docs/pattern-builder/overview) - Visual primitive editor

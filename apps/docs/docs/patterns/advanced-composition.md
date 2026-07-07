@@ -689,5 +689,4 @@ output:
 ## Next Steps
 
 - [Pattern SDK](/docs/sdk/pattern-sdk) - Build complex patterns programmatically
-- [Pattern Builder](/docs/pattern-builder/overview) - Visual composition editor
 - [Quality Gates](/docs/patterns/quality-gates) - Add validation to compositions

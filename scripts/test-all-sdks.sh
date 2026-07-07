@@ -111,5 +111,5 @@ echo
 echo "3. Check individual SDK documentation:"
 echo "   - TypeScript: packages/sdk-typescript/README.md"
 echo "   - Python: packages/sdk-python/README.md"
-echo "   - Go: packages/sdk-go/README.md"
-echo "   - Rust: packages/sdk-rust/README.md"
+echo "   - Go: examples/polyglot/go-agent/README.md"
+echo "   - Rust: examples/polyglot/rust-agent/README.md"

@@ -425,7 +425,7 @@ helm install parallax ./k8s/helm/parallax \
 - **Metrics**: Prometheus metrics at `/metrics`
 - **Tracing**: OpenTelemetry with Jaeger/OTLP export
 - **Logging**: Structured JSON logs (pino)
-- **Dashboards**: Grafana dashboards in `/packages/monitoring`
+- **Dashboards**: Grafana dashboards in `/monitoring`
 - **Health**: `/health`, `/health/ready`, `/health/live` endpoints
 
 ## API Reference

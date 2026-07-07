@@ -415,10 +415,10 @@ cd apps/demo-python && poetry run pytest
 #### 11.3 Go SDK
 ```bash
 # Run Go SDK tests
-cd packages/sdk-go && go test ./...
+cd examples/polyglot/go-agent && go test ./...
 
 # Integration test
-cd apps/demo-go && go test ./...
+cd examples/polyglot/go-agent && go build ./cmd/demo
 ```
 - [ ] SDK installation works (`go get github.com/HaruHunab1320/parallax/sdk-go`)
 - [ ] gRPC channel creation
@@ -432,10 +432,10 @@ cd apps/demo-go && go test ./...
 #### 11.4 Rust SDK
 ```bash
 # Run Rust SDK tests
-cd packages/sdk-rust && cargo test
+cd examples/polyglot/rust-agent && cargo test
 
 # Integration test
-cd apps/demo-rust && cargo test
+cd examples/polyglot/rust-agent && cargo check --examples
 ```
 - [ ] SDK builds (`cargo build`)
 - [ ] gRPC channel creation
@@ -499,7 +499,6 @@ pnpm test --filter @parallaxai/cli
 
 ```bash
 # Run pattern builder tests
-pnpm test --filter @parallaxai/pattern-builder
 ```
 
 #### 13.1 Visual Editor

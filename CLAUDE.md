@@ -19,10 +19,10 @@ Parallax is an AI agent orchestration platform with uncertainty/confidence as a 
 
 ```
 parallax/
-  packages/         # Core libraries and services (31 packages)
+  packages/         # Core libraries and services (23 packages)
   apps/             # Full applications (web dashboard, docs, marketing)
-  demos/            # Demo applications (signal-noise, pi-demo, etc.)
-  examples/         # Example agent integrations
+  demos/            # Demo applications (coding-swarm, pi-demo, etc.; demos/personal/ for ARG projects)
+  examples/         # Example agent integrations (incl. examples/polyglot/ Go+Rust agents)
   proto/            # Protocol Buffer definitions (source of truth)
   k8s/              # Kubernetes configs and Helm charts
   terraform/        # GCP infrastructure (GKE, Cloud SQL, Redis)
@@ -92,7 +92,10 @@ The Python SDK uses `@prism-coordination/python` scope (private).
 ### SDKs
 - **sdk-typescript** — Primary SDK: `ParallaxAgent` base class, gRPC clients, proto definitions
 - **sdk-python** — Python SDK (Poetry-based, private)
-- **sdk-go**, **sdk-rust** — Go and Rust SDKs
+
+Only TypeScript and Python SDKs are maintained. Other languages join via the
+raw gRPC contract (`docs/any-language.md`); self-contained Go and Rust example
+agents live in `examples/polyglot/`.
 
 ### Agent Tooling
 

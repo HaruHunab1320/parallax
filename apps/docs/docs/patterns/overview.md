@@ -342,4 +342,3 @@ for (const p of patterns) {
 
 - [YAML Syntax](/docs/patterns/yaml-syntax) - Complete syntax reference
 - [Voting Patterns](/docs/patterns/voting-patterns) - Classification patterns
-- [Pattern Builder](/docs/pattern-builder/overview) - Visual pattern editor

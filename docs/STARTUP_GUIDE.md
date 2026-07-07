@@ -97,10 +97,9 @@ docker-compose up
 
 ### Monitoring Stack Only
 ```bash
-cd packages/monitoring
-pnpm run start:local
+pnpm run monitor:start
 # or
-docker-compose -f docker-compose.monitoring.yml up
+docker compose --profile monitoring up
 ```
 
 **Services:**

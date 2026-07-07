@@ -88,16 +88,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Pattern Builder',
-      items: [
-        'pattern-builder/overview',
-        'pattern-builder/nodes',
-        'pattern-builder/connections',
-        'pattern-builder/exporting',
-      ],
-    },
-    {
-      type: 'category',
       label: 'Deployment',
       items: [
         'deployment/local',

@@ -31,15 +31,15 @@ cd packages/sdk-python
 ./generate-proto.sh
 ```
 
-### Go SDK
+### Go example agent
 ```bash
-cd packages/sdk-go
+cd examples/polyglot/go-agent
 ./generate-proto.sh
 ```
 
-### Rust SDK
+### Rust example agent
 ```bash
-cd packages/sdk-rust
+cd examples/polyglot/rust-agent
 ./generate-proto.sh
 # Or just build - Rust uses build.rs
 cargo build

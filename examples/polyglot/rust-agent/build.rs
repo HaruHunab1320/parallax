@@ -1,0 +1,27 @@
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Only regenerate if proto files change
+    println!("cargo:rerun-if-changed=../../../proto/confidence.proto");
+    println!("cargo:rerun-if-changed=../../../proto/coordinator.proto");
+    println!("cargo:rerun-if-changed=../../../proto/patterns.proto");
+    println!("cargo:rerun-if-changed=../../../proto/registry.proto");
+    println!("cargo:rerun-if-changed=../../../proto/executions.proto");
+    println!("cargo:rerun-if-changed=../../../proto/gateway.proto");
+
+    // build_transport(false): gateway.proto has an RPC named `Connect`, which
+    // collides with tonic's generated transport constructor of the same name
+    tonic_build::configure()
+        .build_transport(false)
+        .out_dir("generated")
+        .compile_protos(
+            &[
+                "../../../proto/confidence.proto",
+                "../../../proto/coordinator.proto",
+                "../../../proto/patterns.proto",
+                "../../../proto/registry.proto",
+                "../../../proto/executions.proto",
+                "../../../proto/gateway.proto",
+            ],
+            &["../../../proto"],
+        )?;
+    Ok(())
+}

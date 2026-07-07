@@ -2,52 +2,64 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    cluster: 'parallax'
-    replica: '1'
+    cluster: 'parallax-local'
+    environment: 'development'
 
 # Alertmanager configuration
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: []
+        - targets:
+          # - 'alertmanager:9093'
 
-# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+# Load rules once and periodically evaluate them
 rule_files:
-  # - "first_rules.yml"
-  # - "second_rules.yml"
+  - "alerts/*.yml"
 
 # Scrape configurations
 scrape_configs:
-  # Prometheus itself
+  # Parallax Control Plane
+  - job_name: 'parallax-control-plane'
+    static_configs:
+      - targets: ['control-plane:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):.*'
+        replacement: '${1}'
+
+  # Parallax Agents (dynamic discovery via etcd)
+  - job_name: 'parallax-agents'
+    etcd_sd_configs:
+      - servers:
+          - 'http://etcd:2379'
+        role: endpoints
+        prefix: '/parallax/agents/'
+    relabel_configs:
+      - source_labels: [__meta_etcd_endpoint_name]
+        target_label: agent_id
+      - source_labels: [__address__]
+        target_label: __address__
+        regex: '(.*)'
+        replacement: '${1}:9090'
+
+  # Prometheus self-monitoring
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
-  # Control Plane metrics
-  - job_name: 'control-plane'
+  # Node Exporter (if deployed)
+  - job_name: 'node'
     static_configs:
-      - targets: ['control-plane:3000']
-    metrics_path: '/metrics'
+      - targets: ['node-exporter:9100']
 
-  # Agent metrics - will be dynamically discovered
-  - job_name: 'agents'
-    static_configs:
-      - targets: []  # Will be populated by service discovery
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-      - source_labels: [agent_id]
-        target_label: agent_id
-      - source_labels: [agent_type]
-        target_label: agent_type
-
-  # etcd metrics
+  # etcd monitoring
   - job_name: 'etcd'
     static_configs:
       - targets: ['etcd:2379']
     metrics_path: '/metrics'
 
-  # Node exporter for system metrics
-  - job_name: 'node'
+  # PostgreSQL monitoring (if using postgres_exporter)
+  - job_name: 'postgresql'
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ['postgres-exporter:9187']

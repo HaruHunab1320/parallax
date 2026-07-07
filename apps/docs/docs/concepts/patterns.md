@@ -286,10 +286,6 @@ output:
   confidence: $vote.confidence
 ```
 
-### Visual Builder
-
-Use the [Pattern Builder](/docs/pattern-builder/overview) to create patterns visually by dragging and connecting nodes.
-
 ### Programmatic
 
 ```typescript
@@ -308,4 +304,3 @@ const pattern = new PatternBuilder('my-pattern')
 
 - [Primitives](/docs/concepts/primitives) - Building blocks for patterns
 - [YAML Syntax](/docs/patterns/yaml-syntax) - Complete reference
-- [Pattern Builder](/docs/pattern-builder/overview) - Visual editor
