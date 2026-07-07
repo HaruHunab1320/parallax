@@ -1,4 +1,0 @@
-export function test(data) {
-  const result = data.map(agent => agent.value)
-  return result ~> 0.9
-}

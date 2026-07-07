@@ -131,7 +131,7 @@ export default function PatternsPage() {
 
     Array.from(files).forEach((file) => {
       const ext = file.name.split('.').pop()?.toLowerCase();
-      if (!['prism', 'yaml', 'yml'].includes(ext || '')) return;
+      if (!['yaml', 'yml'].includes(ext || '')) return;
 
       const reader = new FileReader();
       reader.onload = () => {
@@ -613,14 +613,14 @@ export default function PatternsPage() {
                 >
                   <FileUp className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-300 mb-2">Drag & drop pattern files here</p>
-                  <p className="text-sm text-gray-500 mb-3">Accepts .prism, .yaml, .yml files</p>
+                  <p className="text-sm text-gray-500 mb-3">Accepts org-chart .yaml / .yml files</p>
                   <label className="cursor-pointer">
                     <span className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md text-sm text-white transition-colors">
                       Browse Files
                     </span>
                     <input
                       type="file"
-                      accept=".prism,.yaml,.yml"
+                      accept=".yaml,.yml"
                       multiple
                       onChange={handleFileSelect}
                       className="hidden"

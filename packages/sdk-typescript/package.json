@@ -18,7 +18,6 @@
     "@grpc/grpc-js": "^1.12.4",
     "@grpc/proto-loader": "^0.7.13",
     "@parallaxai/confidence": "workspace:*",
-    "@prism-lang/confidence": "^1.2.7",
     "google-protobuf": "^3.21.4",
     "pino": "^9.6.0",
     "uuid": "^9.0.0"

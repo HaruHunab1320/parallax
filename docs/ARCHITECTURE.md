@@ -4,11 +4,11 @@
 
 ## Overview
 
-Parallax is an open-source AI orchestration platform that coordinates agent swarms using uncertainty-aware patterns written in the Prism language. It enables complex multi-agent workflows with confidence tracking, automatic consensus building, and enterprise-grade reliability.
+Parallax is an open-source AI orchestration platform that coordinates agent swarms using uncertainty-aware patterns written as TypeScript modules. It enables complex multi-agent workflows with confidence tracking, automatic consensus building, and enterprise-grade reliability.
 
 ### Key Features
 
-- **Pattern as Code**: Orchestration patterns are version-controlled `.prism` files
+- **Pattern as Code**: Orchestration patterns are version-controlled TypeScript modules (`@parallaxai/patterns`), plus org-chart YAML for team topologies
 - **Primitive Composition**: 30+ composable primitives create unlimited patterns
 - **Uncertainty-Aware**: All decisions include confidence scores (0.0-1.0)
 - **Language Agnostic**: Agents in TypeScript, Python, Go, Rust, or any language
@@ -32,7 +32,7 @@ Parallax is an open-source AI orchestration platform that coordinates agent swar
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │                     Pattern Engine                            │  │
 │  │  ┌────────────┐  ┌────────────┐  ┌────────────────────────┐  │  │
-│  │  │  Pattern   │  │   Prism    │  │   Execution Manager    │  │  │
+│  │  │  Pattern   │  │  Pattern   │  │   Execution Manager    │  │  │
 │  │  │  Loader    │  │  Runtime   │  │   (scheduling, events) │  │  │
 │  │  └────────────┘  └────────────┘  └────────────────────────┘  │  │
 │  └──────────────────────────────────────────────────────────────┘  │
@@ -76,8 +76,8 @@ The central orchestration service that manages pattern execution:
 
 | Component | Purpose |
 |-----------|---------|
-| **Pattern Engine** | Loads and executes `.prism` patterns |
-| **Prism Runtime** | Interprets Prism language constructs |
+| **Pattern Engine** | Executes pattern modules and org-chart workflows |
+| **Pattern Modules** | TypeScript pattern library (`@parallaxai/patterns`) |
 | **Service Registry** | Agent discovery via etcd |
 | **Execution Events** | WebSocket streaming of execution progress |
 | **Thread Persistence** | Stores long-lived thread state and events |
@@ -213,98 +213,48 @@ parallax/
 
 ## Pattern System
 
-### Prism Language
+### TypeScript Pattern Modules
 
-Patterns are written in Prism, a domain-specific language for agent orchestration:
+Custom-logic patterns are TypeScript modules deployed with the control plane
+(see `packages/patterns` for the contract and built-in library). The engine
+selects agents and fans the task out; the module aggregates the collected
+results using the `@parallaxai/confidence` algebra:
 
-```prism
-/**
- * @name ConsensusBuilder
- * @version 1.0.0
- * @description Multi-agent consensus with confidence tracking
- */
+```typescript
+import { averageConfidence, cf } from '@parallaxai/confidence';
+import type { PatternModule } from '@parallaxai/patterns';
 
-import { parallel } from "@parallaxai/primitives/execution"
-import { consensus } from "@parallaxai/primitives/aggregation"
-
-// Execute agents in parallel
-results = parallel(agents, task)
-
-// Build consensus from results
-decision = consensus(results, {
-  threshold: 0.8,
-  strategy: "weighted"
-})
-
-// Return with confidence-based routing
-decision ~> 0.9 ? decision : escalate("human-review")
+export const consensusBuilder: PatternModule = {
+  meta: {
+    name: 'ConsensusBuilder',
+    version: '2.0.0',
+    description: 'Multi-agent consensus with confidence tracking',
+    minAgents: 2,
+  },
+  async execute(ctx) {
+    const avg = averageConfidence(
+      ctx.results.map((r) => cf(r.result, r.confidence))
+    );
+    return cf(
+      { decision: avg > 0.8 ? 'consensus' : 'escalate-to-human', avg },
+      avg
+    );
+  },
+};
 ```
 
-### Primitives
+The confidence library ports the full uncertainty algebra (min-propagation
+chains, best-of selection, threshold gates, `uncertain()` band dispatch,
+voting/consensus aggregation) — see `packages/confidence/README.md` for the
+complete operator reference.
 
-30+ composable building blocks organized by category:
+### Org-Chart YAML Patterns
 
-| Category | Primitives |
-|----------|------------|
-| **Execution** | `parallel`, `sequential`, `race`, `batch` |
-| **Aggregation** | `consensus`, `voting`, `merge`, `reduce` |
-| **Confidence** | `threshold`, `transform`, `calibrate` |
-| **Control** | `retry`, `fallback`, `circuit`, `timeout`, `escalate` |
-| **Coordination** | `delegate`, `quorum`, `synchronize`, `prioritize` |
-| **Threads** | `spawnThread`, `awaitThread`, `sendThreadInput`, `shareDecision` |
-| **Event** | `pubsub`, `stream` |
-| **Resource** | `pool`, `cache` |
-| **Workflow** | `pipeline`, `dependency`, `saga` |
-
-### Pattern with Workspace
-
-Patterns can request git workspace provisioning:
-
-```prism
-/**
- * @name CodeReview
- * @workspace {"enabled": true, "createPr": true}
- */
-
-// Workspace is automatically provisioned
-// Branch: parallax/{execution-id}/agent-code-review
-workspace = context.workspace
-
-// Agents work in the cloned repo
-results = parallel(reviewAgents, {
-  task: "Review code",
-  workspacePath: workspace.path
-})
-
-// PR created automatically on completion
-```
-
-### Pattern with Managed Threads
-
-Patterns and org charts can now opt into thread-backed execution for long-lived workers:
-
-```prism
-/**
- * @name ThreadedCodeReview
- * @threads {"enabled": true, "agentType": "codex", "approvalPreset": "standard"}
- */
-
-import {
-  spawnThread,
-  awaitThread,
-  collectThreadSummaries,
-  finalizeThread
-} from "@parallaxai/primitives/coordination/threads"
-
-reviewer = spawnThread({
-  role: "engineer",
-  objective: "Review auth changes and summarize risks"
-})
-
-awaitThread(reviewer, { event: "thread_turn_complete" })
-summary = collectThreadSummaries([reviewer])
-finalizeThread(reviewer)
-```
+Team topologies are declared in YAML (`patterns/org-*.yaml`) and executed by
+the workflow executor with managed CLI-agent threads — roles, hierarchy,
+workflow steps, and escalation paths. Patterns can request git workspace
+provisioning (`workspace: { enabled: true, createPr: true }`) and
+thread-backed execution (`threads: { enabled: true, agentType: "codex" }`).
 
 ## Communication Flow
 
@@ -314,8 +264,7 @@ finalizeThread(reviewer)
 1. Client Request
    └─→ REST/gRPC API
        └─→ Pattern Engine
-           ├─→ Load .prism file
-           ├─→ Parse & validate
+           ├─→ Resolve pattern (module manifest or YAML)
            ├─→ Provision workspace (if needed)
            ├─→ Select agents from registry
            └─→ Execute via runtime

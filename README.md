@@ -24,7 +24,7 @@ Parallax is a control plane for orchestrating agents with explicit patterns, org
 
 At its core, Parallax gives you:
 
-- **Prism patterns and primitives** for explicit orchestration logic
+- **TypeScript patterns** with confidence-aware logic (`@parallaxai/confidence`), plus **org-chart YAML** for team topologies
 - **A control plane** that loads patterns, manages executions, and streams events
 - **Multiple runtimes** for local PTY sessions, Docker containers, and Kubernetes pods
 - **Managed threads** for long-lived supervised work, especially coding tasks in mutable workspaces
@@ -44,7 +44,7 @@ Parallax is organized into four main layers:
 1. **Client layer**
    CLI, web dashboard, docs site, and external API consumers.
 2. **Control plane**
-   Pattern engine, Prism runtime, execution management, thread persistence, memory, scheduling, and workspace preparation.
+   Pattern engine, execution management, thread persistence, memory, scheduling, and workspace preparation.
 3. **Runtime layer**
    `runtime-local`, `runtime-docker`, and `runtime-k8s` implement agent and thread execution.
 4. **Agent layer**
@@ -52,7 +52,7 @@ Parallax is organized into four main layers:
 
 Key architectural capabilities today:
 
-- pattern-driven orchestration with Prism and reusable primitives
+- pattern-driven orchestration in TypeScript with confidence-aware aggregation
 - explicit org-chart and workflow execution
 - managed thread APIs for spawn, supervision, events, input, and stop
 - workspace-aware coding execution with context file injection
@@ -67,7 +67,7 @@ For the deeper architecture docs, start here:
 
 ## Core Concepts
 
-- **Patterns** define orchestration logic in Prism or compiled YAML.
+- **Patterns** define orchestration logic as TypeScript modules (`@parallaxai/patterns`) or org-chart YAML.
 - **Primitives** are the reusable building blocks for execution, aggregation, control, confidence, and thread supervision.
 - **Runtimes** are the execution backends that actually host agents or CLI workers.
 - **Managed threads** are the long-lived units the control plane supervises over time.
@@ -153,9 +153,8 @@ parallax/
 │   └── demo-*/                 # Demo applications
 ├── packages/
 │   ├── control-plane/          # Main orchestration service
-│   ├── primitives/             # Prism primitives
-│   ├── pattern-sdk/            # YAML/SDK tooling for Prism generation
-│   ├── org-chart-compiler/     # Org-chart compilation to executable workflows
+│   ├── confidence/             # Confidence algebra (@parallaxai/confidence)
+│   ├── patterns/               # Pattern contract + built-in library
 │   ├── runtime-interface/      # Shared runtime and thread contracts
 │   ├── runtime-local/          # Local PTY-based runtime
 │   ├── runtime-docker/         # Docker runtime
@@ -177,7 +176,8 @@ parallax/
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Documentation Index](docs/README.md)
-- [Primitives README](packages/primitives/README.md)
+- [Patterns README](packages/patterns/README.md)
+- [Confidence README](packages/confidence/README.md)
 - [Runtime MCP README](packages/runtime-mcp/README.md)
 - [Agents in Any Language](docs/any-language.md)
 

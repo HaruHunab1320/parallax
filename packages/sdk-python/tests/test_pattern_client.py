@@ -118,7 +118,8 @@ class TestPatternClient:
                     "name": "new-pattern",
                     "version": "1.0",
                     "description": "A test pattern",
-                    "prism_script": "parallel { agent1, agent2 }",
+                    "definition": "roles: {}",
+                    "definition_type": "ORG_CHART_YAML",
                 },
                 overwrite=True,
             )

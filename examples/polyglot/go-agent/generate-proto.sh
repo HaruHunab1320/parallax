@@ -4,7 +4,7 @@
 
 set -e
 
-PROTO_DIR="../../proto"
+PROTO_DIR="../../../proto"
 OUT_DIR="generated"
 
 # Create output directory

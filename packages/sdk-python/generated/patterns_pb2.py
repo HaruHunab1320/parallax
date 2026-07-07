@@ -27,42 +27,43 @@ from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 import confidence_pb2 as confidence__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0epatterns.proto\x12\x11parallax.patterns\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x10\x63onfidence.proto\"\xa3\x02\n\x07Pattern\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12=\n\x0crequirements\x18\x04 \x01(\x0b\x32\'.parallax.patterns.Pattern.Requirements\x12\x14\n\x0cprism_script\x18\x05 \x01(\t\x12)\n\x08metadata\x18\x06 \x01(\x0b\x32\x17.google.protobuf.Struct\x1a\x64\n\x0cRequirements\x12\x14\n\x0c\x63\x61pabilities\x18\x01 \x03(\t\x12\x12\n\nmin_agents\x18\x02 \x01(\x05\x12\x12\n\nmax_agents\x18\x03 \x01(\x05\x12\x16\n\x0emin_confidence\x18\x04 \x01(\x01\"\xfe\x02\n\x15\x45xecutePatternRequest\x12\x14\n\x0cpattern_name\x18\x01 \x01(\t\x12\x17\n\x0fpattern_version\x18\x02 \x01(\t\x12&\n\x05input\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x41\n\x07options\x18\x04 \x01(\x0b\x32\x30.parallax.patterns.ExecutePatternRequest.Options\x1a\xca\x01\n\x07Options\x12\x12\n\ntimeout_ms\x18\x01 \x01(\x05\x12\x14\n\x0cmax_parallel\x18\x02 \x01(\x05\x12\x15\n\rcache_results\x18\x03 \x01(\x08\x12N\n\x07\x63ontext\x18\x04 \x03(\x0b\x32=.parallax.patterns.ExecutePatternRequest.Options.ContextEntry\x1a.\n\x0c\x43ontextEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xee\x04\n\x16\x45xecutePatternResponse\x12\x14\n\x0c\x65xecution_id\x18\x01 \x01(\t\x12\x14\n\x0cpattern_name\x18\x02 \x01(\t\x12@\n\x06status\x18\x03 \x01(\x0e\x32\x30.parallax.patterns.ExecutePatternResponse.Status\x12\'\n\x06result\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x12\n\nconfidence\x18\x05 \x01(\x01\x12K\n\x07metrics\x18\x06 \x01(\x0b\x32:.parallax.patterns.ExecutePatternResponse.ExecutionMetrics\x12<\n\ragent_results\x18\x07 \x03(\x0b\x32%.parallax.confidence.ConfidenceResult\x12\x15\n\rerror_message\x18\x08 \x01(\t\x1a\xb9\x01\n\x10\x45xecutionMetrics\x12.\n\nstart_time\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x65nd_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x13\n\x0b\x61gents_used\x18\x03 \x01(\x05\x12\x16\n\x0eparallel_paths\x18\x04 \x01(\x05\x12\x1a\n\x12\x61verage_confidence\x18\x05 \x01(\x01\"K\n\x06Status\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0b\n\x07SUCCESS\x10\x01\x12\x0b\n\x07\x46\x41ILURE\x10\x02\x12\x0b\n\x07TIMEOUT\x10\x03\x12\r\n\tCANCELLED\x10\x04\"<\n\x13ListPatternsRequest\x12\x0c\n\x04tags\x18\x01 \x03(\t\x12\x17\n\x0finclude_scripts\x18\x02 \x01(\x08\"D\n\x14ListPatternsResponse\x12,\n\x08patterns\x18\x01 \x03(\x0b\x32\x1a.parallax.patterns.Pattern\"2\n\x11GetPatternRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\"V\n\x14UploadPatternRequest\x12+\n\x07pattern\x18\x01 \x01(\x0b\x32\x1a.parallax.patterns.Pattern\x12\x11\n\toverwrite\x18\x02 \x01(\x08\"M\n\x15UploadPatternResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x12\n\npattern_id\x18\x03 \x01(\t2\xfb\x03\n\x0ePatternService\x12\x65\n\x0e\x45xecutePattern\x12(.parallax.patterns.ExecutePatternRequest\x1a).parallax.patterns.ExecutePatternResponse\x12m\n\x14StreamExecutePattern\x12(.parallax.patterns.ExecutePatternRequest\x1a).parallax.patterns.ExecutePatternResponse0\x01\x12_\n\x0cListPatterns\x12&.parallax.patterns.ListPatternsRequest\x1a\'.parallax.patterns.ListPatternsResponse\x12N\n\nGetPattern\x12$.parallax.patterns.GetPatternRequest\x1a\x1a.parallax.patterns.Pattern\x12\x62\n\rUploadPattern\x12\'.parallax.patterns.UploadPatternRequest\x1a(.parallax.patterns.UploadPatternResponseB$Z\"github.com/parallax/proto/patternsb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0epatterns.proto\x12\x11parallax.patterns\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x10\x63onfidence.proto\"\xa2\x03\n\x07Pattern\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12=\n\x0crequirements\x18\x04 \x01(\x0b\x32\'.parallax.patterns.Pattern.Requirements\x12\x42\n\x0f\x64\x65\x66inition_type\x18\x05 \x01(\x0e\x32).parallax.patterns.Pattern.DefinitionType\x12)\n\x08metadata\x18\x06 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x12\n\ndefinition\x18\t \x01(\t\x1a\x64\n\x0cRequirements\x12\x14\n\x0c\x63\x61pabilities\x18\x01 \x03(\t\x12\x12\n\nmin_agents\x18\x02 \x01(\x05\x12\x12\n\nmax_agents\x18\x03 \x01(\x05\x12\x16\n\x0emin_confidence\x18\x04 \x01(\x01\";\n\x0e\x44\x65\x66initionType\x12\x15\n\x11TYPESCRIPT_MODULE\x10\x00\x12\x12\n\x0eORG_CHART_YAML\x10\x01\"\xfe\x02\n\x15\x45xecutePatternRequest\x12\x14\n\x0cpattern_name\x18\x01 \x01(\t\x12\x17\n\x0fpattern_version\x18\x02 \x01(\t\x12&\n\x05input\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x41\n\x07options\x18\x04 \x01(\x0b\x32\x30.parallax.patterns.ExecutePatternRequest.Options\x1a\xca\x01\n\x07Options\x12\x12\n\ntimeout_ms\x18\x01 \x01(\x05\x12\x14\n\x0cmax_parallel\x18\x02 \x01(\x05\x12\x15\n\rcache_results\x18\x03 \x01(\x08\x12N\n\x07\x63ontext\x18\x04 \x03(\x0b\x32=.parallax.patterns.ExecutePatternRequest.Options.ContextEntry\x1a.\n\x0c\x43ontextEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xee\x04\n\x16\x45xecutePatternResponse\x12\x14\n\x0c\x65xecution_id\x18\x01 \x01(\t\x12\x14\n\x0cpattern_name\x18\x02 \x01(\t\x12@\n\x06status\x18\x03 \x01(\x0e\x32\x30.parallax.patterns.ExecutePatternResponse.Status\x12\'\n\x06result\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x12\n\nconfidence\x18\x05 \x01(\x01\x12K\n\x07metrics\x18\x06 \x01(\x0b\x32:.parallax.patterns.ExecutePatternResponse.ExecutionMetrics\x12<\n\ragent_results\x18\x07 \x03(\x0b\x32%.parallax.confidence.ConfidenceResult\x12\x15\n\rerror_message\x18\x08 \x01(\t\x1a\xb9\x01\n\x10\x45xecutionMetrics\x12.\n\nstart_time\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x65nd_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x13\n\x0b\x61gents_used\x18\x03 \x01(\x05\x12\x16\n\x0eparallel_paths\x18\x04 \x01(\x05\x12\x1a\n\x12\x61verage_confidence\x18\x05 \x01(\x01\"K\n\x06Status\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0b\n\x07SUCCESS\x10\x01\x12\x0b\n\x07\x46\x41ILURE\x10\x02\x12\x0b\n\x07TIMEOUT\x10\x03\x12\r\n\tCANCELLED\x10\x04\"@\n\x13ListPatternsRequest\x12\x0c\n\x04tags\x18\x01 \x03(\t\x12\x1b\n\x13include_definitions\x18\x02 \x01(\x08\"D\n\x14ListPatternsResponse\x12,\n\x08patterns\x18\x01 \x03(\x0b\x32\x1a.parallax.patterns.Pattern\"2\n\x11GetPatternRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\"V\n\x14UploadPatternRequest\x12+\n\x07pattern\x18\x01 \x01(\x0b\x32\x1a.parallax.patterns.Pattern\x12\x11\n\toverwrite\x18\x02 \x01(\x08\"M\n\x15UploadPatternResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x12\n\npattern_id\x18\x03 \x01(\t2\xfb\x03\n\x0ePatternService\x12\x65\n\x0e\x45xecutePattern\x12(.parallax.patterns.ExecutePatternRequest\x1a).parallax.patterns.ExecutePatternResponse\x12m\n\x14StreamExecutePattern\x12(.parallax.patterns.ExecutePatternRequest\x1a).parallax.patterns.ExecutePatternResponse0\x01\x12_\n\x0cListPatterns\x12&.parallax.patterns.ListPatternsRequest\x1a\'.parallax.patterns.ListPatternsResponse\x12N\n\nGetPattern\x12$.parallax.patterns.GetPatternRequest\x1a\x1a.parallax.patterns.Pattern\x12\x62\n\rUploadPattern\x12\'.parallax.patterns.UploadPatternRequest\x1a(.parallax.patterns.UploadPatternResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'patterns_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  _globals['DESCRIPTOR']._loaded_options = None
-  _globals['DESCRIPTOR']._serialized_options = b'Z\"github.com/parallax/proto/patterns'
+  DESCRIPTOR._loaded_options = None
   _globals['_EXECUTEPATTERNREQUEST_OPTIONS_CONTEXTENTRY']._loaded_options = None
   _globals['_EXECUTEPATTERNREQUEST_OPTIONS_CONTEXTENTRY']._serialized_options = b'8\001'
   _globals['_PATTERN']._serialized_start=119
-  _globals['_PATTERN']._serialized_end=410
-  _globals['_PATTERN_REQUIREMENTS']._serialized_start=310
-  _globals['_PATTERN_REQUIREMENTS']._serialized_end=410
-  _globals['_EXECUTEPATTERNREQUEST']._serialized_start=413
-  _globals['_EXECUTEPATTERNREQUEST']._serialized_end=795
-  _globals['_EXECUTEPATTERNREQUEST_OPTIONS']._serialized_start=593
-  _globals['_EXECUTEPATTERNREQUEST_OPTIONS']._serialized_end=795
-  _globals['_EXECUTEPATTERNREQUEST_OPTIONS_CONTEXTENTRY']._serialized_start=749
-  _globals['_EXECUTEPATTERNREQUEST_OPTIONS_CONTEXTENTRY']._serialized_end=795
-  _globals['_EXECUTEPATTERNRESPONSE']._serialized_start=798
-  _globals['_EXECUTEPATTERNRESPONSE']._serialized_end=1420
-  _globals['_EXECUTEPATTERNRESPONSE_EXECUTIONMETRICS']._serialized_start=1158
-  _globals['_EXECUTEPATTERNRESPONSE_EXECUTIONMETRICS']._serialized_end=1343
-  _globals['_EXECUTEPATTERNRESPONSE_STATUS']._serialized_start=1345
-  _globals['_EXECUTEPATTERNRESPONSE_STATUS']._serialized_end=1420
-  _globals['_LISTPATTERNSREQUEST']._serialized_start=1422
-  _globals['_LISTPATTERNSREQUEST']._serialized_end=1482
-  _globals['_LISTPATTERNSRESPONSE']._serialized_start=1484
-  _globals['_LISTPATTERNSRESPONSE']._serialized_end=1552
-  _globals['_GETPATTERNREQUEST']._serialized_start=1554
-  _globals['_GETPATTERNREQUEST']._serialized_end=1604
-  _globals['_UPLOADPATTERNREQUEST']._serialized_start=1606
-  _globals['_UPLOADPATTERNREQUEST']._serialized_end=1692
-  _globals['_UPLOADPATTERNRESPONSE']._serialized_start=1694
-  _globals['_UPLOADPATTERNRESPONSE']._serialized_end=1771
-  _globals['_PATTERNSERVICE']._serialized_start=1774
-  _globals['_PATTERNSERVICE']._serialized_end=2281
+  _globals['_PATTERN']._serialized_end=537
+  _globals['_PATTERN_REQUIREMENTS']._serialized_start=376
+  _globals['_PATTERN_REQUIREMENTS']._serialized_end=476
+  _globals['_PATTERN_DEFINITIONTYPE']._serialized_start=478
+  _globals['_PATTERN_DEFINITIONTYPE']._serialized_end=537
+  _globals['_EXECUTEPATTERNREQUEST']._serialized_start=540
+  _globals['_EXECUTEPATTERNREQUEST']._serialized_end=922
+  _globals['_EXECUTEPATTERNREQUEST_OPTIONS']._serialized_start=720
+  _globals['_EXECUTEPATTERNREQUEST_OPTIONS']._serialized_end=922
+  _globals['_EXECUTEPATTERNREQUEST_OPTIONS_CONTEXTENTRY']._serialized_start=876
+  _globals['_EXECUTEPATTERNREQUEST_OPTIONS_CONTEXTENTRY']._serialized_end=922
+  _globals['_EXECUTEPATTERNRESPONSE']._serialized_start=925
+  _globals['_EXECUTEPATTERNRESPONSE']._serialized_end=1547
+  _globals['_EXECUTEPATTERNRESPONSE_EXECUTIONMETRICS']._serialized_start=1285
+  _globals['_EXECUTEPATTERNRESPONSE_EXECUTIONMETRICS']._serialized_end=1470
+  _globals['_EXECUTEPATTERNRESPONSE_STATUS']._serialized_start=1472
+  _globals['_EXECUTEPATTERNRESPONSE_STATUS']._serialized_end=1547
+  _globals['_LISTPATTERNSREQUEST']._serialized_start=1549
+  _globals['_LISTPATTERNSREQUEST']._serialized_end=1613
+  _globals['_LISTPATTERNSRESPONSE']._serialized_start=1615
+  _globals['_LISTPATTERNSRESPONSE']._serialized_end=1683
+  _globals['_GETPATTERNREQUEST']._serialized_start=1685
+  _globals['_GETPATTERNREQUEST']._serialized_end=1735
+  _globals['_UPLOADPATTERNREQUEST']._serialized_start=1737
+  _globals['_UPLOADPATTERNREQUEST']._serialized_end=1823
+  _globals['_UPLOADPATTERNRESPONSE']._serialized_start=1825
+  _globals['_UPLOADPATTERNRESPONSE']._serialized_end=1902
+  _globals['_PATTERNSERVICE']._serialized_start=1905
+  _globals['_PATTERNSERVICE']._serialized_end=2412
 # @@protoc_insertion_point(module_scope)

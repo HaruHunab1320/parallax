@@ -123,8 +123,7 @@ output:
   <div>
     <strong>Prism DSL</strong>
     <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--ifm-color-emphasis-600)'}}>
-      Parallax patterns compile to <a href="/docs/prism/overview">Prism</a>, a programming language where uncertainty is a first-class citizen.
-      <a href="https://docs.prismlang.dev/" target="_blank" rel="noopener noreferrer"> Learn more →</a>
+      Parallax patterns are TypeScript modules built on <a href="https://github.com/HaruHunab1320/parallax/tree/main/packages/confidence">@parallaxai/confidence</a> — an algebra where uncertainty is a first-class citizen.
     </p>
   </div>
 </div>

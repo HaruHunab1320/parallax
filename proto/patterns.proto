@@ -19,9 +19,15 @@ message Pattern {
     double min_confidence = 4;
   }
   Requirements requirements = 4;
-  
-  string prism_script = 5;                   // The actual Prism code
+
+  // How the pattern is defined and executed
+  enum DefinitionType {
+    TYPESCRIPT_MODULE = 0;                   // Deployed code in @parallaxai/patterns
+    ORG_CHART_YAML = 1;                      // Declarative team topology
+  }
+  DefinitionType definition_type = 5;
   google.protobuf.Struct metadata = 6;       // Additional metadata
+  string definition = 9;                     // Module ref ("module:<name>") or YAML source
 }
 
 // Pattern execution request
@@ -72,7 +78,7 @@ message ExecutePatternResponse {
 // List patterns request
 message ListPatternsRequest {
   repeated string tags = 1;                  // Filter by tags
-  bool include_scripts = 2;                  // Include full Prism scripts
+  bool include_definitions = 2;              // Include full pattern definitions
 }
 
 // List patterns response

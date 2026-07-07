@@ -1,4 +1,0 @@
-export function testFunction(a, b) {
-  const result = a + b
-  return result ~> 0.9
-}

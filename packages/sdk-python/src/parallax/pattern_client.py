@@ -55,13 +55,13 @@ class PatternClient:
     async def list(
         self,
         tags: Optional[List[str]] = None,
-        include_scripts: bool = False,
+        include_definitions: bool = False,
     ) -> List[Dict[str, Any]]:
         """List available patterns.
 
         Args:
             tags: Optional tag filter.
-            include_scripts: Whether to include full Prism scripts in the
+            include_definitions: Whether to include full pattern definitions in the
                 response.
 
         Returns:
@@ -69,7 +69,7 @@ class PatternClient:
         """
         request = patterns_pb2.ListPatternsRequest(
             tags=tags or [],
-            include_scripts=include_scripts,
+            include_definitions=include_definitions,
         )
         response = await self._stub.ListPatterns(request)
         return [MessageToDict(p) for p in response.patterns]
@@ -142,7 +142,7 @@ class PatternClient:
 
         Args:
             pattern: Pattern definition with ``name``, ``description``,
-                ``prism_script``, etc.
+                ``definition``, etc.
             overwrite: Whether to overwrite an existing pattern with the
                 same name.
 
@@ -154,7 +154,8 @@ class PatternClient:
             name=pattern.get("name", ""),
             version=pattern.get("version", ""),
             description=pattern.get("description", ""),
-            prism_script=pattern.get("prism_script", ""),
+            definition=pattern.get("definition", ""),
+            definition_type=pattern.get("definition_type", "ORG_CHART_YAML"),
         )
 
         requirements = pattern.get("requirements")

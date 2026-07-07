@@ -120,8 +120,8 @@ patternCommand
 // Validate pattern
 patternCommand
   .command('validate')
-  .description('Validate a pattern file')
-  .argument('<file>', 'Path to .prism pattern file')
+  .description('Validate an org-chart YAML pattern file')
+  .argument('<file>', 'Path to .yaml pattern file')
   .action(async (file) => {
     const spinner = ora('Validating pattern...').start();
 
@@ -130,12 +130,9 @@ patternCommand
 
       // Basic validation checks
       const checks = [
-        { name: 'Has metadata', passed: content.includes('@name') },
-        { name: 'Has version', passed: content.includes('@version') },
-        { name: 'Has description', passed: content.includes('@description') },
-        { name: 'Valid Prism syntax', passed: true }, // Would use actual Prism parser
-        { name: 'Has input definition', passed: content.includes('@input') },
-        { name: 'Returns with confidence', passed: content.includes('~>') },
+        { name: 'Has name', passed: /(^|\n)name:/.test(content) },
+        { name: 'Has roles', passed: /(^|\n)roles:/.test(content) },
+        { name: 'Has workflow', passed: /(^|\n)workflow:/.test(content) },
       ];
 
       spinner.stop();
@@ -166,7 +163,7 @@ patternCommand
 // Upload pattern file
 patternCommand
   .command('upload')
-  .description('Upload a .prism or .yaml pattern file')
+  .description('Upload an org-chart .yaml pattern file')
   .argument('<path>', 'Path to pattern file')
   .option('--overwrite', 'Overwrite existing pattern', false)
   .action(async (filePath, options) => {
@@ -178,9 +175,12 @@ patternCommand
       const filename = path.basename(resolvedPath);
 
       const ext = path.extname(filename).toLowerCase();
-      if (!['.prism', '.yaml', '.yml'].includes(ext)) {
+      if (!['.yaml', '.yml'].includes(ext)) {
         spinner.fail(
-          chalk.red(`Unsupported file type: ${ext}. Use .prism, .yaml, or .yml`)
+          chalk.red(
+            `Unsupported file type: ${ext}. Use .yaml or .yml (custom-logic ` +
+              'patterns are TypeScript modules deployed with the control plane)'
+          )
         );
         return;
       }
@@ -274,7 +274,7 @@ async function findPatternFiles(
       results.push(...(await findPatternFiles(fullPath, true)));
     } else if (entry.isFile()) {
       const ext = path.extname(entry.name).toLowerCase();
-      if (['.prism', '.yaml', '.yml'].includes(ext)) {
+      if (['.yaml', '.yml'].includes(ext)) {
         results.push(fullPath);
       }
     }

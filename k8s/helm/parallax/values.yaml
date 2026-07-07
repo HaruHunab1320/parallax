@@ -64,27 +64,10 @@ controlPlane:
     cache:
       enabled: true
       ttl: 3600
-    defaultPatterns:
-      hello-world.prism: |
-        pattern HelloWorld {
-          description: "A simple hello world pattern"
-          confidence_threshold: 0.7
-
-          input {
-            name: string
-          }
-
-          output {
-            greeting: string
-          }
-
-          steps {
-            greet {
-              greeting = "Hello, " + input.name + "!"
-              greeting ~> 1.0
-            }
-          }
-        }
+    # Org-chart YAML patterns mounted into the patterns directory.
+    # Custom-logic patterns are TypeScript modules built into the
+    # control-plane image (@parallaxai/patterns) — not configured here.
+    defaultPatterns: {}
 
   persistence:
     enabled: false

@@ -236,54 +236,46 @@ Order of conversion (each is a working checkpoint):
       untouched — they never were Prism. **(Done M2)**
 - [x] Engine pattern tests ported to the module path and passing.
       **(Done M2)**
-- [ ] Delete `pattern-sdk/test/learn-prism*.ts`, `debug-*.ts`,
-      `test-prism-*.ts` (~20 files of language archaeology) — with A5.
+- [x] `pattern-sdk` deleted whole in M3, language archaeology included.
 
 ### A4. Proto and client surface
 
 Pre-GA with no external users locked in — rename now, cheaply, once:
 
-- [ ] `proto/patterns.proto:23` — replace
-      `string prism_script = 5;` with:
-      ```protobuf
-      enum DefinitionType { TYPESCRIPT_MODULE = 0; ORG_CHART_YAML = 1; }
-      DefinitionType definition_type = 5;
-      string definition = 9;   // module ref ("simple-consensus@2") or YAML
-      ```
-- [ ] `ListPatternsRequest.include_scripts` → `include_definitions`.
-- [ ] Sweep consumers of the renamed fields: control-plane
-      `grpc/services/pattern-service.ts`, `packages/client`, `packages/cli`,
-      sdk-typescript + sdk-python bundled protos, web-dashboard API layer.
-      (`@grpc/proto-loader` is dynamic — no codegen step to regenerate for
-      TS; regen Python stubs.)
+- [x] `proto/patterns.proto` — `prism_script` field 5 replaced with
+      `Pattern.DefinitionType definition_type = 5` + `string definition = 9`;
+      gRPC `UploadPattern` accepts `ORG_CHART_YAML` only. **(Done M3)**
+- [x] `ListPatternsRequest.include_scripts` → `include_definitions`. **(Done M3)**
+- [x] Consumers swept: control-plane pattern-service, packages/cli
+      (scenario command deleted; run/validate/upload are YAML-only),
+      web-dashboard upload, sdk-python (client updated, stubs regenerated,
+      tests pass), Go + Rust example stubs regenerated and building.
+      packages/client and sdk-typescript never referenced the field.
+      **(Done M3)**
 
 ### A5. Consolidate the two execution paths
 
 The org-chart path is already Prism-free and is the product's main path.
 Finish the consolidation:
 
-- [ ] `packages/org-chart-compiler/src/targets/prism.target.ts` (370 LOC):
-      **delete**. Keep `json.target.ts` (execution spec) and
-      `mermaid.target.ts` (docs/visualization).
-- [ ] `packages/pattern-sdk/src/yaml/yaml-to-prism.ts` and the YAML→Prism
-      compile pipeline (~4.8k LOC package — much of it Prism codegen +
-      validator): delete the Prism half. What remains of pattern-sdk is the
-      `PatternModule` contract + YAML org-chart tooling; consider renaming
-      the package to reflect that.
-- [ ] Decide the fate of the *duplicated* org-chart compilers: control-plane
-      has its own `org-patterns/org-chart-compiler.ts`. Keep exactly one
-      (recommend: the standalone package, consumed by control-plane).
+- [x] Better than planned: **nothing consumed** `pattern-sdk`,
+      `org-chart-compiler` (standalone), or `primitives` — all three
+      packages deleted whole (incl. the learn-prism/debug test pile).
+      Control-plane's own `org-patterns/` compiler is the single surviving
+      org-chart compiler. **(Done M3)**
 
 ### A6. Excise the dependency
 
-- [ ] Remove `@prism-lang/*` from every `package.json`: control-plane,
-      runtime, primitives, pattern-sdk, sdk-typescript.
-- [ ] Delete `docs/prism-specs.md` and the Prism section of the Docusaurus
-      site **after** A1's property tests encode the semantics.
+- [x] `@prism-lang/*` removed from every package.json (control-plane in
+      M2; runtime + sdk-typescript in M3; primitives/pattern-sdk deleted).
+      **(Done M3)**
+- [x] `docs/prism-specs.md` and the Docusaurus Prism section deleted
+      (semantics live in @parallaxai/confidence property tests). Helm's
+      default `hello-world.prism` removed. **(Done M3)**
 - [ ] Archive the external `prism-lang-ts` repo with a README pointing at
-      `@parallaxai/confidence` ("the semantics live on here"). Don't delete —
-      it's honest history and citable design work.
-- [ ] Update `CLAUDE.md`, `docs/ARCHITECTURE.md`, README positioning.
+      `@parallaxai/confidence` — **manual step for Jakob** (external repo).
+- [x] `CLAUDE.md`, `docs/ARCHITECTURE.md`, README positioning updated.
+      **(Done M3)**
 
 ---
 

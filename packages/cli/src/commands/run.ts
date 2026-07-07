@@ -1,5 +1,4 @@
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import ora from 'ora';
@@ -7,12 +6,11 @@ import { ParallaxHttpClient } from '../utils/http-client';
 
 export const runCommand = new Command('run')
   .description('Run a coordination pattern')
-  .argument('<pattern>', 'Pattern name or path to .prism file')
+  .argument('<pattern>', 'Pattern name')
   .option('-i, --input <data>', 'Input data (JSON string)')
   .option('-f, --file <path>', 'Input data file')
   .option('--min-confidence <value>', 'Minimum confidence threshold', '0.7')
   .option('--timeout <ms>', 'Execution timeout in milliseconds', '30000')
-  .option('-w, --watch', 'Watch pattern file for changes')
   .action(async (pattern, options) => {
     const spinner = ora('Preparing pattern execution...').start();
 
@@ -31,19 +29,7 @@ export const runCommand = new Command('run')
       spinner.text = 'Connecting to Parallax...';
       const client = new ParallaxHttpClient();
 
-      // Determine pattern name
-      let patternName: string;
-      if (pattern.endsWith('.prism')) {
-        // Extract name from file
-        patternName = path.basename(pattern, '.prism');
-        console.log(
-          chalk.yellow(
-            `Note: Running from file not yet supported. Using pattern name: ${patternName}`
-          )
-        );
-      } else {
-        patternName = pattern;
-      }
+      const patternName = pattern;
 
       spinner.text = `Executing pattern '${patternName}'...`;
 
@@ -104,39 +90,6 @@ export const runCommand = new Command('run')
         }
       }
 
-      // Watch mode
-      if (options.watch && pattern.endsWith('.prism')) {
-        console.log(`\n${chalk.yellow(`Watching ${pattern} for changes...`)}`);
-        console.log(chalk.gray('Press Ctrl+C to stop'));
-
-        // Simple file watcher
-        const watchFile = async () => {
-          const { watchFile } = await import('node:fs');
-          watchFile(pattern, async () => {
-            console.log(
-              chalk.blue(
-                `\n${new Date().toISOString()} - File changed, re-executing...`
-              )
-            );
-
-            try {
-              const result = await client.executePattern(
-                patternName,
-                inputData
-              );
-              console.log(chalk.green('✓ Re-execution complete'));
-              console.log('Result:', JSON.stringify(result.result, null, 2));
-            } catch (error) {
-              console.error(chalk.red('✗ Re-execution failed:'), error);
-            }
-          });
-        };
-
-        await watchFile();
-
-        // Keep process alive
-        process.stdin.resume();
-      }
     } catch (error) {
       spinner.fail(chalk.red('Pattern execution failed'));
       console.error(error);

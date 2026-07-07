@@ -1,3 +1,0 @@
-export function test(input) {
-  return input ~> 0.9
-}

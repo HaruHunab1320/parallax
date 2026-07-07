@@ -31,7 +31,7 @@ impl PatternService {
         let response = client
             .list_patterns(ListPatternsRequest {
                 tags: vec![],
-                include_scripts: false,
+                include_definitions: false,
             })
             .await?
             .into_inner();

@@ -78,16 +78,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Prism DSL',
-      items: [
-        'prism/overview',
-        'prism/syntax',
-        'prism/compilation',
-        'prism/using-prism-directly',
-      ],
-    },
-    {
-      type: 'category',
       label: 'Deployment',
       items: [
         'deployment/local',

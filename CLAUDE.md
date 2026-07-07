@@ -13,7 +13,7 @@ Always use environment variables for secrets. If you spot a secret in code, remo
 
 ## Repository Overview
 
-Parallax is an AI agent orchestration platform with uncertainty/confidence as a first-class citizen. It coordinates multiple AI agents via gRPC, executes orchestration patterns written in Prism (a custom DSL), and provides runtime environments for agents across local, Docker, and Kubernetes deployments.
+Parallax is an AI agent orchestration platform with uncertainty/confidence as a first-class citizen. It coordinates multiple AI agents via gRPC, executes orchestration patterns written as TypeScript modules (@parallaxai/patterns, built on the @parallaxai/confidence algebra) or org-chart YAML, and provides runtime environments for agents across local, Docker, and Kubernetes deployments.
 
 ## Monorepo Structure
 
@@ -80,7 +80,7 @@ The Python SDK uses `@prism-coordination/python` scope (private).
 ### Platform Core
 - **control-plane** — Main coordination hub: gRPC server, pattern engine, agent registry, Prisma ORM, etcd, Redis
 - **data-plane** — Runtime infrastructure for agent execution
-- **runtime** — Core runtime with Prism language integration
+- **runtime** — Core runtime: coordinator, agent proxy, confidence protocol
 - **runtime-interface** — Shared interfaces for all runtime implementations
 
 ### Runtime Implementations

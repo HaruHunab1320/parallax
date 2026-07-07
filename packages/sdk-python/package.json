@@ -2,7 +2,7 @@
   "name": "@prism-coordination/python",
   "version": "0.1.0",
   "private": true,
-  "description": "Python SDK for Prism coordination platform",
+  "description": "Python SDK for the Parallax orchestration platform",
   "scripts": {
     "build": "poetry build",
     "test": "poetry run pytest",

@@ -10,12 +10,14 @@ pub struct Pattern {
     pub description: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "4")]
     pub requirements: ::core::option::Option<pattern::Requirements>,
-    /// The actual Prism code
-    #[prost(string, tag = "5")]
-    pub prism_script: ::prost::alloc::string::String,
+    #[prost(enumeration = "pattern::DefinitionType", tag = "5")]
+    pub definition_type: i32,
     /// Additional metadata
     #[prost(message, optional, tag = "6")]
     pub metadata: ::core::option::Option<::prost_types::Struct>,
+    /// Module ref ("module:<name>") or YAML source
+    #[prost(string, tag = "9")]
+    pub definition: ::prost::alloc::string::String,
 }
 /// Nested message and enum types in `Pattern`.
 pub mod pattern {
@@ -29,6 +31,45 @@ pub mod pattern {
         pub max_agents: i32,
         #[prost(double, tag = "4")]
         pub min_confidence: f64,
+    }
+    /// How the pattern is defined and executed
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum DefinitionType {
+        /// Deployed code in @parallaxai/patterns
+        TypescriptModule = 0,
+        /// Declarative team topology
+        OrgChartYaml = 1,
+    }
+    impl DefinitionType {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::TypescriptModule => "TYPESCRIPT_MODULE",
+                Self::OrgChartYaml => "ORG_CHART_YAML",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TYPESCRIPT_MODULE" => Some(Self::TypescriptModule),
+                "ORG_CHART_YAML" => Some(Self::OrgChartYaml),
+                _ => None,
+            }
+        }
     }
 }
 /// Pattern execution request
@@ -151,9 +192,9 @@ pub struct ListPatternsRequest {
     /// Filter by tags
     #[prost(string, repeated, tag = "1")]
     pub tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// Include full Prism scripts
+    /// Include full pattern definitions
     #[prost(bool, tag = "2")]
-    pub include_scripts: bool,
+    pub include_definitions: bool,
 }
 /// List patterns response
 #[derive(Clone, PartialEq, ::prost::Message)]

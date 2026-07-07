@@ -130,7 +130,7 @@ export class PatternServiceImpl {
     callback: grpc.sendUnaryData<any>
   ) {
     try {
-      const includeScripts = Boolean(call.request?.include_scripts);
+      const includeDefinitions = Boolean(call.request?.include_definitions);
       const patterns = await this.patternEngine.listPatterns();
 
       // Convert to proto format
@@ -144,7 +144,10 @@ export class PatternServiceImpl {
           max_agents: pattern.maxAgents || 0,
           min_confidence: pattern.agents?.minConfidence || 0,
         },
-        prism_script: includeScripts ? pattern.script : '',
+        definition_type: (pattern.metadata as any)?.orgChart
+          ? 'ORG_CHART_YAML'
+          : 'TYPESCRIPT_MODULE',
+        definition: includeDefinitions ? pattern.script : '',
         metadata: pattern.metadata || {},
       }));
 
@@ -185,7 +188,10 @@ export class PatternServiceImpl {
           max_agents: pattern.maxAgents || 0,
           min_confidence: pattern.agents?.minConfidence || 0,
         },
-        prism_script: pattern.script || '',
+        definition_type: (pattern.metadata as any)?.orgChart
+          ? 'ORG_CHART_YAML'
+          : 'TYPESCRIPT_MODULE',
+        definition: pattern.script || '',
         metadata: pattern.metadata || {},
       };
 
@@ -214,12 +220,23 @@ export class PatternServiceImpl {
       }
 
       const name = requestPattern.name;
-      const script = requestPattern.prism_script;
+      const script = requestPattern.definition;
 
       if (!name || !script) {
         callback({
           code: grpc.status.INVALID_ARGUMENT,
-          details: 'Pattern name and prism_script are required',
+          details: 'Pattern name and definition are required',
+        });
+        return;
+      }
+
+      if (requestPattern.definition_type !== 'ORG_CHART_YAML') {
+        callback({
+          code: grpc.status.INVALID_ARGUMENT,
+          details:
+            'Only ORG_CHART_YAML patterns can be uploaded. Custom-logic ' +
+            'patterns are TypeScript modules deployed with the control ' +
+            'plane (@parallaxai/patterns).',
         });
         return;
       }
@@ -236,7 +253,11 @@ export class PatternServiceImpl {
         minAgents: requestPattern.requirements?.min_agents,
         maxAgents: requestPattern.requirements?.max_agents,
         script,
-        metadata: requestPattern.metadata || {},
+        metadata: {
+          ...(requestPattern.metadata || {}),
+          orgChart: true,
+          sourceYaml: script,
+        },
       };
 
       const saved = await this.patternEngine.savePattern(pattern, {

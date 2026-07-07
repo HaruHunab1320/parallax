@@ -5,7 +5,6 @@ import { Command } from 'commander';
 import { agentCommand } from './commands/agent';
 import { patternCommand } from './commands/pattern';
 import { runCommand } from './commands/run';
-import { scenarioCommand } from './commands/scenario';
 import { startCommand, stopCommand } from './commands/start';
 import { statusCommand } from './commands/status';
 
@@ -38,7 +37,6 @@ program.addCommand(agentCommand);
 program.addCommand(runCommand);
 program.addCommand(patternCommand);
 program.addCommand(statusCommand);
-program.addCommand(scenarioCommand);
 
 // Parse command line arguments
 program.parse();

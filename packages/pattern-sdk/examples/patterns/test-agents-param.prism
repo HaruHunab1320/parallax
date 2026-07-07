@@ -1,3 +1,0 @@
-export function test(agents) {
-  return agents ~> 0.9
-}
