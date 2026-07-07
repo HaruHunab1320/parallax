@@ -73,7 +73,7 @@ These libraries used to live under `packages/` and have been moved to standalone
 
 To iterate locally on one of these against parallax, use pnpm `overrides` in the root `package.json` to point at the sibling clone (`"<pkg>": "link:../../<pkg>"`).
 
-The Python SDK uses `@prism-coordination/python` scope (private).
+The Python SDK's PyPI distribution is `parallaxai` (private); its workspace name is `@parallaxai/sdk-python`.
 
 ## Key Packages
 
