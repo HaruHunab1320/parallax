@@ -28,7 +28,7 @@ flowchart TB
         subgraph PatternFlow["Pattern Processing"]
             PL[Pattern Loader]
             OCC[Org-Chart Compiler]
-            PRISM[Prism Runtime]
+            WFE[Workflow Executor]
         end
 
         subgraph Services["Core Services"]
@@ -75,7 +75,7 @@ flowchart TB
     PE --> RM
     PE --> WS_SVC
     PL --> OCC
-    OCC --> PRISM
+    OCC --> WFE
 
     PE --> EE
     EE --> AP
@@ -109,8 +109,9 @@ The control plane is the brain of Parallax. It receives pattern execution reques
 
 | Component | Responsibility |
 |-----------|---------------|
-| **Pattern Engine** | Loads patterns, selects agents, executes Prism scripts |
-| **Runtime Manager** | Manages Prism runtime pool for script execution |
+| **Pattern Engine** | Loads patterns, selects agents, runs org-chart workflows and TypeScript pattern modules |
+| **Org-Chart Compiler** | Parses org-chart YAML into a workflow spec (lives inside the control plane's `org-patterns/`) |
+| **Workflow Executor** | Runs the workflow spec by spawning and routing managed CLI-agent threads |
 | **Workspace Service** | Provisions git workspaces for agents |
 | **Agent Registry** | Tracks available agents via etcd |
 | **Credential Service** | Issues short-lived git credentials |
@@ -155,7 +156,7 @@ sequenceDiagram
     Client->>API: POST /executions {pattern, input, repo}
     API->>PE: executePattern()
 
-    PE->>PE: Load pattern (YAML → Prism)
+    PE->>PE: Load pattern (org-chart YAML → workflow spec, or module)
     PE->>WS: Provision workspace
     WS->>WS: Clone repo, create branch
     WS-->>PE: Workspace ready
@@ -183,7 +184,7 @@ sequenceDiagram
     end
 
     EE-->>PE: Aggregated results
-    PE->>PE: Execute Prism script with results
+    PE->>PE: Workflow executor routes results (accept / retry / escalate)
 
     PE->>WS: Finalize (push, create PR)
     WS-->>PE: PR URL
@@ -194,44 +195,45 @@ sequenceDiagram
 
 ## Pattern Pipeline
 
-Patterns can be defined in multiple formats that all compile to Prism for execution:
+Parallax has two kinds of patterns, each with its own execution path — there is no shared DSL or compilation-to-script step:
 
 ```mermaid
 flowchart LR
-    subgraph Input["Input Formats"]
-        YAML[YAML Org-Chart]
-        BUILDER[Pattern Builder UI]
-        DIRECT[Direct Prism]
+    subgraph Input["Pattern Definitions"]
+        YAML["Org-Chart YAML\n(patterns/org-*.yaml)"]
+        MODULE["TypeScript PatternModule\n(@parallaxai/patterns)"]
     end
 
-    subgraph Compilation["Compilation"]
+    subgraph Control["Control Plane"]
         OCC[Org-Chart Compiler]
-        EXPORT[Builder Export]
+        SPEC[Workflow Spec]
+        WFE[Workflow Executor]
+        MANIFEST[Pattern Manifest]
     end
 
     subgraph Execution["Execution"]
-        PRISM[Prism Script]
-        RM[Runtime Manager]
+        THREADS["Managed CLI-Agent Threads"]
+        EXEC["execute(ctx)"]
         RESULT[Result]
     end
 
     YAML --> OCC
-    BUILDER --> EXPORT
-    EXPORT --> YAML
-    OCC --> PRISM
-    DIRECT --> PRISM
-    PRISM --> RM
-    RM --> RESULT
+    OCC --> SPEC
+    SPEC --> WFE
+    WFE --> THREADS
+    THREADS --> RESULT
+
+    MODULE --> MANIFEST
+    MANIFEST --> EXEC
+    EXEC --> RESULT
 ```
 
-### Why Prism?
+### Two execution paths
 
-Prism is Parallax's domain-specific language for agent orchestration. All pattern formats compile to Prism because:
+- **Org-chart YAML** — the org-chart compiler (inside the control plane's `org-patterns/`) parses the YAML into a workflow spec. The **workflow executor** runs that spec by spawning and routing **managed CLI-agent threads**, applying the per-role confidence/escalation policy.
+- **TypeScript pattern modules** — a `PatternModule` from the `@parallaxai/patterns` manifest is loaded and its `execute(ctx)` runs directly. Modules are deployed *with* the control plane (Temporal-style), not uploaded at runtime.
 
-1. **Single execution engine** - One runtime to maintain and optimize
-2. **Confidence-aware** - Native support for confidence scores
-3. **Deterministic** - Same inputs always produce same orchestration
-4. **Inspectable** - Generated code can be reviewed and debugged
+Both paths are confidence-aware: results carry `Confident<T>` values, and routing (accept / retry / escalate) is driven by verification, not self-reported scores.
 
 ## Data Model
 
@@ -247,7 +249,8 @@ erDiagram
     Pattern {
         string name PK
         string version
-        string script
+        string definition_type
+        string definition
         json input_schema
         json agent_requirements
     }

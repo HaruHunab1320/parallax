@@ -13,13 +13,12 @@ Org-chart patterns allow you to define hierarchical teams of AI agents that work
 ```mermaid
 flowchart LR
     subgraph Definition["1. Definition"]
-        UI[Pattern Builder UI]
-        YAML[YAML File]
+        YAML["Org-Chart YAML\n(patterns/org-*.yaml)"]
     end
 
     subgraph Compilation["2. Compilation"]
         COMPILER[Org-Chart Compiler]
-        PRISM[Prism Script]
+        SPEC[Workflow Spec]
     end
 
     subgraph Loading["3. Loading"]
@@ -29,19 +28,20 @@ flowchart LR
 
     subgraph Execution["4. Execution"]
         ENGINE[Pattern Engine]
-        RUNTIME[Prism Runtime]
-        AGENTS[AI Agents]
+        WFE[Workflow Executor]
+        THREADS[Managed CLI-Agent Threads]
     end
 
-    UI -->|Export| YAML
     YAML --> COMPILER
-    COMPILER --> PRISM
-    PRISM --> LOADER
+    COMPILER --> SPEC
+    SPEC --> LOADER
     LOADER --> CACHE
     CACHE --> ENGINE
-    ENGINE --> RUNTIME
-    RUNTIME --> AGENTS
+    ENGINE --> WFE
+    WFE --> THREADS
 ```
+
+The org-chart compiler lives **inside the control plane** (`org-patterns/`). It parses the YAML into a workflow spec; the **workflow executor** then runs that spec by spawning and routing managed CLI-agent threads. There is no separate DSL and no compilation to an intermediate script language.
 
 ## Step 1: Define the Org-Chart
 
@@ -119,128 +119,55 @@ workflow:
   output: finalResult
 ```
 
-## Step 2: Compilation to Prism
+## Step 2: Compilation to a Workflow Spec
 
-The org-chart compiler transforms YAML into executable Prism code:
+The org-chart compiler (in the control plane's `org-patterns/`) parses and validates the YAML, then produces an in-memory **workflow spec**: the roles, how agents map to them, and the ordered workflow steps the executor should run.
 
 ```mermaid
 flowchart TB
     subgraph Input["YAML Structure"]
         ROLES[Roles Definition]
         WORKFLOW[Workflow Steps]
-        ROUTING[Message Routing]
+        POLICY[Escalation Policy]
     end
 
     subgraph Compiler["Org-Chart Compiler"]
         PARSE[Parse YAML]
         VALIDATE[Validate Structure]
-        GENERATE[Generate Prism]
-        OPTIMIZE[Optimize Output]
+        BUILD[Build Workflow Spec]
     end
 
-    subgraph Output["Prism Script"]
-        VARS[Variable Declarations]
-        ASSIGNS[Role Assignments]
-        STEPS[Workflow Execution]
-        HELPERS[Helper Functions]
+    subgraph Output["Workflow Spec"]
+        RA[Role → Agent Map]
+        STEPS[Step Sequence]
+        ROUTES[Escalation Routes]
     end
 
     ROLES --> PARSE
     WORKFLOW --> PARSE
-    ROUTING --> PARSE
+    POLICY --> PARSE
     PARSE --> VALIDATE
-    VALIDATE --> GENERATE
-    GENERATE --> OPTIMIZE
-    OPTIMIZE --> VARS
-    OPTIMIZE --> ASSIGNS
-    OPTIMIZE --> STEPS
-    OPTIMIZE --> HELPERS
+    VALIDATE --> BUILD
+    BUILD --> RA
+    BUILD --> STEPS
+    BUILD --> ROUTES
 ```
 
-### Generated Prism Code
-
-The compiler generates Prism code like this:
-
-```javascript
-// Auto-generated from org-chart pattern: code-review-team
-// Generated at: 2024-01-15T10:30:00.000Z
-
-// === Team Structure ===
-let roles = ["lead", "reviewer", "engineer"];
-
-// Map agents to roles
-let roleAssignments = {};
-roleAssignments["lead"] = agentResults.slice(0, 1);
-roleAssignments["reviewer"] = agentResults.slice(1, 3);
-roleAssignments["engineer"] = agentResults.slice(3, 4);
-
-// === Workflow Execution ===
-
-// Step 0: assign
-let step_0_result = (function() {
-  let roleAgents = roleAssignments["lead"] || [];
-  if (roleAgents.length === 0) {
-    return { error: "No agents for role: lead", confidence: 0 };
-  }
-  let agent = roleAgents[0];
-  return {
-    role: "lead",
-    task: "Create review criteria",
-    result: agent?.result,
-    confidence: agent?.confidence || 0.7,
-    agentId: agent?.agentId
-  };
-})();
-
-// Step 1: parallel
-let step_1_result = [];
-// ... parallel execution code ...
-
-// Step 2: aggregate (merge)
-let step_2_result = aggregateMerge(step_1_result);
-
-// Step 3: review
-let step_3_result = (function() {
-  let reviewerAgents = roleAssignments["lead"] || [];
-  // ... review logic ...
-})();
-
-// Step 4: condition
-let step_4_result;
-if (!step_3_result.approved) {
-  // ... fix issues ...
-} else {
-  // ... approve ...
-}
-
-// === Final Output ===
-let finalResult = {
-  patternName: "code-review-team",
-  workflow: "review-and-fix",
-  result: step_4_result,
-  roles: roles,
-  agentsUsed: agentResults.length,
-  confidence: calculateConfidence(agentResults)
-};
-
-finalResult
-```
+The spec is a structured object, not generated source code. Each step (`assign`, `parallel`, `review`, `condition`, …) becomes an instruction the workflow executor interprets at runtime, carrying the per-role escalation policy (`accept` / `retryBelow` / `escalateBelow`) alongside it.
 
 ## Step 3: Pattern Loading
 
-The Pattern Loader handles both `.prism` and `.yaml` files:
+The Pattern Loader reads org-chart YAML files from the patterns directory, compiles each to a workflow spec, and caches it by name:
 
 ```mermaid
 flowchart TB
     subgraph Files["Pattern Files"]
-        PRISM_FILE[.prism files]
-        YAML_FILE[.yaml/.yml files]
+        YAML_FILE["patterns/org-*.yaml"]
     end
 
     subgraph Loader["Pattern Loader"]
-        DETECT[Detect File Type]
-        LOAD_PRISM[Load Prism Directly]
-        LOAD_YAML[Load & Compile YAML]
+        LOAD[Load YAML]
+        COMPILE[Compile to Workflow Spec]
         VALIDATE[Validate Pattern]
         STORE[Store in Cache]
     end
@@ -249,34 +176,14 @@ flowchart TB
         MAP[Pattern Map]
     end
 
-    PRISM_FILE --> DETECT
-    YAML_FILE --> DETECT
-    DETECT -->|.prism| LOAD_PRISM
-    DETECT -->|.yaml| LOAD_YAML
-    LOAD_PRISM --> VALIDATE
-    LOAD_YAML --> VALIDATE
+    YAML_FILE --> LOAD
+    LOAD --> COMPILE
+    COMPILE --> VALIDATE
     VALIDATE --> STORE
     STORE --> MAP
 ```
 
-```typescript
-// Pattern Loader automatically handles both formats
-async loadPatterns(): Promise<void> {
-  const files = await fs.readdir(this.patternsDir);
-
-  // Load .prism files directly
-  const prismFiles = files.filter(f => f.endsWith('.prism'));
-  for (const file of prismFiles) {
-    await this.loadPrismPattern(path.join(this.patternsDir, file));
-  }
-
-  // Compile and load .yaml files
-  const yamlFiles = files.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-  for (const file of yamlFiles) {
-    await this.loadYamlPattern(path.join(this.patternsDir, file));
-  }
-}
-```
+TypeScript pattern modules follow a different path entirely: they are loaded from the `@parallaxai/patterns` manifest and invoked via `execute(ctx)` (see [Patterns](/docs/concepts/patterns)). This page covers the org-chart YAML path.
 
 ## Step 4: Execution
 
@@ -286,34 +193,38 @@ When a pattern executes, the Pattern Engine orchestrates the full flow:
 sequenceDiagram
     participant Client
     participant PE as Pattern Engine
+    participant WFE as Workflow Executor
     participant WS as Workspace Service
     participant RT as Agent Runtime
-    participant RM as Runtime Manager
-    participant Agents
+    participant Threads as CLI-Agent Threads
 
     Client->>PE: Execute "code-review-team"
 
-    PE->>PE: Get pattern from cache
+    PE->>PE: Get workflow spec from cache
 
     alt Workspace enabled
         PE->>WS: Provision workspace
         WS-->>PE: {path, branch, repo}
     end
 
-    PE->>PE: Select agents by role capabilities
+    PE->>WFE: Run workflow spec
+
+    WFE->>WFE: Select agents by role capabilities
 
     alt Need more agents
-        PE->>RT: Spawn agents (lead, reviewers, engineers)
-        RT->>Agents: Start processes
-        Agents-->>RT: Ready
-        RT-->>PE: Agent handles
+        WFE->>RT: Spawn agents (lead, reviewers, engineers)
+        RT->>Threads: Start managed CLI-agent threads
+        Threads-->>RT: Ready
+        RT-->>WFE: Thread handles
     end
 
-    PE->>Agents: Execute tasks (parallel where specified)
-    Agents-->>PE: Results with confidence scores
+    loop For each workflow step
+        WFE->>Threads: Assign task (parallel where specified)
+        Threads-->>WFE: Result + confidence
+        WFE->>WFE: Apply escalation policy (accept / retry / escalate)
+    end
 
-    PE->>RM: Execute Prism script with agent results
-    RM-->>PE: Final result
+    WFE-->>PE: Final result
 
     alt Create PR
         PE->>WS: Finalize workspace

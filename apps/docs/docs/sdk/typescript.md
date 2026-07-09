@@ -506,4 +506,4 @@ const result = await mockClient.executePattern('sentiment-analysis', {
 
 - [Agent Registration](/docs/sdk/agent-registration) - Detailed registration guide
 - [Executing Patterns](/docs/sdk/executing-patterns) - Advanced execution options
-- [Pattern SDK](/docs/sdk/pattern-sdk) - Build patterns programmatically
+- [Patterns](/docs/concepts/patterns) - Author org-chart YAML and TypeScript pattern modules

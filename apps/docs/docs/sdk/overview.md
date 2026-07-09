@@ -12,7 +12,11 @@ Parallax provides official SDKs for building agents and orchestrating patterns. 
 | SDK | Package | Purpose |
 |-----|---------|---------|
 | **TypeScript** | `@parallaxai/sdk-typescript` | Build agents, execute patterns, client applications |
-| **Pattern SDK** | `@parallaxai/pattern-sdk` | Build, validate, and compile patterns programmatically |
+| **Python** | `parallax` (PyPI) | Build agents and clients in Python |
+
+Any-language agents can also join by speaking the gRPC contract in [`/proto`](https://github.com/HaruHunab1320/parallax/tree/main/proto) — see the repo's `docs/any-language.md`. Go and Rust examples live under `examples/polyglot/`.
+
+Patterns themselves are authored as **org-chart YAML** (`patterns/org-*.yaml`) or **TypeScript pattern modules** in [`@parallaxai/patterns`](https://github.com/HaruHunab1320/parallax/tree/main/packages/patterns), not through a separate builder SDK — see [Patterns](/docs/concepts/patterns).
 
 ## Quick Comparison
 
@@ -42,27 +46,14 @@ const result = await client.executePattern('sentiment-analysis', {
 });
 ```
 
-### Pattern SDK
+### Authoring patterns
 
-For programmatically building patterns:
+Patterns are not built with a fluent SDK. You author them as either:
 
-```typescript
-import { PatternBuilder, validatePattern } from '@parallaxai/pattern-sdk';
+- **Org-chart YAML** (`patterns/org-*.yaml`) — declare roles, hierarchy, and workflow.
+- **TypeScript pattern modules** — a `PatternModule` with `execute(ctx)` in [`@parallaxai/patterns`](https://github.com/HaruHunab1320/parallax/tree/main/packages/patterns), deployed with the control plane.
 
-const pattern = new PatternBuilder('content-moderation')
-  .input({ content: 'string' })
-  .agents({ capabilities: ['moderation'], min: 3 })
-  .parallel({ timeout: 30000 })
-  .voting({ method: 'majority' })
-  .output({ verdict: '$vote.result' })
-  .build();
-
-// Validate the pattern
-const validation = validatePattern(pattern);
-if (!validation.valid) {
-  console.error(validation.errors);
-}
-```
+See [Patterns](/docs/concepts/patterns) for both.
 
 ## Installation
 
@@ -76,23 +67,12 @@ pnpm add @parallaxai/sdk-typescript
 yarn add @parallaxai/sdk-typescript
 ```
 
-### Pattern SDK
-
-```bash
-npm install @parallaxai/pattern-sdk
-# or
-pnpm add @parallaxai/pattern-sdk
-# or
-yarn add @parallaxai/pattern-sdk
-```
-
 ## Architecture Overview
 
 ```mermaid
 flowchart TB
   subgraph App["Your Application"]
     TS["TypeScript SDK\n(Client/Agent)"]
-    PS["Pattern SDK\n(Builder)"]
   end
 
   subgraph Control["Control Plane"]
@@ -103,7 +83,6 @@ flowchart TB
   end
 
   TS -- "WebSocket/HTTP" --> Control
-  PS -- "YAML/JSON" --> Control
 ```
 
 ## Common SDK Operations
@@ -126,14 +105,13 @@ flowchart TB
 | List patterns | TypeScript | `client.listPatterns()` |
 | Get pattern status | TypeScript | `client.getExecution()` |
 
-### Pattern Operations
+### Pattern Authoring
 
-| Operation | SDK | Method |
-|-----------|-----|--------|
-| Build pattern | Pattern SDK | `PatternBuilder` |
-| Validate pattern | Pattern SDK | `validatePattern()` |
-| Compile to YAML | Pattern SDK | `compileToYaml()` |
-| Parse YAML | Pattern SDK | `parsePattern()` |
+| Task | Where |
+|------|-------|
+| Define a team | Org-chart YAML (`patterns/org-*.yaml`) |
+| Custom orchestration logic | TypeScript `PatternModule` in `@parallaxai/patterns` |
+| Register a pattern | `client.registerPattern()` (TypeScript SDK) |
 
 ## Configuration
 
@@ -234,6 +212,6 @@ const config: AgentConfig = {
 ## Next Steps
 
 - [TypeScript SDK](/docs/sdk/typescript) - Full SDK documentation
-- [Pattern SDK](/docs/sdk/pattern-sdk) - Building patterns programmatically
+- [Patterns](/docs/concepts/patterns) - Authoring org-chart YAML and TypeScript pattern modules
 - [Agent Registration](/docs/sdk/agent-registration) - Deep dive into agent setup
 - [Executing Patterns](/docs/sdk/executing-patterns) - Pattern execution guide

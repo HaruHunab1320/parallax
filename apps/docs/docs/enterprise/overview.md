@@ -14,8 +14,7 @@ Parallax Open Source is **fully featured for local development** — unlimited a
 ### Open Source (Free Forever)
 - ✅ Unlimited agents
 - ✅ All pattern types (voting, consensus, merge, etc.)
-- ✅ Pattern Builder (visual + YAML)
-- ✅ Full Prism DSL support
+- ✅ Org-chart YAML patterns + TypeScript pattern modules
 - ✅ Complete CLI
 - ❌ In-memory only (state lost on restart)
 
@@ -44,8 +43,7 @@ Parallax Open Source is **fully featured for local development** — unlimited a
 | **Core Features** | | | |
 | Unlimited agents | ✅ | ✅ | ✅ |
 | All pattern types | ✅ | ✅ | ✅ |
-| Pattern Builder | ✅ | ✅ | ✅ |
-| Prism DSL | ✅ | ✅ | ✅ |
+| Org-chart YAML + TS pattern modules | ✅ | ✅ | ✅ |
 | CLI | ✅ | ✅ | ✅ |
 | REST & WebSocket API | ✅ | ✅ | ✅ |
 | **Production Features** | | | |

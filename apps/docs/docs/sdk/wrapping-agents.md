@@ -292,6 +292,6 @@ Once connected, your wrapped agent looks identical to any native agent:
 - Appears in the agent registry with its declared capabilities
 - Receives tasks from pattern execution
 - Returns results that feed into confidence aggregation, consensus, and quality gates
-- Can participate in any pattern: station, swarm, org-chart, custom Prism scripts
+- Can participate in any pattern: station, swarm, org-chart, custom TypeScript pattern modules
 
 The control plane never reaches into the agent. It only knows the agent's ID, capabilities, and the results it returns.

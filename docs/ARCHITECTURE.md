@@ -4,15 +4,14 @@
 
 ## Overview
 
-Parallax is an open-source AI orchestration platform that coordinates agent swarms using uncertainty-aware patterns written as TypeScript modules. It enables complex multi-agent workflows with confidence tracking, automatic consensus building, and enterprise-grade reliability.
+Parallax is an open-source platform that orchestrates teams of real CLI coding agents. Team topology is declared as org-chart YAML (or custom logic as TypeScript pattern modules); the control plane spawns agents into that structure across multiple runtimes and routes work through the hierarchy with verification-driven escalation.
 
 ### Key Features
 
-- **Pattern as Code**: Orchestration patterns are version-controlled TypeScript modules (`@parallaxai/patterns`), plus org-chart YAML for team topologies
-- **Primitive Composition**: 30+ composable primitives create unlimited patterns
-- **Uncertainty-Aware**: All decisions include confidence scores (0.0-1.0)
-- **Language Agnostic**: Agents in TypeScript, Python, Go, Rust, or any language
-- **Multi-Runtime**: Local PTY, Docker containers, or Kubernetes pods
+- **Pattern as Code**: Org-chart YAML for team topologies, plus version-controlled TypeScript pattern modules (`@parallaxai/patterns`) for custom logic
+- **Verification-Driven Confidence**: Per-role escalation (`accept` / `retryBelow` / `escalateBelow`) fed by test/review signals — attention allocation, not a correctness claim ([CONFIDENCE.md](CONFIDENCE.md))
+- **Language Agnostic**: Maintained TS + Python SDKs; any language joins over the gRPC contract
+- **Multi-Runtime**: Local PTY, Docker containers, Kubernetes pods, or a NAT-traversing gateway for edge agents
 - **Managed Threads**: Long-lived supervised work streams for coding and orchestration
 - **Git Integration**: Automatic workspace provisioning, branching, and PR creation
 - **Enterprise Ready**: Licensing, RBAC, audit logging, scheduled execution
@@ -135,25 +134,29 @@ Git workspace provisioning for coding tasks:
 | **PR Creation** | Automatic pull requests after execution |
 | **Audit Logging** | All credential grants tracked in database |
 
-### Pattern SDK (`/packages/pattern-sdk`)
+### Patterns (`/packages/patterns`)
 
-Tools for creating and testing patterns:
+Built-in pattern modules and the `PatternModule` contract. Custom-logic
+patterns are TypeScript modules (`execute(ctx)`) deployed with the control
+plane; org-chart topologies are YAML. See "Pattern System" below.
 
-- Pattern generation from primitives
-- Validation and type checking
-- Local testing with mock agents
-- Pattern versioning support
+### Confidence (`/packages/confidence`)
+
+`@parallaxai/confidence` — the `Confident<T>` type and combinators
+(`cf`/`best`/`gate`/`uncertain`/`coalesce`, aggregation) that the escalation
+policy is built on. See [CONFIDENCE.md](CONFIDENCE.md) and [VERIFY.md](VERIFY.md).
 
 ### SDKs
 
-Language-specific SDKs for building agents:
+Two maintained agent SDKs; other languages join over the raw gRPC contract
+(`/proto`, see [any-language.md](any-language.md)).
 
 | SDK | Package | Protocol | Status |
 |-----|---------|----------|--------|
-| TypeScript | `sdk-typescript` | gRPC | ✅ Complete |
-| Python | `sdk-python` | gRPC | ✅ Complete |
-| Go | `sdk-go` | gRPC | ✅ Complete |
-| Rust | `sdk-rust` | gRPC | ✅ Complete |
+| TypeScript | `sdk-typescript` | gRPC | ✅ Maintained |
+| Python | `sdk-python` | gRPC | ✅ Maintained |
+| Go | `examples/polyglot/go-agent` | gRPC | Example (not an SDK) |
+| Rust | `examples/polyglot/rust-agent` | gRPC | Example (not an SDK) |
 
 ## Package Structure
 
@@ -162,52 +165,44 @@ parallax/
 ├── apps/
 │   ├── docs/                 # Docusaurus documentation site
 │   ├── web-dashboard/        # React admin dashboard
+│   ├── marketing/            # Marketing site
 │   ├── demo-typescript/      # TypeScript demo app
-│   ├── demo-python/          # Python demo app
-│   ├── demo-go/              # Go demo app
-│   └── demo-rust/            # Rust demo app
+│   └── demo-python/          # Python demo app
 │
 ├── packages/
-│   ├── control-plane/        # Core orchestration service
-│   ├── pattern-sdk/          # Pattern generation toolkit
-│   ├── primitives/           # Composable pattern building blocks
+│   ├── control-plane/        # Core orchestration service (+ org-patterns compiler/executor)
+│   ├── patterns/             # PatternModule contract + built-in pattern library
+│   ├── confidence/           # @parallaxai/confidence — the confidence algebra
 │   │
 │   ├── runtime-local/        # Local PTY-based runtime
 │   ├── runtime-docker/       # Docker container runtime
 │   ├── runtime-k8s/          # Kubernetes pod runtime
+│   ├── runtime-mcp/          # MCP surface for runtime/thread operations
 │   ├── runtime-interface/    # Common runtime interface
 │   │
-│   ├── sdk-typescript/       # TypeScript agent SDK
-│   ├── sdk-python/           # Python agent SDK
-│   ├── sdk-go/               # Go agent SDK
-│   ├── sdk-rust/             # Rust agent SDK
+│   ├── sdk-typescript/       # TypeScript agent SDK (maintained)
+│   ├── sdk-python/           # Python agent SDK (maintained)
 │   │
 │   ├── cli/                  # Command-line interface
 │   ├── telemetry/            # OpenTelemetry integration
 │   ├── auth/                 # Authentication service
 │   ├── security/             # mTLS and certificates
-│   └── monitoring/           # Prometheus/Grafana stack
+│   └── ...                   # confidence-tracker, circuit-breaker, ha, etc.
 │
-├── patterns/                 # Pattern library
-│   ├── aggregation/          # consensus, voting, merge, reduce
-│   ├── execution/            # parallel, sequential, race, batch
-│   ├── control/              # retry, fallback, circuit, timeout
-│   ├── confidence/           # threshold, transform
-│   ├── coordination/         # delegate, quorum, synchronize
-│   └── ...                   # 30+ primitives total
+├── patterns/                 # Org-chart YAML patterns (org-*.yaml)
 │
-├── demos/                    # Example applications
+├── examples/
+│   └── polyglot/             # Go + Rust example agents (gRPC, not SDKs)
+│
+├── demos/
+│   ├── coding-swarm/         # Flagship: CLI-agent org-chart team
 │   ├── multi-model-voting/   # Multi-agent voting demo
-│   ├── document-analysis/    # Document analysis pipeline
 │   ├── pr-review-bot/        # PR review automation
-│   ├── specialized-extractors/
-│   ├── prompt-testing/
-│   ├── translation-verification/
-│   └── rag-quality-gate/
+│   └── ...                   # document-analysis, rag-quality-gate, etc.
 │
+├── monitoring/               # Prometheus/Grafana/Jaeger configs
 ├── scripts/                  # Development & deployment scripts
 ├── k8s/                      # Kubernetes manifests & Helm charts
-├── docker/                   # Docker configurations
 └── docs/                     # Architecture & guides
 ```
 

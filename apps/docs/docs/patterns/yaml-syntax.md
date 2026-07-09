@@ -743,4 +743,4 @@ output:
 
 - [Voting Patterns](/docs/patterns/voting-patterns) - Voting pattern examples
 - [Quality Gates](/docs/patterns/quality-gates) - Validation patterns
-- [Pattern SDK](/docs/sdk/pattern-sdk) - Build patterns programmatically
+- [Patterns](/docs/concepts/patterns) - Author org-chart YAML and TypeScript pattern modules

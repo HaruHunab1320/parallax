@@ -5,8 +5,8 @@ This is the fast operator cheat sheet for the current Parallax stack.
 For architecture and design context, use:
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
-- [THREAD_RUNTIME_PROPOSAL.md](./THREAD_RUNTIME_PROPOSAL.md)
-- [THREAD_RUNTIME_IMPLEMENTATION_PLAN.md](./THREAD_RUNTIME_IMPLEMENTATION_PLAN.md)
+- [CONFIDENCE.md](./CONFIDENCE.md)
+- [VERIFY.md](./VERIFY.md)
 
 ## Common Commands
 
@@ -138,7 +138,8 @@ Optional local infra from `packages/control-plane/docker-compose.dev.yml` may al
 | Path | Purpose |
 |------|---------|
 | `packages/control-plane` | Main orchestration service |
-| `packages/primitives` | Prism primitives |
+| `packages/patterns` | TypeScript orchestration patterns (`@parallaxai/patterns`) |
+| `@parallaxai/confidence` | Confidence algebra (`Confident<T>`, combinators) |
 | `packages/runtime-interface` | Shared agent/thread contracts |
 | `packages/runtime-local` | PTY-backed local runtime |
 | `packages/runtime-docker` | Docker runtime |

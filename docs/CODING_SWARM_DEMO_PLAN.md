@@ -1,5 +1,10 @@
 # Coding Swarm Demo: Distributed CLI Agent Orchestration
 
+> The current flagship spec for this demo lives at
+> [`demos/coding-swarm/README.md`](../demos/coding-swarm/README.md). This
+> document is the original planning writeup; the pattern source is org-chart
+> YAML run by the control plane's org-patterns compiler.
+
 ## Overview
 
 Demonstrate Parallax orchestrating 4 CLI coding agents across distributed hardware — 3 Raspberry Pis and 1 Mac — each running a different coding agent (Claude Code, Codex, Gemini CLI, Claude Code), coordinated by an org-chart pattern via the threads system. Each Pi displays live terminal output on a 5" LCD screen. All agents run in full interactive mode (not --print/non-interactive), operating as long-lived threads with no turn limit — they run as many turns as needed to build a complete project from an empty repo.
@@ -44,7 +49,7 @@ This is a massive upgrade from the current 2" SPI screens (128x64 monochrome, 14
                +-----------------+
                |  Org-Chart      |
                |  Pattern        |  Receives task, decomposes into subtasks,
-               |  (Prism)        |  spawns threads, monitors, finalizes
+               |  (org-chart YAML)|  spawns threads, monitors, finalizes
                +-----------------+
                        |
             ThreadSpawnRequest (gateway proto)
@@ -421,11 +426,11 @@ Alternatively, if we want the agent process to own the display directly:
 ---
 
 ### Phase 4: Org-Chart Pattern
-**Prism pattern that decomposes a coding task and coordinates the swarm.**
+**Org-chart pattern that decomposes a coding task and coordinates the swarm.**
 
 #### 4.1 Pattern Design
 
-The org-chart compiler already exists at `packages/control-plane/src/org-patterns/org-chart-compiler.ts`. We define the org structure in YAML and the compiler generates Prism code.
+The control plane's org-patterns compiler already exists at `packages/control-plane/src/org-patterns/`. We define the org structure in YAML and the workflow executor runs it with managed CLI-agent threads.
 
 ```yaml
 # demos/coding-swarm/patterns/coding-swarm.org.yaml
@@ -514,100 +519,17 @@ The pattern engine needs to map org-chart roles to thread spawns. The flow:
 6. Pattern sends review task to architect thread
 7. `finalizeThread()` on all threads → push branches, create PRs
 
-#### 4.3 Prism Pattern (Hand-Written Alternative)
+#### 4.3 Execution Design Decisions
 
-If the org-chart compiler output needs tuning, a hand-written Prism pattern.
-
-Key design decisions:
+Key design decisions for the org-chart pattern:
 - **No turn limit** — agents run in full interactive mode until they complete their objective
 - **Empty repo** — agents build from scratch, so subtasks must include project scaffolding context
 - **Default models** — each CLI agent uses its default model (no model override needed if agents are up to date)
 - **Autonomous approval** — agents auto-approve all tool use (file writes, shell commands, etc.)
 
-```prism
-pattern CodingSwarm version 1.0.0
-
-input {
-  task: string
-  repo: string = "https://github.com/HaruHunab1320/git-workspace-service-testbed"
-  baseBranch: string = "main"
-  credentials: { token: string }
-}
-
-execute {
-  // Phase 1: Architect decomposes the task
-  // The architect is a full interactive Claude Code thread — it can explore,
-  // think, and produce a detailed plan with as many turns as it needs.
-  let architect = spawnThread({
-    agentType: "claude",
-    role: "architect",
-    workspace: { repo: input.repo, baseBranch: input.baseBranch },
-    approvalPreset: "autonomous"
-  })("You are the architect for a distributed coding team. " +
-     "This is an EMPTY repo — you are building from scratch. " +
-     "Analyze this task and create a detailed implementation plan. " +
-     "Decompose it into exactly 3 independent subtasks that can be " +
-     "worked on in parallel by different engineers (each in their own " +
-     "git branch). Each subtask should specify: title, detailed description, " +
-     "files to create, and any shared conventions (naming, structure). " +
-     "Set up the initial project structure (package.json, tsconfig, etc.) " +
-     "before the engineers start. " +
-     "Task: " + input.task)
-
-  // Wait for architect to finish its full analysis — no turn limit
-  let plan = awaitThread("thread_completed")(architect)
-  let subtasks = plan?.summary?.subtasks ?? []
-
-  // Phase 2: Engineers work in parallel — each runs to completion
-  // All agents are in full interactive mode, running as many turns as needed.
-  let engineers = []
-  let agentTypes = ["codex", "gemini", "claude"]
-  let roles = ["engineer_a", "engineer_b", "engineer_c"]
-
-  for (let i = 0; i < 3; i = i + 1) {
-    let subtask = subtasks[i] ?? { description: "Implement part " + i }
-    let eng = spawnThread({
-      agentType: agentTypes[i],
-      role: roles[i],
-      workspace: {
-        repo: input.repo,
-        baseBranch: input.baseBranch,
-        featureBranch: "swarm/" + roles[i]
-      },
-      approvalPreset: "autonomous"
-    })(subtask.description)
-    engineers = [...engineers, eng]
-  }
-
-  // Wait for ALL engineers to finish — no timeout, they run to completion
-  for (let j = 0; j < 3; j = j + 1) {
-    awaitThread("thread_completed")(engineers[j])
-  }
-
-  // Phase 3: Collect results and share across threads
-  let summaries = collectThreadSummaries()(engineers)
-  shareDecision({ type: "completion", summaries: summaries })([architect])
-
-  // Phase 4: Architect reviews all work (full interactive review)
-  sendThreadInput("All engineers have completed their work. Review their " +
-    "branches, identify any integration issues, and create a summary. " +
-    "Engineer summaries: " + summaries)(architect)
-  let review = awaitThread("thread_completed")(architect)
-
-  // Phase 5: Finalize — push branches, create PRs
-  for (let k = 0; k < 3; k = k + 1) {
-    finalizeThread({ push: true, createPr: true })(engineers[k])
-  }
-  finalizeThread({ push: false })(architect)
-
-  review ~> 0.9
-}
-```
-
 **Files:**
 - `demos/coding-swarm/patterns/coding-swarm.org.yaml` — org chart definition
-- `demos/coding-swarm/patterns/coding-swarm.prism` — hand-tuned pattern
-- May need updates to pattern engine for thread-aware execution
+- May need updates to the workflow executor for thread-aware execution
 
 **Estimated effort:** 2-3 days
 

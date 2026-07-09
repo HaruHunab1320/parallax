@@ -688,5 +688,5 @@ output:
 
 ## Next Steps
 
-- [Pattern SDK](/docs/sdk/pattern-sdk) - Build complex patterns programmatically
+- [Patterns](/docs/concepts/patterns) - Author org-chart YAML and TypeScript pattern modules
 - [Quality Gates](/docs/patterns/quality-gates) - Add validation to compositions

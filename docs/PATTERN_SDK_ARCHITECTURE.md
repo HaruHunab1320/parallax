@@ -1,5 +1,11 @@
 # Parallax Pattern SDK Architecture
 
+> **⚠️ ARCHIVED (pre-refocus, Prism-era planning).** This document predates the
+> removal of the Prism DSL (see [REFOCUS.md](REFOCUS.md)) and describes an
+> architecture that no longer exists. Kept for history. For current
+> architecture see [ARCHITECTURE.md](ARCHITECTURE.md), pattern authoring see
+> `packages/patterns`, confidence see [CONFIDENCE.md](CONFIDENCE.md).
+
 ## Overview
 
 This document outlines the revolutionary approach to pattern generation in Parallax - treating patterns as development-time artifacts (like database migrations) rather than runtime-generated code.

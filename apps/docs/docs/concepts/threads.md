@@ -105,9 +105,9 @@ Current thread memory surfaces include:
 - episodic experiences extracted from successful, partial, and failed work
 - ranked memory injection based on repo, role, objective overlap, outcome, and recency
 
-## Prism Integration
+## Thread Orchestration
 
-Parallax now includes thread-oriented primitives for explicit orchestration:
+Parallax exposes thread-oriented operations that org-chart workflows and TypeScript pattern modules use to supervise long-running workers:
 
 - `spawnThread`
 - `awaitThread`

@@ -13,7 +13,9 @@ Always use environment variables for secrets. If you spot a secret in code, remo
 
 ## Repository Overview
 
-Parallax is an AI agent orchestration platform with uncertainty/confidence as a first-class citizen. It coordinates multiple AI agents via gRPC, executes orchestration patterns written as TypeScript modules (@parallaxai/patterns, built on the @parallaxai/confidence algebra) or org-chart YAML, and provides runtime environments for agents across local, Docker, and Kubernetes deployments.
+Parallax orchestrates teams of real CLI coding agents (Claude Code, Codex, Gemini, Aider). It coordinates them via gRPC, executes orchestration defined as org-chart YAML (team topology) or TypeScript pattern modules (`@parallaxai/patterns`, built on the `@parallaxai/confidence` algebra), and runs agents across local PTY, Docker, Kubernetes, and a NAT-traversing gateway.
+
+**Confidence positioning (important — read `docs/CONFIDENCE.md`):** confidence here is *attention-allocation / verification-driven triage*, NOT calibrated LLM introspection. The escalation policy (per-role `accept`/`retryBelow`/`escalateBelow`) should be fed by verification signals — tests, acceptance checks, reviewer verdicts (see `docs/VERIFY.md`) — with self-reported confidence as a weak, opt-in supplement. Don't reintroduce "extract a calibrated probability from the model" framing.
 
 ## Monorepo Structure
 

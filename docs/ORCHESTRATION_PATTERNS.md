@@ -1,5 +1,11 @@
 # Orchestration Patterns Guide
 
+> **⚠️ ARCHIVED (pre-refocus, Prism-era planning).** This document predates the
+> removal of the Prism DSL (see [REFOCUS.md](REFOCUS.md)) and describes an
+> architecture that no longer exists. Kept for history. For current
+> architecture see [ARCHITECTURE.md](ARCHITECTURE.md), pattern authoring see
+> `packages/patterns`, confidence see [CONFIDENCE.md](CONFIDENCE.md).
+
 > **Building Complex AI Workflows from Simple Primitives**
 
 Parallax provides 40 atomic primitives across 14 categories that combine into sophisticated orchestration patterns. This guide covers the fundamental flow types and their real-world applications.

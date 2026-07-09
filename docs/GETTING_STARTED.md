@@ -99,25 +99,15 @@ Every agent returns a confidence score (0.0 to 1.0):
 - **0.5-0.7**: Moderate confidence
 - **< 0.5**: Low confidence (triggers special handling)
 
-Patterns use these scores to make decisions:
+Parallax uses these scores for verification-driven triage: a cheap oracle
+(run tests / compile) runs first, then a structural acceptance check, then a
+second agent, and finally human escalation. Per-role policy controls the
+thresholds (`accept`, `retryBelow`, `escalateBelow`). The
+`@parallaxai/confidence` package provides the algebra (`Confident<T>` and
+combinators) used to carry and combine these scores.
 
-```prism
-// From uncertainty-router.prism
-uncertain if (analysisConfidence < 0.5) {
-  high {
-    // Very uncertain - escalate to human
-    result = { action: "escalate_to_human" }
-  }
-  medium {
-    // Somewhat uncertain - try specialists
-    result = routeToSpecialist(task)
-  }
-  low {
-    // Confident enough - proceed
-    result = continueWithAnalysis()
-  }
-}
-```
+See [CONFIDENCE.md](CONFIDENCE.md) and [VERIFY.md](VERIFY.md) for the full
+model.
 
 ## Next Steps
 
@@ -140,14 +130,34 @@ Agents can:
 - Implement any business logic
 
 ### 4. Create Custom Patterns
-Write your own coordination patterns in Prism:
-```prism
-// my-pattern.prism
-agents = parallax.agents.filter(/* your criteria */)
-results = parallel(/* your logic */)
-// Always return with confidence
-finalResult ~> confidence
+Write your own coordination patterns as TypeScript modules deployed with the
+control plane (`packages/patterns`, `@parallaxai/patterns`). A pattern is a
+`PatternModule` with an `execute(ctx)` method: the engine selects agents and
+fans the task out, then hands you the collected results to aggregate. Return a
+`Confident<T>` — the value becomes the result and the confidence drives
+routing and escalation:
+
+```typescript
+// my-pattern.ts
+import { averageConfidence, cf } from '@parallaxai/confidence';
+import type { PatternModule } from '@parallaxai/patterns';
+
+export const myConsensus: PatternModule = {
+  meta: { name: 'MyConsensus', version: '1.0.0', minAgents: 2 },
+  async execute(ctx) {
+    const avg = averageConfidence(
+      ctx.results.map((r) => cf(r.result, r.confidence))
+    );
+    return cf({ status: avg > 0.7 ? 'agreed' : 'weak', avg }, avg);
+  },
+};
 ```
+
+Register the module in `packages/patterns/src/index.ts` and it is loadable by
+name via the control plane's `ExecutePattern`. Alternatively, define an
+org-chart pattern in YAML (`patterns/org-*.yaml`) and let the workflow
+executor run it with managed CLI-agent threads. See `packages/patterns` and
+[CONFIDENCE.md](CONFIDENCE.md) for details.
 
 ## Common Patterns
 

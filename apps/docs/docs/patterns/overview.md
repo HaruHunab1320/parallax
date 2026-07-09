@@ -298,21 +298,14 @@ console.log(result);
 ### Register Custom Patterns
 
 ```typescript
-// Register from YAML file
-await client.registerPattern(fs.readFileSync('my-pattern.yaml', 'utf-8'));
-
-// Register programmatically
-import { PatternBuilder } from '@parallaxai/pattern-sdk';
-
-const pattern = new PatternBuilder('my-pattern')
-  .input({ text: 'string' })
-  .agents({ capabilities: ['analysis'], min: 3 })
-  .parallel()
-  .voting({ method: 'majority' })
-  .build();
-
-await client.registerPattern(pattern);
+// Register an org-chart pattern from a YAML file
+await client.registerPattern(fs.readFileSync('patterns/org-my-team.yaml', 'utf-8'));
 ```
+
+For custom orchestration logic, author a TypeScript `PatternModule` in
+[`@parallaxai/patterns`](https://github.com/HaruHunab1320/parallax/tree/main/packages/patterns)
+— it implements `execute(ctx)` and is deployed with the control plane rather
+than registered at runtime. See [Patterns](/docs/concepts/patterns).
 
 ### List Available Patterns
 

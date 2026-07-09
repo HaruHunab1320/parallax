@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <strong>Pattern-driven agent orchestration with runtimes, workspaces, and managed threads</strong>
+  <strong>Orchestrate teams of real CLI coding agents — across your laptop, containers, Kubernetes, or edge hardware — with verification-driven escalation built in.</strong>
 </p>
 
 <p align="center">
@@ -20,14 +20,15 @@
 
 ## What Parallax Is
 
-Parallax is a control plane for orchestrating agents with explicit patterns, org charts, and runtime-backed execution.
+Parallax is a control plane for orchestrating **teams of real CLI coding agents** — Claude Code, Codex CLI, Gemini CLI, Aider. You define the team as an org chart in YAML (roles, hierarchy, workflow); Parallax spawns the agents into that structure across whatever hardware you have — local PTYs, Docker, Kubernetes, or remote devices behind NAT — routes work through the hierarchy, and uses **verification** (do the tests pass? does a reviewer approve?) to decide when to accept a result, retry it, or escalate to a supervisor.
 
 At its core, Parallax gives you:
 
-- **TypeScript patterns** with confidence-aware logic (`@parallaxai/confidence`), plus **org-chart YAML** for team topologies
+- **Org-chart YAML** for team topologies, plus **TypeScript pattern modules** (`@parallaxai/patterns`) for custom-logic orchestration
 - **A control plane** that loads patterns, manages executions, and streams events
-- **Multiple runtimes** for local PTY sessions, Docker containers, and Kubernetes pods
+- **Multiple runtimes** for local PTY sessions, Docker containers, Kubernetes pods, and a gateway for NAT-traversing edge agents
 - **Managed threads** for long-lived supervised work, especially coding tasks in mutable workspaces
+- **Verification-driven confidence** — per-role escalation policy (`accept` / `retryBelow` / `escalateBelow`) fed by test/review signals, not self-reported guesses ([positioning](docs/CONFIDENCE.md))
 - **Workspace and memory services** for repo provisioning, shared decisions, and episodic experience reuse
 
 The architectural model is:
@@ -35,7 +36,7 @@ The architectural model is:
 - `agent` = execution substrate
 - `thread` = orchestration substrate
 
-That keeps Parallax explicit and deterministic while still supporting long-running CLI-agent work with tools like Claude Code, Codex CLI, Gemini CLI, and Aider.
+That keeps Parallax explicit and deterministic while supporting long-running CLI-agent work. The flagship demo — [`demos/coding-swarm`](demos/coding-swarm) — runs an architect + engineer team across a laptop or a Raspberry Pi fleet from the same YAML.
 
 ## Current Architecture
 
@@ -52,24 +53,25 @@ Parallax is organized into four main layers:
 
 Key architectural capabilities today:
 
-- pattern-driven orchestration in TypeScript with confidence-aware aggregation
-- explicit org-chart and workflow execution
+- org-chart and workflow execution over managed CLI-agent threads
+- TypeScript pattern modules for custom orchestration logic
+- verification-driven confidence: per-role `accept` / `retryBelow` / `escalateBelow` escalation
 - managed thread APIs for spawn, supervision, events, input, and stop
 - workspace-aware coding execution with context file injection
 - shared decisions and episodic experiences for future thread preparation
-- runtime abstraction across local, Docker, and Kubernetes
+- runtime abstraction across local, Docker, Kubernetes, and a NAT-traversing gateway
 
 For the deeper architecture docs, start here:
 
 - [Architecture](docs/ARCHITECTURE.md)
-- [Thread Runtime Proposal](docs/THREAD_RUNTIME_PROPOSAL.md)
-- [Thread Runtime Implementation Plan](docs/THREAD_RUNTIME_IMPLEMENTATION_PLAN.md)
+- [Confidence as triage](docs/CONFIDENCE.md) — why confidence is verification, not calibration
+- [The `verify` contract](docs/VERIFY.md) — how verification feeds the escalation policy
 
 ## Core Concepts
 
-- **Patterns** define orchestration logic as TypeScript modules (`@parallaxai/patterns`) or org-chart YAML.
-- **Primitives** are the reusable building blocks for execution, aggregation, control, confidence, and thread supervision.
-- **Runtimes** are the execution backends that actually host agents or CLI workers.
+- **Patterns** define orchestration logic as org-chart YAML (team topology) or TypeScript modules (`@parallaxai/patterns`, an `execute(ctx)` contract deployed with the control plane).
+- **Confidence** is a routing signal grounded in verification — tests, acceptance checks, reviewer verdicts — that drives the per-role escalation policy. It is *attention allocation*, not a claim of correctness ([details](docs/CONFIDENCE.md)).
+- **Runtimes** are the execution backends that host agents or CLI workers (local PTY, Docker, Kubernetes, gateway).
 - **Managed threads** are the long-lived units the control plane supervises over time.
 - **Workspaces** provide repo-aware execution contexts for coding tasks.
 - **Memory** captures compressed decisions and prior outcomes for future work.
@@ -175,10 +177,10 @@ parallax/
 ## What To Read Next
 
 - [Architecture](docs/ARCHITECTURE.md)
-- [Documentation Index](docs/README.md)
+- [Confidence as triage](docs/CONFIDENCE.md) and [the `verify` contract](docs/VERIFY.md)
+- [Coding Swarm demo](demos/coding-swarm/README.md) — the flagship
 - [Patterns README](packages/patterns/README.md)
 - [Confidence README](packages/confidence/README.md)
-- [Runtime MCP README](packages/runtime-mcp/README.md)
 - [Agents in Any Language](docs/any-language.md)
 
 ## Links

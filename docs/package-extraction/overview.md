@@ -42,32 +42,38 @@ pnpm dev
 parallax/
 ├── apps/
 │   ├── docs/                 # Documentation site (you are here)
-│   ├── web-dashboard/        # Web UI
-│   └── pattern-builder/      # Visual pattern editor
+│   └── web-dashboard/        # Web UI
 ├── packages/
-│   ├── control-plane/        # Orchestration & API
+│   ├── control-plane/        # Orchestration & API (incl. org-patterns compiler)
 │   ├── data-plane/           # Execution engine
+│   ├── patterns/             # TypeScript orchestration patterns (@parallaxai/patterns)
+│   ├── confidence/           # Confidence algebra (@parallaxai/confidence)
 │   ├── runtime-local/        # Local PTY runtime
 │   ├── runtime-docker/       # Docker runtime
 │   ├── runtime-k8s/          # Kubernetes runtime
-│   ├── sdk-typescript/       # TypeScript SDK
-│   └── prism/                # Prism DSL compiler
+│   └── sdk-typescript/       # TypeScript SDK
 └── k8s/                      # Kubernetes deployment
 ```
 
 ## Package Extraction Initiative
 
-We're extracting battle-tested components into standalone npm packages:
+We've extracted battle-tested agent-tooling components into standalone npm
+packages, which parallax now consumes from npm like any other dependency:
 
-| Package | Status | Docs |
+| Package | Status | Repo |
 |---------|--------|------|
-| `@parallaxai/circuit-breaker` | Planning | [Dev Plan](./packages/circuit-breaker) |
-| `@parallaxai/confidence-tracker` | Planning | [Dev Plan](./packages/confidence-tracker) |
-| `@parallaxai/pty-agent-manager` | Planning | [Dev Plan](./packages/pty-agent-manager) |
-| `@parallaxai/org-chart-compiler` | Planning | [Dev Plan](./packages/org-chart-compiler) |
-| `@parallaxai/git-workspace-service` | Planning | [Dev Plan](./packages/git-workspace-service) |
+| `pty-manager` | Done / extracted | [HaruHunab1320/pty-manager](https://github.com/HaruHunab1320/pty-manager) |
+| `coding-agent-adapters` | Done / extracted | [HaruHunab1320/coding-agent-adapters](https://github.com/HaruHunab1320/coding-agent-adapters) |
+| `pty-console` | Done / extracted | [HaruHunab1320/pty-console](https://github.com/HaruHunab1320/pty-console) |
+| `pty-state-capture` | Done / extracted | [HaruHunab1320/pty-state-capture](https://github.com/HaruHunab1320/pty-state-capture) |
+| `tmux-manager` | Done / extracted | [HaruHunab1320/tmux-manager](https://github.com/HaruHunab1320/tmux-manager) |
+| `adapter-types` | Done / extracted | [HaruHunab1320/adapter-types](https://github.com/HaruHunab1320/adapter-types) |
+| `git-workspace-service` | Done / extracted | [HaruHunab1320/git-workspace-service](https://github.com/HaruHunab1320/git-workspace-service) |
 
-See [Package Extraction Roadmap](./package-extraction) for the full plan.
+Some previously planned extractions (`pattern-builder`, `org-chart-compiler`,
+`primitives`, `pattern-sdk`) have been removed rather than extracted. The
+org-chart compiler now lives inside the control plane (`org-patterns`), and
+orchestration patterns are TypeScript modules in `packages/patterns`.
 
 ## Code Style
 

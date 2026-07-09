@@ -286,21 +286,30 @@ output:
   confidence: $vote.confidence
 ```
 
-### Programmatic
+### TypeScript Pattern Module
+
+For custom orchestration logic, write a `PatternModule` in
+[`@parallaxai/patterns`](https://github.com/HaruHunab1320/parallax/tree/main/packages/patterns).
+A module implements `execute(ctx)` and is deployed *with* the control plane
+(Temporal-style) — it is not an uploaded script:
 
 ```typescript
-import { PatternBuilder } from '@parallaxai/pattern-sdk';
+import type { PatternModule } from '@parallaxai/patterns';
 
-const pattern = new PatternBuilder('my-pattern')
-  .input({ query: 'string' })
-  .agents({ capabilities: ['analysis'], min: 3 })
-  .parallel()
-  .consensus({ threshold: 0.8 })
-  .output({ result: '$consensus.result' })
-  .build();
+export const myPattern: PatternModule = {
+  name: 'my-pattern',
+  version: '1.0.0',
+  async execute(ctx) {
+    const results = await ctx.runParallel('analysis', { min: 3 });
+    return ctx.consensus(results, { threshold: 0.8 });
+  },
+};
 ```
+
+The control plane exposes these modules through the `@parallaxai/patterns`
+manifest; the exact `ctx` API lives in that package.
 
 ## Next Steps
 
-- [Primitives](/docs/concepts/primitives) - Building blocks for patterns
+- [Confidence as Triage](/docs/concepts/confidence) - How results are routed
 - [YAML Syntax](/docs/patterns/yaml-syntax) - Complete reference

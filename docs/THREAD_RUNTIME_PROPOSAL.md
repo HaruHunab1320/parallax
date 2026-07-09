@@ -1,5 +1,11 @@
 # Parallax Thread Runtime Proposal
 
+> **⚠️ ARCHIVED (pre-refocus, Prism-era planning).** This document predates the
+> removal of the Prism DSL (see [REFOCUS.md](REFOCUS.md)) and describes an
+> architecture that no longer exists. Kept for history. For current
+> architecture see [ARCHITECTURE.md](ARCHITECTURE.md), pattern authoring see
+> `packages/patterns`, confidence see [CONFIDENCE.md](CONFIDENCE.md).
+
 ## Summary
 
 Parallax already provides:

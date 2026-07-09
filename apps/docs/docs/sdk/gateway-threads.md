@@ -172,7 +172,7 @@ sequenceDiagram
 
 Thread events flow from the agent through the gateway service to the `ExecutionEventBus`, which makes them available to:
 
-- **Patterns** — Prism scripts can react to thread state changes
+- **Patterns** — the workflow executor can react to thread state changes
 - **SSE endpoint** — `GET /api/executions/:id/threads/stream` (see [Thread Stream API](../api/thread-stream))
 - **Web dashboard** — real-time terminal grid display
 - **Org-chart orchestrator** — monitors thread completion and coordinates next steps

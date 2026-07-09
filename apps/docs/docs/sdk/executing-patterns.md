@@ -368,17 +368,6 @@ const result = await client.executePattern<SentimentInput, SentimentOutput>(
 console.log(result.sentiment);
 ```
 
-### Generate Types from Pattern
-
-```typescript
-import { generateTypes } from '@parallaxai/pattern-sdk';
-
-// Generate TypeScript types from pattern YAML
-const types = generateTypes(patternYaml);
-// export interface SentimentAnalysisInput { text: string; language?: string; }
-// export interface SentimentAnalysisOutput { sentiment: string; confidence: number; }
-```
-
 ## Execution Context
 
 ### Request Tracing

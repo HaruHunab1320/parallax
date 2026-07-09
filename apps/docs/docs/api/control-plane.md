@@ -752,7 +752,7 @@ See [Webhooks](/docs/api/webhooks) for event notifications.
 ## SDKs
 
 - [TypeScript SDK](/docs/sdk/typescript) - Official TypeScript client
-- [Pattern SDK](/docs/sdk/pattern-sdk) - Pattern building
+- [Patterns](/docs/concepts/patterns) - Author org-chart YAML and TypeScript pattern modules
 
 ## Next Steps
 

@@ -1,5 +1,13 @@
 # Package Extraction Roadmap
 
+> **⚠️ ARCHIVED (pre-refocus planning).** This roadmap predates the current
+> architecture. The agent-tooling packages were extracted to standalone repos
+> (see [overview.md](./overview.md)); the `org-chart-compiler` was *not*
+> extracted (it lives inside the control plane's `org-patterns`), and
+> `primitives`/`pattern-sdk` were removed with the Prism DSL (see
+> [REFOCUS.md](../REFOCUS.md)). Kept for history. For current architecture see
+> [ARCHITECTURE.md](../ARCHITECTURE.md).
+
 Parallax contains several battle-tested components that have strong standalone value. This document outlines our strategy for extracting these into independent npm packages that can benefit the broader community while improving Parallax's modularity.
 
 ## Overview

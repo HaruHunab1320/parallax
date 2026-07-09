@@ -86,16 +86,16 @@ The **control plane** is the orchestration server that:
 - Aggregates results
 - Tracks metrics and confidence
 
-## Primitives
+## Workflow Steps
 
-Parallax provides 40+ **primitives** - building blocks for orchestration:
+Org-chart patterns are built from **workflow steps** that coordinate roles:
 
-- **Execution**: `parallel`, `sequential`, `race`, `delegate`
-- **Aggregation**: `consensus`, `voting`, `merge`, `reduce`
-- **Control**: `threshold`, `retry`, `fallback`, `timeout`
-- **Logic**: `condition`, `switch`, `loop`
+- **Execution**: `assign`, `parallel`, `sequential`, `select`
+- **Aggregation**: `aggregate` (consensus, voting, merge)
+- **Review & routing**: `review`, `approve`, `condition`
 
-These compose together to create sophisticated orchestration flows.
+These compose together to create sophisticated orchestration flows. TypeScript
+pattern modules express the same coordination directly in `execute(ctx)`.
 
 ## Next Steps
 
