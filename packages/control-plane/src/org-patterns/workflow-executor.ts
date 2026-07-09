@@ -327,7 +327,13 @@ export class WorkflowExecutor extends EventEmitter {
         agentType: Array.isArray(role.agentType)
           ? role.agentType[0]
           : role.agentType,
-        objective: '', // Task sent later by workflow step execution
+        // The role's standing objective (system-prompt-like) boots the
+        // agent; per-step tasks are sent as follow-up messages. Fall back
+        // to a role-derived line so the runtime always has a non-empty
+        // objective.
+        objective:
+          role.threadConfig.objective?.trim() ||
+          `You are the ${role.name} on this team.`,
         role: roleId,
         preparation: {
           workspace: (role.threadConfig.workspace as ThreadWorkspaceRef & { inherit?: boolean })?.inherit

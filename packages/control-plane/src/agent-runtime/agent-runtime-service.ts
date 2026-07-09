@@ -300,28 +300,54 @@ export class AgentRuntimeService extends EventEmitter {
     input: SpawnThreadInput,
     preferredRuntime?: string
   ): Promise<ThreadHandle> {
-    const runtime = this.selectRuntime(undefined, preferredRuntime);
-    if (!runtime) {
-      throw new Error('No healthy runtime available for thread spawn');
+    // Try runtimes in priority order, falling through on failure — the
+    // gateway runtime (highest priority) throws when no remote agent
+    // matches, and local/docker runtimes should then take the spawn.
+    const preferred = preferredRuntime
+      ? this.runtimes.get(preferredRuntime)
+      : undefined;
+    const candidates = [
+      ...(preferred?.healthy ? [preferred] : []),
+      ...Array.from(this.runtimes.values())
+        .filter((r) => r.healthy && r !== preferred)
+        .sort((a, b) => a.priority - b.priority),
+    ];
+
+    let lastError: unknown;
+    for (const runtime of candidates) {
+      try {
+        const thread = await runtime.client.spawnThread(input);
+        this.threadToRuntime.set(thread.id, runtime.name);
+
+        if (thread.agentId) {
+          this.agentToRuntime.set(thread.agentId, runtime.name);
+        }
+
+        this.logger.info(
+          {
+            threadId: thread.id,
+            runtime: runtime.name,
+            agentType: input.agentType,
+          },
+          'Thread spawned'
+        );
+
+        return thread;
+      } catch (error) {
+        lastError = error;
+        this.logger.debug(
+          {
+            runtime: runtime.name,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          'Runtime could not spawn thread — trying next'
+        );
+      }
     }
 
-    const thread = await runtime.client.spawnThread(input);
-    this.threadToRuntime.set(thread.id, runtime.name);
-
-    if (thread.agentId) {
-      this.agentToRuntime.set(thread.agentId, runtime.name);
-    }
-
-    this.logger.info(
-      {
-        threadId: thread.id,
-        runtime: runtime.name,
-        agentType: input.agentType,
-      },
-      'Thread spawned'
-    );
-
-    return thread;
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('No healthy runtime available for thread spawn');
   }
 
   /**

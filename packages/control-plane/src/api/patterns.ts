@@ -168,8 +168,13 @@ export function createPatternsRouter(
         }
       }
 
-      // Execute pattern
-      const result = await patternEngine.executePattern(name, input, options);
+      // Execute pattern — reuse the DB execution id so the engine's
+      // events reference an existing row (otherwise FK violations on every
+      // event and an empty dashboard timeline).
+      const result = await patternEngine.executePattern(name, input, {
+        ...options,
+        ...(dbExecutionId ? { executionId: dbExecutionId } : {}),
+      });
 
       const duration = Date.now() - startTime;
 

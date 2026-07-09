@@ -93,8 +93,21 @@ yet demonstrable — do not present it.
   turn completions — `parseConfidenceMarker` in `@parallaxai/confidence`,
   wired through the local runtime, the gateway agent, and the workflow
   executor's event extraction (both event shapes)
-- [ ] Local end-to-end run of `coding-swarm-local` with 3 live Claude Code
-  sessions
+- [x] Platform bring-up wired for a laptop run: `PARALLAX_LOCAL_RUNTIME_URL`
+  registers `runtime-local`; local agents inherit the host's authed Claude
+  config (set `PARALLAX_ISOLATE_AUTH=1` only for the distributed case)
+- [x] Local run reaches full workflow completion with **3 live Claude Code
+  PTY sessions** — they spawn, boot past onboarding/trust/auth, the
+  org-chart workflow executes every step, and it completes and cleans up.
+  (Verified 2026-07-08; fixed 6 orchestration bugs to get here — see the
+  commit.)
+- [ ] **Agent turn OUTPUT capture** — turns currently complete with empty
+  summaries, so no `CONFIDENCE:` marker reaches the policy (it stays at
+  `no_signal`). The `claude` adapter runs in `stream-json` mode and the
+  plain-text turn delivery / completion-detection in
+  `coding-agent-adapters` + `pty-manager` isn't extracting the assistant
+  response. **This is the blocker for the money shot** and lives in the
+  external adapter packages, not parallax orchestration.
 - [ ] Dashboard: threads panel + `step_confidence` events on the execution
   timeline verified against a live run
 - [ ] Fleet run on Echo + Pis with the same verification

@@ -131,6 +131,8 @@ export class PatternLoader {
           compiledFrom: filePath,
           sourceYaml: content,
           orgChart: true,
+          // The parsed OrgPattern the workflow executor runs against
+          orgPattern,
           ...(compiled.metadata.metadata || {}),
         },
       };

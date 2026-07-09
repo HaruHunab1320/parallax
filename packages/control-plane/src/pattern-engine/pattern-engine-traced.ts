@@ -29,20 +29,25 @@ export class TracedPatternEngine extends PatternEngine {
         });
       }
 
-      // Create database execution record for event persistence
+      // Create database execution record for event persistence — but only
+      // if the caller (e.g. the REST API) hasn't already created it under
+      // this id. Both layers used to create it, colliding on the PK.
       const executionId = options?.executionId;
       if (this.database && executionId && pattern) {
         try {
-          const dbPattern = await this.database.patterns.findByName(
-            pattern.name
-          );
-          if (dbPattern) {
-            await this.database.executions.create({
-              id: executionId,
-              pattern: { connect: { id: dbPattern.id } },
-              input: input,
-              status: 'running',
-            });
+          const existing = await this.database.executions.findById(executionId);
+          if (!existing) {
+            const dbPattern = await this.database.patterns.findByName(
+              pattern.name
+            );
+            if (dbPattern) {
+              await this.database.executions.create({
+                id: executionId,
+                pattern: { connect: { id: dbPattern.id } },
+                input: input,
+                status: 'running',
+              });
+            }
           }
         } catch (dbError) {
           this.logger.warn(

@@ -5,8 +5,14 @@
  * Delegates to pty-manager for PTY management and coding-agent-adapters for CLI adapters.
  */
 
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   type AgentConfig,
@@ -441,13 +447,31 @@ export class LocalRuntime
       `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.agentConfigs.set(id, { ...config, id });
 
-    // Set up shared auth directory for agents in the same execution
+    // Set up shared auth directory for agents in the same execution.
+    //
+    // Isolating CLAUDE_CONFIG_DIR is meant for the distributed case (each
+    // remote agent does its own OAuth login, shared per swarm). On a local
+    // laptop the operator is already globally authed, and an isolated,
+    // empty config dir instead breaks the CLIs on onboarding → trust →
+    // "not logged in". So local runtime inherits the host config by default;
+    // set PARALLAX_ISOLATE_AUTH=1 to opt into per-execution isolation.
     const env = { ...config.env };
-    if (config.executionId) {
+    const isolateAuth = process.env.PARALLAX_ISOLATE_AUTH === '1';
+    if (config.executionId && isolateAuth) {
       const sharedAuthDir = this.ensureSharedAuthDir(config.executionId);
-      // Point CLI credential directories to shared location
-      env.CLAUDE_CONFIG_DIR = join(sharedAuthDir, 'claude');
+      const claudeConfigDir = join(sharedAuthDir, 'claude');
+      env.CLAUDE_CONFIG_DIR = claudeConfigDir;
       env.CODEX_CONFIG_DIR = join(sharedAuthDir, 'codex');
+      env.PARALLAX_EXECUTION_ID = config.executionId;
+
+      // Pre-accept Claude's per-directory trust dialog for the working
+      // directory, otherwise the CLI blocks on "Do you trust this folder?"
+      // before it ever reads the task.
+      this.trustWorkdirInClaudeConfig(
+        claudeConfigDir,
+        config.workdir || process.cwd()
+      );
+    } else if (config.executionId) {
       env.PARALLAX_EXECUTION_ID = config.executionId;
     }
 
@@ -900,6 +924,13 @@ export class LocalRuntime
         mkdirSync(codexDir, { recursive: true });
       }
 
+      // Seed the isolated Claude config so PTY sessions skip first-run
+      // onboarding (the empty CLAUDE_CONFIG_DIR otherwise re-triggers the
+      // theme/setup prompts, which block the agent before it sees its task).
+      // Credentials come from the OS keychain, so only the onboarding flags
+      // need seeding — carried over from the host config when present.
+      this.seedClaudeConfig(claudeDir);
+
       this.sharedAuthDirs.add(dirName);
       this.logger.info(
         { sharedDir, executionId },
@@ -908,5 +939,89 @@ export class LocalRuntime
     }
 
     return sharedDir;
+  }
+
+  /**
+   * Write a minimal onboarding-complete `.claude.json` into an isolated
+   * Claude config dir. Carries over the host's onboarding flags when a host
+   * config exists; otherwise writes safe defaults. Never copies the full
+   * host config (it can be ~1MB of unrelated project history).
+   */
+  private seedClaudeConfig(claudeDir: string): void {
+    const configPath = join(claudeDir, '.claude.json');
+    if (existsSync(configPath)) return;
+
+    const seed: Record<string, unknown> = {
+      hasCompletedOnboarding: true,
+      hasAcknowledgedCostThreshold: true,
+    };
+
+    try {
+      const hostConfig = join(homedir(), '.claude.json');
+      if (existsSync(hostConfig)) {
+        const host = JSON.parse(readFileSync(hostConfig, 'utf-8')) as Record<
+          string,
+          unknown
+        >;
+        for (const key of [
+          'hasCompletedOnboarding',
+          'lastOnboardingVersion',
+          'hasAcknowledgedCostThreshold',
+          'theme',
+          // Account identity — the OAuth token stays in the OS keychain,
+          // but the CLI reads the logged-in account from here. Without it
+          // an isolated config dir reports "requires authentication".
+          'userID',
+          'oauthAccount',
+          'hasAvailableSubscription',
+        ]) {
+          if (host[key] !== undefined) seed[key] = host[key];
+        }
+      }
+    } catch (error) {
+      this.logger.warn({ error }, 'Could not read host Claude config for seed');
+    }
+
+    try {
+      writeFileSync(configPath, JSON.stringify(seed, null, 2), 'utf-8');
+      this.logger.debug({ configPath }, 'Seeded isolated Claude config');
+    } catch (error) {
+      this.logger.warn({ error, configPath }, 'Failed to seed Claude config');
+    }
+  }
+
+  /**
+   * Mark a working directory as trusted in an isolated Claude config so the
+   * CLI skips its per-directory trust prompt. Merges into the existing
+   * seeded config (multiple agents in an execution share the config dir but
+   * may run in different directories).
+   */
+  private trustWorkdirInClaudeConfig(claudeDir: string, workdir: string): void {
+    const configPath = join(claudeDir, '.claude.json');
+    try {
+      const config: Record<string, unknown> = existsSync(configPath)
+        ? (JSON.parse(readFileSync(configPath, 'utf-8')) as Record<
+            string,
+            unknown
+          >)
+        : { hasCompletedOnboarding: true };
+
+      const projects =
+        (config.projects as Record<string, Record<string, unknown>>) ?? {};
+      projects[workdir] = {
+        ...(projects[workdir] ?? {}),
+        hasTrustDialogAccepted: true,
+        hasCompletedProjectOnboarding: true,
+      };
+      config.projects = projects;
+
+      writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+      this.logger.debug({ configPath, workdir }, 'Trusted workdir in Claude config');
+    } catch (error) {
+      this.logger.warn(
+        { error, configPath, workdir },
+        'Failed to trust workdir in Claude config'
+      );
+    }
   }
 }
