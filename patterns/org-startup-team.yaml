@@ -47,13 +47,22 @@ structure:
       expertise:
         - implementation
         - testing
-      # Confidence-driven step policy: results the engineer reports with
-      # low confidence are retried once with a critique, and escalated to
-      # the architect (reportsTo) when confidence stays critically low.
+      # Confidence-driven step policy: the engineer's output is scored,
+      # retried once with a critique below retryBelow, and escalated to the
+      # architect (reportsTo) when confidence stays critically low.
       confidence:
         accept: 0.8
         retryBelow: 0.6
         escalateBelow: 0.4
+      # Verification-driven confidence (see docs/VERIFY.md). When present,
+      # the oracle's result replaces the agent's self-report as the signal
+      # the policy above routes on. Uncomment against a real workspace:
+      #   verify:
+      #     - type: command
+      #       run: "npm test && npm run typecheck"
+      #       cwd: "${workspace.path}"
+      #       # optional partial score instead of pass/fail:
+      #       # scorePattern: "(\\d+) passed, (\\d+) failed"
 
   routing:
     - from: engineer

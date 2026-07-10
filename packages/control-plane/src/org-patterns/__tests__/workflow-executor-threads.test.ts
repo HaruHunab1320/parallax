@@ -579,7 +579,7 @@ describe('WorkflowExecutor thread integration', () => {
       expect(runtime.sentMessages[0].threadId).toBe(WORKER);
       expect(runtime.sentMessages[1].threadId).toBe(WORKER);
       expect(runtime.sentMessages[1].input.message).toContain(
-        'low confidence (0.50)'
+        'did not pass verification (0.50)'
       );
       expect(actions).toEqual(['retry', 'accept']);
     });
@@ -598,7 +598,7 @@ describe('WorkflowExecutor thread integration', () => {
       // Escalation goes to the lead with the low-confidence context
       expect(runtime.sentMessages[1].threadId).toBe(LEAD);
       expect(runtime.sentMessages[1].input.message).toContain(
-        'low confidence (0.20)'
+        'confidence 0.20'
       );
       expect(runtime.sentMessages[1].input.message).toContain('Worker');
       expect(actions).toEqual(['escalate']);
@@ -644,6 +644,150 @@ describe('WorkflowExecutor thread integration', () => {
 
       expect(runtime.sentMessages).toHaveLength(1);
       expect(actions).toEqual(['accept_with_warning']);
+    });
+  });
+
+  describe('verify (command oracle)', () => {
+    function verifyPattern(
+      verify: unknown,
+      policy?: { accept?: number; retryBelow?: number; escalateBelow?: number }
+    ): OrgPattern {
+      return {
+        name: 'verify-test',
+        structure: {
+          name: 'test',
+          roles: {
+            lead: makeRole({ id: 'lead', name: 'Lead', singleton: true }),
+            worker: makeRole({
+              id: 'worker',
+              name: 'Worker',
+              singleton: true,
+              reportsTo: 'lead',
+              verify: verify as never,
+              confidence: policy,
+            }),
+          },
+        },
+        workflow: {
+          name: 'default',
+          steps: [{ type: 'assign', role: 'worker', task: 'do the thing' }],
+          output: 'step_0_result',
+        },
+      };
+    }
+
+    const fullPolicy = { accept: 0.8, retryBelow: 0.6, escalateBelow: 0.4 };
+    const LEAD = 'thread-0';
+    const WORKER = 'thread-1';
+
+    function makeExecutor() {
+      return new WorkflowExecutor(
+        runtime as unknown as AgentRuntimeService,
+        logger,
+        { stepTimeout: 5000 }
+      );
+    }
+
+    it('command exit 0 → verified pass → accept', async () => {
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(
+        verifyPattern({ type: 'command', run: 'true' }, fullPolicy),
+        {}
+      );
+
+      // No retry/escalate: only the initial worker turn was sent.
+      expect(runtime.sentMessages).toHaveLength(1);
+      expect(runtime.sentMessages[0].threadId).toBe(WORKER);
+      expect(events.map((e) => e.action)).toEqual(['accept']);
+      expect(events[0].source).toContain('command');
+    });
+
+    it('command non-zero exit → verified fail → escalate to supervisor', async () => {
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(
+        verifyPattern({ type: 'command', run: 'false' }, fullPolicy),
+        {}
+      );
+
+      // 0.0 < escalateBelow (0.4) → escalate to the lead.
+      expect(runtime.sentMessages).toHaveLength(2);
+      expect(runtime.sentMessages[1].threadId).toBe(LEAD);
+      const escalate = events.find((e) => e.action === 'escalate');
+      expect(escalate).toBeDefined();
+      expect(escalate.source).toContain('command');
+      // The escalation message carries the failing-verification context.
+      expect(runtime.sentMessages[1].input.message).toContain(
+        'did not pass'
+      );
+    });
+
+    it('verify with no explicit confidence policy still escalates on failure', async () => {
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      // No policy arg → defaults (accept 0.8 / retryBelow 0.6 / escalateBelow 0.4).
+      await executor.execute(
+        verifyPattern({ type: 'command', run: 'false' }),
+        {}
+      );
+
+      expect(events.some((e) => e.action === 'escalate')).toBe(true);
+    });
+
+    it('scorePattern partial score routes to the retry band', async () => {
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      // 2 passed / 2 failed = 0.5 → escalateBelow(0.4) ≤ 0.5 < retryBelow(0.6) → retry.
+      await executor.execute(
+        verifyPattern(
+          {
+            type: 'command',
+            run: 'echo "2 passed, 2 failed"',
+            scorePattern: '(\\d+) passed, (\\d+) failed',
+          },
+          fullPolicy
+        ),
+        {}
+      );
+
+      // Initial + one retry, both to the worker.
+      expect(runtime.sentMessages).toHaveLength(2);
+      expect(runtime.sentMessages[1].threadId).toBe(WORKER);
+      expect(events.map((e) => e.action)).toEqual([
+        'retry',
+        'accept_with_warning',
+      ]);
+      // The retry critique carries the verification detail.
+      expect(runtime.sentMessages[1].input.message).toContain(
+        'did not pass verification'
+      );
+    });
+
+    it('verify overrides a high self-reported confidence', async () => {
+      // Agent claims 0.95, but the command says the work fails.
+      runtime.confidenceQueue = [0.95];
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(
+        verifyPattern({ type: 'command', run: 'false' }, fullPolicy),
+        {}
+      );
+
+      // Verification (0.0) wins over the self-report → escalate.
+      const escalate = events.find((e) => e.action === 'escalate');
+      expect(escalate).toBeDefined();
+      expect(escalate.source).toContain('command');
     });
   });
 });

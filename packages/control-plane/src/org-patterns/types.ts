@@ -76,6 +76,47 @@ export interface OrgRole {
 
   /** Per-role confidence policy applied to workflow step results */
   confidence?: OrgConfidencePolicy;
+
+  /**
+   * How this role's step output is verified. When present, the resulting
+   * confidence replaces the agent's self-reported marker as the signal the
+   * `confidence` policy routes on. Accepts a single oracle or a list (list
+   * combines per `combine`, default min). See docs/VERIFY.md.
+   */
+  verify?: VerifyOracle | VerifyOracle[] | OrgVerify;
+}
+
+/**
+ * A verification oracle — the source of a role's confidence signal.
+ *
+ * Only `command` is implemented today (the cheapest, strongest tier);
+ * `checklist` / `agent` / `human` are specified in docs/VERIFY.md and slot
+ * in here as they land.
+ */
+export type VerifyOracle = {
+  type: 'command';
+  /** Shell command to run; exit 0 = pass. */
+  run: string;
+  /** Working directory (supports ${...} interpolation). Default: cwd. */
+  cwd?: string;
+  /** Timeout in ms (default 120000). */
+  timeoutMs?: number;
+  /** Confidence on exit 0 (default 1.0). */
+  passConfidence?: number;
+  /** Confidence on non-zero exit (default 0.0). */
+  failConfidence?: number;
+  /**
+   * Optional partial score. A regex with two capture groups
+   * `(passed)...(failed)` whose ratio passed/(passed+failed) is used
+   * instead of the binary pass/fail when it matches the command output.
+   */
+  scorePattern?: string;
+};
+
+export interface OrgVerify {
+  oracles: VerifyOracle[];
+  /** How multiple oracles combine (default 'min'). */
+  combine?: 'min' | 'weighted' | 'product';
 }
 
 /**

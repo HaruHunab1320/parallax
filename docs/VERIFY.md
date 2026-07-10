@@ -1,9 +1,12 @@
 # The `verify` contract — verification-driven confidence
 
-**Status:** Draft spec — 2026-07-09
+**Status:** First slice implemented (2026-07-09) — the `command` oracle +
+role-level `verify` are wired into the workflow executor and tested. The
+`checklist` / `agent` / `human` oracles and the `verify` *step* remain
+specified-but-unimplemented (noted inline).
 **Depends on:** [docs/CONFIDENCE.md](CONFIDENCE.md) (confidence = verification
 triage, not LLM introspection)
-**Changes:** org-chart YAML schema (`OrgRole.verify`, `verify` step),
+**Changes:** org-chart YAML schema (`OrgRole.verify`),
 `workflow-executor` step completion.
 
 This specifies how a role's output gets a **confidence signal from
@@ -259,7 +262,20 @@ In `workflow-executor.ts`:
 
 ---
 
-**First implementation slice** (smallest thing that makes the money shot
-real): `command` oracle + role-level `verify` + wiring into
-`executeAssignStep`. That alone gives "engineer's tests fail → escalates to
-architect" end to end, with zero ML and a signal you can trust.
+## 8. Implemented so far
+
+- ✅ `command` oracle — exit code → confidence, optional `scorePattern`
+  partial scoring, `cwd` (with `${...}` interpolation), timeout.
+- ✅ Role-level `verify` (single oracle or list; list combines by `min`).
+- ✅ Wired into `executeAssignStep`: `verify` confidence replaces the
+  self-report and feeds the existing `accept`/`retryBelow`/`escalateBelow`
+  policy (a role with `verify` but no explicit policy uses sensible
+  defaults). The retry critique and escalation message carry the
+  verification **detail** (what failed). `step_confidence` events gained a
+  `source` (`command` / `selfreport` / …) and `detail`.
+- ⬜ `checklist` / `agent` / `human` oracles, the `verify` *step*, and the
+  `weighted` / `product` combine modes — specified above, not yet built
+  (unimplemented oracle types log a warning and treat as pass).
+
+This gives "engineer's tests fail → escalates to architect" end to end, with
+zero ML and a signal you can trust.

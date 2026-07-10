@@ -4,7 +4,9 @@
  * Executes workflows defined in org-chart patterns.
  */
 
+import { exec } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import { promisify } from 'node:util';
 import { best, cf } from '@parallaxai/confidence';
 import type {
   AgentConfig,
@@ -23,8 +25,12 @@ import type {
   OrgExecutionContext,
   OrgPattern,
   OrgRole,
+  OrgVerify,
+  VerifyOracle,
   WorkflowStep,
 } from './types';
+
+const execAsync = promisify(exec);
 
 export interface WorkflowExecutorOptions {
   /** Timeout for individual steps (ms) */
@@ -484,7 +490,7 @@ export class WorkflowExecutor extends EventEmitter {
 
     let response = await this.sendToExecutionUnit(agent, taskStr, input);
 
-    if (role.confidence) {
+    if (role.confidence || role.verify) {
       response = await this.applyConfidencePolicy(
         role,
         agent,
@@ -548,15 +554,34 @@ export class WorkflowExecutor extends EventEmitter {
   }
 
   /**
+   * The confidence signal for a step result. Prefers the role's `verify`
+   * oracle (verification-driven, per docs/CONFIDENCE.md); falls back to the
+   * agent's self-reported marker (a weak supplement).
+   */
+  private async signalFor(
+    role: OrgRole,
+    response: StepResult,
+    context: OrgExecutionContext
+  ): Promise<{ confidence: number | undefined; source: string; detail?: string }> {
+    if (role.verify) {
+      return this.runVerify(role.verify, context, response);
+    }
+    return {
+      confidence: this.extractConfidence(response),
+      source: 'selfreport',
+    };
+  }
+
+  /**
    * Apply a role's confidence policy to a step result.
    *
-   * Bands (most severe first): below `escalateBelow` the supervisor
-   * (`reportsTo`) reviews and produces the final result; below `retryBelow`
-   * the unit gets one critique-driven retry and the more confident attempt
-   * wins (escalation is then re-checked); at/above `accept` (default 0.8)
-   * the result passes; in between it is accepted with a warning.
-   *
-   * Results without a confidence signal pass through untouched.
+   * The signal comes from the role's `verify` oracle (preferred) or its
+   * self-reported marker. Bands (most severe first): below `escalateBelow`
+   * the supervisor (`reportsTo`) reviews and produces the final result;
+   * below `retryBelow` the unit gets one critique-driven retry (carrying the
+   * verification detail) and the more confident attempt wins; at/above
+   * `accept` (default 0.8) the result passes; in between it is accepted with
+   * a warning. Results with no signal pass through untouched.
    */
   private async applyConfidencePolicy(
     role: OrgRole,
@@ -565,18 +590,30 @@ export class WorkflowExecutor extends EventEmitter {
     initialResponse: StepResult,
     context: OrgExecutionContext
   ): Promise<StepResult> {
-    const policy = role.confidence!;
+    // A role with `verify` but no explicit policy still escalates on failure.
+    const policy = role.confidence ?? {
+      accept: 0.8,
+      retryBelow: 0.6,
+      escalateBelow: 0.4,
+    };
     const accept = policy.accept ?? 0.8;
 
     let response = initialResponse;
-    let confidence = this.extractConfidence(response);
+    const signal = await this.signalFor(role, response, context);
+    let confidence = signal.confidence;
+    const { source } = signal;
+    let detail = signal.detail;
 
     if (confidence === undefined) {
       this.logger.debug(
         { role: role.id },
         'Confidence policy configured but result carries no signal — accepting as-is'
       );
-      this.emit('step_confidence', { role: role.id, action: 'no_signal' });
+      this.emit('step_confidence', {
+        role: role.id,
+        action: 'no_signal',
+        source,
+      });
       return response;
     }
 
@@ -587,28 +624,39 @@ export class WorkflowExecutor extends EventEmitter {
       (policy.escalateBelow === undefined || confidence >= policy.escalateBelow)
     ) {
       this.logger.info(
-        { role: role.id, confidence, retryBelow: policy.retryBelow },
+        { role: role.id, confidence, retryBelow: policy.retryBelow, source },
         'Low confidence — retrying step with critique'
       );
       this.emit('step_confidence', {
         role: role.id,
         confidence,
         action: 'retry',
+        source,
+        detail,
       });
 
+      const whatFailed = detail
+        ? `\n\nWhat failed:\n${detail}`
+        : ` (${confidence.toFixed(2)})`;
       const critique =
-        `Your previous response had low confidence (${confidence.toFixed(2)}). ` +
-        'Review your work, address the weakest parts, and provide an ' +
-        `improved result.\n\nOriginal task: ${taskStr}\n\n` +
+        `Your previous attempt did not pass verification${whatFailed}\n\n` +
+        'Review your work, fix the problems above, and provide an improved ' +
+        `result.\n\nOriginal task: ${taskStr}\n\n` +
         `Your previous result:\n${this.extractResponseText(response)}`;
       const retryResponse = await this.sendToExecutionUnit(unit, critique);
+      const retrySignal = await this.signalFor(role, retryResponse, context);
 
       const winner = best(
         cf(response, confidence),
-        cf(retryResponse, this.extractConfidence(retryResponse) ?? 0)
+        cf(retryResponse, retrySignal.confidence ?? 0)
       );
-      response = winner.value;
-      confidence = winner.confidence;
+      if (winner.value === retryResponse) {
+        response = retryResponse;
+        confidence = retrySignal.confidence ?? 0;
+        detail = retrySignal.detail;
+      } else {
+        confidence = winner.confidence;
+      }
     }
 
     // Escalation band: the supervisor reviews and owns the final result
@@ -630,12 +678,13 @@ export class WorkflowExecutor extends EventEmitter {
           role: role.id,
           confidence,
           action: 'escalation_unrouted',
+          source,
         });
         return response;
       }
 
       this.logger.info(
-        { role: role.id, supervisor: supervisorRoleId, confidence },
+        { role: role.id, supervisor: supervisorRoleId, confidence, source },
         'Low confidence — escalating to supervisor'
       );
       this.emit('step_confidence', {
@@ -643,6 +692,8 @@ export class WorkflowExecutor extends EventEmitter {
         confidence,
         action: 'escalate',
         supervisor: supervisorRoleId,
+        source,
+        detail,
       });
 
       const supervisor = await this.getOrSpawnRoleUnit(
@@ -650,9 +701,11 @@ export class WorkflowExecutor extends EventEmitter {
         supervisorRole,
         context
       );
+      const whatFailed = detail ? `\n\nVerification detail:\n${detail}` : '';
       const escalation =
-        `Your report (${role.name}) completed a task with low confidence ` +
-        `(${confidence.toFixed(2)}).\n\nTask: ${taskStr}\n\n` +
+        `Your report (${role.name}) completed a task that did not pass ` +
+        `verification (confidence ${confidence.toFixed(2)}).${whatFailed}\n\n` +
+        `Task: ${taskStr}\n\n` +
         `Their result:\n${this.extractResponseText(response)}\n\n` +
         'Review their work and provide the final, corrected result.';
       return this.sendToExecutionUnit(supervisor, escalation);
@@ -662,6 +715,7 @@ export class WorkflowExecutor extends EventEmitter {
       role: role.id,
       confidence,
       action: confidence >= accept ? 'accept' : 'accept_with_warning',
+      source,
     });
     if (confidence < accept) {
       this.logger.warn(
@@ -670,6 +724,112 @@ export class WorkflowExecutor extends EventEmitter {
       );
     }
     return response;
+  }
+
+  /**
+   * Run a role's verification and produce a confidence signal. First slice:
+   * the `command` oracle only (docs/VERIFY.md). Multiple oracles combine by
+   * minimum confidence (a result is only as trustworthy as its weakest check).
+   */
+  private async runVerify(
+    verify: VerifyOracle | VerifyOracle[] | OrgVerify,
+    context: OrgExecutionContext,
+    subject: StepResult
+  ): Promise<{ confidence: number; source: string; detail?: string }> {
+    const spec: OrgVerify = Array.isArray(verify)
+      ? { oracles: verify }
+      : 'oracles' in verify
+        ? verify
+        : { oracles: [verify] };
+
+    const results = await Promise.all(
+      spec.oracles.map((o) => this.runOracle(o, context, subject))
+    );
+
+    // First slice: combine by minimum (the only mode wired end to end).
+    let winner = results[0];
+    for (const r of results.slice(1)) {
+      if (r.confidence < winner.confidence) winner = r;
+    }
+
+    return {
+      confidence: winner.confidence,
+      source: spec.oracles.map((o) => o.type).join('+'),
+      detail: results
+        .map((r) => r.detail)
+        .filter((d): d is string => !!d)
+        .join('\n'),
+    };
+  }
+
+  private async runOracle(
+    oracle: VerifyOracle,
+    context: OrgExecutionContext,
+    _subject: StepResult
+  ): Promise<{ confidence: number; detail?: string }> {
+    if (oracle.type === 'command') {
+      const cwdRaw = oracle.cwd
+        ? this.resolveVariables(oracle.cwd, context)
+        : undefined;
+      const cwd =
+        typeof cwdRaw === 'string' && cwdRaw.trim() ? cwdRaw : process.cwd();
+      const pass = oracle.passConfidence ?? 1.0;
+      const fail = oracle.failConfidence ?? 0.0;
+      const timeout = oracle.timeoutMs ?? 120000;
+
+      const scoreFrom = (output: string): number | undefined => {
+        if (!oracle.scorePattern) return undefined;
+        const m = output.match(new RegExp(oracle.scorePattern));
+        if (!m || m[1] === undefined || m[2] === undefined) return undefined;
+        const passed = Number(m[1]);
+        const failed = Number(m[2]);
+        const total = passed + failed;
+        return total > 0 ? passed / total : undefined;
+      };
+
+      try {
+        const { stdout, stderr } = await execAsync(oracle.run, {
+          cwd,
+          timeout,
+          maxBuffer: 10 * 1024 * 1024,
+        });
+        const out = `${stdout}\n${stderr}`;
+        const score = scoreFrom(out);
+        if (score !== undefined) {
+          return {
+            confidence: score,
+            detail: `\`${oracle.run}\` — partial (${(score * 100).toFixed(0)}%)`,
+          };
+        }
+        return { confidence: pass, detail: `\`${oracle.run}\` — passed` };
+      } catch (err) {
+        const e = err as {
+          stdout?: string;
+          stderr?: string;
+          message?: string;
+        };
+        const out = `${e.stdout ?? ''}\n${e.stderr ?? ''}`.trim() || e.message || '';
+        const score = scoreFrom(out);
+        if (score !== undefined) {
+          return {
+            confidence: score,
+            detail: `\`${oracle.run}\` — partial (${(score * 100).toFixed(0)}%)\n${out.slice(-800)}`,
+          };
+        }
+        return {
+          confidence: fail,
+          detail: `\`${oracle.run}\` — failed:\n${out.slice(-800)}`,
+        };
+      }
+    }
+
+    // checklist / agent / human oracles are specified in docs/VERIFY.md but
+    // not yet implemented; don't block on them.
+    this.logger.warn(
+      { type: (oracle as { type: string }).type },
+      'Verify oracle type not implemented — treating as pass'
+    );
+    return { confidence: 1.0 };
   }
 
   /**
