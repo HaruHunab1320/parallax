@@ -922,4 +922,107 @@ describe('WorkflowExecutor thread integration', () => {
       expect(outcome.details.error).toContain('agent exploded');
     });
   });
+
+  describe('history oracle', () => {
+    function historyPattern(verify: unknown): OrgPattern {
+      return {
+        name: 'history-test',
+        structure: {
+          name: 'test',
+          roles: {
+            lead: makeRole({ id: 'lead', name: 'Lead', singleton: true }),
+            worker: makeRole({
+              id: 'worker',
+              name: 'Worker',
+              singleton: true,
+              reportsTo: 'lead',
+              verify: verify as never,
+              confidence: { accept: 0.8, retryBelow: 0.6, escalateBelow: 0.4 },
+            }),
+          },
+        },
+        workflow: {
+          name: 'default',
+          steps: [{ type: 'assign', role: 'worker', task: 'do the thing' }],
+          output: 'step_0_result',
+        },
+      };
+    }
+
+    const LEAD = 'thread-0';
+
+    function makeExecutorWith(confidence: number) {
+      const signal = vi.fn().mockResolvedValue({
+        confidence,
+        detail: `history — stubbed at ${confidence}`,
+      });
+      const executor = new WorkflowExecutor(
+        runtime as unknown as AgentRuntimeService,
+        logger,
+        { stepTimeout: 5000, decisionHistory: { signal } }
+      );
+      return { executor, signal };
+    }
+
+    it('a strong history prior accepts and queries pattern + role', async () => {
+      const { executor, signal } = makeExecutorWith(0.95);
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(historyPattern({ type: 'history' }), {});
+
+      expect(events.map((e) => e.action)).toEqual(['accept']);
+      expect(events[0].source).toBe('history');
+      expect(signal).toHaveBeenCalledWith(
+        { patternName: 'history-test', role: 'worker' },
+        { type: 'history' }
+      );
+    });
+
+    it('a weak history prior escalates to the supervisor', async () => {
+      const { executor } = makeExecutorWith(0.2);
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(historyPattern({ type: 'history' }), {});
+
+      const escalate = events.find((e) => e.action === 'escalate');
+      expect(escalate).toBeDefined();
+      expect(escalate.source).toBe('history');
+      expect(runtime.sentMessages[1].threadId).toBe(LEAD);
+    });
+
+    it('combines with a command oracle by min', async () => {
+      // History is glowing but the tests fail — verification must win.
+      const { executor } = makeExecutorWith(0.95);
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(
+        historyPattern([{ type: 'command', run: 'false' }, { type: 'history' }]),
+        {}
+      );
+
+      const escalate = events.find((e) => e.action === 'escalate');
+      expect(escalate).toBeDefined();
+      expect(escalate.source).toBe('command+history');
+      expect(escalate.confidence).toBe(0);
+    });
+
+    it('resolves neutral when no decision history store is wired', async () => {
+      const executor = new WorkflowExecutor(
+        runtime as unknown as AgentRuntimeService,
+        logger,
+        { stepTimeout: 5000 }
+      );
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(historyPattern({ type: 'history' }), {});
+
+      // Neutral 1.0 → plain accept, no retry or escalation.
+      expect(events.map((e) => e.action)).toEqual(['accept']);
+      expect(runtime.sentMessages).toHaveLength(1);
+    });
+  });
 });

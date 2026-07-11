@@ -89,11 +89,12 @@ export interface OrgRole {
 /**
  * A verification oracle — the source of a role's confidence signal.
  *
- * Only `command` is implemented today (the cheapest, strongest tier);
- * `checklist` / `agent` / `human` are specified in docs/VERIFY.md and slot
- * in here as they land.
+ * `command` and `history` are implemented today; `checklist` / `agent` /
+ * `human` are specified in docs/VERIFY.md and slot in here as they land.
  */
-export type VerifyOracle = {
+export type VerifyOracle = CommandOracle | HistoryOracle;
+
+export type CommandOracle = {
   type: 'command';
   /** Shell command to run; exit 0 = pass. */
   run: string;
@@ -111,6 +112,25 @@ export type VerifyOracle = {
    * instead of the binary pass/fail when it matches the command output.
    */
   scorePattern?: string;
+};
+
+/**
+ * Confidence from the decision journal: how often past runs of this
+ * pattern succeeded, discounted by this role's retry/escalation friction
+ * (see DecisionHistory). Sparse history shrinks toward neutral (1.0) —
+ * a prior this weak must never trigger retries or escalations by itself.
+ * Best used alongside a real verification oracle (list combines by min).
+ */
+export type HistoryOracle = {
+  type: 'history';
+  /** Half-life in days for the age decay of past runs (default 30). */
+  halfLifeDays?: number;
+  /** Below this many prior runs the oracle is neutral (default 3). */
+  minRuns?: number;
+  /** Weighted run count at which the prior reaches full strength (default 10). */
+  saturationRuns?: number;
+  /** Maximum past runs fetched from the journal (default 200). */
+  maxRuns?: number;
 };
 
 export interface OrgVerify {

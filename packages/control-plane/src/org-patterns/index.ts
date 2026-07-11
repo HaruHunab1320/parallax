@@ -11,6 +11,13 @@
  */
 
 export {
+  DecisionHistory,
+  DecisionHistoryStores,
+  HistoryRun,
+  HistoryScore,
+  scoreDecisionHistory,
+} from './decision-history';
+export {
   DecisionJournal,
   DecisionJournalMeta,
   DecisionJournalStores,

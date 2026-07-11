@@ -21,6 +21,7 @@ import type { AgentRuntimeService } from '../agent-runtime';
 import type { ThreadPreparationService } from '../threads';
 import { MessageRouter } from './message-router';
 import type {
+  HistoryOracle,
   OrgAgentInstance,
   OrgExecutionContext,
   OrgPattern,
@@ -38,6 +39,17 @@ export interface WorkflowExecutorOptions {
 
   /** Maximum parallel operations */
   maxParallel?: number;
+
+  /**
+   * Backs the `history` verify oracle (see DecisionHistory). Without it,
+   * history oracles resolve neutral.
+   */
+  decisionHistory?: {
+    signal(
+      query: { patternName: string; role: string },
+      oracle: HistoryOracle
+    ): Promise<{ confidence: number; detail?: string }>;
+  };
 }
 
 /** The resolved value from sendToThreadAndWait. */
@@ -89,6 +101,7 @@ export interface WorkflowResult {
 export class WorkflowExecutor extends EventEmitter {
   private stepTimeout: number;
   private maxParallel: number;
+  private decisionHistory?: WorkflowExecutorOptions['decisionHistory'];
 
   constructor(
     private runtimeService: AgentRuntimeService,
@@ -100,6 +113,7 @@ export class WorkflowExecutor extends EventEmitter {
     super();
     this.stepTimeout = options.stepTimeout ?? 0; // 0 = no timeout
     this.maxParallel = options.maxParallel || 10;
+    this.decisionHistory = options.decisionHistory;
   }
 
   /**
@@ -580,7 +594,7 @@ export class WorkflowExecutor extends EventEmitter {
     context: OrgExecutionContext
   ): Promise<{ confidence: number | undefined; source: string; detail?: string }> {
     if (role.verify) {
-      return this.runVerify(role.verify, context, response);
+      return this.runVerify(role.verify, role, context, response);
     }
     return {
       confidence: this.extractConfidence(response),
@@ -759,6 +773,7 @@ export class WorkflowExecutor extends EventEmitter {
    */
   private async runVerify(
     verify: VerifyOracle | VerifyOracle[] | OrgVerify,
+    role: OrgRole,
     context: OrgExecutionContext,
     subject: StepResult
   ): Promise<{ confidence: number; source: string; detail?: string }> {
@@ -769,7 +784,7 @@ export class WorkflowExecutor extends EventEmitter {
         : { oracles: [verify] };
 
     const results = await Promise.all(
-      spec.oracles.map((o) => this.runOracle(o, context, subject))
+      spec.oracles.map((o) => this.runOracle(o, role, context, subject))
     );
 
     // First slice: combine by minimum (the only mode wired end to end).
@@ -790,9 +805,14 @@ export class WorkflowExecutor extends EventEmitter {
 
   private async runOracle(
     oracle: VerifyOracle,
+    role: OrgRole,
     context: OrgExecutionContext,
     _subject: StepResult
   ): Promise<{ confidence: number; detail?: string }> {
+    if (oracle.type === 'history') {
+      return this.runHistoryOracle(oracle, role, context);
+    }
+
     if (oracle.type === 'command') {
       const cwdRaw = oracle.cwd
         ? this.resolveVariables(oracle.cwd, context)
@@ -856,6 +876,46 @@ export class WorkflowExecutor extends EventEmitter {
       'Verify oracle type not implemented — treating as pass'
     );
     return { confidence: 1.0 };
+  }
+
+  /**
+   * The `history` oracle: a prior from the decision journal. Resolves
+   * neutral (1.0) when no store is configured or the lookup fails — a
+   * missing prior must never gate a step.
+   */
+  private async runHistoryOracle(
+    oracle: HistoryOracle,
+    role: OrgRole,
+    context: OrgExecutionContext
+  ): Promise<{ confidence: number; detail?: string }> {
+    if (!this.decisionHistory) {
+      this.logger.warn(
+        { role: role.id },
+        'History oracle configured but no decision history store wired — neutral'
+      );
+      return {
+        confidence: 1.0,
+        detail: 'history — no decision history store configured: neutral',
+      };
+    }
+    try {
+      return await this.decisionHistory.signal(
+        { patternName: context.pattern.name, role: role.id },
+        oracle
+      );
+    } catch (error) {
+      this.logger.warn(
+        {
+          role: role.id,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'History oracle lookup failed — neutral'
+      );
+      return {
+        confidence: 1.0,
+        detail: 'history — lookup failed: neutral',
+      };
+    }
   }
 
   /**

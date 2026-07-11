@@ -1,6 +1,6 @@
 # The `verify` contract — verification-driven confidence
 
-**Status:** First slice implemented (2026-07-09) — the `command` oracle +
+**Status:** `command` (2026-07-09) and `history` (2026-07-10) oracles +
 role-level `verify` are wired into the workflow executor and tested. The
 `checklist` / `agent` / `human` oracles and the `verify` *step* remain
 specified-but-unimplemented (noted inline).
@@ -32,6 +32,12 @@ ordered cheapest-first:
 | 4 | `human` — surface for approval | ground truth | human time |
 
 An agent's self-report is demoted to an optional tier-5 supplement.
+
+There is also a `history` oracle — not verification of *this* output but a
+prior from the decision journal (how past runs of this pattern went, and how
+much retry/escalation friction this role generated). Like the self-report
+it's a weak supplement: sparse history resolves neutral, and in an oracle
+list the `min` combine keeps real verification dominant.
 
 ## 2. The contract
 
@@ -266,6 +272,17 @@ In `workflow-executor.ts`:
 
 - ✅ `command` oracle — exit code → confidence, optional `scorePattern`
   partial scoring, `cwd` (with `${...}` interpolation), timeout.
+- ✅ `history` oracle — a prior from the decision journal
+  (`shared_decisions` + `episodic_experiences`, written by
+  `DecisionJournal`): age-decayed success rate of past runs of this
+  pattern × the role's clean-decision rate, shrunk toward neutral on
+  sparse history (a weak prior must never trigger retries/escalations by
+  itself; that inverts decision-pathfinder's sample factor, whose
+  low-confidence action is conservative rather than costly). Options:
+  `halfLifeDays` (30), `minRuns` (3), `saturationRuns` (10), `maxRuns`
+  (200). Resolves neutral without a wired store or on lookup failure.
+  Best used in a list with a real oracle — `min` keeps verification
+  dominant.
 - ✅ Role-level `verify` (single oracle or list; list combines by `min`).
 - ✅ Wired into `executeAssignStep`: `verify` confidence replaces the
   self-report and feeds the existing `accept`/`retryBelow`/`escalateBelow`

@@ -63,6 +63,13 @@ structure:
       #       cwd: "${workspace.path}"
       #       # optional partial score instead of pass/fail:
       #       # scorePattern: "(\\d+) passed, (\\d+) failed"
+      #     # Optional prior from the decision journal: how past runs of
+      #     # this pattern went for this role. Weak by design — sparse
+      #     # history is neutral, and `min` keeps the command dominant.
+      #     - type: history
+      #       # halfLifeDays: 30   # age decay of past runs
+      #       # minRuns: 3         # below this the prior is neutral
+      #       # saturationRuns: 10 # weighted runs for full strength
 
   routing:
     - from: engineer

@@ -18,6 +18,7 @@ import type { DatabaseService } from '../db/database.service';
 import type { ExecutionEventBus } from '../execution-events';
 import { AgentProxy } from '../grpc/agent-proxy';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
+import { DecisionHistory } from '../org-patterns/decision-history';
 import { DecisionJournal } from '../org-patterns/decision-journal';
 import type { OrgPattern } from '../org-patterns/types';
 import {
@@ -1241,6 +1242,16 @@ export class PatternEngine implements IPatternEngine {
       {
         stepTimeout: timeoutMs > 0 ? timeoutMs : 0,
         threadPreparationService: this.threadPreparationService,
+        // Backs `history` verify oracles with the decision journal's tables.
+        decisionHistory: this.database
+          ? new DecisionHistory(
+              {
+                sharedDecisions: this.database.sharedDecisions,
+                episodicExperiences: this.database.episodicExperiences,
+              },
+              this.logger
+            )
+          : undefined,
       }
     );
 
