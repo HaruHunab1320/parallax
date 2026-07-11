@@ -321,13 +321,20 @@ export class LocalRuntime
       this.emit('question', this.toAgentHandle(handle), question);
     });
 
-    this.manager.on('task_complete', (handle: SessionHandle) => {
-      let completion: ThreadCompletion | undefined;
-      let confidence: number | undefined;
-      let output = '';
-      const session = this.manager.getSession(handle.id);
-      if (session) {
-        output = session.getOutputBuffer().trim();
+    this.manager.on(
+      'task_complete',
+      (handle: SessionHandle, turnOutput?: string) => {
+        let completion: ThreadCompletion | undefined;
+        let confidence: number | undefined;
+        // pty-manager ≥1.12 passes the turn's output as the event payload
+        // (the session buffer is already cleared when this event fires).
+        // Fall back to the buffer read for older versions, where it is
+        // empty and turns carry no signal.
+        let output = (turnOutput ?? '').trim();
+        if (!output) {
+          const session = this.manager.getSession(handle.id);
+          output = session?.getOutputBuffer().trim() ?? '';
+        }
         if (output) {
           confidence = parseConfidenceMarker(output);
           completion = {
@@ -335,22 +342,22 @@ export class LocalRuntime
             summary: output.split('\n').slice(-5).join('\n').slice(-1000),
           };
         }
-      }
 
-      this.emitThreadEvent(
-        handle.id,
-        'thread_turn_complete',
-        {
-          output: output.slice(-8000),
-          ...(confidence !== undefined ? { confidence } : {}),
-        },
-        {
-          status: 'ready',
-          completion,
-          summary: completion?.summary,
-        }
-      );
-    });
+        this.emitThreadEvent(
+          handle.id,
+          'thread_turn_complete',
+          {
+            output: output.slice(-8000),
+            ...(confidence !== undefined ? { confidence } : {}),
+          },
+          {
+            status: 'ready',
+            completion,
+            summary: completion?.summary,
+          }
+        );
+      }
+    );
 
     this.manager.on('tool_running', (handle: SessionHandle, info: unknown) => {
       this.emitThreadEvent(
@@ -475,7 +482,14 @@ export class LocalRuntime
       env.PARALLAX_EXECUTION_ID = config.executionId;
     }
 
-    // Convert AgentConfig → SpawnConfig for pty-manager
+    // Convert AgentConfig → SpawnConfig for pty-manager.
+    //
+    // approvalPreset drives the adapter's permission flags (for Claude,
+    // 'autonomous' → --dangerously-skip-permissions). Without it the CLI
+    // blocks on its file-edit approval menu at the first Write and the
+    // agent never does real work. Local agents run as the operator on
+    // the operator's machine, so autonomous is the sane default; set
+    // PARALLAX_APPROVAL_PRESET to override (e.g. 'permissive').
     const spawnConfig = {
       id,
       name: config.name,
@@ -484,6 +498,7 @@ export class LocalRuntime
       env,
       adapterConfig: {
         interactive: true,
+        approvalPreset: process.env.PARALLAX_APPROVAL_PRESET || 'autonomous',
       },
     };
 
@@ -1016,7 +1031,10 @@ export class LocalRuntime
       config.projects = projects;
 
       writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-      this.logger.debug({ configPath, workdir }, 'Trusted workdir in Claude config');
+      this.logger.debug(
+        { configPath, workdir },
+        'Trusted workdir in Claude config'
+      );
     } catch (error) {
       this.logger.warn(
         { error, configPath, workdir },

@@ -321,7 +321,7 @@ describe('LocalRuntime', () => {
       ).rejects.toThrow('Maximum agent limit reached (2)');
     });
 
-    it('should set up shared auth directory when executionId is provided', async () => {
+    it('inherits host auth by default (no isolated config dirs)', async () => {
       const sessionHandle = makeSessionHandle();
       mockManager.spawn.mockResolvedValue(sessionHandle);
       mockManager.list.mockReturnValue([]);
@@ -333,11 +333,48 @@ describe('LocalRuntime', () => {
         executionId: 'exec-12345678',
       });
 
+      const spawnArg = mockManager.spawn.mock.calls[0][0];
+      expect(spawnArg.env.PARALLAX_EXECUTION_ID).toBe('exec-12345678');
+      expect(spawnArg.env.CLAUDE_CONFIG_DIR).toBeUndefined();
+      expect(spawnArg.env.CODEX_CONFIG_DIR).toBeUndefined();
+    });
+
+    it('sets up shared auth directory when PARALLAX_ISOLATE_AUTH=1', async () => {
+      const sessionHandle = makeSessionHandle();
+      mockManager.spawn.mockResolvedValue(sessionHandle);
+      mockManager.list.mockReturnValue([]);
+
+      process.env.PARALLAX_ISOLATE_AUTH = '1';
+      try {
+        await runtime.spawn({
+          name: 'Test',
+          type: 'claude',
+          capabilities: [],
+          executionId: 'exec-12345678',
+        });
+      } finally {
+        delete process.env.PARALLAX_ISOLATE_AUTH;
+      }
+
       expect(mkdirSync).toHaveBeenCalled();
       const spawnArg = mockManager.spawn.mock.calls[0][0];
       expect(spawnArg.env.PARALLAX_EXECUTION_ID).toBe('exec-12345678');
       expect(spawnArg.env.CLAUDE_CONFIG_DIR).toBeDefined();
       expect(spawnArg.env.CODEX_CONFIG_DIR).toBeDefined();
+    });
+
+    it('spawns with an autonomous approval preset by default', async () => {
+      const sessionHandle = makeSessionHandle();
+      mockManager.spawn.mockResolvedValue(sessionHandle);
+      mockManager.list.mockReturnValue([]);
+
+      await runtime.spawn({ name: 'Test', type: 'claude', capabilities: [] });
+
+      const spawnArg = mockManager.spawn.mock.calls[0][0];
+      expect(spawnArg.adapterConfig).toMatchObject({
+        interactive: true,
+        approvalPreset: 'autonomous',
+      });
     });
   });
 
@@ -956,6 +993,37 @@ describe('LocalRuntime', () => {
           content: 'hello',
         })
       );
+    });
+
+    it('forwards task_complete output payload into thread_turn_complete', async () => {
+      // Establish a thread so the session→thread mapping exists
+      const sessionHandle = makeSessionHandle();
+      mockManager.spawn.mockResolvedValue(sessionHandle);
+      mockManager.list.mockReturnValue([]);
+      await runtime.spawnThread({
+        executionId: 'exec-1',
+        name: 'Worker',
+        agentType: 'claude',
+        objective: 'Fix the bug',
+      });
+
+      const events: any[] = [];
+      runtime.on('thread_event', (_thread: any, event: any) =>
+        events.push(event)
+      );
+
+      // pty-manager ≥1.12 passes the turn output as the event payload;
+      // the session buffer is empty by the time the event fires.
+      const handler = eventHandlers.get('task_complete');
+      expect(handler).toBeDefined();
+      handler!(sessionHandle, 'did the work\nall tests pass\nCONFIDENCE: 0.85');
+
+      const turnComplete = events.find(
+        (e) => e.type === 'thread_turn_complete'
+      );
+      expect(turnComplete).toBeDefined();
+      expect(turnComplete.data.output).toContain('all tests pass');
+      expect(turnComplete.data.confidence).toBe(0.85);
     });
 
     it('should forward question events', () => {

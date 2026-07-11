@@ -101,13 +101,22 @@ yet demonstrable — do not present it.
   org-chart workflow executes every step, and it completes and cleans up.
   (Verified 2026-07-08; fixed 6 orchestration bugs to get here — see the
   commit.)
-- [ ] **Agent turn OUTPUT capture** — turns currently complete with empty
-  summaries, so no `CONFIDENCE:` marker reaches the policy (it stays at
-  `no_signal`). The `claude` adapter runs in `stream-json` mode and the
-  plain-text turn delivery / completion-detection in
-  `coding-agent-adapters` + `pty-manager` isn't extracting the assistant
-  response. **This is the blocker for the money shot** and lives in the
-  external adapter packages, not parallax orchestration.
+- [x] **Agent turn OUTPUT capture** — root-caused (2026-07-11) to three
+  compounding bugs, all fixed and verified live (proof-of-work file
+  written, 82k-char turn payload with `CONFIDENCE: 0.9` delivered):
+  1. `pty-manager` ≤1.11 cleared the session output buffer *before*
+     emitting `task_complete`, so the runtime's buffer read always saw
+     `''` — fixed in pty-manager 1.12.0: the event now carries the turn
+     output as its payload. (Requires the 1.12.0 npm publish.)
+  2. `runtime-local` spawned agents with no approval preset, so Claude
+     blocked forever on its file-edit permission menu at the first
+     `Write` — now spawns with `approvalPreset: 'autonomous'` by default
+     (`PARALLAX_APPROVAL_PRESET` overrides).
+  3. `coding-agent-adapters` 0.16.4 passed a `--tools` flag Claude
+     doesn't support, hanging the session — fixed upstream in 0.17.0;
+     deps bumped.
+  (The earlier "stream-json mode" theory was wrong — agents run the
+  interactive TUI, and multi-line tasks deliver fine as a single paste.)
 - [ ] Dashboard: threads panel + `step_confidence` events on the execution
   timeline verified against a live run
 - [ ] Fleet run on Echo + Pis with the same verification

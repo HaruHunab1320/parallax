@@ -266,8 +266,8 @@ importers:
         specifier: ^0.2.1
         version: 0.2.1
       coding-agent-adapters:
-        specifier: ^0.16.4
-        version: 0.16.4
+        specifier: ^0.17.0
+        version: 0.17.0
       pino:
         specifier: ^9.6.0
         version: 9.7.0
@@ -485,8 +485,8 @@ importers:
   demos/pty-console-agent-containers:
     dependencies:
       coding-agent-adapters:
-        specifier: ^0.16.4
-        version: 0.16.4
+        specifier: ^0.17.0
+        version: 0.17.0
       pty-console:
         specifier: ^0.3.2
         version: 0.3.2
@@ -1024,8 +1024,8 @@ importers:
         specifier: ^1.0.0
         version: 1.26.0(zod@3.25.76)
       coding-agent-adapters:
-        specifier: ^0.16.4
-        version: 0.16.4
+        specifier: ^0.17.0
+        version: 0.17.0
       git-workspace-service:
         specifier: ^0.4.6
         version: 0.4.6(@octokit/auth-app@8.1.2)(@octokit/rest@22.0.1)
@@ -1249,8 +1249,8 @@ importers:
         specifier: workspace:*
         version: link:../runtime-interface
       coding-agent-adapters:
-        specifier: ^0.16.4
-        version: 0.16.4
+        specifier: ^0.17.0
+        version: 0.17.0
       express:
         specifier: ^4.21.2
         version: 4.22.1
@@ -6541,8 +6541,8 @@ packages:
     resolution: {integrity: sha512-gfrHV6ZPkquExvMh9IOkKsBzNDk6sDuZ6DdBGUBkvFnTCqCxzpuq48RySgP0AnaqQkw2zynOFj9yly6T1Q2G5Q==}
     engines: {node: '>=16'}
 
-  coding-agent-adapters@0.16.4:
-    resolution: {integrity: sha512-RWiG4ZDWRwzwgFbM4z6okB9wbkHfMMd6PYlSZ/LJgUKsOc12aoINhMGz3PSdc95BB9Nla5O6O8sKKhZrPXOIVQ==}
+  coding-agent-adapters@0.17.0:
+    resolution: {integrity: sha512-FmYpMPQRh8YiK0vC4gY1WW82Sjj1w4TJSdGmZDg0qIe81nxAHe6rzSVy4VTVCeHYonpKvaxCOcTOnCZXjYGH/A==}
     engines: {node: '>=18.0.0'}
 
   collapse-white-space@2.1.0:
@@ -18631,7 +18631,7 @@ snapshots:
 
   cockatiel@3.2.1: {}
 
-  coding-agent-adapters@0.16.4:
+  coding-agent-adapters@0.17.0:
     dependencies:
       adapter-types: 0.2.1
       pino: 9.7.0

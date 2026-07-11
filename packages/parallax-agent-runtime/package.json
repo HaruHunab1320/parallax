@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "coding-agent-adapters": "^0.16.4",
+    "coding-agent-adapters": "^0.17.0",
     "git-workspace-service": "^0.4.6",
     "jsonwebtoken": "^9.0.0",
     "pino": "^9.5.0",

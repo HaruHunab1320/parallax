@@ -18,7 +18,7 @@
     "capture:aider:interactive": "tsx scripts/aider-interactive-capture.ts"
   },
   "dependencies": {
-    "coding-agent-adapters": "^0.16.4",
+    "coding-agent-adapters": "^0.17.0",
     "pty-console": "^0.3.2",
     "pty-manager": "^1.11.1"
   },
