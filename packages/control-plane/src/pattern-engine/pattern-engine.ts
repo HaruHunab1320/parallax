@@ -18,6 +18,7 @@ import type { DatabaseService } from '../db/database.service';
 import type { ExecutionEventBus } from '../execution-events';
 import { AgentProxy } from '../grpc/agent-proxy';
 import { LicenseEnforcer } from '../licensing/license-enforcer';
+import { DecisionJournal } from '../org-patterns/decision-journal';
 import type { OrgPattern } from '../org-patterns/types';
 import {
   WorkflowExecutor,
@@ -1243,6 +1244,24 @@ export class PatternEngine implements IPatternEngine {
       }
     );
 
+    // Journal confidence decisions (accept/retry/escalate) and the final
+    // outcome so escalation policies can later be tuned from history.
+    const journal = this.database
+      ? new DecisionJournal(
+          {
+            sharedDecisions: this.database.sharedDecisions,
+            episodicExperiences: this.database.episodicExperiences,
+          },
+          this.logger
+        )
+      : null;
+    const detachJournal = journal?.attach(executor, {
+      executionId,
+      patternName: pattern.name,
+      objective: typeof input?.task === 'string' ? input.task : undefined,
+      repo: workspace?.repo,
+    });
+
     try {
       // If workspace was provisioned, inject its info into the input
       const workflowInput = workspace
@@ -1356,6 +1375,9 @@ export class PatternEngine implements IPatternEngine {
       });
 
       throw error;
+    } finally {
+      detachJournal?.();
+      await journal?.flush();
     }
   }
 

@@ -9,8 +9,9 @@
 import { EventEmitter } from 'node:events';
 import type { ThreadEvent, ThreadHandle } from '@parallaxai/runtime-interface';
 import pino from 'pino';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentRuntimeService } from '../../agent-runtime';
+import { DecisionJournal } from '../decision-journal';
 import type { OrgPattern, OrgRole } from '../types';
 import { WorkflowExecutor } from '../workflow-executor';
 
@@ -788,6 +789,137 @@ describe('WorkflowExecutor thread integration', () => {
       const escalate = events.find((e) => e.action === 'escalate');
       expect(escalate).toBeDefined();
       expect(escalate.source).toContain('command');
+    });
+  });
+
+  describe('decision journaling', () => {
+    function journalPattern(): OrgPattern {
+      return {
+        name: 'journal-test',
+        structure: {
+          name: 'test',
+          roles: {
+            lead: makeRole({ id: 'lead', name: 'Lead', singleton: true }),
+            worker: makeRole({
+              id: 'worker',
+              name: 'Worker',
+              singleton: true,
+              reportsTo: 'lead',
+              confidence: { accept: 0.8, retryBelow: 0.6, escalateBelow: 0.4 },
+            }),
+          },
+        },
+        workflow: {
+          name: 'default',
+          steps: [{ type: 'assign', role: 'worker', task: 'do the thing' }],
+          output: 'step_0_result',
+        },
+      };
+    }
+
+    it('emits workflow_completed with execution metadata', async () => {
+      runtime.confidenceQueue = [0.9];
+      const executor = new WorkflowExecutor(
+        runtime as unknown as AgentRuntimeService,
+        logger,
+        { stepTimeout: 5000 }
+      );
+      const completed: any[] = [];
+      executor.on('workflow_completed', (e) => completed.push(e));
+
+      await executor.execute(journalPattern(), {});
+
+      expect(completed).toHaveLength(1);
+      expect(completed[0]).toMatchObject({
+        patternName: 'journal-test',
+        stepsExecuted: 1,
+        agentsUsed: 2,
+      });
+      expect(completed[0].executionId).toBeDefined();
+    });
+
+    it('step_confidence events carry executionId and step index', async () => {
+      runtime.confidenceQueue = [0.9];
+      const executor = new WorkflowExecutor(
+        runtime as unknown as AgentRuntimeService,
+        logger,
+        { stepTimeout: 5000 }
+      );
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(journalPattern(), {});
+
+      expect(events).toHaveLength(1);
+      expect(events[0].executionId).toBeDefined();
+      expect(events[0].step).toBe(0);
+    });
+
+    it('an attached DecisionJournal persists decisions and the outcome', async () => {
+      runtime.confidenceQueue = [0.5, 0.9]; // retry, then accept
+      const executor = new WorkflowExecutor(
+        runtime as unknown as AgentRuntimeService,
+        logger,
+        { stepTimeout: 5000 }
+      );
+      const stores = {
+        sharedDecisions: { create: vi.fn().mockResolvedValue({}) },
+        episodicExperiences: { create: vi.fn().mockResolvedValue({}) },
+      };
+      const journal = new DecisionJournal(stores, logger);
+      const detach = journal.attach(executor, {
+        executionId: 'durable-exec-id',
+        patternName: 'journal-test',
+        objective: 'do the thing',
+      });
+
+      await executor.execute(journalPattern(), {});
+      detach();
+      await journal.flush();
+
+      // retry + accept → two decision rows, one success outcome row
+      expect(stores.sharedDecisions.create).toHaveBeenCalledTimes(2);
+      const actions = stores.sharedDecisions.create.mock.calls.map(
+        (c: any[]) => c[0].details.action
+      );
+      expect(actions).toEqual(['retry', 'accept']);
+      for (const call of stores.sharedDecisions.create.mock.calls) {
+        expect(call[0].executionId).toBe('durable-exec-id');
+        expect(call[0].category).toBe('confidence_policy');
+      }
+
+      expect(stores.episodicExperiences.create).toHaveBeenCalledTimes(1);
+      const outcome = stores.episodicExperiences.create.mock.calls[0][0];
+      expect(outcome.executionId).toBe('durable-exec-id');
+      expect(outcome.outcome).toBe('success');
+      expect(outcome.objective).toBe('do the thing');
+      expect(outcome.details.decisions).toEqual({ retry: 1, accept: 1 });
+    });
+
+    it('an attached DecisionJournal labels a failed workflow', async () => {
+      const executor = new WorkflowExecutor(
+        runtime as unknown as AgentRuntimeService,
+        logger,
+        { stepTimeout: 5000 }
+      );
+      const stores = {
+        sharedDecisions: { create: vi.fn().mockResolvedValue({}) },
+        episodicExperiences: { create: vi.fn().mockResolvedValue({}) },
+      };
+      const journal = new DecisionJournal(stores, logger);
+      journal.attach(executor, {
+        executionId: 'durable-exec-id',
+        patternName: 'journal-test',
+      });
+
+      runtime.nextSendError = new Error('agent exploded');
+      await expect(executor.execute(journalPattern(), {})).rejects.toThrow();
+      await journal.flush();
+
+      expect(stores.episodicExperiences.create).toHaveBeenCalledTimes(1);
+      const outcome = stores.episodicExperiences.create.mock.calls[0][0];
+      expect(outcome.outcome).toBe('failure');
+      expect(outcome.details.error).toContain('agent exploded');
     });
   });
 });

@@ -4,13 +4,17 @@
  * Infrastructure for organizational structure orchestration of multi-agent systems.
  *
  * Architecture:
- *   Pattern Builder (UI) → YAML → Prism → Execution
+ *   Org-chart YAML → compiled OrgPattern → WorkflowExecutor
  *
- * The org-chart compiler translates declarative YAML patterns into executable
- * Prism scripts, ensuring a single execution engine while supporting multiple
- * input formats.
+ * The org-chart compiler translates declarative YAML patterns into an
+ * executable OrgPattern that the WorkflowExecutor runs step by step.
  */
 
+export {
+  DecisionJournal,
+  DecisionJournalMeta,
+  DecisionJournalStores,
+} from './decision-journal';
 export { MessageRouter, MessageRouterOptions } from './message-router';
 export {
   CompiledPattern,

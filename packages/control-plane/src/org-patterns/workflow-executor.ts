@@ -198,6 +198,14 @@ export class WorkflowExecutor extends EventEmitter {
         'Org workflow completed'
       );
 
+      this.emit('workflow_completed', {
+        executionId,
+        patternName: pattern.name,
+        durationMs: completedAt.getTime() - startedAt.getTime(),
+        stepsExecuted: stepResults.length,
+        agentsUsed: context.agents.size,
+      });
+
       return {
         executionId,
         patternName: pattern.name,
@@ -230,6 +238,14 @@ export class WorkflowExecutor extends EventEmitter {
 
       // Cleanup agents
       await this.cleanupAgents(context);
+
+      this.emit('workflow_failed', {
+        executionId,
+        patternName: pattern.name,
+        durationMs: Date.now() - startedAt.getTime(),
+        stepsExecuted: stepResults.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       throw error;
     }
@@ -610,6 +626,8 @@ export class WorkflowExecutor extends EventEmitter {
         'Confidence policy configured but result carries no signal — accepting as-is'
       );
       this.emit('step_confidence', {
+        executionId: context.id,
+        step: context.currentStep,
         role: role.id,
         action: 'no_signal',
         source,
@@ -628,6 +646,8 @@ export class WorkflowExecutor extends EventEmitter {
         'Low confidence — retrying step with critique'
       );
       this.emit('step_confidence', {
+        executionId: context.id,
+        step: context.currentStep,
         role: role.id,
         confidence,
         action: 'retry',
@@ -675,6 +695,8 @@ export class WorkflowExecutor extends EventEmitter {
           'Escalation triggered but role has no supervisor (reportsTo) — surfacing low-confidence result'
         );
         this.emit('step_confidence', {
+          executionId: context.id,
+          step: context.currentStep,
           role: role.id,
           confidence,
           action: 'escalation_unrouted',
@@ -688,6 +710,8 @@ export class WorkflowExecutor extends EventEmitter {
         'Low confidence — escalating to supervisor'
       );
       this.emit('step_confidence', {
+        executionId: context.id,
+        step: context.currentStep,
         role: role.id,
         confidence,
         action: 'escalate',
@@ -712,6 +736,8 @@ export class WorkflowExecutor extends EventEmitter {
     }
 
     this.emit('step_confidence', {
+      executionId: context.id,
+      step: context.currentStep,
       role: role.id,
       confidence,
       action: confidence >= accept ? 'accept' : 'accept_with_warning',
