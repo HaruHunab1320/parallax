@@ -117,6 +117,19 @@ yet demonstrable — do not present it.
      deps bumped.
   (The earlier "stream-json mode" theory was wrong — agents run the
   interactive TUI, and multi-line tasks deliver fine as a single paste.)
+- [x] **Full live run on the fixed stack** (2026-07-11): 3 Claude Code
+  PTYs, 10 minutes, workflow success. The engineers built a working
+  CSV→JSON tool whose test suites pass when run independently. Real
+  `CONFIDENCE:` values flowed through the policy (engineer_a 0.60 →
+  accept-with-warning, engineer_b 0.85 → accept) and the decision journal
+  recorded both decisions plus the outcome row in `shared_decisions` /
+  `episodic_experiences`. No escalation fired — nobody dipped below 0.4;
+  forcing the money shot on camera wants a `verify` command oracle so a
+  failing test drives confidence to 0.0 (next step below).
+- [ ] Engineer roles carry a `verify` command oracle against their
+  workspace (tests-fail → escalate, live)
+- [ ] Turn output ANSI hygiene: thread summaries persist raw TUI escape
+  codes; strip ANSI before building summaries/persisting
 - [ ] Dashboard: threads panel + `step_confidence` events on the execution
   timeline verified against a live run
 - [ ] Fleet run on Echo + Pis with the same verification

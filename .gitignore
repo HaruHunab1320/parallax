@@ -123,3 +123,7 @@ etcd/
 prod-urls.txt
 .aider*
 .parallax/
+
+# Local agent working directories (coding-swarm demo output)
+packages/runtime-local/workspace/
+patterns/coding-swarm-local.org.yaml
