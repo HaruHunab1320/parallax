@@ -191,6 +191,30 @@ export function prop<T = unknown>(
 }
 
 /**
+ * Strip terminal control sequences from raw CLI output, leaving readable
+ * text. Turn output from PTY-backed agents arrives as raw TUI frames —
+ * OSC window titles, CSI cursor positioning (which can even split words
+ * mid-character), carriage returns. Strip before persisting or
+ * pattern-matching such output.
+ */
+export function stripAnsi(text: string): string {
+  if (!text) return '';
+  return (
+    text
+      // OSC sequences (window titles etc.): ESC ] … BEL or ESC \
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
+      // CSI sequences: ESC [ params/intermediates final-byte
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '')
+      // Any remaining two-char escapes
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1b./g, '')
+      .replace(/\r/g, '')
+  );
+}
+
+/**
  * Extract a trailing confidence marker from free text — the convention CLI
  * agents use to report confidence in a turn:
  *
@@ -198,11 +222,13 @@ export function prop<T = unknown>(
  *
  * Case-insensitive; the LAST marker wins (agents may quote the instruction
  * earlier in their output). Values are clamped to [0, 1]. Returns
- * undefined when no marker is present.
+ * undefined when no marker is present. Terminal control sequences are
+ * stripped first, so raw PTY frames parse even when rendering splits the
+ * marker.
  */
 export function parseConfidenceMarker(text: string): number | undefined {
   if (!text) return undefined;
-  const matches = text.match(/confidence:\s*([0-9]*\.?[0-9]+)/gi);
+  const matches = stripAnsi(text).match(/confidence:\s*([0-9]*\.?[0-9]+)/gi);
   if (!matches || matches.length === 0) return undefined;
   const last = matches[matches.length - 1]!;
   const value = Number.parseFloat(last.replace(/confidence:\s*/i, ''));

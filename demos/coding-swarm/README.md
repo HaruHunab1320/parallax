@@ -33,7 +33,9 @@ open http://localhost:3002
 
 # 4. Give the team a task
 cd packages/cli && pnpm run cli pattern execute coding-swarm-local \
-  --input '{"task": "Build a CLI tool that converts CSV to JSON with type inference"}'
+  --input "{\"task\": \"Build a CLI tool that converts CSV to JSON with type inference\", \"workspace_root\": \"/tmp/parallax-swarm-$(date +%s)\"}"
+# workspace_root must be a FRESH absolute path each run — the platform runs
+# `node --test` there (the verify oracle) to score each engineer's work.
 ```
 
 What you should see:

@@ -34,7 +34,7 @@ import {
   type ThreadRuntimeProvider,
   type ThreadStatus,
 } from '@parallaxai/runtime-interface';
-import { parseConfidenceMarker } from '@parallaxai/confidence';
+import { parseConfidenceMarker, stripAnsi } from '@parallaxai/confidence';
 import type { Logger } from 'pino';
 import {
   type BlockingPromptInfo,
@@ -330,16 +330,21 @@ export class LocalRuntime
         // (the session buffer is already cleared when this event fires).
         // Fall back to the buffer read for older versions, where it is
         // empty and turns carry no signal.
-        let output = (turnOutput ?? '').trim();
-        if (!output) {
+        let raw = turnOutput ?? '';
+        if (!raw.trim()) {
           const session = this.manager.getSession(handle.id);
-          output = session?.getOutputBuffer().trim() ?? '';
+          raw = session?.getOutputBuffer() ?? '';
         }
+        // The payload is raw TUI frames — strip control sequences so
+        // downstream consumers (summaries, persistence, the confidence
+        // policy) see readable text instead of escape codes.
+        const output = stripAnsi(raw).trim();
         if (output) {
           confidence = parseConfidenceMarker(output);
+          const lines = output.split('\n').filter((l) => l.trim().length > 0);
           completion = {
             state: 'partial',
-            summary: output.split('\n').slice(-5).join('\n').slice(-1000),
+            summary: lines.slice(-5).join('\n').slice(-1000),
           };
         }
 
@@ -490,6 +495,13 @@ export class LocalRuntime
     // agent never does real work. Local agents run as the operator on
     // the operator's machine, so autonomous is the sane default; set
     // PARALLAX_APPROVAL_PRESET to override (e.g. 'permissive').
+    //
+    // bare (claude --bare) skips the host's hooks/plugins/LSP. Local
+    // agents inherit the operator's Claude config for auth, which also
+    // drags in their plugins — a host Stop hook was observed blocking
+    // agent turns from ending 9 consecutive times. Bare keeps swarm
+    // agents deterministic; set PARALLAX_CLAUDE_BARE=0 if agents should
+    // load the host's CLAUDE.md/plugins.
     const spawnConfig = {
       id,
       name: config.name,
@@ -499,6 +511,7 @@ export class LocalRuntime
       adapterConfig: {
         interactive: true,
         approvalPreset: process.env.PARALLAX_APPROVAL_PRESET || 'autonomous',
+        bare: process.env.PARALLAX_CLAUDE_BARE !== '0',
       },
     };
 

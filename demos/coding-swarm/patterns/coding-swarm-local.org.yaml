@@ -5,8 +5,11 @@
 # distributed fleet pattern (coding-swarm.org.yaml) — only the hardware
 # changes.
 #
-# Engineers carry a confidence policy: low-confidence results are retried
-# once with a critique; critically low results escalate to the architect.
+# Engineers carry a confidence policy AND a verify oracle: after each
+# engineer turn the platform runs `node --test` in that engineer's subtask
+# directory, and the RESULT of that verification — not the agent's
+# self-report — is the confidence signal the policy routes on. Failing
+# tests → confidence 0.0 → escalation to the architect. See docs/VERIFY.md.
 
 name: coding-swarm-local
 version: "1.0.0"
@@ -61,11 +64,20 @@ structure:
         accept: 0.8
         retryBelow: 0.6
         escalateBelow: 0.4
+      # Verification-driven confidence: the platform runs the engineer's
+      # test suite after each turn; the exit code (with partial scoring
+      # from the summary line) IS the confidence signal. The agent's
+      # self-reported marker is overridden whenever verify is present.
+      verify:
+        - type: command
+          run: "node --test"
+          cwd: "${input.workspace_root}/subtask-1"
+          scorePattern: "pass (\\d+)[\\s\\S]*?fail (\\d+)"
       threadConfig:
         enabled: true
         objective: |
           You are an engineer. Implement the assigned subtask completely,
-          including tests.
+          including tests runnable with `node --test`.
 
           End EVERY response with a line of the form
           `CONFIDENCE: <0.0-1.0>` honestly reflecting how confident you are
@@ -89,11 +101,16 @@ structure:
         accept: 0.8
         retryBelow: 0.6
         escalateBelow: 0.4
+      verify:
+        - type: command
+          run: "node --test"
+          cwd: "${input.workspace_root}/subtask-2"
+          scorePattern: "pass (\\d+)[\\s\\S]*?fail (\\d+)"
       threadConfig:
         enabled: true
         objective: |
           You are an engineer. Implement the assigned subtask completely,
-          including tests.
+          including tests runnable with `node --test`.
 
           End EVERY response with a line of the form
           `CONFIDENCE: <0.0-1.0>` honestly reflecting how confident you are
@@ -120,6 +137,13 @@ workflow:
     task:
       type: string
       description: What to build
+    workspace_root:
+      type: string
+      description: |
+        Absolute path where the engineers work (subtask-1/ and subtask-2/
+        are created inside). Use a FRESH directory per run — the verify
+        oracle runs `node --test` here, and stale files from a previous
+        run would verify against the wrong code.
 
   steps:
     # Step 0: architect decomposes the task into two subtasks
@@ -132,18 +156,30 @@ workflow:
 
         ${input.task}
 
-    # Step 1: engineers implement in parallel
+    # Step 1: engineers implement in parallel. The subtask directory in
+    # each task MUST match the engineer's verify cwd above — that's where
+    # the platform runs the tests.
     - type: parallel
       steps:
         - type: assign
           role: engineer_a
           task: |
+            Work in the directory ${input.workspace_root}/subtask-1 —
+            create it if it doesn't exist, and put ALL files there,
+            including tests discoverable by `node --test` run from that
+            directory.
+
             Implement Subtask 1 from this plan:
 
             ${step_0_result}
         - type: assign
           role: engineer_b
           task: |
+            Work in the directory ${input.workspace_root}/subtask-2 —
+            create it if it doesn't exist, and put ALL files there,
+            including tests discoverable by `node --test` run from that
+            directory.
+
             Implement Subtask 2 from this plan:
 
             ${step_0_result}

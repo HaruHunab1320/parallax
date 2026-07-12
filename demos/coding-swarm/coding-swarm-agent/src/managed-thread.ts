@@ -6,7 +6,7 @@
  * pty-manager-style events to GatewayThreadEvent/GatewayThreadStatusUpdate.
  */
 
-import { parseConfidenceMarker } from '@parallaxai/sdk-typescript';
+import { parseConfidenceMarker, stripAnsi } from '@parallaxai/sdk-typescript';
 import type {
   GatewayThreadEvent,
   GatewayThreadStatusUpdate,
@@ -101,7 +101,8 @@ export class ManagedThread {
       );
       if (session.id !== sessionId) return;
       this.logger.info({ threadId }, 'Emitting turn_complete to gateway');
-      const turnOutput: string = data?.output || '';
+      // Raw TUI frames → readable text before anything downstream sees it
+      const turnOutput: string = stripAnsi(data?.output || '').trim();
       const turnConfidence = parseConfidenceMarker(turnOutput);
       this.emitEvent('turn_complete', {
         output: turnOutput,

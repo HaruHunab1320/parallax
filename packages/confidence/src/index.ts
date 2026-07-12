@@ -31,6 +31,7 @@ export {
   gate,
   prop,
   parseConfidenceMarker,
+  stripAnsi,
 } from './core';
 
 export type { UncertainHandlers } from './uncertain';
