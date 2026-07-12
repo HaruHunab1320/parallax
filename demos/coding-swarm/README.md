@@ -128,14 +128,28 @@ yet demonstrable — do not present it.
   `episodic_experiences`. No escalation fired — nobody dipped below 0.4;
   forcing the money shot on camera wants a `verify` command oracle so a
   failing test drives confidence to 0.0 (next step below).
-- [ ] Engineer roles carry a `verify` command oracle against their
-  workspace (tests-fail → escalate, live)
+- [x] **Engineer roles carry a `verify` command oracle — verification-driven
+  confidence live** (2026-07-12): the platform ran `node --test` in each
+  engineer's subtask dir after their turn; both suites passed (16 + 20
+  tests, re-run independently) and the journal recorded
+  `engineer_a/b: accept at 1.00 (command)` — the signal came from
+  verification, not self-report. The escalation branch is unit-tested
+  end-to-end; seeing it fire live just needs an engineer to actually fail
+  their tests (harder tasks will oblige).
 - [ ] Ready-gate hardening: an agent showing a login screen still counts
   as "ready" and the workflow proceeds into a hang (observed when `--bare`
   dropped host auth). `login_required` during boot should fail the spawn
   fast instead.
-- [ ] Turn output ANSI hygiene: thread summaries persist raw TUI escape
-  codes; strip ANSI before building summaries/persisting
+- [ ] Turn summaries are readable-ish but still interleave TUI repaint
+  fragments ("Fiddle-faddling…" spinner soup). `stripAnsi` removes escape
+  codes (done — markers parse robustly, confidence/outcome rows are
+  clean); reconstructing the final screen text needs VT emulation — wire
+  `pty-state-capture` (frame reduction) into the turn-output path.
+- [ ] Host plugins can interfere with agent turns when inheriting the
+  operator's Claude config (observed: a Stop hook blocking turn-end 9×,
+  overridden by the block cap). `--bare` is NOT the fix — it drops host
+  auth (agents boot to a login screen; verified). Live with the noise, or
+  use PARALLAX_ISOLATE_AUTH=1 + PARALLAX_CLAUDE_BARE=1 together.
 - [ ] Dashboard: threads panel + `step_confidence` events on the execution
   timeline verified against a live run
 - [ ] Fleet run on Echo + Pis with the same verification
