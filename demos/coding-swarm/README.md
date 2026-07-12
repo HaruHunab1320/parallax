@@ -130,6 +130,10 @@ yet demonstrable — do not present it.
   failing test drives confidence to 0.0 (next step below).
 - [ ] Engineer roles carry a `verify` command oracle against their
   workspace (tests-fail → escalate, live)
+- [ ] Ready-gate hardening: an agent showing a login screen still counts
+  as "ready" and the workflow proceeds into a hang (observed when `--bare`
+  dropped host auth). `login_required` during boot should fail the spawn
+  fast instead.
 - [ ] Turn output ANSI hygiene: thread summaries persist raw TUI escape
   codes; strip ANSI before building summaries/persisting
 - [ ] Dashboard: threads panel + `step_confidence` events on the execution

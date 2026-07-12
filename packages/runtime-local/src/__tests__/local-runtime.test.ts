@@ -375,6 +375,9 @@ describe('LocalRuntime', () => {
         interactive: true,
         approvalPreset: 'autonomous',
       });
+      // bare must stay opt-in: it skips the host settings that carry the
+      // operator's auth, so bare agents boot to a login screen.
+      expect(spawnArg.adapterConfig.bare).toBeUndefined();
     });
   });
 

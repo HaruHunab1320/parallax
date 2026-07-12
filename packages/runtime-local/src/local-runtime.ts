@@ -496,12 +496,12 @@ export class LocalRuntime
     // the operator's machine, so autonomous is the sane default; set
     // PARALLAX_APPROVAL_PRESET to override (e.g. 'permissive').
     //
-    // bare (claude --bare) skips the host's hooks/plugins/LSP. Local
-    // agents inherit the operator's Claude config for auth, which also
-    // drags in their plugins — a host Stop hook was observed blocking
-    // agent turns from ending 9 consecutive times. Bare keeps swarm
-    // agents deterministic; set PARALLAX_CLAUDE_BARE=0 if agents should
-    // load the host's CLAUDE.md/plugins.
+    // bare (claude --bare) skips the host's hooks/plugins/LSP — tempting
+    // for determinism (a host Stop hook was observed blocking agent turns
+    // 9 consecutive times), but bare ALSO skips the host settings that
+    // carry the operator's auth, so agents boot to a login screen
+    // (verified live). Off by default; PARALLAX_CLAUDE_BARE=1 opts in for
+    // setups with isolated per-execution auth (PARALLAX_ISOLATE_AUTH=1).
     const spawnConfig = {
       id,
       name: config.name,
@@ -511,7 +511,7 @@ export class LocalRuntime
       adapterConfig: {
         interactive: true,
         approvalPreset: process.env.PARALLAX_APPROVAL_PRESET || 'autonomous',
-        bare: process.env.PARALLAX_CLAUDE_BARE !== '0',
+        ...(process.env.PARALLAX_CLAUDE_BARE === '1' ? { bare: true } : {}),
       },
     };
 
