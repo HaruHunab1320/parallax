@@ -314,40 +314,107 @@ export class AgentRuntimeService extends EventEmitter {
     ];
 
     let lastError: unknown;
-    for (const runtime of candidates) {
-      try {
-        const thread = await runtime.client.spawnThread(input);
-        this.threadToRuntime.set(thread.id, runtime.name);
+    const trySpawn = async (
+      pool: RuntimeRegistration[]
+    ): Promise<ThreadHandle | null> => {
+      for (const runtime of pool) {
+        try {
+          const thread = await runtime.client.spawnThread(input);
+          this.threadToRuntime.set(thread.id, runtime.name);
 
-        if (thread.agentId) {
-          this.agentToRuntime.set(thread.agentId, runtime.name);
+          if (thread.agentId) {
+            this.agentToRuntime.set(thread.agentId, runtime.name);
+          }
+
+          this.logger.info(
+            {
+              threadId: thread.id,
+              runtime: runtime.name,
+              agentType: input.agentType,
+            },
+            'Thread spawned'
+          );
+
+          return thread;
+        } catch (error) {
+          lastError = error;
+          this.logger.debug(
+            {
+              runtime: runtime.name,
+              error: error instanceof Error ? error.message : String(error),
+            },
+            'Runtime could not spawn thread — trying next'
+          );
         }
+      }
+      return null;
+    };
 
-        this.logger.info(
-          {
-            threadId: thread.id,
-            runtime: runtime.name,
-            agentType: input.agentType,
-          },
-          'Thread spawned'
-        );
+    let thread = await trySpawn(candidates);
 
-        return thread;
-      } catch (error) {
-        lastError = error;
-        this.logger.debug(
-          {
-            runtime: runtime.name,
-            error: error instanceof Error ? error.message : String(error),
-          },
-          'Runtime could not spawn thread — trying next'
-        );
+    // Boot race: a configured runtime (e.g. the local runtime) registers
+    // over WebSocket moments after the control plane's HTTP comes up. An
+    // execution fired in that window sees only the gateway adapter and
+    // fails with "no gateway-connected agent". Instead of failing the
+    // execution, wait briefly for any registered-but-unconnected runtime
+    // and retry once.
+    let waitedFor: string[] = [];
+    if (!thread) {
+      const reconnected = await this.waitForPendingRuntimes(15000);
+      waitedFor = reconnected.map((r) => r.name);
+      if (reconnected.length > 0) {
+        thread = await trySpawn(reconnected);
       }
     }
 
-    throw lastError instanceof Error
-      ? lastError
-      : new Error('No healthy runtime available for thread spawn');
+    if (thread) return thread;
+
+    const pendingNames = Array.from(this.runtimes.values())
+      .filter((r) => !r.healthy)
+      .map((r) => r.name);
+    const hint =
+      pendingNames.length > 0 && waitedFor.length === 0
+        ? ` (runtime(s) ${pendingNames.join(', ')} registered but never connected — are they running?)`
+        : '';
+    const baseMessage =
+      lastError instanceof Error
+        ? lastError.message
+        : 'No healthy runtime available for thread spawn';
+    throw new Error(`${baseMessage}${hint}`);
+  }
+
+  /**
+   * Wait (bounded) for any registered-but-unhealthy runtime to finish
+   * connecting; returns the ones that came up, marked healthy, in
+   * priority order.
+   */
+  private async waitForPendingRuntimes(
+    timeoutMs: number
+  ): Promise<RuntimeRegistration[]> {
+    const pending = Array.from(this.runtimes.values()).filter(
+      (r) => !r.healthy && typeof r.client.isConnected === 'function'
+    );
+    if (pending.length === 0) return [];
+
+    this.logger.info(
+      { runtimes: pending.map((r) => r.name), timeoutMs },
+      'No healthy runtime could spawn — waiting for pending runtime connections'
+    );
+
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const connected = pending.filter((r) => r.client.isConnected());
+      if (connected.length > 0) {
+        for (const r of connected) r.healthy = true;
+        this.logger.info(
+          { runtimes: connected.map((r) => r.name) },
+          'Pending runtime connected — retrying spawn'
+        );
+        return connected.sort((a, b) => a.priority - b.priority);
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    return [];
   }
 
   /**

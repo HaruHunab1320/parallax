@@ -232,6 +232,7 @@ export type ThreadEventType =
   | 'thread_ready'
   | 'thread_output'
   | 'thread_blocked'
+  | 'thread_auth_required'
   | 'thread_tool_running'
   | 'thread_turn_complete'
   | 'thread_idle'

@@ -310,7 +310,7 @@ export class WorkflowExecutor extends EventEmitter {
     const READY_TIMEOUT = 120000;
     let readyCount = 0;
 
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.logger.warn(
           { readyCount, totalExpected },
@@ -338,6 +338,27 @@ export class WorkflowExecutor extends EventEmitter {
             this.runtimeService.removeListener('thread_event', handler);
             resolve();
           }
+        }
+
+        // An agent stuck on a login screen can never become ready — fail
+        // the workflow immediately with an actionable error instead of
+        // sending tasks into a login prompt and hanging.
+        if (
+          eventType === 'thread_auth_required' ||
+          eventType === 'auth_required'
+        ) {
+          const threadId =
+            data?.event?.thread_id || data?.event?.threadId || 'unknown';
+          const instructions =
+            data?.event?.data?.instructions ||
+            'Authenticate the agent CLI on the runtime host (e.g. run `claude login`).';
+          clearTimeout(timer);
+          this.runtimeService.removeListener('thread_event', handler);
+          reject(
+            new Error(
+              `Agent thread ${threadId} requires authentication and cannot become ready. ${instructions}`
+            )
+          );
         }
       };
 

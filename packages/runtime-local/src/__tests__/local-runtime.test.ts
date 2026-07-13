@@ -998,6 +998,31 @@ describe('LocalRuntime', () => {
       );
     });
 
+    it('forwards login_required as a thread_auth_required thread event', async () => {
+      const sessionHandle = makeSessionHandle();
+      mockManager.spawn.mockResolvedValue(sessionHandle);
+      mockManager.list.mockReturnValue([]);
+      await runtime.spawnThread({
+        executionId: 'exec-1',
+        name: 'Worker',
+        agentType: 'claude',
+        objective: 'Fix the bug',
+      });
+
+      const events: any[] = [];
+      runtime.on('thread_event', (_thread: any, event: any) =>
+        events.push(event)
+      );
+
+      const handler = eventHandlers.get('login_required');
+      expect(handler).toBeDefined();
+      handler!(sessionHandle, 'Run "claude login" in your terminal.');
+
+      const auth = events.find((e) => e.type === 'thread_auth_required');
+      expect(auth).toBeDefined();
+      expect(auth.data.instructions).toContain('claude login');
+    });
+
     it('forwards task_complete output payload into thread_turn_complete', async () => {
       // Establish a thread so the session→thread mapping exists
       const sessionHandle = makeSessionHandle();

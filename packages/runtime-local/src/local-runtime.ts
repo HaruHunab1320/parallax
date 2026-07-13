@@ -280,6 +280,15 @@ export class LocalRuntime
           instructions,
           url
         );
+        // Surface as a thread event too: a thread stuck on a login screen
+        // can never become ready, and consumers (e.g. the workflow
+        // executor's ready gate) must fail fast instead of hanging.
+        this.emitThreadEvent(
+          handle.id,
+          'thread_auth_required',
+          { instructions, url },
+          { status: 'failed' }
+        );
       }
     );
 

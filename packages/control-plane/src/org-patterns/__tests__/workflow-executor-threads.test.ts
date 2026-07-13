@@ -45,12 +45,25 @@ class MockThreadRuntimeService extends EventEmitter {
    */
   public confidenceQueue: Array<number | undefined> = [];
 
+  /** When true, spawned threads boot to a login screen instead of ready */
+  public authRequiredOnSpawn = false;
+
   async spawnThread(input: any): Promise<ThreadHandle> {
     const id = `thread-${this.threadCounter++}`;
     this.spawnedThreads.push({ id, input });
     // Simulate the CLI agent booting: the executor's ready gate listens for
     // 'thread_event' emissions with type ready/thread_ready on the runtime
     setTimeout(() => {
+      if (this.authRequiredOnSpawn) {
+        this.emit('thread_event', {
+          event: {
+            type: 'thread_auth_required',
+            thread_id: id,
+            data: { instructions: 'Run `claude login` on the runtime host.' },
+          },
+        });
+        return;
+      }
       this.emit('thread_event', {
         event: { type: 'ready', thread_id: id },
       });
@@ -453,6 +466,24 @@ describe('WorkflowExecutor thread integration', () => {
     );
 
     // Failure path DOES clean up: all spawned threads get stopped
+    expect(runtime.stoppedThreads.size).toBe(runtime.spawnedThreads.length);
+  });
+
+  it('fails fast with an actionable error when an agent requires authentication', async () => {
+    // An agent stuck on a login screen can never become ready; the old
+    // behavior sent tasks into the login prompt and hung forever.
+    runtime.authRequiredOnSpawn = true;
+    const pattern = makeOrgPattern();
+    const executor = new WorkflowExecutor(
+      runtime as unknown as AgentRuntimeService,
+      logger,
+      { stepTimeout: 5000 }
+    );
+
+    await expect(executor.execute(pattern, { task: 'test' })).rejects.toThrow(
+      /requires authentication.*claude login/s
+    );
+    // Failure path cleans up the spawned threads
     expect(runtime.stoppedThreads.size).toBe(runtime.spawnedThreads.length);
   });
 
