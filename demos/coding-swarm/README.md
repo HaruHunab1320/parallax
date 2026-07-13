@@ -161,9 +161,14 @@ yet demonstrable — do not present it.
   the executions modal renders an event timeline with confidence verdicts
   (action badge, %, source chip, verification detail). Remaining: eyeball
   the rendered pages against a live run.
-- [ ] Machine-sleep resilience: a laptop sleeping mid-run wedged the
-  workflow — agents finished their turns but the executor's waiter never
-  saw the completion events (no WS drop logged; suspend-related event
-  loss). Consider heartbeat + turn-state reconciliation on wake.
+- [x] **Wedged-run root cause found and fixed** (2026-07-13, pty-manager
+  1.12.1): NOT machine sleep. Large task payloads (a task embedding the
+  architect's multi-KB plan) were chunked by the kernel PTY; ink
+  registered each chunk as a separate paste and the trailing Enter landed
+  between fragments — the task sat unsubmitted in the agent's input box
+  (`[Pasted text #1..#16]`) with the session busy forever.
+  Length-dependent, so short tasks always worked. Fixed with
+  bracketed-paste framing in pty-manager `send()`; verified live with a
+  5.8KB task. Requires the 1.12.1 npm publish.
 - [ ] Fleet run on Echo + Pis with the same verification
 - [ ] 3-minute screen capture for the repo/site

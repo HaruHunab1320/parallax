@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  // Local development bypass — never set this in a deployed environment.
+  if (process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
+    return NextResponse.next();
+  }
+
   const { pathname } = request.nextUrl;
   const hasAuth = request.cookies.get('parallax_auth')?.value === '1';
 

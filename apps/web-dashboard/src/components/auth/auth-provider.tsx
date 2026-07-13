@@ -31,6 +31,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function validateSession() {
+      // Local development bypass: skip token validation entirely (on
+      // failure it clears the auth cookie, which fights the middleware
+      // bypass and bounces the user back to /login).
+      if (process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
+        setIsLoading(false);
+        return;
+      }
+
       const token = localStorage.getItem('parallax_access_token');
       if (!token) {
         setIsLoading(false);
