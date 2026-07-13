@@ -17,8 +17,12 @@ interface TerminalGridProps {
   baseUrl: string;
   /** Execution ID */
   executionId: string;
-  /** Thread configurations (defines the grid layout) */
-  threads: ThreadConfig[];
+  /**
+   * Thread configurations (defines the grid layout). When omitted or
+   * empty, panes are discovered dynamically from the event stream —
+   * one pane per thread id that appears, labelled by its role.
+   */
+  threads?: ThreadConfig[];
   /** CSS class */
   className?: string;
 }
@@ -41,18 +45,47 @@ export function TerminalGrid({
   threads,
   className,
 }: TerminalGridProps) {
+  const explicitThreads = threads && threads.length > 0 ? threads : null;
+  const [discoveredThreads, setDiscoveredThreads] = useState<ThreadConfig[]>([]);
+  const paneThreads = explicitThreads ?? discoveredThreads;
+
   const [threadStates, setThreadStates] = useState<Record<string, ThreadState>>(() => {
     const initial: Record<string, ThreadState> = {};
-    for (const t of threads) {
+    for (const t of explicitThreads ?? []) {
       initial[t.threadId] = { status: 'idle', outputLines: [] };
     }
     return initial;
   });
 
-  const threadIds = useMemo(() => threads.map(t => t.threadId), [threads]);
+  // Only filter server-side when the caller pinned an explicit thread list
+  const threadIds = useMemo(
+    () => (explicitThreads ? explicitThreads.map(t => t.threadId) : undefined),
+    [explicitThreads]
+  );
 
   const handleEvent = useCallback((event: ThreadEvent) => {
     const { threadId, type, data } = event;
+
+    // Discovery mode: add a pane the first time a thread id appears,
+    // labelled by the role/name the runtime bridge attaches to events.
+    if (!explicitThreads) {
+      setDiscoveredThreads(prev => {
+        if (prev.some(t => t.threadId === threadId)) return prev;
+        const d = data as Record<string, unknown> | undefined;
+        return [
+          ...prev,
+          {
+            threadId,
+            agentName:
+              (d?.name as string) ||
+              (d?.role as string) ||
+              threadId.slice(0, 14),
+            agentType: (d?.agent_type as string) || 'claude',
+            role: (d?.role as string) || '',
+          },
+        ];
+      });
+    }
 
     setThreadStates(prev => {
       const current = prev[threadId] || { status: 'idle', outputLines: [] };
@@ -62,6 +95,19 @@ export function TerminalGrid({
         case 'thread_started':
           updated.status = 'starting';
           updated.outputLines = [...current.outputLines, '--- Thread started ---'];
+          break;
+
+        case 'thread_ready':
+          updated.status = 'running';
+          updated.outputLines = [...current.outputLines, '--- Agent ready ---'];
+          break;
+
+        case 'thread_auth_required':
+          updated.status = 'failed';
+          updated.outputLines = [
+            ...current.outputLines,
+            '[AUTH REQUIRED] Agent needs authentication on the runtime host',
+          ];
           break;
 
         case 'thread_output':
@@ -166,7 +212,7 @@ export function TerminalGrid({
 
       return { ...prev, [threadId]: updated };
     });
-  }, []);
+  }, [explicitThreads]);
 
   const { connected } = useThreadStream({
     baseUrl,
@@ -177,9 +223,9 @@ export function TerminalGrid({
   });
 
   // Adaptive grid: 1 col for 1 thread, 2 cols for 2-4, 3 cols for 5+
-  const gridCols = threads.length <= 1
+  const gridCols = paneThreads.length <= 1
     ? 'grid-cols-1'
-    : threads.length <= 4
+    : paneThreads.length <= 4
       ? 'grid-cols-1 md:grid-cols-2'
       : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
 
@@ -196,13 +242,20 @@ export function TerminalGrid({
         </span>
         <span className="text-gray-600">|</span>
         <span className="text-gray-400">
-          {threads.length} thread{threads.length !== 1 ? 's' : ''}
+          {paneThreads.length} thread{paneThreads.length !== 1 ? 's' : ''}
         </span>
       </div>
 
+      {/* Discovery mode, nothing seen yet */}
+      {paneThreads.length === 0 && (
+        <div className="text-sm text-gray-500 border border-white/10 rounded-lg p-6 text-center">
+          Waiting for thread events from this execution…
+        </div>
+      )}
+
       {/* Terminal grid */}
       <div className={cn('grid gap-4', gridCols)}>
-        {threads.map(thread => {
+        {paneThreads.map(thread => {
           const state = threadStates[thread.threadId] || { status: 'idle', outputLines: [] };
           return (
             <TerminalPane

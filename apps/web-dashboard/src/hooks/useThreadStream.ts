@@ -84,6 +84,8 @@ export function useThreadStream(options: ThreadStreamOptions) {
       'thread_output',
       'thread_blocked',
       'thread_started',
+      'thread_ready',
+      'thread_auth_required',
       'thread_completed',
       'thread_failed',
       'thread_turn_complete',
@@ -97,6 +99,10 @@ export function useThreadStream(options: ThreadStreamOptions) {
       es.addEventListener(eventType, (e: MessageEvent) => {
         try {
           const event: ThreadEvent = JSON.parse(e.data);
+          // The payload's inner type is the raw bus type
+          // (gateway_thread_*); the SSE event name is the normalized
+          // thread_* type consumers switch on.
+          event.type = eventType;
           onEventRef.current?.(event);
         } catch {
           // Ignore parse errors

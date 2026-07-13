@@ -150,7 +150,20 @@ yet demonstrable — do not present it.
   overridden by the block cap). `--bare` is NOT the fix — it drops host
   auth (agents boot to a login screen; verified). Live with the noise, or
   use PARALLAX_ISOLATE_AUTH=1 + PARALLAX_CLAUDE_BARE=1 together.
-- [ ] Dashboard: threads panel + `step_confidence` events on the execution
-  timeline verified against a live run
+- [~] Dashboard: data chain verified live (2026-07-12), visual pass
+  pending. `step_confidence` events now flow to the persisted execution
+  event stream and SSE (verified: `engineer_b / accept / source: command /
+  1.00` in `/api/executions/:id/events`), local thread events are bridged
+  to the per-execution thread SSE in the gateway shape with `role` labels
+  (previously gateway-only — the threads page could never show local
+  runs), the terminal grid discovers panes dynamically from the stream
+  (the hardcoded 4-agent config could never match real thread ids), and
+  the executions modal renders an event timeline with confidence verdicts
+  (action badge, %, source chip, verification detail). Remaining: eyeball
+  the rendered pages against a live run.
+- [ ] Machine-sleep resilience: a laptop sleeping mid-run wedged the
+  workflow — agents finished their turns but the executor's waiter never
+  saw the completion events (no WS drop logged; suspend-related event
+  loss). Consider heartbeat + turn-state reconciliation on wake.
 - [ ] Fleet run on Echo + Pis with the same verification
 - [ ] 3-minute screen capture for the repo/site

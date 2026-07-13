@@ -58,12 +58,63 @@ function getDuration(e: Execution): number | undefined {
   return e.durationMs ?? e.metrics?.duration;
 }
 
+interface ExecutionEvent {
+  id: string;
+  time: string;
+  type: string;
+  agentId?: string;
+  data?: Record<string, any>;
+}
+
+/** Badge styling per confidence-policy action */
+function confidenceActionStyle(action: string): string {
+  switch (action) {
+    case 'accept':
+      return 'bg-green-500/20 text-green-400';
+    case 'accept_with_warning':
+      return 'bg-yellow-500/20 text-yellow-400';
+    case 'retry':
+      return 'bg-orange-500/20 text-orange-400';
+    case 'escalate':
+    case 'escalation_unrouted':
+      return 'bg-red-500/20 text-red-400';
+    default:
+      return 'bg-gray-500/20 text-gray-400';
+  }
+}
+
 export default function ExecutionsPage() {
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedExecution, setSelectedExecution] = useState<Execution | null>(null);
+  const [events, setEvents] = useState<ExecutionEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+
+  // Load the event timeline whenever an execution is opened
+  useEffect(() => {
+    if (!selectedExecution) {
+      setEvents([]);
+      return;
+    }
+    let cancelled = false;
+    setEventsLoading(true);
+    apiClient
+      .get(`/api/executions/${selectedExecution.id}/events`)
+      .then((data: any) => {
+        if (!cancelled) setEvents(data.events || []);
+      })
+      .catch(() => {
+        if (!cancelled) setEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setEventsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedExecution]);
 
   const fetchExecutions = async (showLoading = false) => {
     try {
@@ -306,6 +357,77 @@ export default function ExecutionsPage() {
                     <div className="bg-white/5 p-4 rounded-lg">
                       <p className="text-sm text-gray-400">Agents</p>
                       <p className="font-medium text-white">{selectedExecution.agentCount ?? selectedExecution.metrics?.agentCount}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Event timeline — confidence decisions highlighted */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-400 mb-2">
+                    Timeline
+                  </h3>
+                  {eventsLoading ? (
+                    <p className="text-sm text-gray-500">Loading events…</p>
+                  ) : events.length === 0 ? (
+                    <p className="text-sm text-gray-500">
+                      No events recorded for this execution.
+                    </p>
+                  ) : (
+                    <div className="space-y-1 max-h-72 overflow-auto pr-1">
+                      {events.map((event) => {
+                        const isConfidence = event.type === 'step_confidence';
+                        const d = event.data || {};
+                        return (
+                          <div
+                            key={event.id}
+                            className={`flex items-start gap-3 p-2 rounded-lg text-sm ${
+                              isConfidence ? 'bg-white/5' : ''
+                            }`}
+                          >
+                            <span className="text-gray-500 font-mono text-xs mt-0.5 shrink-0 w-16">
+                              {new Date(event.time).toLocaleTimeString()}
+                            </span>
+                            {isConfidence ? (
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-white font-medium">
+                                    {d.role || 'unknown role'}
+                                  </span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded text-xs font-medium ${confidenceActionStyle(String(d.action))}`}
+                                  >
+                                    {String(d.action || 'unknown').replace(/_/g, ' ')}
+                                  </span>
+                                  {typeof d.confidence === 'number' && (
+                                    <span className={getConfidenceColor(d.confidence)}>
+                                      {(d.confidence * 100).toFixed(0)}%
+                                    </span>
+                                  )}
+                                  {d.source && (
+                                    <span className="px-2 py-0.5 rounded text-xs bg-parallax-accent/20 text-parallax-accent">
+                                      {String(d.source)}
+                                    </span>
+                                  )}
+                                  {d.supervisor && (
+                                    <span className="text-gray-400 text-xs">
+                                      → {String(d.supervisor)}
+                                    </span>
+                                  )}
+                                </div>
+                                {d.detail && (
+                                  <pre className="text-xs text-gray-400 mt-1 whitespace-pre-wrap max-h-20 overflow-auto">
+                                    {String(d.detail)}
+                                  </pre>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 truncate">
+                                {event.type.replace(/_/g, ' ')}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

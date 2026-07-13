@@ -1273,6 +1273,13 @@ export class PatternEngine implements IPatternEngine {
       repo: workspace?.repo,
     });
 
+    // Surface confidence decisions on the execution event stream so the
+    // dashboard timeline (and anything on the SSE/WS event feeds) sees
+    // accept/retry/escalate verdicts with their source and detail.
+    const onStepConfidence = (event: Record<string, unknown>) =>
+      emitEvent('step_confidence', event);
+    executor.on('step_confidence', onStepConfidence);
+
     try {
       // If workspace was provisioned, inject its info into the input
       const workflowInput = workspace
@@ -1387,6 +1394,7 @@ export class PatternEngine implements IPatternEngine {
 
       throw error;
     } finally {
+      executor.off('step_confidence', onStepConfidence);
       detachJournal?.();
       await journal?.flush();
     }

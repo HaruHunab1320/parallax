@@ -558,6 +558,29 @@ export async function createServer(): Promise<express.Application> {
       data,
       timestamp: new Date(),
     });
+
+    // Bridge runtime thread events into the same bus shape the gateway
+    // publishes (gateway_thread_*) so the per-execution thread SSE — and
+    // the dashboard terminal grid — sees local threads too, not just
+    // gateway-connected ones.
+    const threadEvent = data.event;
+    if (threadEvent?.type && threadEvent.threadId) {
+      const eventType = String(threadEvent.type).replace(/^thread_/, '');
+      executionEvents.emitEvent({
+        executionId: threadEvent.executionId || 'runtime',
+        type: `gateway_thread_${eventType}`,
+        data: {
+          thread_id: threadEvent.threadId,
+          event_type: eventType,
+          role: data.thread?.role,
+          name: data.thread?.name,
+          data_json: JSON.stringify(threadEvent.data ?? {}),
+          timestamp_ms: Date.now(),
+          sequence: 0,
+        },
+        timestamp: new Date(),
+      });
+    }
   });
 
   // Wire agent runtime service into pattern engine for dynamic agent spawning
