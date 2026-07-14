@@ -103,6 +103,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Local development bypass: provide a stub identity instead of
+  // redirecting — with validateSession skipped, `user` is always null
+  // here, and this render-path redirect was what kept bouncing bypassed
+  // sessions back to /login.
+  if (!user && process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
+    const devUser = {
+      id: 'dev',
+      email: 'dev@localhost',
+      name: 'Local Dev',
+      role: 'admin',
+      status: 'active',
+      createdAt: new Date(0).toISOString(),
+    };
+    return (
+      <AuthContext.Provider
+        value={{
+          user: devUser,
+          isLoading: false,
+          isAuthenticated: true,
+          login,
+          register,
+          logout,
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    );
+  }
+
   // Redirect unauthenticated users to login
   if (!user) {
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
