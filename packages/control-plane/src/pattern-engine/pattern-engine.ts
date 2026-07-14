@@ -1275,9 +1275,16 @@ export class PatternEngine implements IPatternEngine {
 
     // Surface confidence decisions on the execution event stream so the
     // dashboard timeline (and anything on the SSE/WS event feeds) sees
-    // accept/retry/escalate verdicts with their source and detail.
-    const onStepConfidence = (event: Record<string, unknown>) =>
+    // accept/retry/escalate verdicts with their source and detail. Also
+    // collect the values: the execution's averageConfidence is the mean
+    // of the actual signals, not a made-up constant.
+    const stepConfidences: number[] = [];
+    const onStepConfidence = (event: Record<string, unknown>) => {
+      if (typeof event.confidence === 'number') {
+        stepConfidences.push(event.confidence);
+      }
       emitEvent('step_confidence', event);
+    };
     executor.on('step_confidence', onStepConfidence);
 
     try {
@@ -1313,7 +1320,16 @@ export class PatternEngine implements IPatternEngine {
       execution.metrics = {
         agentsUsed: workflowResult.metrics.agentsUsed,
         executionTime: workflowResult.metrics.durationMs,
-        averageConfidence: 0.75,
+        // Mean of the actual confidence signals (verify oracles /
+        // self-reports) observed during the run; omitted when no step
+        // carried a signal — never a fabricated constant.
+        ...(stepConfidences.length > 0
+          ? {
+              averageConfidence:
+                stepConfidences.reduce((s, c) => s + c, 0) /
+                stepConfidences.length,
+            }
+          : {}),
         patternName: pattern.name,
         timestamp: new Date().toISOString(),
         duration: workflowResult.metrics.durationMs,
