@@ -491,8 +491,8 @@ importers:
         specifier: ^0.3.2
         version: 0.3.2
       pty-manager:
-        specifier: ^1.12.0
-        version: 1.12.0
+        specifier: ^1.12.1
+        version: 1.12.1
     devDependencies:
       '@types/node':
         specifier: ^22.14.1
@@ -1039,8 +1039,8 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       pty-manager:
-        specifier: ^1.12.0
-        version: 1.12.0
+        specifier: ^1.12.1
+        version: 1.12.1
       uuid:
         specifier: ^11.0.5
         version: 11.1.0
@@ -1261,8 +1261,8 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
       pty-manager:
-        specifier: ^1.12.0
-        version: 1.12.0
+        specifier: ^1.12.1
+        version: 1.12.1
       ws:
         specifier: ^8.16.0
         version: 8.18.3
@@ -9608,8 +9608,8 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
-  nanoid@3.3.15:
-    resolution: {integrity: sha512-y7Wygv/7mEOvxTuEQDB8StXdMRBWf1kR/tlhAzBRUFkB2jfcLOAxO/SHmOO2zgz1pVgK29/kyupn059/bCHdjA==}
+  nanoid@3.3.16:
+    resolution: {integrity: sha512-bzlKTyNJ7+LdGIIwy8ijFpIqEQIvafahV7eYykJ8Cvh42EdJeODoJ6gUJXpQJvej1BddH8OqTXZNE/KfbWAu8Q==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -10685,8 +10685,8 @@ packages:
     resolution: {integrity: sha512-S3enOpDUoGfCcbKHgx8BVLwldtJ+O0lpLWTFzEE7ikI6vZr8mLcvnOZwvB3H6i8lJZsgvhRyBlQdjJ3d/s3pwA==}
     engines: {node: '>=18'}
 
-  pty-manager@1.12.0:
-    resolution: {integrity: sha512-nBr/HLc1fQtKgNbcDh6McAmRb/n3MkMsMfKCEYXBNAEE8WzSSGzyiOUPkOxMTndrG0PYQ5na4vgAZEKsg+cSaA==}
+  pty-manager@1.12.1:
+    resolution: {integrity: sha512-EqoGGiPesxryvS1mh7WB9PeM794Rv3ARWylfa0ocl0IYdwqVuX+JdkBry/bf2owjSYE4/RuiROb9YhYnylP6tw==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -12681,7 +12681,7 @@ snapshots:
   '@ai-sdk/provider-utils@2.2.8(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 1.1.3
-      nanoid: 3.3.15
+      nanoid: 3.3.16
       secure-json-parse: 2.7.0
       zod: 3.25.76
     optional: true
@@ -22428,7 +22428,7 @@ snapshots:
 
   nanoid@3.3.11: {}
 
-  nanoid@3.3.15:
+  nanoid@3.3.16:
     optional: true
 
   napi-postinstall@0.2.4: {}
@@ -23612,9 +23612,9 @@ snapshots:
 
   pty-console@0.3.2:
     dependencies:
-      pty-manager: 1.12.0
+      pty-manager: 1.12.1
 
-  pty-manager@1.12.0:
+  pty-manager@1.12.1:
     dependencies:
       adapter-types: 0.2.1
       node-pty: 1.1.0
