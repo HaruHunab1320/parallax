@@ -169,6 +169,16 @@ yet demonstrable — do not present it.
   (`[Pasted text #1..#16]`) with the session busy forever.
   Length-dependent, so short tasks always worked. Fixed with
   bracketed-paste framing in pty-manager `send()`; verified live with a
-  5.8KB task. Requires the 1.12.1 npm publish.
+  5.8KB task.
+- [x] **First fully-completed, fully-verified swarm run** (2026-07-15, on
+  pty-manager 1.12.1): event-sourcing library task, 3 Claude Code PTYs,
+  596s, workflow completed through the architect's final review. Both
+  engineers received full plan-embedded tasks (bracketed paste), built
+  their pieces, and were graded by the platform running `node --test`:
+  `accept · command · 1.0` for both. 48 tests re-run independently, 0
+  failures. Execution confidence now reports the honest mean of real
+  verdicts (100%), not the old hardcoded 75%. The demo now does what
+  this README promises on a laptop; escalation-on-camera and the fleet
+  run remain.
 - [ ] Fleet run on Echo + Pis with the same verification
 - [ ] 3-minute screen capture for the repo/site
