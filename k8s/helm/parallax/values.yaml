@@ -347,16 +347,16 @@ serviceAccount:
   name: ""
 
 # NetworkPolicy
+# Shape must match templates/networkpolicy.yaml, which reads
+# ingress.namespaceSelector / ingress.podSelector (maps) and
+# egress.additional (list of extra egress rules).
 networkPolicy:
   enabled: false
   ingress:
-    - from:
-      - namespaceSelector:
-          matchLabels:
-            name: parallax-system
+    namespaceSelector: {}
+    podSelector: {}
   egress:
-    - to:
-      - namespaceSelector: {}
+    additional: []
 
 # Ingress configuration
 ingress:

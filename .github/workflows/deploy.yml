@@ -9,14 +9,6 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      environment:
-        description: "Deployment environment"
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
-        default: staging
       skip_terraform:
         description: "Skip Terraform (Helm only)"
         required: false
@@ -41,9 +33,6 @@ jobs:
       contents: read
       id-token: write
       issues: write
-
-    environment:
-      name: ${{ github.event.inputs.environment || 'staging' }}
 
     steps:
       - name: Checkout repository
@@ -75,17 +64,6 @@ jobs:
             echo "tag=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
           else
             echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Resolve environment
-        id: env
-        run: |
-          ENVIRONMENT="${{ github.event.inputs.environment || 'staging' }}"
-          echo "name=${ENVIRONMENT}" >> $GITHUB_OUTPUT
-          if [ "$ENVIRONMENT" = "production" ]; then
-            echo "values_file=values-production.yaml" >> $GITHUB_OUTPUT
-          else
-            echo "values_file=values-dev.yaml" >> $GITHUB_OUTPUT
           fi
 
       # --- Terraform (conditional) ---
@@ -136,7 +114,7 @@ jobs:
             -var="grafana_admin_password=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" \
             -var='authorized_networks=${{ secrets.TF_AUTHORIZED_NETWORKS }}' \
             -var='master_authorized_networks=${{ secrets.TF_MASTER_AUTHORIZED_NETWORKS }}' \
-            -var-file="environments/${{ steps.env.outputs.name }}.tfvars" \
+            -var-file="environments/gcp.tfvars" \
             -out=tfplan
 
       - name: Terraform Apply
@@ -156,12 +134,11 @@ jobs:
           helm upgrade --install parallax ./k8s/helm/parallax \
             --namespace parallax \
             --create-namespace \
-            --values "k8s/helm/parallax/${{ steps.env.outputs.values_file }}" \
+            --values "k8s/helm/parallax/values-gcp.yaml" \
             --set controlPlane.image.repository=${{ env.REGISTRY }}/parallax-control-plane \
             --set controlPlane.image.tag=${{ steps.image.outputs.tag }} \
             --set webDashboard.image.repository=${{ env.REGISTRY }}/parallax-web-dashboard \
             --set webDashboard.image.tag=${{ steps.image.outputs.tag }} \
-            --set global.environment=${{ steps.env.outputs.name }} \
             --wait \
             --timeout 10m
 
@@ -196,7 +173,7 @@ jobs:
         run: |
           echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** ${{ steps.env.outputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Values:** values-gcp.yaml" >> $GITHUB_STEP_SUMMARY
           echo "**Image tag:** \`${{ steps.image.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Cluster:** ${{ env.GKE_CLUSTER }}" >> $GITHUB_STEP_SUMMARY
           echo "**Terraform:** ${{ steps.tf-changes.outputs.changed == 'true' && 'Applied' || 'Skipped' }}" >> $GITHUB_STEP_SUMMARY
