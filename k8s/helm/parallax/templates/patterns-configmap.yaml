@@ -1,4 +1,9 @@
-{{- if .Values.controlPlane.patterns.defaultPatterns }}
+{{- /*
+Always render this configmap: the control-plane deployment mounts it
+unconditionally at /patterns. Rendering it only when defaultPatterns is
+set caused helm to delete it on upgrade, leaving new pods stuck in
+Init with an unmountable volume.
+*/}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,4 +17,3 @@ data:
   {{ $name }}: |
 {{ $content | indent 4 }}
   {{- end }}
-{{- end }}

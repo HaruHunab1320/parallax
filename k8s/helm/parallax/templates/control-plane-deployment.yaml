@@ -177,6 +177,7 @@ spec:
         - name: patterns
           configMap:
             name: {{ .Values.controlPlane.patterns.configMap }}
+            optional: true
         - name: config
           configMap:
             name: {{ include "parallax.fullname" . }}-control-plane
