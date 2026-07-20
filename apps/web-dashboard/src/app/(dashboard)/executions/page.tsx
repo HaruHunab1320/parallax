@@ -435,7 +435,7 @@ export default function ExecutionsPage() {
                 {/* Input */}
                 <div>
                   <h3 className="text-sm font-medium text-gray-400 mb-2">Input</h3>
-                  <pre className="text-sm bg-white/5 p-4 rounded-lg overflow-auto max-h-40">
+                  <pre className="text-sm bg-white/5 p-4 rounded-lg overflow-y-auto max-h-40 whitespace-pre-wrap break-words">
                     {JSON.stringify(selectedExecution.input, null, 2)}
                   </pre>
                 </div>
@@ -444,7 +444,7 @@ export default function ExecutionsPage() {
                 {selectedExecution.result && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-400 mb-2">Result</h3>
-                    <pre className="text-sm bg-white/5 p-4 rounded-lg overflow-auto max-h-60">
+                    <pre className="text-sm bg-white/5 p-4 rounded-lg overflow-y-auto max-h-60 whitespace-pre-wrap break-words">
                       {JSON.stringify(selectedExecution.result, null, 2)}
                     </pre>
                   </div>
