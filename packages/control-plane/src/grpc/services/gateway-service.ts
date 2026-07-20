@@ -707,23 +707,10 @@ export class GatewayService extends EventEmitter {
           { agentId, threadId, reason },
           'Thread failed due to agent disconnect'
         );
-        if (this.executionEvents) {
-          this.executionEvents.emitEvent({
-            executionId: threadId,
-            type: 'gateway_thread_failed',
-            data: {
-              thread_id: threadId,
-              event_type: 'failed',
-              data_json: JSON.stringify({
-                reason: `Agent disconnected: ${reason}`,
-              }),
-              timestamp_ms: Date.now(),
-              sequence: 0,
-            },
-            timestamp: new Date(),
-          });
-        }
-        this.emit('thread_event', {
+        // Route through the normal event path so per-thread subscribers
+        // (runtime adapter → persistence) see the failure, not just the
+        // execution event bus.
+        this.handleThreadEvent({
           thread_id: threadId,
           event_type: 'failed',
           data_json: JSON.stringify({

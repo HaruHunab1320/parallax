@@ -120,11 +120,74 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     }
   > = new Map();
 
+  /** Gateway events whose arrival moves the thread to a terminal status. */
+  private static readonly TERMINAL_EVENT_STATUS: Partial<
+    Record<ThreadEvent['type'], ThreadStatus>
+  > = {
+    thread_completed: 'completed',
+    thread_failed: 'failed',
+    thread_stopped: 'stopped',
+  };
+
   constructor(
     private logger: Logger,
     private gateway: GatewayServiceAdapter
   ) {
     super();
+  }
+
+  /**
+   * Normalize a raw gateway ThreadEventReport ({thread_id, event_type,
+   * data_json, timestamp_ms, sequence}) into a runtime-interface ThreadEvent.
+   * Persistence and downstream consumers expect the normalized shape — raw
+   * gateway events fail the thread_events insert (no threadId/type).
+   */
+  private translateGatewayEvent(
+    handle: ThreadHandle,
+    raw: {
+      event_type?: string;
+      data_json?: string;
+      timestamp_ms?: number | string;
+      sequence?: number;
+    }
+  ): ThreadEvent {
+    const rawType = String(raw?.event_type || 'output');
+    const type = (
+      rawType.startsWith('thread_') ? rawType : `thread_${rawType}`
+    ) as ThreadEvent['type'];
+
+    let data: Record<string, unknown> | undefined;
+    if (raw?.data_json) {
+      try {
+        data = JSON.parse(raw.data_json) as Record<string, unknown>;
+      } catch {
+        data = { raw: raw.data_json };
+      }
+    }
+
+    const ts = Number(raw?.timestamp_ms);
+    return {
+      threadId: handle.id,
+      executionId: handle.executionId,
+      type,
+      timestamp: Number.isFinite(ts) && ts > 0 ? new Date(ts) : new Date(),
+      data: { ...(data ?? {}), sequence: raw?.sequence ?? 0 },
+    };
+  }
+
+  /** Translate a raw gateway event, sync the handle, and emit for persistence. */
+  private forwardGatewayEvent(
+    handle: ThreadHandle,
+    raw: Parameters<GatewayRuntimeAdapter['translateGatewayEvent']>[1]
+  ): void {
+    const event = this.translateGatewayEvent(handle, raw);
+    const terminalStatus =
+      GatewayRuntimeAdapter.TERMINAL_EVENT_STATUS[event.type];
+    if (terminalStatus) {
+      handle.status = terminalStatus;
+    }
+    handle.updatedAt = event.timestamp;
+    this.emit('thread_event', { event, thread: handle });
   }
 
   // ─── RuntimeClient-compatible interface ───
@@ -202,9 +265,9 @@ export class GatewayRuntimeAdapter extends EventEmitter {
 
     this.threads.set(threadId, { handle, gatewayAgentId: agentId });
 
-    // Forward thread events from gateway
+    // Forward thread events from gateway, normalized for persistence
     this.gateway.subscribeThreadEvents(threadId, (event) => {
-      this.emit('thread_event', { event, thread: handle });
+      this.forwardGatewayEvent(handle, event);
     });
 
     return handle;
@@ -223,8 +286,20 @@ export class GatewayRuntimeAdapter extends EventEmitter {
       force: options?.force,
     });
 
-    info.handle.status = 'completed' as ThreadStatus;
+    // Emit a synthetic stopped event so persistence records the final status —
+    // the agent's own status update arrives after we may have unsubscribed.
+    info.handle.status = 'stopped' as ThreadStatus;
     info.handle.updatedAt = new Date();
+    this.emit('thread_event', {
+      event: {
+        threadId,
+        executionId: info.handle.executionId,
+        type: 'thread_stopped',
+        timestamp: info.handle.updatedAt,
+        data: { reason: 'stop_requested', force: options?.force ?? false },
+      } satisfies ThreadEvent,
+      thread: info.handle,
+    });
   }
 
   async getThread(threadId: string): Promise<ThreadHandle | null> {
