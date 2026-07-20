@@ -54,7 +54,7 @@ See [values.yaml](values.yaml) for full configuration options.
 #### Production Deployment
 
 ```yaml
-# values-production.yaml
+# example HA values (illustrative — not wired to the current cluster)
 controlPlane:
   replicaCount: 3
   resources:
@@ -96,7 +96,7 @@ networkPolicy:
 #### Development Deployment
 
 ```yaml
-# values-dev.yaml
+# values-gcp.yaml (the config deployed to the GKE cluster)
 controlPlane:
   replicaCount: 1
   resources:
