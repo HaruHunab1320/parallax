@@ -52,16 +52,10 @@ RUN addgroup -g 1001 -S parallax && \
 # The .pnpm store in root node_modules is the source of truth
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copy packages with their local node_modules (symlinks to .pnpm)
-COPY --from=builder /app/packages/control-plane ./packages/control-plane
-COPY --from=builder /app/packages/runtime ./packages/runtime
-COPY --from=builder /app/packages/telemetry ./packages/telemetry
-COPY --from=builder /app/packages/sdk-typescript ./packages/sdk-typescript
-COPY --from=builder /app/packages/security ./packages/security
-COPY --from=builder /app/packages/data-plane ./packages/data-plane
-COPY --from=builder /app/packages/runtime-interface ./packages/runtime-interface
-COPY --from=builder /app/packages/git-workspace-service ./packages/git-workspace-service
-COPY --from=builder /app/packages/auth ./packages/auth
+# Copy all pruned workspace packages with their local node_modules
+# (symlinks to .pnpm). turbo prune already scoped this to control-plane's
+# dependency graph, so a hardcoded list only drifts as deps change.
+COPY --from=builder /app/packages ./packages
 
 # Copy proto files for gRPC
 COPY --from=pruner /app/proto ./proto
