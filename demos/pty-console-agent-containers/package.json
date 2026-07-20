@@ -20,7 +20,7 @@
   "dependencies": {
     "coding-agent-adapters": "^0.17.0",
     "pty-console": "^0.3.2",
-    "pty-manager": "^1.12.0"
+    "pty-manager": "^1.12.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",
