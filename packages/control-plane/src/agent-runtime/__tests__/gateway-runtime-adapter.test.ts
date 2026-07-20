@@ -358,17 +358,103 @@ describe('GatewayRuntimeAdapter', () => {
       );
     });
 
-    it('should update thread status to completed after stop', async () => {
+    it('should update thread status to stopped and emit a stopped event after stop', async () => {
       const session = createMockSession({ agentId: 'pi-1' });
       const agents = new Map([['pi-1', session]]);
       const gateway = createMockGateway(agents);
       const adapter = new GatewayRuntimeAdapter(logger, gateway);
 
+      const emitted: Array<{ event: any; thread: any }> = [];
+      adapter.on('thread_event', (data) => emitted.push(data));
+
       await adapter.spawnThread(createSpawnInput({ id: 'thread-cs' }));
       await adapter.stopThread('thread-cs');
 
       const thread = await adapter.getThread('thread-cs');
+      expect(thread?.status).toBe('stopped');
+
+      const stopEvent = emitted.find((e) => e.event.type === 'thread_stopped');
+      expect(stopEvent).toBeDefined();
+      expect(stopEvent!.event.threadId).toBe('thread-cs');
+      expect(stopEvent!.thread.status).toBe('stopped');
+    });
+  });
+
+  describe('gateway event normalization', () => {
+    function adapterWithCapturedSubscriber() {
+      const session = createMockSession({ agentId: 'pi-1' });
+      const agents = new Map([['pi-1', session]]);
+      const gateway = createMockGateway(agents);
+      let subscriber: ((event: any) => void) | undefined;
+      (gateway.subscribeThreadEvents as any).mockImplementation(
+        (_threadId: string, cb: (event: any) => void) => {
+          subscriber = cb;
+          return vi.fn();
+        }
+      );
+      const adapter = new GatewayRuntimeAdapter(logger, gateway);
+      return { adapter, getSubscriber: () => subscriber };
+    }
+
+    it('translates raw gateway events into runtime-interface ThreadEvents', async () => {
+      const { adapter, getSubscriber } = adapterWithCapturedSubscriber();
+      const emitted: Array<{ event: any; thread: any }> = [];
+      adapter.on('thread_event', (data) => emitted.push(data));
+
+      await adapter.spawnThread(createSpawnInput({ id: 'thread-ev' }));
+
+      getSubscriber()!({
+        thread_id: 'thread-ev',
+        event_type: 'output',
+        data_json: JSON.stringify({ text: 'hello' }),
+        timestamp_ms: 1700000000000,
+        sequence: 3,
+      });
+
+      expect(emitted).toHaveLength(1);
+      const { event, thread } = emitted[0];
+      expect(event.threadId).toBe('thread-ev');
+      expect(event.executionId).toBe('exec-1');
+      expect(event.type).toBe('thread_output');
+      expect(event.timestamp).toEqual(new Date(1700000000000));
+      expect(event.data).toMatchObject({ text: 'hello', sequence: 3 });
+      expect(thread.status).toBe('running');
+    });
+
+    it('moves the handle to a terminal status on completed/failed events', async () => {
+      const { adapter, getSubscriber } = adapterWithCapturedSubscriber();
+
+      await adapter.spawnThread(createSpawnInput({ id: 'thread-term' }));
+
+      getSubscriber()!({
+        thread_id: 'thread-term',
+        event_type: 'completed',
+        data_json: '',
+        timestamp_ms: Date.now(),
+        sequence: 1,
+      });
+
+      const thread = await adapter.getThread('thread-term');
       expect(thread?.status).toBe('completed');
+    });
+
+    it('preserves unparseable data_json as raw payload', async () => {
+      const { adapter, getSubscriber } = adapterWithCapturedSubscriber();
+      const emitted: Array<{ event: any }> = [];
+      adapter.on('thread_event', (data) => emitted.push(data));
+
+      await adapter.spawnThread(createSpawnInput({ id: 'thread-raw' }));
+
+      getSubscriber()!({
+        thread_id: 'thread-raw',
+        event_type: 'output',
+        data_json: 'not-json',
+        timestamp_ms: 0,
+        sequence: 0,
+      });
+
+      expect(emitted[0].event.data).toMatchObject({ raw: 'not-json' });
+      expect(emitted[0].event.timestamp).toBeInstanceOf(Date);
     });
   });
 
