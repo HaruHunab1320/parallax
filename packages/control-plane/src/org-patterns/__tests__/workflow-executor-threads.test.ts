@@ -78,14 +78,18 @@ class MockThreadRuntimeService extends EventEmitter {
     this.stoppedThreads.add(threadId);
   }
 
+  /** Per-thread completion summaries (e.g. scripted reviewer verdicts) */
+  public summaryByThread: Record<string, string> = {};
+
   async getThread(threadId: string): Promise<any> {
     // The executor reads completion/summary from thread.metadata
+    const summary = this.summaryByThread[threadId] ?? this.autoCompleteSummary;
     return {
       id: threadId,
       status: 'completed',
       metadata: {
-        completion: { summary: this.autoCompleteSummary },
-        summary: this.autoCompleteSummary,
+        completion: { summary },
+        summary,
       },
     };
   }
@@ -1054,6 +1058,167 @@ describe('WorkflowExecutor thread integration', () => {
       // Neutral 1.0 → plain accept, no retry or escalation.
       expect(events.map((e) => e.action)).toEqual(['accept']);
       expect(runtime.sentMessages).toHaveLength(1);
+    });
+  });
+
+  describe('agent oracle', () => {
+    function agentVerifyPattern(verify: unknown): OrgPattern {
+      return {
+        name: 'agent-verify-test',
+        structure: {
+          name: 'test',
+          roles: {
+            lead: makeRole({ id: 'lead', name: 'Lead', singleton: true }),
+            worker: makeRole({
+              id: 'worker',
+              name: 'Worker',
+              singleton: true,
+              reportsTo: 'lead',
+              verify: verify as never,
+              confidence: { accept: 0.8, retryBelow: 0.6, escalateBelow: 0.4 },
+            }),
+          },
+        },
+        workflow: {
+          name: 'default',
+          steps: [{ type: 'assign', role: 'worker', task: 'do the thing' }],
+          output: 'step_0_result',
+        },
+      };
+    }
+
+    const LEAD = 'thread-0';
+    const WORKER = 'thread-1';
+
+    function makeExecutor() {
+      return new WorkflowExecutor(
+        runtime as unknown as AgentRuntimeService,
+        logger,
+        { stepTimeout: 5000 }
+      );
+    }
+
+    it('approve verdict → accept with source agent', async () => {
+      runtime.summaryByThread[LEAD] =
+        'Verified composition and tests.\nVERDICT: approve\nCONFIDENCE: 0.95';
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(agentVerifyPattern({ type: 'agent' }), {});
+
+      // Task to the worker, review request to the lead — no escalation.
+      expect(runtime.sentMessages).toHaveLength(2);
+      expect(runtime.sentMessages[0].threadId).toBe(WORKER);
+      expect(runtime.sentMessages[1].threadId).toBe(LEAD);
+      expect(runtime.sentMessages[1].input.message).toContain(
+        'Review the following completed work'
+      );
+      expect(runtime.sentMessages[1].input.message).toContain('do the thing');
+      expect(events.map((e) => e.action)).toEqual(['accept']);
+      expect(events[0].source).toBe('agent');
+      expect(events[0].confidence).toBe(0.95);
+    });
+
+    it('reject verdict → escalation to the supervisor (the Goodhart fix)', async () => {
+      // The engineer's own tests would say 1.0; the reviewer says the
+      // requirements were dropped. The reviewer must win.
+      runtime.summaryByThread[LEAD] =
+        'The eviction requirements are missing from both deliverables.\n' +
+        'VERDICT: reject\nCONFIDENCE: 0.1';
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(agentVerifyPattern({ type: 'agent' }), {});
+
+      // Task → review → escalation, all recorded.
+      expect(runtime.sentMessages).toHaveLength(3);
+      expect(runtime.sentMessages[2].threadId).toBe(LEAD);
+      expect(runtime.sentMessages[2].input.message).toContain(
+        'did not pass verification'
+      );
+      const escalate = events.find((e) => e.action === 'escalate');
+      expect(escalate).toBeDefined();
+      expect(escalate.source).toBe('agent');
+      expect(escalate.confidence).toBe(0.1);
+      // The verification detail carries the reviewer's reasoning.
+      expect(runtime.sentMessages[2].input.message).toContain(
+        'eviction requirements are missing'
+      );
+    });
+
+    it('passing tests cannot outvote a rejecting reviewer (min combine)', async () => {
+      runtime.summaryByThread[LEAD] = 'VERDICT: reject\nCONFIDENCE: 0.2';
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(
+        agentVerifyPattern([
+          { type: 'command', run: 'true' },
+          { type: 'agent' },
+        ]),
+        {}
+      );
+
+      const escalate = events.find((e) => e.action === 'escalate');
+      expect(escalate).toBeDefined();
+      expect(escalate.source).toBe('command+agent');
+      expect(escalate.confidence).toBe(0.2);
+    });
+
+    it('unparseable review resolves neutral and accepts', async () => {
+      runtime.summaryByThread[LEAD] = 'Seems fine to me, nice work.';
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(agentVerifyPattern({ type: 'agent' }), {});
+
+      expect(runtime.sentMessages).toHaveLength(2);
+      expect(events.map((e) => e.action)).toEqual(['accept']);
+      expect(events[0].confidence).toBe(1);
+    });
+
+    it('review STEP surfaces its verdict as a confidence signal', async () => {
+      runtime.summaryByThread[LEAD] =
+        'Halves do not compose.\nVERDICT: reject\nCONFIDENCE: 0.15';
+      const pattern: OrgPattern = {
+        name: 'review-signal-test',
+        structure: {
+          name: 'test',
+          roles: {
+            lead: makeRole({ id: 'lead', name: 'Lead', singleton: true }),
+            worker: makeRole({ id: 'worker', name: 'Worker', singleton: true }),
+          },
+        },
+        workflow: {
+          name: 'default',
+          steps: [
+            { type: 'assign', role: 'worker', task: 'build it' },
+            { type: 'review', reviewer: 'lead', subject: '${step_0_result}' },
+          ],
+          output: 'step_1_result',
+        },
+      };
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(pattern, {});
+
+      const verdict = events.find((e) => e.action === 'review_verdict');
+      expect(verdict).toBeDefined();
+      expect(verdict.source).toBe('review');
+      expect(verdict.role).toBe('lead');
+      expect(verdict.confidence).toBe(0.15);
+      expect(verdict.detail).toBe('reject');
+      // The review prompt carries the verdict protocol.
+      const reviewMsg = runtime.sentMessages.find((m: any) =>
+        String(m.input.message).includes('Please review the following')
+      );
+      expect(String(reviewMsg.input.message)).toContain('VERDICT: approve | revise | reject');
     });
   });
 });

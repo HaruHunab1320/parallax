@@ -24,6 +24,12 @@ export {
 } from './decision-journal';
 export { MessageRouter, MessageRouterOptions } from './message-router';
 export {
+  parseReviewVerdict,
+  REVIEW_PROTOCOL_INSTRUCTION,
+  ReviewVerdict,
+  ReviewVerdictWord,
+} from './review-verdict';
+export {
   CompiledPattern,
   CompilerOptions,
   compileOrgPattern,

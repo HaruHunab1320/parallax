@@ -1,9 +1,10 @@
 # The `verify` contract — verification-driven confidence
 
-**Status:** `command` (2026-07-09) and `history` (2026-07-10) oracles +
-role-level `verify` are wired into the workflow executor and tested. The
-`checklist` / `agent` / `human` oracles and the `verify` *step* remain
-specified-but-unimplemented (noted inline).
+**Status:** `command` (2026-07-09), `history` (2026-07-10), and `agent`
+(2026-07-20) oracles + role-level `verify` are wired into the workflow
+executor and tested; the `review` step also surfaces its verdict as a
+confidence signal. The `checklist` / `human` oracles and the `verify`
+*step* remain specified-but-unimplemented (noted inline).
 **Depends on:** [docs/CONFIDENCE.md](CONFIDENCE.md) (confidence = verification
 triage, not LLM introspection)
 **Changes:** org-chart YAML schema (`OrgRole.verify`),
@@ -283,6 +284,18 @@ In `workflow-executor.ts`:
   (200). Resolves neutral without a wired store or on lookup failure.
   Best used in a list with a real oracle — `min` keeps verification
   dominant.
+- ✅ `agent` oracle (tier 3) — a reviewer role (default `reportsTo`)
+  judges the output against the original task; the executor parses
+  `VERDICT: approve|revise|reject` + `CONFIDENCE:` into the signal
+  (contradictory pairs clamp: a rejected result can never pass the accept
+  threshold). Neutral-with-warning when no reviewer resolves, the reply
+  is unparseable, or the review turn fails. Motivated empirically by
+  docs/experiments/2026-07-20-self-tests-pass-scope-shrinks.md — the run
+  where self-authored tests scored 1.0 while both engineers silently
+  dropped the hard requirements and the (then-unwired) review caught it.
+- ✅ The `review` *step* emits its parsed verdict as a `step_confidence`
+  event (`action: review_verdict`, `source: review`) — journaled and
+  counted into the execution's average confidence.
 - ✅ Role-level `verify` (single oracle or list; list combines by `min`).
 - ✅ Wired into `executeAssignStep`: `verify` confidence replaces the
   self-report and feeds the existing `accept`/`retryBelow`/`escalateBelow`

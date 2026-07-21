@@ -35,7 +35,13 @@ interface Preparation {
     featureBranch?: string;
     credentialsToken?: string;
   };
-  contextFiles?: Array<{ relativePath: string; content: string }>;
+  // Canonical field is `path` (runtime-interface ThreadContextFile);
+  // `relativePath` kept for compatibility with older senders.
+  contextFiles?: Array<{
+    path?: string;
+    relativePath?: string;
+    content: string;
+  }>;
   env?: Record<string, string>;
 }
 
@@ -132,7 +138,15 @@ export class ThreadExecutor {
     // Write context files
     if (preparation.contextFiles) {
       for (const file of preparation.contextFiles) {
-        const filePath = path.join(workspaceDir, file.relativePath);
+        const relative = file.path ?? file.relativePath;
+        if (!relative) {
+          this.logger.warn(
+            { threadId },
+            'Skipping context file with no path'
+          );
+          continue;
+        }
+        const filePath = path.join(workspaceDir, relative);
         mkdirSync(path.dirname(filePath), { recursive: true });
         writeFileSync(filePath, file.content, 'utf-8');
       }

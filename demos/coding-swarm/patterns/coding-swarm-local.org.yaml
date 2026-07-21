@@ -73,6 +73,15 @@ structure:
           run: "node --test"
           cwd: "${input.workspace_root}/subtask-1"
           scorePattern: "pass (\\d+)[\\s\\S]*?fail (\\d+)"
+        # Tier 3: the architect judges the work against the TASK — this
+        # catches what self-authored tests cannot (silently dropped
+        # requirements, skipped tests, halves that don't compose).
+        # min-combine means passing tests cannot outvote a rejection.
+        - type: agent
+          rubric: >-
+            Does the delivery satisfy the assigned subtask in full?
+            Check for silently dropped requirements, skipped tests, and
+            whether it composes with the other subtask.
       threadConfig:
         enabled: true
         objective: |
@@ -106,6 +115,11 @@ structure:
           run: "node --test"
           cwd: "${input.workspace_root}/subtask-2"
           scorePattern: "pass (\\d+)[\\s\\S]*?fail (\\d+)"
+        - type: agent
+          rubric: >-
+            Does the delivery satisfy the assigned subtask in full?
+            Check for silently dropped requirements, skipped tests, and
+            whether it composes with the other subtask.
       threadConfig:
         enabled: true
         objective: |

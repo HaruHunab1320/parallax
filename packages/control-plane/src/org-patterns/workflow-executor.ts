@@ -20,6 +20,10 @@ import { v4 as uuidv4 } from 'uuid';
 import type { AgentRuntimeService } from '../agent-runtime';
 import type { ThreadPreparationService } from '../threads';
 import { MessageRouter } from './message-router';
+import {
+  parseReviewVerdict,
+  REVIEW_PROTOCOL_INSTRUCTION,
+} from './review-verdict';
 import type {
   HistoryOracle,
   OrgAgentInstance,
@@ -612,10 +616,11 @@ export class WorkflowExecutor extends EventEmitter {
   private async signalFor(
     role: OrgRole,
     response: StepResult,
-    context: OrgExecutionContext
+    context: OrgExecutionContext,
+    task?: string
   ): Promise<{ confidence: number | undefined; source: string; detail?: string }> {
     if (role.verify) {
-      return this.runVerify(role.verify, role, context, response);
+      return this.runVerify(role.verify, role, context, response, task);
     }
     return {
       confidence: this.extractConfidence(response),
@@ -650,7 +655,7 @@ export class WorkflowExecutor extends EventEmitter {
     const accept = policy.accept ?? 0.8;
 
     let response = initialResponse;
-    const signal = await this.signalFor(role, response, context);
+    const signal = await this.signalFor(role, response, context, taskStr);
     let confidence = signal.confidence;
     const { source } = signal;
     let detail = signal.detail;
@@ -699,7 +704,12 @@ export class WorkflowExecutor extends EventEmitter {
         `result.\n\nOriginal task: ${taskStr}\n\n` +
         `Your previous result:\n${this.extractResponseText(response)}`;
       const retryResponse = await this.sendToExecutionUnit(unit, critique);
-      const retrySignal = await this.signalFor(role, retryResponse, context);
+      const retrySignal = await this.signalFor(
+        role,
+        retryResponse,
+        context,
+        taskStr
+      );
 
       const winner = best(
         cf(response, confidence),
@@ -796,7 +806,8 @@ export class WorkflowExecutor extends EventEmitter {
     verify: VerifyOracle | VerifyOracle[] | OrgVerify,
     role: OrgRole,
     context: OrgExecutionContext,
-    subject: StepResult
+    subject: StepResult,
+    task?: string
   ): Promise<{ confidence: number; source: string; detail?: string }> {
     const spec: OrgVerify = Array.isArray(verify)
       ? { oracles: verify }
@@ -805,7 +816,7 @@ export class WorkflowExecutor extends EventEmitter {
         : { oracles: [verify] };
 
     const results = await Promise.all(
-      spec.oracles.map((o) => this.runOracle(o, role, context, subject))
+      spec.oracles.map((o) => this.runOracle(o, role, context, subject, task))
     );
 
     // First slice: combine by minimum (the only mode wired end to end).
@@ -828,10 +839,15 @@ export class WorkflowExecutor extends EventEmitter {
     oracle: VerifyOracle,
     role: OrgRole,
     context: OrgExecutionContext,
-    _subject: StepResult
+    subject: StepResult,
+    task?: string
   ): Promise<{ confidence: number; detail?: string }> {
     if (oracle.type === 'history') {
       return this.runHistoryOracle(oracle, role, context);
+    }
+
+    if (oracle.type === 'agent') {
+      return this.runAgentOracle(oracle, role, context, subject, task);
     }
 
     if (oracle.type === 'command') {
@@ -897,6 +913,98 @@ export class WorkflowExecutor extends EventEmitter {
       'Verify oracle type not implemented — treating as pass'
     );
     return { confidence: 1.0 };
+  }
+
+  /**
+   * The `agent` oracle (tier 3): a reviewer role judges the output
+   * against the original task and returns a structured verdict the
+   * executor parses into confidence. Unlike self-authored tests, this
+   * verifies the work against what was ASKED — it exists because the
+   * 2026-07-20 run proved engineers can pass their own suites at 1.0
+   * while silently dropping requirements (see docs/experiments/).
+   *
+   * Resolves neutral (1.0, with a warning) when no reviewer role can be
+   * resolved, the reviewer's reply carries no parseable verdict, or the
+   * review turn fails — a broken review channel must not block work,
+   * it must be visible.
+   */
+  private async runAgentOracle(
+    oracle: Extract<VerifyOracle, { type: 'agent' }>,
+    role: OrgRole,
+    context: OrgExecutionContext,
+    subject: StepResult,
+    task?: string
+  ): Promise<{ confidence: number; detail?: string }> {
+    const reviewerId = oracle.role ?? role.reportsTo;
+    const reviewerRole = reviewerId
+      ? context.pattern.structure.roles[reviewerId]
+      : undefined;
+
+    if (!reviewerId || !reviewerRole) {
+      this.logger.warn(
+        { role: role.id, reviewer: oracle.role ?? '(reportsTo unset)' },
+        'Agent oracle configured but no reviewer role available — neutral'
+      );
+      return {
+        confidence: 1.0,
+        detail: 'agent review — no reviewer role available: neutral',
+      };
+    }
+
+    try {
+      const reviewer = await this.getOrSpawnRoleUnit(
+        reviewerId,
+        reviewerRole,
+        context
+      );
+
+      const prompt =
+        `Review the following completed work from ${role.name}.\n\n` +
+        (oracle.rubric ? `Rubric: ${oracle.rubric}\n\n` : '') +
+        `Task they were given:\n${task ?? '(task text unavailable)'}\n\n` +
+        `Their reported result:\n` +
+        `${this.extractResponseText(subject).slice(0, 6000)}\n\n` +
+        'Verify their claims against reality where possible (files on ' +
+        'disk, running their tests). Watch specifically for silently ' +
+        'dropped requirements, skipped tests, and pieces that do not ' +
+        'compose.\n\n' +
+        REVIEW_PROTOCOL_INSTRUCTION;
+
+      const response = await this.sendToExecutionUnit(reviewer, prompt);
+      const text = this.extractResponseText(response);
+      const parsed = parseReviewVerdict(text);
+
+      if (parsed.confidence === undefined) {
+        this.logger.warn(
+          { role: role.id, reviewer: reviewerId },
+          'Agent oracle reply carried no parseable verdict — neutral'
+        );
+        return {
+          confidence: 1.0,
+          detail: `agent review (${reviewerId}) — no parseable verdict: neutral`,
+        };
+      }
+
+      return {
+        confidence: parsed.confidence,
+        detail:
+          `agent review (${reviewerId}): ${parsed.verdict ?? 'no verdict word'} ` +
+          `(${parsed.confidence.toFixed(2)})\n${parsed.detail.slice(-600)}`,
+      };
+    } catch (error) {
+      this.logger.warn(
+        {
+          role: role.id,
+          reviewer: reviewerId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'Agent oracle review turn failed — neutral'
+      );
+      return {
+        confidence: 1.0,
+        detail: `agent review (${reviewerId}) — review turn failed: neutral`,
+      };
+    }
   }
 
   /**
@@ -1022,8 +1130,27 @@ export class WorkflowExecutor extends EventEmitter {
 
     const response = await this.sendToExecutionUnit(
       reviewer,
-      `Please review the following:\n\n${JSON.stringify(subject, null, 2)}`
+      `Please review the following:\n\n${JSON.stringify(subject, null, 2)}\n\n` +
+        REVIEW_PROTOCOL_INSTRUCTION
     );
+
+    // Surface the review verdict as a confidence signal — a review whose
+    // judgment dies as prose is how a failing delivery reports 100%
+    // (docs/experiments/2026-07-20). Parsed but not policy-routed here;
+    // it feeds the event stream, the journal, and the execution's
+    // average confidence.
+    const verdict = parseReviewVerdict(this.extractResponseText(response));
+    if (verdict.confidence !== undefined) {
+      this.emit('step_confidence', {
+        executionId: context.id,
+        step: context.currentStep,
+        role: step.reviewer,
+        action: 'review_verdict',
+        confidence: verdict.confidence,
+        source: 'review',
+        detail: verdict.verdict,
+      });
+    }
 
     return response;
   }

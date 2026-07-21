@@ -89,10 +89,27 @@ export interface OrgRole {
 /**
  * A verification oracle — the source of a role's confidence signal.
  *
- * `command` and `history` are implemented today; `checklist` / `agent` /
+ * `command`, `agent`, and `history` are implemented today; `checklist` /
  * `human` are specified in docs/VERIFY.md and slot in here as they land.
  */
-export type VerifyOracle = CommandOracle | HistoryOracle;
+export type VerifyOracle = CommandOracle | AgentOracle | HistoryOracle;
+
+/**
+ * Tier-3 verification: a second agent judges the output against the
+ * original task and returns a structured verdict
+ * (VERDICT: approve|revise|reject + CONFIDENCE marker) that the executor
+ * parses into the confidence signal. Costs one reviewer turn per
+ * verification (including the retry re-check). Unlike self-authored
+ * tests, this verifies the work against what was ASKED — the tier that
+ * catches silently dropped requirements.
+ */
+export type AgentOracle = {
+  type: 'agent';
+  /** Reviewer role id. Default: the verified role's `reportsTo`. */
+  role?: string;
+  /** What to judge; folded into the review prompt. */
+  rubric?: string;
+};
 
 export type CommandOracle = {
   type: 'command';
