@@ -529,7 +529,9 @@ export class WorkflowExecutor extends EventEmitter {
       throw new Error(`Role ${step.role} not found in pattern`);
     }
 
-    const agent = await this.getOrSpawnRoleUnit(step.role, role, context);
+    const agent = await this.getOrSpawnRoleUnit(step.role, role, context, {
+      claim: true,
+    });
 
     // Resolve variables in both task description and input
     const resolvedTask = this.resolveVariables(step.task, context);
@@ -562,12 +564,19 @@ export class WorkflowExecutor extends EventEmitter {
   }
 
   /**
-   * Get the first execution unit assigned to a role, spawning on demand.
+   * Get an execution unit for a role, spawning on demand.
+   *
+   * Prefers an idle instance; with `claim`, the selection and the busy
+   * mark happen synchronously (no await between them) so concurrent
+   * parallel assigns distribute across a role's instances instead of
+   * stacking on the first one (sends to a single unit are serialized,
+   * so stacking would run "parallel" work sequentially).
    */
   private async getOrSpawnRoleUnit(
     roleId: string,
     role: OrgRole,
-    context: OrgExecutionContext
+    context: OrgExecutionContext,
+    options: { claim?: boolean } = {}
   ): Promise<OrgAgentInstance> {
     let agentIds = context.roleAssignments.get(roleId);
     if (!agentIds || agentIds.length === 0) {
@@ -583,9 +592,16 @@ export class WorkflowExecutor extends EventEmitter {
       throw new Error(`Failed to spawn agent for role: ${roleId}`);
     }
 
-    const unit = context.agents.get(agentIds[0]);
-    if (!unit) {
+    const units = agentIds
+      .map((id) => context.agents.get(id))
+      .filter((u): u is OrgAgentInstance => !!u);
+    if (units.length === 0) {
       throw new Error(`Agent ${agentIds[0]} not found after spawn`);
+    }
+
+    const unit = units.find((u) => u.status !== 'busy') ?? units[0];
+    if (options.claim) {
+      unit.status = 'busy';
     }
     return unit;
   }
@@ -1467,7 +1483,29 @@ export class WorkflowExecutor extends EventEmitter {
     }
   }
 
-  private async sendToExecutionUnit(
+  /**
+   * Per-unit send queues: turns to the SAME execution unit must be
+   * serialized. Two concurrent waiters on one thread would both resolve
+   * on its next turn_complete — e.g. parallel engineers each requesting
+   * an agent-oracle review from the same singleton architect would cross
+   * wires (engineer B receiving engineer A's verdict).
+   */
+  private unitSendChains: Map<string, Promise<unknown>> = new Map();
+
+  private sendToExecutionUnit(
+    unit: OrgAgentInstance,
+    message: string,
+    input?: unknown
+  ): Promise<StepResult> {
+    const prev = this.unitSendChains.get(unit.id) ?? Promise.resolve();
+    const next = prev
+      .catch(() => {}) // a failed predecessor must not poison the queue
+      .then(() => this.sendToExecutionUnitNow(unit, message, input));
+    this.unitSendChains.set(unit.id, next);
+    return next;
+  }
+
+  private async sendToExecutionUnitNow(
     unit: OrgAgentInstance,
     message: string,
     input?: unknown

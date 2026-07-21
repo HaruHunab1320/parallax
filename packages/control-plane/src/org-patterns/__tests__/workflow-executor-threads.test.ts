@@ -94,8 +94,16 @@ class MockThreadRuntimeService extends EventEmitter {
     };
   }
 
+  /** Threads mid-turn; a send to a busy thread is an overlapping send */
+  private busyThreads: Set<string> = new Set();
+  public overlappingSends = 0;
+
   async sendToThread(threadId: string, input: any): Promise<void> {
     this.sentMessages.push({ threadId, input });
+    if (this.busyThreads.has(threadId)) {
+      this.overlappingSends++;
+    }
+    this.busyThreads.add(threadId);
 
     if (this.nextSendError) {
       const err = this.nextSendError;
@@ -109,6 +117,7 @@ class MockThreadRuntimeService extends EventEmitter {
       this.nextEventType = null;
       const confidence = this.confidenceQueue.shift();
       setTimeout(() => {
+        this.busyThreads.delete(threadId);
         this.emitThreadEvent(threadId, {
           type: eventType,
           threadId,
@@ -1179,6 +1188,64 @@ describe('WorkflowExecutor thread integration', () => {
       expect(runtime.sentMessages).toHaveLength(2);
       expect(events.map((e) => e.action)).toEqual(['accept']);
       expect(events[0].confidence).toBe(1);
+    });
+
+    it('serializes concurrent reviews to a shared singleton reviewer', async () => {
+      // Parallel engineers each trigger an agent-oracle review of the
+      // same architect. Unserialized, both waiters resolve on the same
+      // turn_complete and engineer B receives engineer A's verdict.
+      runtime.summaryByThread[LEAD] = 'VERDICT: approve\nCONFIDENCE: 0.9';
+      const pattern: OrgPattern = {
+        name: 'shared-reviewer-test',
+        structure: {
+          name: 'test',
+          roles: {
+            lead: makeRole({ id: 'lead', name: 'Lead', singleton: true }),
+            worker_a: makeRole({
+              id: 'worker_a',
+              name: 'Worker A',
+              singleton: true,
+              reportsTo: 'lead',
+              verify: { type: 'agent' } as never,
+              confidence: { accept: 0.8, escalateBelow: 0.4 },
+            }),
+            worker_b: makeRole({
+              id: 'worker_b',
+              name: 'Worker B',
+              singleton: true,
+              reportsTo: 'lead',
+              verify: { type: 'agent' } as never,
+              confidence: { accept: 0.8, escalateBelow: 0.4 },
+            }),
+          },
+        },
+        workflow: {
+          name: 'default',
+          steps: [
+            {
+              type: 'parallel',
+              steps: [
+                { type: 'assign', role: 'worker_a', task: 'task A' },
+                { type: 'assign', role: 'worker_b', task: 'task B' },
+              ],
+            },
+          ],
+          output: 'step_0_result',
+        },
+      };
+      const executor = makeExecutor();
+      const events: any[] = [];
+      executor.on('step_confidence', (e) => events.push(e));
+
+      await executor.execute(pattern, {});
+
+      // Both reviews went to the lead, one at a time.
+      const leadMessages = runtime.sentMessages.filter(
+        (m: any) => m.threadId === LEAD
+      );
+      expect(leadMessages).toHaveLength(2);
+      expect(runtime.overlappingSends).toBe(0);
+      expect(events.map((e) => e.action)).toEqual(['accept', 'accept']);
     });
 
     it('review STEP surfaces its verdict as a confidence signal', async () => {
