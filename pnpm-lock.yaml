@@ -7,7 +7,6 @@ settings:
 overrides:
   '@types/react': ^19.0.0
   '@types/react-dom': ^19.0.0
-  '@_89/confidence-kernel': file:./vendor/_89-confidence-kernel-0.1.0.tgz
 
 importers:
 
@@ -858,8 +857,8 @@ importers:
   packages/control-plane:
     dependencies:
       '@_89/confidence-kernel':
-        specifier: file:../../vendor/_89-confidence-kernel-0.1.0.tgz
-        version: file:vendor/_89-confidence-kernel-0.1.0.tgz
+        specifier: 0.1.0
+        version: 0.1.0
       '@grpc/grpc-js':
         specifier: ^1.13.4
         version: 1.13.4
@@ -1502,9 +1501,8 @@ importers:
 
 packages:
 
-  '@_89/confidence-kernel@file:vendor/_89-confidence-kernel-0.1.0.tgz':
-    resolution: {integrity: sha512-4EiVstTbMhvsVMUZJeug9I+ETUvEVXTb74wmoL6rEX6XYcZqCzaRCys1jm2dZrFxtKTjAnsO/l0BYva4HF2+ZQ==, tarball: file:vendor/_89-confidence-kernel-0.1.0.tgz}
-    version: 0.1.0
+  '@_89/confidence-kernel@0.1.0':
+    resolution: {integrity: sha512-4EiVstTbMhvsVMUZJeug9I+ETUvEVXTb74wmoL6rEX6XYcZqCzaRCys1jm2dZrFxtKTjAnsO/l0BYva4HF2+ZQ==}
 
   '@ai-sdk/anthropic@1.2.12':
     resolution: {integrity: sha512-YSzjlko7JvuiyQFmI9RN1tNZdEiZxc+6xld/0tq/VkJaHpEzGAb1yiNxxvmYVcjvfu/PcvCxAAYXmTYQQ63IHQ==}
@@ -12672,7 +12670,7 @@ packages:
 
 snapshots:
 
-  '@_89/confidence-kernel@file:vendor/_89-confidence-kernel-0.1.0.tgz': {}
+  '@_89/confidence-kernel@0.1.0': {}
 
   '@ai-sdk/anthropic@1.2.12(zod@3.25.76)':
     dependencies:
