@@ -7,6 +7,7 @@
 import { exec } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { promisify } from 'node:util';
+import { combine } from '@_89/confidence-kernel';
 import { best, cf } from '@parallaxai/confidence';
 import type {
   AgentConfig,
@@ -835,14 +836,13 @@ export class WorkflowExecutor extends EventEmitter {
       spec.oracles.map((o) => this.runOracle(o, role, context, subject, task))
     );
 
-    // First slice: combine by minimum (the only mode wired end to end).
-    let winner = results[0];
-    for (const r of results.slice(1)) {
-      if (r.confidence < winner.confidence) winner = r;
-    }
+    // First slice: combine by minimum (the only mode wired end to end) —
+    // "a result is only as trustworthy as its weakest check". Delegated to the
+    // shared confidence-kernel's `combine(..., 'min')`.
+    const combined = combine(results, 'min');
 
     return {
-      confidence: winner.confidence,
+      confidence: combined.confidence,
       source: spec.oracles.map((o) => o.type).join('+'),
       detail: results
         .map((r) => r.detail)

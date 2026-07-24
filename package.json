@@ -78,7 +78,8 @@
   "pnpm": {
     "overrides": {
       "@types/react": "^19.0.0",
-      "@types/react-dom": "^19.0.0"
+      "@types/react-dom": "^19.0.0",
+      "@_89/confidence-kernel": "file:./vendor/_89-confidence-kernel-0.1.0.tgz"
     }
   }
 }

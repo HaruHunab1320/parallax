@@ -1,3 +1,8 @@
+import {
+  ageDecayWeight,
+  type HistoryRun as KernelHistoryRun,
+  scoreHistory,
+} from '@_89/confidence-kernel';
 import type { Logger } from 'pino';
 import type { HistoryOracle } from './types';
 
@@ -47,17 +52,16 @@ const DEFAULTS = {
 /**
  * Score a role's history prior from outcome-labelled past runs.
  *
- * Ingredients follow decision-pathfinder's RecommendationEngine
- * (age-decayed success rate × sample factor × efficiency), with one
- * deliberate inversion: decision-pathfinder multiplies the sample factor
- * in because its low-confidence action is conservative (keep asking the
- * LLM), while parallax's low-confidence actions are costly (retry,
- * escalate). Here sparse history therefore *shrinks toward neutral 1.0*
- * instead of toward zero:
+ * The scoring math (age-decayed success rate × efficiency × sample-saturation)
+ * is delegated to the shared confidence-kernel under `posture:'suppress'`:
+ * a sparse history *shrinks toward neutral 1.0* rather than toward zero,
+ * because parallax's low-confidence actions (retry, escalate) are costly —
+ * see the kernel README's posture table (`suppress` originates here).
  *
- *   raw        = weightedSuccessRate × cleanDecisionRate
- *   sample     = min(weightedRuns / saturationRuns, 1)
- *   confidence = 1 − sample × (1 − raw)
+ * Parallax's "efficiency" is the role's clean-decision rate (share of its
+ * confidence decisions that were clean accepts), computed here and passed to
+ * the kernel as the fixed `efficiency` number — the kernel's default
+ * step-length efficiency does not apply to this host.
  */
 export function scoreDecisionHistory(
   runs: HistoryRun[],
@@ -69,38 +73,49 @@ export function scoreDecisionHistory(
   const minRuns = oracle.minRuns ?? DEFAULTS.minRuns;
   const saturationRuns = oracle.saturationRuns ?? DEFAULTS.saturationRuns;
 
-  if (runs.length < minRuns) return undefined;
-
-  let weightSum = 0;
-  let successSum = 0;
-  for (const run of runs) {
-    const ageDays =
-      (now.getTime() - run.createdAt.getTime()) / (24 * 60 * 60 * 1000);
-    const weight =
-      halfLife > 0 && Number.isFinite(halfLife)
-        ? Math.pow(2, -Math.max(ageDays, 0) / halfLife)
-        : 1;
-    weightSum += weight;
-    if (run.outcome === 'success') successSum += weight;
-  }
-  const successRate = weightSum > 0 ? successSum / weightSum : 0;
-
   // Retry/escalation friction: the share of this role's past decisions
   // that were clean accepts.
   const clean = roleActions.filter((a) => a === 'accept').length;
   const efficiency = roleActions.length > 0 ? clean / roleActions.length : 1;
 
-  const raw = successRate * efficiency;
-  const sample = Math.min(weightSum / saturationRuns, 1);
-  const confidence = 1 - sample * (1 - raw);
+  const kernelRuns: KernelHistoryRun[] = runs.map((run, i) => ({
+    id: String(i),
+    timestamp: run.createdAt.getTime(),
+    outcome: run.outcome === 'success' ? 'success' : 'failure',
+  }));
+
+  const score = scoreHistory(kernelRuns, {
+    posture: 'suppress',
+    halfLifeDays: halfLife,
+    saturationRuns,
+    minRuns,
+    decayBase: '2',
+    efficiency,
+    now: now.getTime(),
+  });
+
+  if (!score) return undefined;
+
+  // Weighted success rate for the detail string — recomputed with the kernel's
+  // decay weight so it stays exact regardless of the efficiency factor.
+  let weightSum = 0;
+  let successSum = 0;
+  for (const run of runs) {
+    const ageDays =
+      (now.getTime() - run.createdAt.getTime()) / (24 * 60 * 60 * 1000);
+    const weight = ageDecayWeight(ageDays, halfLife, '2');
+    weightSum += weight;
+    if (run.outcome === 'success') successSum += weight;
+  }
+  const successRate = weightSum > 0 ? successSum / weightSum : 0;
 
   return {
-    confidence,
+    confidence: score.confidence,
     detail:
       `history — ${runs.length} prior run(s): ` +
       `${(successRate * 100).toFixed(0)}% weighted success, ` +
       `${(efficiency * 100).toFixed(0)}% clean decisions ` +
-      `→ ${confidence.toFixed(2)}`,
+      `→ ${score.confidence.toFixed(2)}`,
   };
 }
 
