@@ -23,7 +23,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@_89/confidence-kernel": "0.1.0",
+    "@_89/confidence-kernel": "0.1.1",
     "@grpc/grpc-js": "^1.13.4",
     "@grpc/proto-loader": "^0.7.15",
     "@octokit/auth-app": "^8.1.2",
