@@ -51,7 +51,7 @@ export interface WorkflowExecutorOptions {
    */
   decisionHistory?: {
     signal(
-      query: { patternName: string; role: string },
+      query: { patternName: string; role: string; repo?: string },
       oracle: HistoryOracle
     ): Promise<{ confidence: number; detail?: string }>;
   };
@@ -1044,8 +1044,17 @@ export class WorkflowExecutor extends EventEmitter {
       };
     }
     try {
+      // `repo` is one of the sibling dimensions the oracle can pool over
+      // (see DecisionHistory.scorePooled); undefined when no workspace is
+      // attached, which simply drops that dimension.
+      const input = context.variables.get('input');
+      const repo = input?.workspace?.repo ?? input?.repo;
       return await this.decisionHistory.signal(
-        { patternName: context.pattern.name, role: role.id },
+        {
+          patternName: context.pattern.name,
+          role: role.id,
+          repo: typeof repo === 'string' ? repo : undefined,
+        },
         oracle
       );
     } catch (error) {

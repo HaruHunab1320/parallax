@@ -284,6 +284,23 @@ In `workflow-executor.ts`:
   (200). Resolves neutral without a wired store or on lookup failure.
   Best used in a list with a real oracle — `min` keeps verification
   dominant.
+  - **Drift demotion** (on by default; `drift: false` to disable,
+    `driftRecentN` 5, `driftThreshold` 0.25). When the most recent runs'
+    success rate has collapsed relative to lifetime, the prior is demoted
+    by `1 − (lifetime − recent)` rather than waiting for age decay to
+    catch up. Only ever *lowers* the prior, and only once there are at
+    least `max(minRuns, 2 × driftRecentN)` runs — a prior too thin to
+    trust cannot "drift".
+  - **Sibling pooling / warm start** (opt-in: `pool: true`; `poolFamily`,
+    `poolWeight` 0.5). A pattern with too little history of its own can
+    borrow a prior from siblings — other patterns in the same family
+    (leading hyphen-delimited segment of the name) and any pattern's runs
+    against the same repo — with the role's clean-decision rate taken over
+    those same executions. A pooled prior is deliberately weaker
+    (`saturationRuns / poolWeight`, so it sits closer to neutral) and is
+    labelled `history (pooled from family:…, repo:…)` in the detail
+    string. It replaces a neutral 1.0, so like every history prior it can
+    only pull the combined signal down.
 - ✅ `agent` oracle (tier 3) — a reviewer role (default `reportsTo`)
   judges the output against the original task; the executor parses
   `VERDICT: approve|revise|reject` + `CONFIDENCE:` into the signal

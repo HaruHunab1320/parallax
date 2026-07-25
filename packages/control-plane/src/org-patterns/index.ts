@@ -15,6 +15,7 @@ export {
   DecisionHistoryStores,
   HistoryRun,
   HistoryScore,
+  patternFamily,
   scoreDecisionHistory,
 } from './decision-history';
 export {

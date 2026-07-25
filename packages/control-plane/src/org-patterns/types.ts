@@ -148,6 +148,49 @@ export type HistoryOracle = {
   saturationRuns?: number;
   /** Maximum past runs fetched from the journal (default 200). */
   maxRuns?: number;
+
+  /**
+   * Drift demotion: when the most recent runs' success rate has collapsed
+   * relative to the lifetime rate, the prior is demoted so a subject that
+   * *just* started failing looks suspicious immediately instead of waiting
+   * for age decay to catch up. Set `false` to disable (default true).
+   *
+   * Drift can only ever LOWER the prior — the safe direction under this
+   * oracle's suppress posture.
+   */
+  drift?: boolean;
+  /** How many most-recent runs form the drift comparison window (default 5). */
+  driftRecentN?: number;
+  /**
+   * How far the recent window's success rate must fall below lifetime before
+   * it counts as drift (default 0.25).
+   */
+  driftThreshold?: number;
+
+  /**
+   * Warm start: when this (pattern, role) has too little history of its own,
+   * borrow a prior from *sibling* subjects — runs of other patterns in the
+   * same family, and runs against the same repo. Opt-in (default false),
+   * because "these subjects predict each other" is a domain claim only an
+   * operator can make; it is not derivable from the journal.
+   *
+   * A pooled prior is deliberately weaker than first-party history (see
+   * `poolWeight`) and is labelled as pooled in the oracle's detail string.
+   */
+  pool?: boolean;
+  /**
+   * Family key for pooling. Defaults to the leading hyphen-delimited segment
+   * of the pattern name (`coding-swarm-local` → `coding`). Override when the
+   * naming convention doesn't hold.
+   */
+  poolFamily?: string;
+  /**
+   * Strength of a pooled prior relative to first-party history, in (0,1]
+   * (default 0.5). Implemented as a divisor on `saturationRuns`: at 0.5 a
+   * pooled prior needs twice the evidence to reach full strength, so it sits
+   * closer to neutral 1.0 than the same runs would first-party.
+   */
+  poolWeight?: number;
 };
 
 export interface OrgVerify {
