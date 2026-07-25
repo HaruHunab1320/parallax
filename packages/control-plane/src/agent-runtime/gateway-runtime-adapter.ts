@@ -361,9 +361,21 @@ export class GatewayRuntimeAdapter extends EventEmitter {
 
   subscribeThread(
     threadId: string,
-    callback: (event: GatewayThreadEventPayload) => void
+    callback: (event: ThreadEvent) => void
   ): () => void {
-    return this.gateway.subscribeThreadEvents(threadId, callback);
+    // The executor's waiter reads normalized fields (`event.type`,
+    // `event.data`), but raw gateway payloads carry `event_type` /
+    // `data_json`. Translate before delivering — the same normalization
+    // forwardGatewayEvent applies for persistence. Without this the
+    // waiter never matches `thread_turn_complete` and the workflow hangs
+    // forever (gateway path only; the local runtime already delivers
+    // normalized events, which is why this only bit distributed runs).
+    return this.gateway.subscribeThreadEvents(threadId, (raw) => {
+      const handle =
+        this.threads.get(threadId)?.handle ??
+        ({ id: threadId } as ThreadHandle);
+      callback(this.translateGatewayEvent(handle, raw));
+    });
   }
 
   async cleanupExecution(executionId: string): Promise<void> {

@@ -267,6 +267,53 @@ describe('GatewayRuntimeAdapter', () => {
     });
   });
 
+  describe('subscribeThread event normalization', () => {
+    it('delivers normalized events (type/data), not raw gateway payloads', async () => {
+      // Regression: the executor's waiter reads `event.type` / `event.data`,
+      // but raw gateway payloads carry `event_type` / `data_json`. If
+      // subscribeThread passes the raw payload through, `event.type` is
+      // undefined, the `thread_turn_complete` match never fires, and the
+      // workflow hangs forever (gateway/distributed runs only — the local
+      // runtime already delivers normalized events). Caught by the local
+      // gateway dry-run, 2026-07-25.
+      const captured: Array<(raw: unknown) => void> = [];
+      const session = createMockSession({ agentId: 'pi-1' });
+      const gateway = createMockGateway(new Map([['pi-1', session]]));
+      (
+        gateway.subscribeThreadEvents as ReturnType<typeof vi.fn>
+      ).mockImplementation((_id: string, cb: (raw: unknown) => void) => {
+        captured.push(cb);
+        return vi.fn();
+      });
+      const adapter = new GatewayRuntimeAdapter(logger, gateway);
+      await adapter.spawnThread(createSpawnInput({ id: 'thread-x' }));
+
+      const received: Array<Record<string, unknown>> = [];
+      adapter.subscribeThread('thread-x', (e) =>
+        received.push(e as unknown as Record<string, unknown>)
+      );
+
+      // The most-recent capture is the subscribeThread subscription; feed it
+      // a raw gateway turn_complete payload as the gateway service would.
+      captured[captured.length - 1]({
+        event_type: 'turn_complete',
+        data_json: JSON.stringify({
+          output: 'proof.txt written',
+          confidence: 0.9,
+        }),
+        timestamp_ms: 1785000000000,
+        sequence: 1,
+      });
+
+      expect(received).toHaveLength(1);
+      // Normalized: type prefixed, NOT the raw undefined that caused the hang
+      expect(received[0].type).toBe('thread_turn_complete');
+      const data = received[0].data as Record<string, unknown>;
+      expect(data.output).toBe('proof.txt written');
+      expect(data.confidence).toBe(0.9);
+    });
+  });
+
   describe('sendToThread', () => {
     it('should dispatch input to the correct gateway agent', async () => {
       const session = createMockSession({ agentId: 'pi-1' });
