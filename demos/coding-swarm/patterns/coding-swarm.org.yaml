@@ -4,6 +4,13 @@
 # One architect (Mac) plans and reviews, three engineers (Raspberry Pis)
 # implement in parallel using Claude Code, Codex, and Gemini CLI.
 #
+# Verification: each engineer's confidence comes from an `agent` oracle —
+# the architect reviews the work and its verdict routes the retry/escalate
+# policy. Unlike the local pattern (coding-swarm-local), there is no
+# `command` oracle here: a distributed engineer's workspace lives on its Pi
+# / in a pushed git branch, which a control-plane-side command cannot reach.
+# The reviewer verdict is the verification that survives distribution.
+#
 # Hardware mapping:
 #   Echo  (Mac)  → architect  → Claude Code
 #   Vero  (Pi)   → engineer_a → Claude Code
@@ -64,6 +71,26 @@ structure:
         - implementation
         - typescript
         - testing
+      # Confidence-driven step policy: below retryBelow the engineer gets one
+      # critique-driven retry; below escalateBelow the result escalates to the
+      # architect (reportsTo).
+      confidence:
+        accept: 0.8
+        retryBelow: 0.6
+        escalateBelow: 0.4
+      # Verification is tier-3 (agent review) here, NOT tier-1 (command).
+      # A distributed engineer's workspace lives on its Pi / in a pushed git
+      # branch, so a `command` oracle running on the control plane can't see
+      # it — the architect review is the verification that survives
+      # distribution. It judges the engineer's reported work against the plan.
+      verify:
+        - type: agent
+          rubric: >-
+            Does the delivery satisfy the assigned subtask in full? Judge the
+            engineer's reported work (and the pushed branch, where you can
+            reach it) against the plan. Watch for silently dropped
+            requirements, skipped tests, and missing integration with
+            useNervStore.
       threadConfig:
         enabled: true
         objective: |
@@ -90,6 +117,18 @@ structure:
         - implementation
         - python
         - documentation
+      confidence:
+        accept: 0.8
+        retryBelow: 0.6
+        escalateBelow: 0.4
+      verify:
+        - type: agent
+          rubric: >-
+            Does the delivery satisfy the assigned subtask in full? Judge the
+            engineer's reported work (and the pushed branch, where you can
+            reach it) against the plan. Watch for silently dropped
+            requirements, skipped tests, and missing integration with
+            useNervStore.
       threadConfig:
         enabled: true
         objective: |
@@ -116,6 +155,18 @@ structure:
         - implementation
         - api_design
         - integration
+      confidence:
+        accept: 0.8
+        retryBelow: 0.6
+        escalateBelow: 0.4
+      verify:
+        - type: agent
+          rubric: >-
+            Does the delivery satisfy the assigned subtask in full? Judge the
+            engineer's reported work (and the pushed branch, where you can
+            reach it) against the plan. Watch for silently dropped
+            requirements, skipped tests, and missing integration with
+            useNervStore.
       threadConfig:
         enabled: true
         objective: |
@@ -241,12 +292,14 @@ workflow:
 
             ${step_2_result}
 
-    # Step 4: Architect reviews all engineer output
+    # Step 4: Architect reviews all engineer output (the parallel step's
+    # result is step_3_result — the previous ${step_5_result} referenced a
+    # step that does not exist, so the review had no subject).
     - type: review
       reviewer: architect
-      subject: ${step_5_result}
+      subject: ${step_3_result}
 
-    # Step 7: Aggregate final results
+    # Step 5: Aggregate final results
     - type: aggregate
       method: merge
 
