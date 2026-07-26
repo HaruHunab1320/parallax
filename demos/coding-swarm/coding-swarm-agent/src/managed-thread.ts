@@ -25,6 +25,19 @@ export interface ManagedThreadInfo {
 export class ManagedThread {
   private sequence: number = 0;
   private status: string = 'starting';
+  /**
+   * When true, a priming (objective) turn was delivered at spawn and its
+   * completion must be CONSUMED — not forwarded as a task `turn_complete` —
+   * with `ready` deferred until it lands. Set by ThreadExecutor before the
+   * session becomes ready.
+   *
+   * Without this, the priming turn races the real task turn: the control
+   * plane's task waiter subscribes then dispatches the task, and the
+   * priming turn's completion (which arrives first) resolves the waiter
+   * with the wrong output. The local runtime has no priming turn at all —
+   * it passes the objective as an env var — so this only bites the gateway.
+   */
+  public expectPrimingTurn = false;
   private readonly listeners: Array<() => void> = [];
 
   constructor(
@@ -59,6 +72,12 @@ export class ManagedThread {
     on('session_ready', (session: any) => {
       if (session.id !== sessionId) return;
       this.status = 'running';
+      if (this.expectPrimingTurn) {
+        // Priming (objective) turn is in flight — defer `ready` until it
+        // completes so the control plane doesn't dispatch a task mid-priming.
+        this.emitStatus('running', 'Priming agent…');
+        return;
+      }
       this.emitEvent('ready', {});
       this.emitStatus('running', 'Agent ready and accepting input');
     });
@@ -100,6 +119,22 @@ export class ManagedThread {
         'task_complete event received'
       );
       if (session.id !== sessionId) return;
+
+      if (this.expectPrimingTurn) {
+        // This completion is the priming (objective) turn — the agent is
+        // now primed and idle. Emit the deferred `ready` and do NOT forward
+        // it as a task turn_complete (that would resolve the CP's task
+        // waiter with the objective response instead of the task result).
+        this.expectPrimingTurn = false;
+        this.logger.info(
+          { threadId },
+          'Priming turn complete — emitting deferred ready'
+        );
+        this.emitEvent('ready', {});
+        this.emitStatus('running', 'Primed and ready');
+        return;
+      }
+
       this.logger.info({ threadId }, 'Emitting turn_complete to gateway');
       // Raw TUI frames → readable text before anything downstream sees it
       const turnOutput: string = stripAnsi(data?.output || '').trim();

@@ -268,12 +268,16 @@ export class ThreadExecutor {
       'Thread spawned'
     );
 
-    // Send the initial task once this specific session is ready
-    // (skip if task is empty — workflow executor will send the task later)
+    // Send the initial (priming) task once this specific session is ready
+    // (skip if task is empty — workflow executor will send the task later).
+    // Mark the thread so ManagedThread defers `ready` until the priming
+    // turn completes and consumes that completion instead of forwarding it
+    // as a task turn_complete — otherwise it races the real task turn.
     if (task?.trim()) {
+      thread.expectPrimingTurn = true;
       const onReady = (readySession: any) => {
         if (readySession.id === session.id) {
-          this.logger.info({ threadId }, 'Sending initial task to thread');
+          this.logger.info({ threadId }, 'Sending priming task to thread');
           this.manager.send(session.id, task);
           this.manager.removeListener('session_ready', onReady);
         }
