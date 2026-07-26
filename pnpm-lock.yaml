@@ -857,8 +857,8 @@ importers:
   packages/control-plane:
     dependencies:
       '@_89/confidence-kernel':
-        specifier: 0.1.1
-        version: 0.1.1
+        specifier: 0.2.0
+        version: 0.2.0
       '@grpc/grpc-js':
         specifier: ^1.13.4
         version: 1.13.4
@@ -1501,8 +1501,8 @@ importers:
 
 packages:
 
-  '@_89/confidence-kernel@0.1.1':
-    resolution: {integrity: sha512-nQS+9i1S59uU+INTXE+mzDmj1nLF9OCHVtNr0DxXf1kzuML5TscoKt3oDEZudf1I4u/0XL9R2q/DivsJtckc2A==}
+  '@_89/confidence-kernel@0.2.0':
+    resolution: {integrity: sha512-wKXLC5Dc8V+0SRBWF1OFWv57u/sBwL4a0C5o+Kty9DLQ/AMOvlrgzIWsP5XTZJxEzA2qFoBWhshP+JYZKXunFQ==}
 
   '@ai-sdk/anthropic@1.2.12':
     resolution: {integrity: sha512-YSzjlko7JvuiyQFmI9RN1tNZdEiZxc+6xld/0tq/VkJaHpEzGAb1yiNxxvmYVcjvfu/PcvCxAAYXmTYQQ63IHQ==}
@@ -12666,7 +12666,7 @@ packages:
 
 snapshots:
 
-  '@_89/confidence-kernel@0.1.1': {}
+  '@_89/confidence-kernel@0.2.0': {}
 
   '@ai-sdk/anthropic@1.2.12(zod@3.25.76)':
     dependencies:
