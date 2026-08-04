@@ -38,6 +38,15 @@ export class ManagedThread {
    * it passes the objective as an env var — so this only bites the gateway.
    */
   public expectPrimingTurn = false;
+
+  /**
+   * Timestamp of the last sign of life from the session (output or a
+   * completed turn). ThreadExecutor compares this against the time it sent
+   * input to tell "the CLI never saw my keystrokes" apart from "the CLI
+   * answered already and went back to idle".
+   */
+  public lastActivityAt = 0;
+
   private readonly listeners: Array<() => void> = [];
 
   constructor(
@@ -84,6 +93,7 @@ export class ManagedThread {
 
     on('message', (message: any) => {
       if (message.sessionId !== sessionId) return;
+      this.lastActivityAt = Date.now();
       this.emitEvent('output', {
         type: message.type,
         content: message.content,
@@ -119,6 +129,7 @@ export class ManagedThread {
         'task_complete event received'
       );
       if (session.id !== sessionId) return;
+      this.lastActivityAt = Date.now();
 
       if (this.expectPrimingTurn) {
         // This completion is the priming (objective) turn — the agent is

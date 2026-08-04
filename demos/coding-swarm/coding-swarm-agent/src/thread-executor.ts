@@ -51,6 +51,29 @@ interface Policy {
   maxTurns?: number;
 }
 
+/**
+ * Per-adapter grace period between `session_ready` and the first keystroke.
+ *
+ * The session reports ready as soon as the CLI process is up, but each TUI
+ * spends a few hundred ms painting its splash screen and silently drops
+ * anything typed during that window.
+ */
+const POST_READY_DELAY: Record<string, number> = {
+  claude: 800,
+  codex: 2000,
+  gemini: 1500,
+  aider: 200,
+  hermes: 200,
+};
+
+const DEFAULT_POST_READY_DELAY = 500;
+
+/** How long to wait before checking whether delivered input actually landed. */
+const DELIVERY_VERIFY_MS = 5000;
+
+/** Cap on waiting for `session_ready` before delivering anyway. */
+const READY_TIMEOUT_MS = 30000;
+
 export class ThreadExecutor {
   private manager: TmuxManager;
   private threads: Map<string, ManagedThread> = new Map();
@@ -277,9 +300,13 @@ export class ThreadExecutor {
       thread.expectPrimingTurn = true;
       const onReady = (readySession: any) => {
         if (readySession.id === session.id) {
-          this.logger.info({ threadId }, 'Sending priming task to thread');
-          this.manager.send(session.id, task);
           this.manager.removeListener('session_ready', onReady);
+          this.logger.info({ threadId }, 'Sending priming task to thread');
+          // Goes through the same settle-and-verify path as sendInput().
+          // Sending immediately on `ready` drops the objective into a TUI
+          // that is still painting its splash, which leaves the agent idle
+          // at the welcome screen for the rest of the thread's life.
+          this.deliverAfterSettle(thread, task, 'priming');
         }
       };
       this.manager.on('session_ready', onReady);
@@ -314,62 +341,85 @@ export class ThreadExecutor {
       return;
     }
 
-    const POST_READY_DELAY: Record<string, number> = {
-      claude: 800,
-      codex: 2000,
-      gemini: 1500,
-      aider: 200,
-      hermes: 200,
-    };
-
-    const settleMs = POST_READY_DELAY[thread.info.adapterType] || 500;
-
-    const deliverTask = () => {
-      this.logger.info(
-        { threadId, settleMs, adapterType: thread.info.adapterType },
-        'Delivering task after settle delay'
-      );
-      setTimeout(() => {
-        thread.sendInput(input);
-        // Retry: check after 5s if agent accepted (output grew)
-        setTimeout(() => {
-          const currentSession = this.manager.get(thread.info.sessionId);
-          if (currentSession && currentSession.status === 'ready') {
-            this.logger.info(
-              { threadId },
-              'Agent may not have accepted task — retrying'
-            );
-            thread.sendInput(input);
-          }
-        }, 5000);
-      }, settleMs);
-    };
-
     if (session.status === 'ready') {
-      deliverTask();
-    } else {
-      this.logger.info(
-        { threadId, sessionStatus: session.status },
-        'Session not ready — deferring task delivery'
-      );
-      const onReady = (readySession: any) => {
-        if (readySession.id === thread.info.sessionId) {
-          this.manager.removeListener('session_ready', onReady);
-          deliverTask();
-        }
-      };
-      this.manager.on('session_ready', onReady);
+      this.deliverAfterSettle(thread, input, 'task');
+      return;
+    }
 
-      // Timeout: force delivery after 30s even if not ready
+    this.logger.info(
+      { threadId, sessionStatus: session.status },
+      'Session not ready — deferring task delivery'
+    );
+
+    // Whichever of these fires first cancels the other, so the input is
+    // delivered exactly once.
+    let delivered = false;
+    const deliverOnce = (via: string) => {
+      if (delivered) return;
+      delivered = true;
+      clearTimeout(readyTimeout);
+      this.manager.removeListener('session_ready', onReady);
+      this.deliverAfterSettle(thread, input, via);
+    };
+
+    const onReady = (readySession: any) => {
+      if (readySession.id === thread.info.sessionId) {
+        deliverOnce('task');
+      }
+    };
+    this.manager.on('session_ready', onReady);
+
+    const readyTimeout = setTimeout(() => {
+      this.logger.warn(
+        { threadId },
+        'Session ready timeout — force delivering task'
+      );
+      deliverOnce('task-forced');
+    }, READY_TIMEOUT_MS);
+  }
+
+  /**
+   * Deliver input once the TUI has settled, then confirm it registered.
+   *
+   * `session_ready` only means the CLI process is up — see POST_READY_DELAY.
+   * If the session is still idle after the input should have been consumed,
+   * it was dropped on the splash screen, so send it a second time.
+   */
+  private deliverAfterSettle(
+    thread: ManagedThread,
+    input: string,
+    label: string
+  ): void {
+    const { threadId, adapterType, sessionId } = thread.info;
+    const settleMs = POST_READY_DELAY[adapterType] ?? DEFAULT_POST_READY_DELAY;
+
+    this.logger.info(
+      { threadId, settleMs, adapterType, label },
+      'Delivering input after settle delay'
+    );
+
+    setTimeout(() => {
+      const sentAt = Date.now();
+      thread.sendInput(input);
+
       setTimeout(() => {
-        this.manager.removeListener('session_ready', onReady);
+        const currentSession = this.manager.get(sessionId);
+        if (!currentSession) return;
+
+        // An idle session is not evidence the input was dropped — a fast
+        // turn answers and returns to idle well inside the verify window.
+        // Only a session that is idle AND produced nothing since the send
+        // has actually lost the keystrokes.
+        if (thread.lastActivityAt > sentAt) return;
+        if (currentSession.status !== 'ready') return;
+
         this.logger.warn(
-          { threadId },
-          'Session ready timeout — force delivering task'
+          { threadId, label },
+          'No activity since delivery — input was dropped, resending'
         );
         thread.sendInput(input);
-      }, 30000);
-    }
+      }, DELIVERY_VERIFY_MS);
+    }, settleMs);
   }
 
   /**
