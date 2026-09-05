@@ -35,7 +35,13 @@ import {
   createUsersRouter,
 } from './api';
 import { AuditService } from './audit';
-import { AuthService, optionalAuth, requireAuth } from './auth';
+import { AuthService, optionalAuth } from './auth';
+import {
+  createApiAuthentication,
+  createApiAuthorization,
+} from './auth/api-authorization';
+import { getSecurityConfig } from './auth/security-config';
+import { authorizeExecutionUpgrade } from './auth/websocket-auth';
 import { DatabaseService } from './db/database.service';
 import { ExecutionEventBus } from './execution-events';
 import { GatewayService, GrpcServer } from './grpc';
@@ -88,6 +94,7 @@ const logger = pino({
 });
 
 export async function createServer(): Promise<express.Application> {
+  const security = getSecurityConfig();
   // Initialize tracing
   const tracingConfig = getTracingConfig('parallax-control-plane');
   const tracer = await initializeTracing(tracingConfig, logger);
@@ -126,12 +133,12 @@ export async function createServer(): Promise<express.Application> {
   // Initialize license enforcer
   const licenseEnforcer = new LicenseEnforcer(logger);
 
-  // Initialize auth service (for multi_user enterprise feature)
-  let authService: AuthService | undefined;
-  if (licenseEnforcer.hasFeature('multi_user')) {
-    authService = new AuthService(database.getPrismaClient(), logger);
-    logger.info('Authentication service initialized (Enterprise)');
-  }
+  // Basic security is available on every license.
+  const authService = new AuthService(database.getPrismaClient(), logger);
+  logger.info(
+    { development: security.development },
+    'Authentication initialized'
+  );
 
   // Initialize audit service (for audit_logging enterprise feature)
   let auditService: AuditService | undefined;
@@ -145,7 +152,6 @@ export async function createServer(): Promise<express.Application> {
     process.env.PARALLAX_ETCD_ENDPOINTS || 'localhost:2379'
   ).split(',');
   const registry = new EtcdRegistry(etcdEndpoints, 'parallax', logger);
-
 
   const patternsDir =
     process.env.PARALLAX_PATTERNS_DIR || path.join(process.cwd(), 'patterns');
@@ -296,6 +302,8 @@ export async function createServer(): Promise<express.Application> {
     executionEvents,
     databasePatterns,
     executionEngine,
+    allowLocalCommandVerification:
+      process.env.PARALLAX_ALLOW_LOCAL_VERIFICATION === 'true',
     // workspaceService and agentRuntimeService set later via setters
   };
   const patternEngine: IPatternEngine =
@@ -357,6 +365,8 @@ export async function createServer(): Promise<express.Application> {
       process.env.PARALLAX_DEFAULT_EXECUTION_TIMEOUT || '7200000',
       10
     ),
+    cancelExecution: (id, reason) =>
+      (patternEngine as PatternEngine).cancelExecution(id, reason, 'failed'),
     isLeader:
       haEnabled && haServices
         ? () => haServices!.leaderElection.isLeader()
@@ -367,7 +377,9 @@ export async function createServer(): Promise<express.Application> {
   // In HA mode, leader also recovers dead nodes' orphans
   if (haEnabled && haServices) {
     haServices.leaderElection.on('elected', async () => {
-      logger.info('Became HA leader — running full orphan recovery');
+      logger.info(
+        'Became HA leader — orphan recovery requires confirmed dead owners'
+      );
       await startupRecovery.recoverAllOrphanedExecutions();
     });
   }
@@ -720,39 +732,15 @@ export async function createServer(): Promise<express.Application> {
   // Metrics endpoint
   app.get('/metrics', metrics.metricsHandler());
 
-  // Global auth gate for all /api/* routes (Enterprise multi_user feature)
-  // When authService is available, require JWT/API key auth on all API routes
-  // except explicitly public paths (auth flow, license, webhooks).
-  // When authService is not available (open-source mode), routes stay open.
-  if (authService) {
-    const globalRequireAuth = requireAuth(authService, logger);
-    const globalOptionalAuth = optionalAuth(authService, logger);
-
-    app.use('/api', (req, res, next) => {
-      const path = req.path;
-
-      // Auth endpoints — must be reachable without a token
-      if (path.startsWith('/auth')) return next();
-
-      // License info — public
-      if (path.startsWith('/license')) return next();
-
-      // GitHub webhook receiver — verified by HMAC, not JWT
-      if (path.startsWith('/webhooks/github')) return next();
-
-      // Inbound trigger webhook receivers — not JWT-protected
-      if (/^\/triggers\/webhook\/[^/]+\/receive/.test(path)) return next();
-
-      // GET /api/users without auth header → optional auth (returns count only for setup detection)
-      if (req.method === 'GET' && (path === '/users' || path === '/users/')) {
-        return globalOptionalAuth(req, res, next);
-      }
-
-      // Everything else requires authentication
-      return globalRequireAuth(req, res, next);
-    });
-
-    logger.info('Global API authentication gate enabled');
+  if (!security.development) {
+    app.use('/api', createApiAuthentication(authService, logger));
+    app.use('/api', createApiAuthorization(logger));
+    logger.info('API authentication and default-deny authorization enabled');
+  } else {
+    app.use('/api', optionalAuth(authService, logger));
+    logger.warn(
+      'Explicit development mode: core APIs are unauthenticated on loopback only'
+    );
   }
 
   // API Routes
@@ -802,18 +790,12 @@ export async function createServer(): Promise<express.Application> {
     app.use('/api/triggers', triggersRouter);
   }
 
-  // Users router (Enterprise feature)
-  if (licenseEnforcer.hasFeature('multi_user')) {
-    const prisma = database.getPrismaClient();
-    const usersRouter = createUsersRouter(prisma, licenseEnforcer, logger);
-    app.use('/api/users', usersRouter);
-  }
-
-  // Auth router (Enterprise feature)
-  if (authService) {
-    const authRouter = createAuthRouter(authService, licenseEnforcer, logger);
-    app.use('/api/auth', authRouter);
-  }
+  // First-admin setup and personal account/key access are baseline capabilities.
+  app.use(
+    '/api/users',
+    createUsersRouter(database.getPrismaClient(), licenseEnforcer, logger)
+  );
+  app.use('/api/auth', createAuthRouter(authService, licenseEnforcer, logger));
 
   // Audit router (Enterprise feature)
   if (auditService && authService) {
@@ -945,6 +927,8 @@ export async function createServer(): Promise<express.Application> {
         (patternEngine as PatternEngine).setShuttingDown(value),
       getInFlightExecutionIds: () =>
         (patternEngine as PatternEngine).getInFlightExecutionIds(),
+      cancelExecution: (id, reason, status) =>
+        (patternEngine as PatternEngine).cancelExecution(id, reason, status),
     },
     {
       drainTimeoutMs: parseInt(
@@ -1030,13 +1014,19 @@ export async function createServer(): Promise<express.Application> {
     const wsHandler = createExecutionWebSocketHandler(executionsRouter);
     const wsServer = new WebSocketServer({ noServer: true });
 
-    server.on('upgrade', (req, socket, head) => {
+    server.on('upgrade', async (req, socket, head) => {
       if (!req.url) {
         socket.destroy();
         return;
       }
 
-      const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      let url: URL;
+      try {
+        url = new URL(req.url, 'http://localhost');
+      } catch {
+        socket.destroy();
+        return;
+      }
       let executionId: string | null = null;
 
       const pathMatch = url.pathname.match(
@@ -1053,6 +1043,12 @@ export async function createServer(): Promise<express.Application> {
         return;
       }
 
+      if (
+        !security.development &&
+        !(await authorizeExecutionUpgrade(req, socket, authService))
+      )
+        return;
+      if (socket.destroyed) return;
       wsServer.handleUpgrade(req, socket, head, (ws) => {
         (req as any).params = { id: executionId };
         wsHandler(ws, req);
@@ -1068,11 +1064,11 @@ export async function createServer(): Promise<express.Application> {
         { error: grpcError.message || grpcError },
         `Failed to start gRPC server on port ${grpcPort}`
       );
-      // Continue without gRPC for now
-      logger.warn('Continuing without gRPC server - HTTP API will still work');
+      // A broken security/listener configuration must fail the service startup.
+      throw grpcError;
     }
 
-    server.listen(port, () => {
+    server.listen(port, security.httpHost, () => {
       logger.info(`Control Plane HTTP listening on port ${port}`);
       logger.info(`Health check: http://localhost:${port}/health`);
       logger.info(`API: http://localhost:${port}/api`);

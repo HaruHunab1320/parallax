@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { apiClient } from '@/lib/api-client';
+import { consumeServerEvents } from '@/lib/sse';
 
 export interface ThreadEvent {
   executionId: string;
@@ -51,90 +53,75 @@ export function useThreadStream(options: ThreadStreamOptions) {
   } = options;
 
   const [connected, setConnected] = useState(false);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const onEventRef = useRef(onEvent);
   const onConnectRef = useRef(onConnect);
   const onDisconnectRef = useRef(onDisconnect);
-
-  // Keep refs in sync
   onEventRef.current = onEvent;
   onConnectRef.current = onConnect;
   onDisconnectRef.current = onDisconnect;
-
-  const connect = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
-    let url = `${baseUrl}/api/executions/${executionId}/threads/stream`;
-    if (threadIds && threadIds.length > 0) {
-      url += `?threadIds=${threadIds.join(',')}`;
-    }
-
-    const es = new EventSource(url);
-    eventSourceRef.current = es;
-
-    es.addEventListener('connected', () => {
-      setConnected(true);
-      onConnectRef.current?.();
-    });
-
-    // Thread event types from the SSE endpoint
-    const eventTypes = [
-      'thread_output',
-      'thread_blocked',
-      'thread_started',
-      'thread_ready',
-      'thread_auth_required',
-      'thread_completed',
-      'thread_failed',
-      'thread_turn_complete',
-      'thread_status',
-      'thread_error',
-      'thread_message',
-      'thread_tool_running',
-    ];
-
-    for (const eventType of eventTypes) {
-      es.addEventListener(eventType, (e: MessageEvent) => {
-        try {
-          const event: ThreadEvent = JSON.parse(e.data);
-          // The payload's inner type is the raw bus type
-          // (gateway_thread_*); the SSE event name is the normalized
-          // thread_* type consumers switch on.
-          event.type = eventType;
-          onEventRef.current?.(event);
-        } catch {
-          // Ignore parse errors
-        }
-      });
-    }
-
-    es.onerror = () => {
-      setConnected(false);
-      onDisconnectRef.current?.();
-      // EventSource auto-reconnects
-    };
-
-    return es;
-  }, [baseUrl, executionId, threadIds]);
+  const threadFilter = threadIds?.join(',') || '';
 
   useEffect(() => {
     if (!enabled || !executionId) return;
-
-    const es = connect();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    const eventTypes = new Set([
+      'thread_output', 'thread_blocked', 'thread_started', 'thread_ready',
+      'thread_auth_required', 'thread_completed', 'thread_failed',
+      'thread_turn_complete', 'thread_status', 'thread_error',
+      'thread_message', 'thread_tool_running',
+    ]);
+    const connect = async () => {
+      if (controller.signal.aborted) return;
+      let retry = true;
+      try {
+        const url = new URL(`${baseUrl}/api/executions/${encodeURIComponent(executionId)}/threads/stream`, window.location.origin);
+        if (threadFilter) url.searchParams.set('threadIds', threadFilter);
+        const response = await apiClient.fetchAuthenticated(url.toString(), controller.signal);
+        if (!response.ok || !response.body || !response.headers.get('content-type')?.includes('text/event-stream')) {
+          retry = response.status !== 401 && response.status !== 403;
+          await response.body?.cancel();
+          throw new Error(`Thread stream unavailable (${response.status})`);
+        }
+        await consumeServerEvents(response.body, ({ event: eventType, data }) => {
+          if (controller.signal.aborted) return;
+          if (eventType === 'connected') {
+            attempts = 0;
+            setConnected(true);
+            onConnectRef.current?.();
+          } else if (eventTypes.has(eventType)) {
+            let event: ThreadEvent;
+            try { event = JSON.parse(data); } catch { return; }
+            event.type = eventType;
+            onEventRef.current?.(event);
+          }
+        });
+      } catch {
+        // Authentication is handled by the shared client; transient failures reconnect.
+      } finally {
+        if (!controller.signal.aborted) {
+          setConnected(false);
+          onDisconnectRef.current?.();
+          if (retry) reconnectTimer = setTimeout(connect, Math.min(1000 * 2 ** attempts++, 10000));
+        }
+      }
+    };
+    void connect();
     return () => {
-      es.close();
+      controller.abort();
+      clearTimeout(reconnectTimer);
+      if (abortRef.current === controller) abortRef.current = null;
       setConnected(false);
     };
-  }, [enabled, executionId, connect]);
+  }, [baseUrl, executionId, enabled, threadFilter]);
 
   const disconnect = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-      setConnected(false);
-    }
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setConnected(false);
   }, []);
 
   return { connected, disconnect };

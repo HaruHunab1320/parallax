@@ -3,6 +3,7 @@ import type { Logger } from 'pino';
 import type { AgentRuntimeService } from '../agent-runtime';
 import type { DatabaseService } from '../db/database.service';
 import type { ExecutionEventBus } from '../execution-events';
+import type { WorkflowExecutorOptions } from '../org-patterns/workflow-executor';
 import type { EtcdRegistry } from '../registry';
 import type { ThreadPreparationService } from '../threads';
 import type { UserProvidedCredentials, WorkspaceService } from '../workspace';
@@ -34,6 +35,10 @@ export interface PatternEngineServices {
   agentRuntimeService?: AgentRuntimeService;
   /** Thread preparation service */
   threadPreparationService?: ThreadPreparationService;
+  /** Isolated worker implementation for command verification. */
+  commandVerifier?: WorkflowExecutorOptions['commandVerifier'];
+  /** Explicit opt-in for trusted development only; rejected in production. */
+  allowLocalCommandVerification?: boolean;
 }
 
 /**
@@ -74,6 +79,14 @@ export interface IPatternEngine {
     input: any,
     options?: PatternExecutionOptions
   ): Promise<PatternExecution>;
+  cancelExecution(
+    id: string,
+    reason?: string,
+    status?: 'cancelled' | 'failed'
+  ): Promise<boolean>;
+  setCommandVerifier(
+    verifier: WorkflowExecutorOptions['commandVerifier']
+  ): void;
   getPattern(name: string): Pattern | null;
   listPatterns(): PatternWithSource[];
   getExecution(id: string): PatternExecution | undefined;

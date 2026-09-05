@@ -3,7 +3,7 @@
 # Base image for CLI agents with PTY wrapper and common utilities.
 # All agent images (claude, codex, gemini, aider) inherit from this.
 
-FROM node:20-alpine
+FROM node:24.20.0-alpine
 
 LABEL org.opencontainers.image.source="https://github.com/parallax/parallax"
 LABEL org.opencontainers.image.description="Parallax Agent Base Image"

@@ -196,7 +196,7 @@ export type HistoryOracle = {
 export interface OrgVerify {
   oracles: VerifyOracle[];
   /** How multiple oracles combine (default 'min'). */
-  combine?: 'min' | 'weighted' | 'product';
+  combine?: 'min';
 }
 
 /**
@@ -407,6 +407,9 @@ export interface OrgExecutionContext {
 
   /** Role to agent mapping */
   roleAssignments: Map<string, string[]>;
+
+  /** Cancellation shared by every activity in this execution. */
+  signal?: AbortSignal;
 
   /** Execution state */
   state: 'initializing' | 'running' | 'waiting' | 'completed' | 'failed';

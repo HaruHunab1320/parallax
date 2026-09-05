@@ -49,11 +49,19 @@ vi.mock('../adapters', () => ({
 vi.mock('node:fs', () => ({
   existsSync: vi.fn().mockReturnValue(false),
   mkdirSync: vi.fn(),
+  lstatSync: vi.fn().mockReturnValue({ isSymbolicLink: () => false }),
   rmSync: vi.fn(),
   writeFileSync: vi.fn(),
 }));
 
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { executionResourceName } from '@parallaxai/runtime-interface';
 import { LocalRuntime } from '../local-runtime';
 
 // ─────────────────────────────────────────────────────────────
@@ -363,7 +371,7 @@ describe('LocalRuntime', () => {
       expect(spawnArg.env.CODEX_CONFIG_DIR).toBeDefined();
     });
 
-    it('spawns with an autonomous approval preset by default', async () => {
+    it('spawns with a standard approval preset by default', async () => {
       const sessionHandle = makeSessionHandle();
       mockManager.spawn.mockResolvedValue(sessionHandle);
       mockManager.list.mockReturnValue([]);
@@ -373,11 +381,14 @@ describe('LocalRuntime', () => {
       const spawnArg = mockManager.spawn.mock.calls[0][0];
       expect(spawnArg.adapterConfig).toMatchObject({
         interactive: true,
-        approvalPreset: 'autonomous',
+        approvalPreset: 'standard',
       });
       // bare must stay opt-in: it skips the host settings that carry the
       // operator's auth, so bare agents boot to a login screen.
       expect(spawnArg.adapterConfig.bare).toBeUndefined();
+      expect(spawnArg.env.PARALLAX_RUNTIME_API_KEY).toBe('');
+      expect(spawnArg.env.PARALLAX_GRPC_API_KEY).toBe('');
+      expect(spawnArg.env.PARALLAX_BOOTSTRAP_TOKEN).toBe('');
     });
   });
 
@@ -478,9 +489,7 @@ describe('LocalRuntime', () => {
 
       // Spawn two agents with different roles
       mockManager.list.mockReturnValue([]);
-      mockManager.spawn.mockResolvedValue(
-        makeSessionHandle({ id: 'eng-1' })
-      );
+      mockManager.spawn.mockResolvedValue(makeSessionHandle({ id: 'eng-1' }));
       await runtime.spawn({
         id: 'eng-1',
         name: 'Engineer',
@@ -489,9 +498,7 @@ describe('LocalRuntime', () => {
         role: 'engineer',
       });
 
-      mockManager.spawn.mockResolvedValue(
-        makeSessionHandle({ id: 'qa-1' })
-      );
+      mockManager.spawn.mockResolvedValue(makeSessionHandle({ id: 'qa-1' }));
       await runtime.spawn({
         id: 'qa-1',
         name: 'QA',
@@ -515,9 +522,7 @@ describe('LocalRuntime', () => {
       await runtime.initialize();
 
       mockManager.list.mockReturnValue([]);
-      mockManager.spawn.mockResolvedValue(
-        makeSessionHandle({ id: 'a1' })
-      );
+      mockManager.spawn.mockResolvedValue(makeSessionHandle({ id: 'a1' }));
       await runtime.spawn({
         id: 'a1',
         name: 'A1',
@@ -525,9 +530,7 @@ describe('LocalRuntime', () => {
         capabilities: ['coding', 'review'],
       });
 
-      mockManager.spawn.mockResolvedValue(
-        makeSessionHandle({ id: 'a2' })
-      );
+      mockManager.spawn.mockResolvedValue(makeSessionHandle({ id: 'a2' }));
       await runtime.spawn({
         id: 'a2',
         name: 'A2',
@@ -593,6 +596,92 @@ describe('LocalRuntime', () => {
   // ─────────────────────────────────────────────────────────
 
   describe('spawnThread', () => {
+    it('honors the prepared approval preset above top-level and global values', async () => {
+      await runtime.initialize();
+      mockManager.list.mockReturnValue([]);
+      mockManager.spawn.mockResolvedValue(makeSessionHandle());
+      await runtime.spawnThread({
+        executionId: 'exec-policy',
+        name: 'Worker',
+        agentType: 'claude',
+        objective: 'Review',
+        approvalPreset: 'autonomous',
+        preparation: { approvalPreset: 'readonly' },
+      });
+      expect(
+        mockManager.spawn.mock.calls[0][0].adapterConfig.approvalPreset
+      ).toBe('readonly');
+    });
+
+    it('rejects unsupported confinement before spawning or writing files', async () => {
+      await expect(
+        runtime.spawnThread({
+          executionId: 'exec-policy',
+          name: 'Worker',
+          agentType: 'claude',
+          objective: 'Review',
+          policy: { requireWorkspaceBoundary: true },
+        })
+      ).rejects.toThrow('does not enforce thread policy');
+      expect(mockManager.spawn).not.toHaveBeenCalled();
+      expect(writeFileSync).not.toHaveBeenCalled();
+    });
+
+    it('rejects traversal before writing any context file', async () => {
+      await expect(
+        runtime.spawnThread({
+          executionId: 'exec-policy',
+          name: 'Worker',
+          agentType: 'claude',
+          objective: 'Review',
+          workspace: { path: '/tmp/work' },
+          contextFiles: [
+            { path: 'safe.md', content: 'safe' },
+            { path: '../escape', content: 'bad' },
+          ],
+        })
+      ).rejects.toThrow('inside its workspace');
+      expect(writeFileSync).not.toHaveBeenCalled();
+      expect(mockManager.spawn).not.toHaveBeenCalled();
+    });
+
+    it('rejects an existing symlink in a context file path', async () => {
+      vi.mocked(lstatSync).mockReturnValueOnce({
+        isSymbolicLink: () => true,
+      } as any);
+      await expect(
+        runtime.spawnThread({
+          executionId: 'exec-policy',
+          name: 'Worker',
+          agentType: 'claude',
+          objective: 'Review',
+          workspace: { path: '/tmp/link' },
+          contextFiles: [{ path: 'context.md', content: 'secret' }],
+        })
+      ).rejects.toThrow('symlinks');
+      expect(writeFileSync).not.toHaveBeenCalled();
+    });
+
+    it('rejects a dangling context-file symlink whose target does not exist', async () => {
+      // existsSync follows the link and reports false for a missing target;
+      // lstat still reports the link itself, including at the final component.
+      vi.mocked(existsSync).mockReturnValue(false);
+      vi.mocked(lstatSync)
+        .mockReturnValueOnce({ isSymbolicLink: () => false } as any)
+        .mockReturnValueOnce({ isSymbolicLink: () => true } as any);
+      await expect(
+        runtime.spawnThread({
+          executionId: 'exec-policy',
+          name: 'Worker',
+          agentType: 'claude',
+          objective: 'Review',
+          workspace: { path: '/tmp/work' },
+          contextFiles: [{ path: 'context.md', content: 'secret' }],
+        })
+      ).rejects.toThrow('symlinks');
+      expect(writeFileSync).not.toHaveBeenCalled();
+      expect(mockManager.spawn).not.toHaveBeenCalled();
+    });
     beforeEach(async () => {
       await runtime.initialize();
       mockManager.list.mockReturnValue([]);
@@ -1130,13 +1219,56 @@ describe('LocalRuntime', () => {
   // ─────────────────────────────────────────────────────────
 
   describe('cleanupExecution', () => {
+    it('stops only execution-owned workers before deleting their resources', async () => {
+      await runtime.initialize();
+      mockManager.list.mockReturnValue([]);
+      mockManager.spawn.mockResolvedValue(makeSessionHandle());
+      await runtime.spawn({
+        id: 'owned',
+        name: 'Worker',
+        type: 'claude',
+        capabilities: [],
+        executionId: 'exec-owned',
+      });
+      await runtime.spawn({
+        id: 'other',
+        name: 'Other',
+        type: 'claude',
+        capabilities: [],
+        executionId: 'exec-other',
+      });
+      mockManager.stop.mockResolvedValue(undefined);
+      await runtime.cleanupExecution('exec-owned');
+      expect(mockManager.stop).toHaveBeenCalledTimes(1);
+      expect(mockManager.stop).toHaveBeenCalledWith('owned', { force: true });
+    });
+
+    it('preserves execution resources when stopping a worker fails', async () => {
+      await runtime.initialize();
+      mockManager.list.mockReturnValue([]);
+      mockManager.spawn.mockResolvedValue(makeSessionHandle());
+      await runtime.spawn({
+        id: 'owned',
+        name: 'Worker',
+        type: 'claude',
+        capabilities: [],
+        executionId: 'exec-owned',
+      });
+      mockManager.stop.mockRejectedValueOnce(
+        new Error('process still running')
+      );
+      await expect(runtime.cleanupExecution('exec-owned')).rejects.toThrow(
+        'could not be stopped'
+      );
+      expect(rmSync).not.toHaveBeenCalled();
+    });
     it('should remove shared auth directory when it exists', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
 
       await runtime.cleanupExecution('exec-12345678');
 
       expect(rmSync).toHaveBeenCalledWith(
-        expect.stringContaining('parallax-auth-exec-123'),
+        expect.stringContaining(executionResourceName('exec-12345678')),
         { recursive: true, force: true }
       );
     });
@@ -1149,15 +1281,15 @@ describe('LocalRuntime', () => {
       ).resolves.not.toThrow();
     });
 
-    it('should warn on cleanup failure and not throw', async () => {
+    it('propagates cleanup failure', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(rmSync).mockImplementation(() => {
         throw new Error('permission denied');
       });
 
-      await expect(
-        runtime.cleanupExecution('exec-12345678')
-      ).resolves.not.toThrow();
+      await expect(runtime.cleanupExecution('exec-12345678')).rejects.toThrow(
+        'permission denied'
+      );
       expect(logger.warn).toHaveBeenCalled();
     });
   });

@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional
 
 import grpc
 
+from .transport_security import control_plane_channel, control_plane_metadata, Metadata
+
 try:
     import sys
     from pathlib import Path
@@ -30,14 +32,17 @@ class PatternClient:
 
     Args:
         endpoint: gRPC endpoint of the control plane (e.g. ``"localhost:50051"``).
-        credentials: Optional gRPC channel credentials. Uses an insecure
-            channel when ``None``.
+        credentials: Optional gRPC channel credentials. When absent, client TLS
+            environment settings select a secure or local insecure channel.
     """
 
     def __init__(
         self,
         endpoint: str,
         credentials: Optional[grpc.ChannelCredentials] = None,
+        *,
+        api_key: Optional[str] = None,
+        metadata: Optional[Metadata] = None,
     ):
         if not patterns_pb2_grpc:
             raise ImportError(
@@ -45,10 +50,8 @@ class PatternClient:
                 "Run generate-proto.sh first."
             )
 
-        if credentials:
-            self._channel = grpc.aio.secure_channel(endpoint, credentials)
-        else:
-            self._channel = grpc.aio.insecure_channel(endpoint)
+        self._channel = control_plane_channel(endpoint, credentials)
+        self._metadata = control_plane_metadata(metadata, api_key)
 
         self._stub = patterns_pb2_grpc.PatternServiceStub(self._channel)
 
@@ -71,7 +74,7 @@ class PatternClient:
             tags=tags or [],
             include_definitions=include_definitions,
         )
-        response = await self._stub.ListPatterns(request)
+        response = await self._stub.ListPatterns(request, metadata=self._metadata)
         return [MessageToDict(p) for p in response.patterns]
 
     async def get(
@@ -92,7 +95,7 @@ class PatternClient:
             name=name,
             version=version or "",
         )
-        response = await self._stub.GetPattern(request)
+        response = await self._stub.GetPattern(request, metadata=self._metadata)
         return MessageToDict(response)
 
     async def execute(
@@ -130,7 +133,7 @@ class PatternClient:
             )
             request.options.CopyFrom(opts)
 
-        response = await self._stub.ExecutePattern(request)
+        response = await self._stub.ExecutePattern(request, metadata=self._metadata)
         return MessageToDict(response)
 
     async def upload(
@@ -178,7 +181,7 @@ class PatternClient:
             pattern=pattern_msg,
             overwrite=overwrite,
         )
-        response = await self._stub.UploadPattern(request)
+        response = await self._stub.UploadPattern(request, metadata=self._metadata)
         return {
             "success": response.success,
             "message": response.message,

@@ -132,14 +132,32 @@ export class ExecutionRepository extends BaseRepository {
     return this.executeQuery(
       () =>
         this.prisma.execution.update({
-          where: { id },
-          data: {
-            status,
-            ...additionalData,
-          },
+          // Compare-and-set: a late completion/failure cannot replace a terminal outcome.
+          where: { id, status: { in: ['pending', 'running'] } },
+          data: { status, ...additionalData },
         }),
       'ExecutionRepository.updateStatus'
     );
+  }
+
+  /** Returns false when another terminal transition already won the race. */
+  async transitionStatus(
+    id: string,
+    status: string,
+    data: {
+      result?: any;
+      error?: string;
+      durationMs?: number;
+      confidence?: number;
+    } = {}
+  ): Promise<boolean> {
+    return this.executeQuery(async () => {
+      const result = await this.prisma.execution.updateMany({
+        where: { id, status: { in: ['pending', 'running'] } },
+        data: { status, ...data },
+      });
+      return result.count === 1;
+    }, 'ExecutionRepository.transitionStatus');
   }
 
   async getStats(timeRange?: { start: Date; end: Date }): Promise<any> {
@@ -185,26 +203,17 @@ export class ExecutionRepository extends BaseRepository {
     }, 'ExecutionRepository.getStats');
   }
 
-  /**
-   * Find orphaned executions — stuck in running/pending state.
-   * If nodeId is provided, finds executions owned by that node or unowned.
-   * If nodeId is omitted, finds all orphaned executions.
-   */
+  /** Find active records belonging to one confirmed stopped owner only. */
   async findOrphanedExecutions(nodeId?: string): Promise<any[]> {
-    return this.executeQuery(async () => {
-      if (nodeId) {
-        // Use raw query to reference new columns before prisma generate
-        return this.prisma.$queryRaw`
-            SELECT * FROM "Execution"
-            WHERE status IN ('running', 'pending')
-            AND ("nodeId" = ${nodeId} OR "nodeId" IS NULL)
-          ` as Promise<any[]>;
-      }
-      return this.prisma.$queryRaw`
-          SELECT * FROM "Execution"
-          WHERE status IN ('running', 'pending')
-        ` as Promise<any[]>;
-    }, 'ExecutionRepository.findOrphanedExecutions');
+    if (!nodeId) return [];
+    return this.executeQuery(
+      () =>
+        this.prisma.$queryRaw`
+      SELECT * FROM "Execution"
+      WHERE status IN ('running', 'pending') AND "nodeId" = ${nodeId}
+    ` as Promise<any[]>,
+      'ExecutionRepository.findOrphanedExecutions'
+    );
   }
 
   /**
@@ -218,9 +227,9 @@ export class ExecutionRepository extends BaseRepository {
           WHERE status = 'running'
           AND "startedAt" IS NOT NULL
           AND (
-            ("timeoutMs" IS NOT NULL AND "startedAt" + make_interval(secs => "timeoutMs" / 1000.0) < NOW())
+            ("timeoutMs" > 0 AND "startedAt" + make_interval(secs => "timeoutMs" / 1000.0) < NOW())
             OR
-            ("timeoutMs" IS NULL AND "startedAt" + make_interval(secs => ${defaultTimeoutMs} / 1000.0) < NOW())
+            ("timeoutMs" IS NULL AND ${defaultTimeoutMs} > 0 AND "startedAt" + make_interval(secs => ${defaultTimeoutMs} / 1000.0) < NOW())
           )
         ` as Promise<any[]>;
     }, 'ExecutionRepository.findTimedOutExecutions');
@@ -230,18 +239,8 @@ export class ExecutionRepository extends BaseRepository {
    * Atomically mark an execution as failed due to orphan recovery.
    * Only updates if the execution is still in running/pending status.
    */
-  async markOrphaned(id: string, reason: string): Promise<Execution> {
-    return this.executeQuery(
-      () =>
-        this.prisma.execution.update({
-          where: { id },
-          data: {
-            status: 'failed',
-            error: reason,
-          },
-        }),
-      'ExecutionRepository.markOrphaned'
-    );
+  async markOrphaned(id: string, reason: string): Promise<boolean> {
+    return this.transitionStatus(id, 'failed', { error: reason });
   }
 
   async cleanup(olderThan: Date): Promise<number> {

@@ -1,37 +1,26 @@
-import type express from 'express';
-import jwt from 'jsonwebtoken';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createServer } from '@/server';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createTestAdminToken,
+  startHttpServer,
+} from '../../fixtures/http-server-fixture';
 
 describe('Patterns API', () => {
-  let app: express.Application;
-  let server: any;
+  let app: string;
+  let server: Awaited<ReturnType<typeof startHttpServer>>;
   let authToken: string;
 
   beforeAll(async () => {
-    app = await createServer();
-    const services = await (app as any).start();
-    server = services.httpServer;
+    server = await startHttpServer();
+    app = server.url;
+  });
 
-    // Generate a valid JWT for authenticated test requests
-    const secret = process.env.JWT_SECRET || 'test-secret';
-    authToken = jwt.sign(
-      {
-        sub: 'test-user',
-        email: 'test@test.com',
-        role: 'admin',
-        type: 'access',
-      },
-      secret,
-      { expiresIn: 3600 }
-    );
+  beforeEach(async () => {
+    authToken = await createTestAdminToken();
   });
 
   afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-    }
+    await server?.stop();
   });
 
   describe('GET /api/patterns', () => {
@@ -80,7 +69,7 @@ describe('Patterns API', () => {
 
       expect(response.body.name).toBe('ConsensusBuilder');
       expect(response.body.description).toBeDefined();
-      expect(response.body.version).toBe('1.0.0');
+      expect(response.body.version).toBe('2.0.0');
     });
 
     it('should return 404 for non-existent pattern', async () => {

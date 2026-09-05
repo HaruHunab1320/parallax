@@ -24,7 +24,8 @@ vi.mock('@grpc/proto-loader', () => ({
 }));
 
 // Mock grpc with gateway support
-vi.mock('@grpc/grpc-js', () => ({
+vi.mock('@grpc/grpc-js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@grpc/grpc-js')>()),
   Server: vi.fn(() => ({
     addService: vi.fn(),
     bindAsync: vi.fn(
@@ -56,10 +57,10 @@ vi.mock('@grpc/grpc-js', () => ({
             cb(null)
           ),
           register: vi.fn(
-            (_r: unknown, cb: (err: Error | null, res: unknown) => void) =>
+            (_r: unknown, _metadata: unknown, cb: (err: Error | null, res: unknown) => void) =>
               cb(null, { lease_id: 'test-lease' })
           ),
-          unregister: vi.fn((_r: unknown, cb: () => void) => cb()),
+          unregister: vi.fn((_r: unknown, _metadata: unknown, cb: () => void) => cb()),
         })),
       },
       gateway: {

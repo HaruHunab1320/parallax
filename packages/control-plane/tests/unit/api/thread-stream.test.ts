@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import pino from 'pino';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createExecutionsRouter } from '@/api/executions';
 import { ExecutionEventBus } from '@/execution-events';
 import type { PatternEngine } from '@/pattern-engine';
@@ -8,6 +8,10 @@ import type { PatternEngine } from '@/pattern-engine';
 // ── Helpers ──
 
 const logger = pino({ level: 'silent' });
+const openRequests: EventEmitter[] = [];
+afterEach(() => {
+  for (const req of openRequests.splice(0)) req.emit('close');
+});
 
 function createMockPatternEngine(): PatternEngine {
   return {
@@ -16,6 +20,16 @@ function createMockPatternEngine(): PatternEngine {
     listPatterns: vi.fn().mockReturnValue([]),
     registerPattern: vi.fn(),
     cancelExecution: vi.fn(),
+    getExecution: vi.fn((id: string) =>
+      id === 'exec-1' ? { id, status: 'running' } : undefined
+    ),
+    ownsThread: vi.fn(
+      async (id: string, threadId: string) =>
+        id === 'exec-1' &&
+        ['thread-a', 'thread-b', 'thread-c', 'thread-abc', 'thread-1'].includes(
+          threadId
+        )
+    ),
   } as any;
 }
 
@@ -32,6 +46,7 @@ function createMockReqRes(
   let ended = false;
 
   const req: any = new EventEmitter();
+  openRequests.push(req);
   req.params = params;
   req.query = query;
 
@@ -159,6 +174,9 @@ describe('Thread Stream SSE Endpoint', () => {
     });
 
     // Should have connected + the thread event
+    await vi.waitFor(() =>
+      expect(chunks.filter((c) => c.includes('thread_output'))).toHaveLength(1)
+    );
     const threadChunks = chunks.filter((c) => c.includes('thread_output'));
     expect(threadChunks).toHaveLength(1);
     expect(threadChunks[0]).toContain('event: thread_output');
@@ -198,6 +216,9 @@ describe('Thread Stream SSE Endpoint', () => {
       timestamp: new Date(),
     });
 
+    await vi.waitFor(() =>
+      expect(chunks.filter((c) => c.includes('event: thread_'))).toHaveLength(2)
+    );
     const threadChunks = chunks.filter((c) => c.includes('event: thread_'));
     expect(threadChunks).toHaveLength(2);
     expect(threadChunks[0]).toContain('thread-a');

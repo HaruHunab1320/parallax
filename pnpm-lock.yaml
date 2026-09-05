@@ -940,6 +940,9 @@ importers:
       ws:
         specifier: ^8.16.0
         version: 8.18.3
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@types/cors':
         specifier: ^2.8.17

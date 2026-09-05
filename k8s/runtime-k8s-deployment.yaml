@@ -50,17 +50,24 @@ spec:
             # Overridden at deploy time by CI/CD (kubectl set env)
             - name: IMAGE_PREFIX
               value: "REGISTRY/"
+            - name: NODE_ENV
+              value: "production"
+            - name: PARALLAX_RUNTIME_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: parallax-secrets
+                  key: PARALLAX_RUNTIME_API_KEY
             - name: LOG_LEVEL
               value: "info"
           livenessProbe:
             httpGet:
-              path: /api/health
+              path: /health
               port: http
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
             httpGet:
-              path: /api/health
+              path: /health
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10

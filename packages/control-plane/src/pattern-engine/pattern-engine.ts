@@ -6,6 +6,7 @@ import type {
   ExecutionTask,
   ParallelExecutionPlan,
 } from '@parallaxai/data-plane';
+import type { PatternContext } from '@parallaxai/patterns';
 import type {
   AgentConfig,
   AgentHandle,
@@ -23,9 +24,9 @@ import { DecisionJournal } from '../org-patterns/decision-journal';
 import type { OrgPattern } from '../org-patterns/types';
 import {
   WorkflowExecutor,
+  type WorkflowExecutorOptions,
   type WorkflowResult,
 } from '../org-patterns/workflow-executor';
-import type { PatternContext } from '@parallaxai/patterns';
 import type { EtcdRegistry } from '../registry';
 import { ConfidenceCalibrationService } from '../services/confidence-calibration-service';
 import type { ThreadPreparationService } from '../threads';
@@ -47,6 +48,9 @@ import { LocalAgentManager } from './local-agents';
 import { PatternLoader } from './pattern-loader';
 import type { ExecutionMetrics, Pattern, PatternExecution } from './types';
 
+export class ExecutionCancellationConflictError extends Error {}
+export class ExecutionCleanupError extends AggregateError {}
+
 export class PatternEngine implements IPatternEngine {
   private agentRegistry: EtcdRegistry;
   private patternsDir: string;
@@ -59,7 +63,6 @@ export class PatternEngine implements IPatternEngine {
   private injectedAgents: any[] = []; // Direct agent instances for testing and programmatic control
   private _calibrationService: ConfidenceCalibrationService;
   protected licenseEnforcer: LicenseEnforcer;
-  protected currentExecutionId?: string;
   private agentProxy: AgentProxy;
   private databasePatterns?: DatabasePatternService;
   private workspaceService?: WorkspaceService;
@@ -67,9 +70,85 @@ export class PatternEngine implements IPatternEngine {
   private agentRuntimeService?: AgentRuntimeService;
   private threadPreparationService?: ThreadPreparationService;
   private nodeId?: string;
+  private commandVerifier?: WorkflowExecutorOptions['commandVerifier'];
+  private allowLocalCommandVerification: boolean;
   private spawnedAgents: Map<string, AgentHandle[]> = new Map();
   private spawnedThreads: Map<string, ThreadHandle[]> = new Map();
   private shuttingDown: boolean = false;
+  private executionControllers = new Map<string, AbortController>();
+  private pendingSpawns = new Map<string, Set<Promise<unknown>>>();
+  private executionCleanupFailures = new Map<string, Error>();
+  private executionSettled = new Map<string, Promise<Error | undefined>>();
+  private publicationStarted = new Set<string>();
+  private workflowExecutors = new Map<string, WorkflowExecutor>();
+
+  getNodeId(): string | undefined {
+    return this.nodeId;
+  }
+
+  getExecutionTimeout(
+    patternName: string,
+    options?: PatternExecutionOptions
+  ): number {
+    const pattern = this.getPattern(patternName);
+    const timeout =
+      options?.timeout ??
+      (pattern?.metadata as any)?.timeout ??
+      (pattern?.threads?.enabled ? 0 : 300000);
+    if (!Number.isFinite(timeout) || timeout < 0) {
+      throw new Error('Execution timeout must be a finite non-negative number');
+    }
+    return timeout;
+  }
+
+  /** Abort owned work and wait for runtime cleanup before acknowledging cancellation. */
+  async cancelExecution(
+    executionId: string,
+    reason = 'Execution cancelled',
+    status: 'cancelled' | 'failed' = 'cancelled'
+  ): Promise<boolean> {
+    const execution = this.executions.get(executionId);
+    const controller = this.executionControllers.get(executionId);
+    if (!execution || !controller || execution.status !== 'running')
+      return false;
+    if (this.publicationStarted.has(executionId)) {
+      throw new ExecutionCancellationConflictError(
+        'Publication has already started; cancellation cannot retract a push or pull request. Reconcile the publication outcome.'
+      );
+    }
+    execution.status = status;
+    execution.endTime = new Date();
+    execution.error = reason;
+    controller.abort(new Error(reason));
+    const cleanupFailure = await this.executionSettled.get(executionId);
+    if (cleanupFailure) throw cleanupFailure;
+    this.executionEvents?.emitEvent({
+      executionId,
+      type: status,
+      data: { error: reason },
+      timestamp: new Date(),
+    });
+    return true;
+  }
+
+  /** Resolve membership from server-owned handles, never from a client filter. */
+  async ownsThread(executionId: string, threadId: string): Promise<boolean> {
+    const tracked = this.spawnedThreads.get(executionId);
+    if (tracked?.some((thread) => thread.id === threadId)) return true;
+    const thread = await this.agentRuntimeService?.getThread(threadId);
+    return thread?.executionId === executionId;
+  }
+
+  private assertExecutionActive(
+    executionId: string,
+    signal: AbortSignal
+  ): void {
+    signal.throwIfAborted();
+    const execution = this.executions.get(executionId);
+    if (execution?.status !== 'running') {
+      throw new Error(`Execution ${executionId} is no longer running`);
+    }
+  }
 
   constructor(services: PatternEngineServices) {
     this.agentRegistry = services.agentRegistry;
@@ -89,6 +168,9 @@ export class PatternEngine implements IPatternEngine {
     this.executionEngine = services.executionEngine;
     this.agentRuntimeService = services.agentRuntimeService;
     this.threadPreparationService = services.threadPreparationService;
+    this.commandVerifier = services.commandVerifier;
+    this.allowLocalCommandVerification =
+      services.allowLocalCommandVerification === true;
   }
 
   async initialize(): Promise<void> {
@@ -119,6 +201,12 @@ export class PatternEngine implements IPatternEngine {
    */
   setAgentRuntimeService(service: AgentRuntimeService): void {
     this.agentRuntimeService = service;
+  }
+
+  setCommandVerifier(
+    verifier: WorkflowExecutorOptions['commandVerifier']
+  ): void {
+    this.commandVerifier = verifier;
   }
 
   setThreadPreparationService(service: ThreadPreparationService): void {
@@ -154,7 +242,8 @@ export class PatternEngine implements IPatternEngine {
   private async spawnAgentsForPattern(
     pattern: Pattern,
     executionId: string,
-    workspace?: Workspace | null
+    workspace?: Workspace | null,
+    signal?: AbortSignal
   ): Promise<AgentHandle[]> {
     if (!this.agentRuntimeService) {
       this.logger.debug(
@@ -168,6 +257,7 @@ export class PatternEngine implements IPatternEngine {
     const capabilities = pattern.agents?.capabilities || [];
 
     const spawnedAgents: AgentHandle[] = [];
+    this.spawnedAgents.set(executionId, spawnedAgents);
 
     this.logger.info(
       { patternName: pattern.name, minAgents, maxAgents, capabilities },
@@ -175,6 +265,7 @@ export class PatternEngine implements IPatternEngine {
     );
 
     for (let i = 0; i < minAgents; i++) {
+      signal?.throwIfAborted();
       try {
         const agentConfig: AgentConfig = {
           id: `${executionId}-agent-${i}`,
@@ -191,7 +282,12 @@ export class PatternEngine implements IPatternEngine {
           },
         };
 
-        const agent = await this.agentRuntimeService.spawn(agentConfig);
+        const agent = await this.spawnWithCancellation(
+          executionId,
+          this.agentRuntimeService.spawn(agentConfig),
+          (handle) => this.agentRuntimeService!.stop(handle.id),
+          signal
+        );
         spawnedAgents.push(agent);
 
         this.logger.info(
@@ -215,6 +311,7 @@ export class PatternEngine implements IPatternEngine {
           { error, agentIndex: i, patternName: pattern.name },
           'Failed to spawn agent'
         );
+        signal?.throwIfAborted();
         // Continue trying to spawn remaining agents
       }
     }
@@ -223,6 +320,78 @@ export class PatternEngine implements IPatternEngine {
     this.spawnedAgents.set(executionId, spawnedAgents);
 
     return spawnedAgents;
+  }
+
+  /** Once an external publication begins, cancellation can no longer promise retraction. */
+  private async publishWorkspace<T>(
+    executionId: string,
+    signal: AbortSignal,
+    publish: () => Promise<T>
+  ): Promise<T> {
+    this.assertExecutionActive(executionId, signal);
+    this.publicationStarted.add(executionId);
+    return publish();
+  }
+
+  private async spawnWithCancellation<T>(
+    executionId: string,
+    spawning: Promise<T>,
+    stop: (handle: T) => Promise<void>,
+    signal?: AbortSignal
+  ): Promise<T> {
+    const pending =
+      this.pendingSpawns.get(executionId) || new Set<Promise<unknown>>();
+    this.pendingSpawns.set(executionId, pending);
+    const tracked = spawning.then(async (handle) => {
+      if (signal?.aborted) {
+        try {
+          await this.stopWithinDeadline(stop(handle));
+        } catch (error) {
+          const failure =
+            error instanceof Error ? error : new Error(String(error));
+          if (this.executionControllers.has(executionId)) {
+            this.executionCleanupFailures.set(executionId, failure);
+          } else {
+            this.logger.error(
+              { error: failure, executionId },
+              'Late runtime spawn cleanup failed; reconciliation required'
+            );
+            this.executionEvents?.emitEvent({
+              executionId,
+              type: 'runtime_cleanup_failed',
+              data: { error: failure.message, reconciliationRequired: true },
+              timestamp: new Date(),
+            });
+          }
+          throw error;
+        }
+        signal.throwIfAborted();
+      }
+      return handle;
+    });
+    pending.add(tracked);
+    try {
+      return await tracked;
+    } finally {
+      pending.delete(tracked);
+    }
+  }
+
+  private async stopWithinDeadline(stop: Promise<unknown>): Promise<void> {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        stop,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error('Runtime cleanup timed out after 10000ms')),
+            10000
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   /**
@@ -253,34 +422,25 @@ export class PatternEngine implements IPatternEngine {
    * Clean up spawned agents after execution completes
    */
   private async cleanupSpawnedAgents(executionId: string): Promise<void> {
-    const agents = this.spawnedAgents.get(executionId);
-    if (!agents || agents.length === 0) return;
-
-    this.logger.info(
-      { executionId, agentCount: agents.length },
-      'Cleaning up spawned agents'
+    const agents = this.spawnedAgents.get(executionId) || [];
+    const results = await Promise.allSettled(
+      agents.map((agent) =>
+        this.stopWithinDeadline(this.agentRuntimeService!.stop(agent.id))
+      )
     );
-
-    for (const agent of agents) {
-      try {
-        await this.agentRuntimeService?.stop(agent.id);
-        this.logger.debug({ agentId: agent.id }, 'Agent stopped');
-      } catch (error) {
-        this.logger.warn({ agentId: agent.id, error }, 'Failed to stop agent');
-      }
-    }
-
-    // Clean up shared execution resources (auth volumes, PVCs, temp dirs)
-    try {
-      await this.agentRuntimeService?.cleanupExecution(executionId);
-      this.logger.debug({ executionId }, 'Execution resources cleaned up');
-    } catch (error) {
-      this.logger.warn(
-        { executionId, error },
-        'Failed to clean up execution resources'
+    const failures = results.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    if (failures.length)
+      throw new AggregateError(
+        failures.map((r) => r.reason),
+        'Failed to stop execution agents'
+      );
+    if (agents.length) {
+      await this.stopWithinDeadline(
+        this.agentRuntimeService!.cleanupExecution(executionId)
       );
     }
-
     this.spawnedAgents.delete(executionId);
   }
 
@@ -288,7 +448,8 @@ export class PatternEngine implements IPatternEngine {
     pattern: Pattern,
     executionId: string,
     workspace?: Workspace | null,
-    input?: any
+    input?: any,
+    signal?: AbortSignal
   ): Promise<ThreadHandle[]> {
     if (!this.agentRuntimeService) {
       this.logger.debug(
@@ -300,6 +461,7 @@ export class PatternEngine implements IPatternEngine {
     const minAgents = pattern.minAgents || 1;
     const capabilities = pattern.agents?.capabilities || [];
     const spawnedThreads: ThreadHandle[] = [];
+    this.spawnedThreads.set(executionId, spawnedThreads);
     const threadConfig = pattern.threads;
 
     // If the thread config has per-role definitions (from org-chart), use those
@@ -323,6 +485,7 @@ export class PatternEngine implements IPatternEngine {
     );
 
     for (let i = 0; i < minAgents; i++) {
+      signal?.throwIfAborted();
       const roleConfig = threadRoles?.[i];
       try {
         const spawnInput = this.threadPreparationService
@@ -440,8 +603,12 @@ export class PatternEngine implements IPatternEngine {
               policy: threadConfig?.policy,
             };
 
-        const thread = await this.agentRuntimeService.spawnThread(
-          spawnInput as any
+        signal?.throwIfAborted();
+        const thread = await this.spawnWithCancellation(
+          executionId,
+          this.agentRuntimeService.spawnThread(spawnInput as any),
+          (handle) => this.agentRuntimeService!.stopThread(handle.id),
+          signal
         );
 
         spawnedThreads.push(thread);
@@ -461,6 +628,7 @@ export class PatternEngine implements IPatternEngine {
           { error, threadIndex: i, patternName: pattern.name },
           'Failed to spawn thread'
         );
+        signal?.throwIfAborted();
       }
     }
 
@@ -469,33 +637,28 @@ export class PatternEngine implements IPatternEngine {
   }
 
   private async cleanupSpawnedThreads(executionId: string): Promise<void> {
-    const threads = this.spawnedThreads.get(executionId);
-    if (!threads || threads.length === 0) return;
-
-    this.logger.info(
-      { executionId, threadCount: threads.length },
-      'Cleaning up spawned threads'
+    const threads = this.spawnedThreads.get(executionId) || [];
+    const results = await Promise.allSettled(
+      threads.map((thread) =>
+        this.stopWithinDeadline(this.agentRuntimeService!.stopThread(thread.id))
+      )
     );
-
-    for (const thread of threads) {
-      try {
-        await this.agentRuntimeService?.stopThread(thread.id);
-        this.logger.debug({ threadId: thread.id }, 'Thread stopped');
-      } catch (error) {
-        this.logger.warn(
-          { threadId: thread.id, error },
-          'Failed to stop thread'
-        );
-      }
-    }
-
+    const failures = results.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    if (failures.length)
+      throw new AggregateError(
+        failures.map((r) => r.reason),
+        'Failed to stop execution threads'
+      );
     this.spawnedThreads.delete(executionId);
   }
 
   private async executeThreadTask(
     threadId: string,
     task: { description: string; data?: any },
-    timeoutMs: number
+    timeoutMs: number,
+    signal: AbortSignal
   ): Promise<{
     result: any;
     confidence: number;
@@ -507,6 +670,7 @@ export class PatternEngine implements IPatternEngine {
       throw new Error('AgentRuntimeService not available for thread execution');
     }
 
+    signal.throwIfAborted();
     return new Promise(async (resolve, reject) => {
       let settled = false;
       let timeoutHandle: NodeJS.Timeout | undefined;
@@ -514,6 +678,13 @@ export class PatternEngine implements IPatternEngine {
       const cleanup = () => {
         if (timeoutHandle) clearTimeout(timeoutHandle);
         unsubscribe();
+        signal.removeEventListener('abort', onAbort);
+      };
+      const onAbort = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(signal.reason);
       };
 
       const finalize = async () => {
@@ -523,6 +694,7 @@ export class PatternEngine implements IPatternEngine {
 
         try {
           const thread = await runtimeService.getThread(threadId);
+          signal.throwIfAborted();
           const summary = thread?.completion?.summary || thread?.summary || '';
           resolve({
             result: summary || thread,
@@ -558,6 +730,12 @@ export class PatternEngine implements IPatternEngine {
         }
       );
 
+      signal.addEventListener('abort', onAbort, { once: true });
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+
       // Only set timeout if > 0 (0 = no timeout)
       if (timeoutMs > 0) {
         timeoutHandle = setTimeout(() => {
@@ -571,6 +749,7 @@ export class PatternEngine implements IPatternEngine {
       }
 
       try {
+        signal.throwIfAborted();
         await runtimeService.sendToThread(threadId, {
           message: `${task.description}\n\nInput:\n${JSON.stringify(task.data ?? {}, null, 2)}`,
         });
@@ -598,13 +777,11 @@ export class PatternEngine implements IPatternEngine {
       throw new Error(`Pattern ${patternName} not found`);
     }
 
-    // Resolve timeout: options > pattern metadata > default
-    // Thread-based patterns default to no timeout (0); non-thread patterns default to 5 min
-    const defaultTimeout = pattern.threads?.enabled ? 0 : 300000;
-    const timeoutMs =
-      options?.timeout ?? (pattern.metadata as any)?.timeout ?? defaultTimeout;
-
+    const timeoutMs = this.getExecutionTimeout(patternName, options);
     const executionId = options?.executionId || uuidv4();
+    if (this.executions.has(executionId)) {
+      throw new Error(`Execution ${executionId} already exists`);
+    }
     const execution: PatternExecution = {
       id: executionId,
       patternName,
@@ -612,42 +789,140 @@ export class PatternEngine implements IPatternEngine {
       status: 'running',
       input,
     };
-
-    this.executions.set(execution.id, execution);
-    this.currentExecutionId = execution.id;
-
-    // Wrap execution in a timeout race (skip if timeout is 0 = no limit)
-    const executionPromise = this._executePatternInner(
-      pattern,
-      execution,
+    const controller = new AbortController();
+    const signal = controller.signal;
+    this.executions.set(executionId, execution);
+    this.executionControllers.set(executionId, controller);
+    let resolveSettled!: (error?: Error) => void;
+    this.executionSettled.set(
       executionId,
-      input,
-      options,
-      timeoutMs
+      new Promise<Error | undefined>((resolve) => {
+        resolveSettled = resolve;
+      })
     );
+    let timeoutHandle: NodeJS.Timeout | undefined;
+    let onAbort!: () => void;
+    const aborted = new Promise<never>((_, reject) => {
+      onAbort = () => reject(signal.reason);
+      signal.addEventListener('abort', onAbort, { once: true });
+    });
+    if (timeoutMs > 0) {
+      timeoutHandle = setTimeout(() => {
+        // The abort signal also reaches the workflow and all subsequent dispatches.
+        const message = this.publicationStarted.has(executionId)
+          ? `Execution timed out after ${timeoutMs}ms while publication was in progress; a push or pull request may still complete and requires reconciliation`
+          : `Execution timed out after ${timeoutMs}ms`;
+        controller.abort(new Error(message));
+      }, timeoutMs);
+    }
 
+    let result!: PatternExecution;
+    let failure: { error: unknown } | undefined;
     try {
-      if (timeoutMs > 0) {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(
-            () => reject(new Error(`Execution timed out after ${timeoutMs}ms`)),
-            timeoutMs
-          );
-        });
-        return await Promise.race([executionPromise, timeoutPromise]);
-      } else {
-        return await executionPromise;
-      }
+      result = await Promise.race([
+        this._executePatternInner(
+          pattern,
+          execution,
+          executionId,
+          input,
+          options,
+          timeoutMs,
+          signal
+        ),
+        aborted,
+      ]);
     } catch (error) {
-      // Ensure the execution is marked as failed on timeout
       if (execution.status === 'running') {
         execution.endTime = new Date();
         execution.status = 'failed';
         execution.error =
           error instanceof Error ? error.message : String(error);
       }
-      throw error;
+      // Failures must stop sibling work as well as timeouts/cancellation.
+      if (!signal.aborted) controller.abort(error);
+      failure = { error };
+    } finally {
+      let cleanupFailure: Error | undefined;
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      signal.removeEventListener('abort', onAbort);
+      try {
+        const pending = await this.stopWithinDeadline(
+          Promise.allSettled(this.pendingSpawns.get(executionId) || []).then(
+            (results) => {
+              const failures = results.filter(
+                (result): result is PromiseRejectedResult =>
+                  result.status === 'rejected' &&
+                  result.reason !== signal.reason
+              );
+              if (failures.length)
+                throw new AggregateError(
+                  failures.map((r) => r.reason),
+                  'Failed to reconcile pending runtime spawns'
+                );
+            }
+          )
+        ).catch((error) => error as Error);
+        const workflow = this.workflowExecutors.get(executionId);
+        const cleanupResults = await Promise.allSettled([
+          pending instanceof Error
+            ? Promise.reject(pending)
+            : Promise.resolve(),
+          this.executionCleanupFailures.has(executionId)
+            ? Promise.reject(this.executionCleanupFailures.get(executionId))
+            : Promise.resolve(),
+          signal.aborted && workflow
+            ? this.stopWithinDeadline(workflow.cancelExecution(executionId))
+            : Promise.resolve(),
+          this.cleanupSpawnedAgents(executionId),
+          this.cleanupSpawnedThreads(executionId),
+        ]);
+        const failures = cleanupResults.filter(
+          (result): result is PromiseRejectedResult =>
+            result.status === 'rejected'
+        );
+        if (failures.length) {
+          const error = new ExecutionCleanupError(
+            failures.map((r) => r.reason),
+            `Execution runtime cleanup is incomplete; worker reconciliation required${execution.error ? ` (${execution.error})` : ''}`
+          );
+          cleanupFailure = error;
+          execution.status = 'failed';
+          execution.endTime = new Date();
+          execution.error = error.message;
+          this.executionEvents?.emitEvent({
+            executionId,
+            type: 'failed',
+            data: { error: error.message, reconciliationRequired: true },
+            timestamp: new Date(),
+          });
+          failure = { error };
+        } else if (execution.status === 'running' && !signal.aborted) {
+          execution.status = 'completed';
+          execution.endTime = new Date();
+          this.executionEvents?.emitEvent({
+            executionId,
+            type: 'completed',
+            timestamp: new Date(),
+            data: {
+              patternName,
+              confidence: execution.metrics?.averageConfidence,
+              durationMs: execution.metrics?.executionTime,
+              prUrl: execution.workspace?.prUrl,
+            },
+          });
+        }
+      } finally {
+        this.pendingSpawns.delete(executionId);
+        this.workflowExecutors.delete(executionId);
+        this.executionControllers.delete(executionId);
+        this.executionSettled.delete(executionId);
+        this.executionCleanupFailures.delete(executionId);
+        this.publicationStarted.delete(executionId);
+        resolveSettled(cleanupFailure);
+      }
     }
+    if (failure) throw failure.error;
+    return result;
   }
 
   private async _executePatternInner(
@@ -656,9 +931,12 @@ export class PatternEngine implements IPatternEngine {
     executionId: string,
     input: any,
     options: PatternExecutionOptions | undefined,
-    timeoutMs: number
+    timeoutMs: number,
+    signal: AbortSignal
   ): Promise<PatternExecution> {
     const patternName = pattern.name;
+    const assertActive = () => this.assertExecutionActive(executionId, signal);
+    assertActive();
 
     const emitEvent = (type: string, data?: any) => {
       this.executionEvents?.emitEvent({
@@ -702,7 +980,8 @@ export class PatternEngine implements IPatternEngine {
         options,
         timeoutMs,
         null,
-        emitEvent
+        emitEvent,
+        signal
       );
     }
 
@@ -718,7 +997,9 @@ export class PatternEngine implements IPatternEngine {
       if (workspaceConfig) {
         try {
           emitEvent('workspace_provisioning', { repo: workspaceConfig.repo });
+          assertActive();
           workspace = await this.workspaceService.provision(workspaceConfig);
+          assertActive();
           execution.workspace = {
             id: workspace.id,
             path: workspace.path,
@@ -749,13 +1030,16 @@ export class PatternEngine implements IPatternEngine {
     }
 
     try {
+      assertActive();
       // Select agents based on pattern requirements (may spawn agents if needed)
       const agents = await this.selectAgents(
         pattern,
         executionId,
         workspace,
-        input
+        input,
+        signal
       );
+      assertActive();
       emitEvent('agents_selected', { count: agents.length });
       this.logger.info(
         {
@@ -809,8 +1093,10 @@ export class PatternEngine implements IPatternEngine {
                     description: input.task || 'analyze',
                     data: input.data || input,
                   },
-                  timeoutMs
+                  timeoutMs,
+                  signal
                 );
+                assertActive();
 
                 emitEvent('agent_completed', {
                   agentId: agent.id,
@@ -871,6 +1157,7 @@ export class PatternEngine implements IPatternEngine {
         } else if (this.executionEngine) {
           // Register agents with the ExecutionEngine's proxy
           await this.registerAgentsWithExecutionEngine(agents);
+          assertActive();
 
           // Map agents to ExecutionTasks
           const tasks = this.mapAgentsToExecutionTasks(
@@ -904,7 +1191,9 @@ export class PatternEngine implements IPatternEngine {
             { planId: plan.id, taskCount: tasks.length },
             'Executing agents via ExecutionEngine'
           );
+          assertActive();
           const results = await this.executionEngine.executeParallel(plan);
+          assertActive();
           this.logger.info(
             {
               resultCount: results.length,
@@ -960,7 +1249,9 @@ export class PatternEngine implements IPatternEngine {
           ): Promise<boolean> => {
             const attempts = 5;
             for (let attempt = 0; attempt < attempts; attempt += 1) {
+              assertActive();
               const healthy = await this.agentProxy.healthCheck(address, 2000);
+              assertActive();
               if (healthy) return true;
               await new Promise((resolve) => setTimeout(resolve, 300));
             }
@@ -988,6 +1279,7 @@ export class PatternEngine implements IPatternEngine {
                     'Agent health check failed; continuing'
                   );
                 }
+                assertActive();
                 const result = await this.agentProxy.executeTask(
                   agent.address || agent.endpoint,
                   {
@@ -996,6 +1288,7 @@ export class PatternEngine implements IPatternEngine {
                   },
                   30000 // 30 second timeout
                 );
+                assertActive();
                 emitEvent('agent_completed', {
                   agentId: agent.id,
                   agentName: agent.name,
@@ -1063,6 +1356,7 @@ export class PatternEngine implements IPatternEngine {
         );
       }
 
+      assertActive();
       // Execute the pattern's TypeScript module with the collected results.
       // Custom-logic patterns are deployed code (@parallaxai/patterns), not
       // uploaded scripts; org-chart YAML patterns run via WorkflowExecutor.
@@ -1104,7 +1398,9 @@ export class PatternEngine implements IPatternEngine {
       );
 
       emitEvent('runtime_started', { patternName });
+      assertActive();
       const moduleResult = await patternModule.execute(patternContext);
+      assertActive();
       const result = {
         value: moduleResult.value,
         confidence: moduleResult.confidence,
@@ -1114,7 +1410,6 @@ export class PatternEngine implements IPatternEngine {
 
       // Update execution record
       execution.endTime = new Date();
-      execution.status = 'completed';
       execution.result = result;
       execution.metrics = this.calculateMetrics(execution, agents.length);
 
@@ -1126,21 +1421,25 @@ export class PatternEngine implements IPatternEngine {
       // Finalize workspace (push, create PR) if configured
       if (workspace && pattern.workspace?.createPr && this.workspaceService) {
         try {
+          assertActive();
           emitEvent('workspace_finalizing', { workspaceId: workspace.id });
-          const pr = await this.workspaceService.finalize(workspace.id, {
-            push: true,
-            createPr: true,
-            pr: {
-              title: `[Parallax] ${patternName}: ${execution.id.slice(0, 8)}`,
-              body: this.generatePrBody(pattern, execution),
-              targetBranch: workspace.branch.baseBranch,
-              draft: pattern.workspace?.pr?.draft,
-              labels: pattern.workspace?.pr?.labels,
-              reviewers: pattern.workspace?.pr?.reviewers,
-            },
-            cleanup: false, // Keep workspace for now
-          });
+          const pr = await this.publishWorkspace(executionId, signal, () =>
+            this.workspaceService!.finalize(workspace.id, {
+              push: true,
+              createPr: true,
+              pr: {
+                title: `[Parallax] ${patternName}: ${execution.id.slice(0, 8)}`,
+                body: this.generatePrBody(pattern, execution),
+                targetBranch: workspace.branch.baseBranch,
+                draft: pattern.workspace?.pr?.draft,
+                labels: pattern.workspace?.pr?.labels,
+                reviewers: pattern.workspace?.pr?.reviewers,
+              },
+              cleanup: false, // Keep workspace for now
+            })
+          );
 
+          assertActive();
           if (pr) {
             execution.workspace!.prUrl = pr.url;
             execution.workspace!.prNumber = pr.number;
@@ -1159,40 +1458,32 @@ export class PatternEngine implements IPatternEngine {
             workspaceId: workspace.id,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
+          throw new Error(
+            `Workspace publication failed; reconcile any push or pull request before retrying: ${error instanceof Error ? error.message : String(error)}`,
+            { cause: error }
+          );
         }
       }
 
-      emitEvent('completed', {
-        patternName,
-        confidence: execution.metrics?.averageConfidence ?? 0,
-        durationMs: execution.metrics?.executionTime ?? 0,
-        agentCount: agents.length,
-        prUrl: execution.workspace?.prUrl,
-      });
-
-      // Clean up spawned agents (if any)
-      await this.cleanupSpawnedAgents(executionId);
-      await this.cleanupSpawnedThreads(executionId);
-
       return execution;
     } catch (error) {
-      execution.endTime = new Date();
-      execution.status = 'failed';
-      execution.error = error instanceof Error ? error.message : String(error);
+      if (execution.status === 'running') {
+        execution.endTime = new Date();
+        execution.status = 'failed';
+        execution.error =
+          error instanceof Error ? error.message : String(error);
+      }
 
       this.logger.error(
         { executionId: execution.id, pattern: patternName, error },
         'Pattern execution failed'
       );
 
-      emitEvent('failed', {
-        patternName,
-        error: execution.error,
-      });
-
-      // Clean up spawned agents even on failure
-      await this.cleanupSpawnedAgents(executionId);
-      await this.cleanupSpawnedThreads(executionId);
+      if (execution.status === 'failed')
+        emitEvent('failed', {
+          patternName,
+          error: execution.error,
+        });
 
       throw error;
     }
@@ -1212,8 +1503,11 @@ export class PatternEngine implements IPatternEngine {
     options: PatternExecutionOptions | undefined,
     timeoutMs: number,
     workspace: any,
-    emitEvent: (type: string, data?: any) => void
+    emitEvent: (type: string, data?: any) => void,
+    signal: AbortSignal
   ): Promise<PatternExecution> {
+    const assertActive = () => this.assertExecutionActive(executionId, signal);
+    assertActive();
     const orgPattern: OrgPattern | undefined = (pattern.metadata as any)
       ?.orgPattern;
     if (!orgPattern) {
@@ -1242,6 +1536,8 @@ export class PatternEngine implements IPatternEngine {
       {
         stepTimeout: timeoutMs > 0 ? timeoutMs : 0,
         threadPreparationService: this.threadPreparationService,
+        commandVerifier: this.commandVerifier,
+        allowLocalCommandVerification: this.allowLocalCommandVerification,
         // Backs `history` verify oracles with the decision journal's tables.
         decisionHistory: this.database
           ? new DecisionHistory(
@@ -1254,6 +1550,8 @@ export class PatternEngine implements IPatternEngine {
           : undefined,
       }
     );
+
+    this.workflowExecutors.set(executionId, executor);
 
     // Journal confidence decisions (accept/retry/escalate) and the final
     // outcome so escalation policies can later be tuned from history.
@@ -1310,12 +1608,13 @@ export class PatternEngine implements IPatternEngine {
 
       const workflowResult: WorkflowResult = await executor.execute(
         orgPattern,
-        workflowInputWithCreds
+        workflowInputWithCreds,
+        { executionId, signal }
       );
+      assertActive();
 
       // Map workflow result back to PatternExecution format
       execution.endTime = new Date();
-      execution.status = 'completed';
       execution.result = workflowResult.output;
       execution.metrics = {
         agentsUsed: workflowResult.metrics.agentsUsed,
@@ -1347,21 +1646,25 @@ export class PatternEngine implements IPatternEngine {
       // Finalize workspace (push, create PR) if configured
       if (workspace && pattern.workspace?.createPr && this.workspaceService) {
         try {
+          assertActive();
           emitEvent('workspace_finalizing', { workspaceId: workspace.id });
-          const pr = await this.workspaceService.finalize(workspace.id, {
-            push: true,
-            createPr: true,
-            pr: {
-              title: `[Parallax] ${pattern.name}: ${execution.id.slice(0, 8)}`,
-              body: this.generatePrBody(pattern, execution),
-              targetBranch: workspace.branch.baseBranch,
-              draft: pattern.workspace?.pr?.draft,
-              labels: pattern.workspace?.pr?.labels,
-              reviewers: pattern.workspace?.pr?.reviewers,
-            },
-            cleanup: false,
-          });
+          const pr = await this.publishWorkspace(executionId, signal, () =>
+            this.workspaceService!.finalize(workspace.id, {
+              push: true,
+              createPr: true,
+              pr: {
+                title: `[Parallax] ${pattern.name}: ${execution.id.slice(0, 8)}`,
+                body: this.generatePrBody(pattern, execution),
+                targetBranch: workspace.branch.baseBranch,
+                draft: pattern.workspace?.pr?.draft,
+                labels: pattern.workspace?.pr?.labels,
+                reviewers: pattern.workspace?.pr?.reviewers,
+              },
+              cleanup: false,
+            })
+          );
 
+          assertActive();
           if (pr) {
             execution.workspace!.prUrl = pr.url;
             execution.workspace!.prNumber = pr.number;
@@ -1376,22 +1679,25 @@ export class PatternEngine implements IPatternEngine {
             { error, workspaceId: workspace.id },
             'Failed to finalize workspace'
           );
+          emitEvent('workspace_finalize_failed', {
+            workspaceId: workspace.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+          throw new Error(
+            `Workspace publication failed; reconcile any push or pull request before retrying: ${error instanceof Error ? error.message : String(error)}`,
+            { cause: error }
+          );
         }
       }
 
-      emitEvent('completed', {
-        patternName: pattern.name,
-        confidence: execution.metrics?.averageConfidence ?? 0,
-        durationMs: execution.metrics?.executionTime ?? 0,
-        agentCount: workflowResult.metrics.agentsUsed,
-        prUrl: execution.workspace?.prUrl,
-      });
-
       return execution;
     } catch (error) {
-      execution.endTime = new Date();
-      execution.status = 'failed';
-      execution.error = error instanceof Error ? error.message : String(error);
+      if (execution.status === 'running') {
+        execution.endTime = new Date();
+        execution.status = 'failed';
+        execution.error =
+          error instanceof Error ? error.message : String(error);
+      }
 
       this.logger.error(
         {
@@ -1403,10 +1709,11 @@ export class PatternEngine implements IPatternEngine {
         'Org-chart workflow execution failed'
       );
 
-      emitEvent('failed', {
-        patternName: pattern.name,
-        error: execution.error,
-      });
+      if (execution.status === 'failed')
+        emitEvent('failed', {
+          patternName: pattern.name,
+          error: execution.error,
+        });
 
       throw error;
     } finally {
@@ -1420,14 +1727,17 @@ export class PatternEngine implements IPatternEngine {
     pattern: Pattern,
     executionId?: string,
     workspace?: Workspace | null,
-    input?: any
+    input?: any,
+    signal?: AbortSignal
   ): Promise<any[]> {
+    signal?.throwIfAborted();
     if (pattern.threads?.enabled && this.agentRuntimeService && executionId) {
       const spawnedHandles = await this.spawnThreadsForPattern(
         pattern,
         executionId,
         workspace,
-        input
+        input,
+        signal
       );
 
       const spawnedThreads = spawnedHandles.map((handle, index) => ({
@@ -1515,7 +1825,8 @@ export class PatternEngine implements IPatternEngine {
       const spawnedHandles = await this.spawnAgentsForPattern(
         pattern,
         executionId,
-        workspace
+        workspace,
+        signal
       );
 
       // Convert spawned agent handles to the expected format
@@ -1783,7 +2094,6 @@ export class PatternEngine implements IPatternEngine {
   getCalibrationService(): ConfidenceCalibrationService {
     return this._calibrationService;
   }
-
 
   /**
    * Resolve workspace configuration from pattern and input

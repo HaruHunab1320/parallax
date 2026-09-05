@@ -4,10 +4,16 @@
  * Handles user authentication, JWT token management, and password operations.
  */
 
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import type { PrismaClient, User } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import type { Logger } from 'pino';
+import {
+  hashPassword,
+  isLegacyPasswordHash,
+  passwordSchema,
+  verifyPassword,
+} from './password';
 
 export interface TokenPayload {
   sub: string; // User ID
@@ -28,6 +34,7 @@ export interface AuthConfig {
   jwtSecret: string;
   accessTokenExpiry: string; // e.g., '15m'
   refreshTokenExpiry: string; // e.g., '7d'
+  /** @deprecated Password work factors are maintained by the password module. */
   bcryptRounds?: number;
 }
 
@@ -43,23 +50,22 @@ export class AuthService {
     this.logger = logger.child({ component: 'AuthService' });
     const jwtSecret = config?.jwtSecret || process.env.JWT_SECRET;
 
-    // In production, JWT_SECRET must be explicitly set
+    if (!jwtSecret && process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'JWT_SECRET environment variable is required in production'
+      );
+    }
+    if (jwtSecret && Buffer.byteLength(jwtSecret) < 32) {
+      throw new Error('JWT_SECRET must contain at least 32 bytes');
+    }
     if (!jwtSecret) {
-      const isProduction = process.env.NODE_ENV === 'production';
-      if (isProduction) {
-        throw new Error(
-          'JWT_SECRET environment variable is required in production. ' +
-            'Generate a secure secret with: openssl rand -base64 32'
-        );
-      }
       this.logger.warn(
-        'JWT_SECRET not set - using insecure default for development only. ' +
-          'Set JWT_SECRET environment variable before deploying to production.'
+        'JWT_SECRET not set; using an ephemeral secret. Sessions expire on restart.'
       );
     }
 
     this.config = {
-      jwtSecret: jwtSecret || 'parallax-dev-secret-DO-NOT-USE-IN-PRODUCTION',
+      jwtSecret: jwtSecret || randomBytes(32).toString('base64'),
       accessTokenExpiry: config?.accessTokenExpiry || '15m',
       refreshTokenExpiry: config?.refreshTokenExpiry || '7d',
       bcryptRounds: config?.bcryptRounds || 12,
@@ -90,28 +96,27 @@ export class AuthService {
     this.validatePassword(password);
 
     // Hash password
-    const passwordHash = this.hashPassword(password);
+    const passwordHash = await hashPassword(password);
 
-    // Only the first user can self-register (becomes admin).
-    // After that, new users must be created by an admin via /api/users.
-    const userCount = await this.prisma.user.count();
-    if (userCount > 0) {
-      throw new AuthError(
-        'Registration is closed. Ask an admin to create your account.',
-        'REGISTRATION_CLOSED'
-      );
-    }
-    const role = 'admin';
-
-    // Create user
-    const user = await this.prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
-        name,
-        passwordHash,
-        role,
-        status: 'active',
-      },
+    // Serialize first-admin bootstrap across control-plane nodes. A count before
+    // an independent insert allows two concurrent requests to become admins.
+    const user = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(1885434488, 1)`;
+      if ((await tx.user.count()) > 0) {
+        throw new AuthError(
+          'Registration is closed. Ask an admin to create your account.',
+          'REGISTRATION_CLOSED'
+        );
+      }
+      return tx.user.create({
+        data: {
+          email: email.toLowerCase(),
+          name,
+          passwordHash,
+          role: 'admin',
+          status: 'active',
+        },
+      });
     });
 
     this.logger.info({ userId: user.id, email: user.email }, 'User registered');
@@ -126,8 +131,13 @@ export class AuthService {
     });
 
     // Return user without password hash
-    const { passwordHash: _, ...userWithoutPassword } = user;
-    return { user: userWithoutPassword, tokens };
+    const {
+      passwordHash: _,
+      metadata: _metadata,
+      ...userWithoutPassword
+    } = user;
+    const safeUser = { ...userWithoutPassword, metadata: null };
+    return { user: safeUser, tokens };
   }
 
   /**
@@ -154,9 +164,16 @@ export class AuthService {
     }
 
     // Verify password
-    if (!this.verifyPassword(password, user.passwordHash)) {
+    if (!(await verifyPassword(password, user.passwordHash))) {
       this.logger.warn({ userId: user.id, email }, 'Failed login attempt');
       throw new AuthError('Invalid email or password', 'INVALID_CREDENTIALS');
+    }
+
+    if (isLegacyPasswordHash(user.passwordHash)) {
+      await this.prisma.user.updateMany({
+        where: { id: user.id, passwordHash: user.passwordHash },
+        data: { passwordHash: await hashPassword(password) },
+      });
     }
 
     this.logger.info({ userId: user.id, email }, 'User logged in');
@@ -171,8 +188,13 @@ export class AuthService {
     });
 
     // Return user without password hash
-    const { passwordHash: _, ...userWithoutPassword } = user;
-    return { user: userWithoutPassword, tokens };
+    const {
+      passwordHash: _,
+      metadata: _metadata,
+      ...userWithoutPassword
+    } = user;
+    const safeUser = { ...userWithoutPassword, metadata: null };
+    return { user: safeUser, tokens };
   }
 
   /**
@@ -180,10 +202,9 @@ export class AuthService {
    */
   async refreshTokens(refreshToken: string): Promise<AuthTokens> {
     try {
-      const payload = jwt.verify(
-        refreshToken,
-        this.config.jwtSecret
-      ) as TokenPayload;
+      const payload = jwt.verify(refreshToken, this.config.jwtSecret, {
+        algorithms: ['HS256'],
+      }) as TokenPayload;
 
       if (payload.type !== 'refresh') {
         throw new AuthError('Invalid token type', 'INVALID_TOKEN');
@@ -211,7 +232,9 @@ export class AuthService {
    */
   verifyAccessToken(token: string): TokenPayload {
     try {
-      const payload = jwt.verify(token, this.config.jwtSecret) as TokenPayload;
+      const payload = jwt.verify(token, this.config.jwtSecret, {
+        algorithms: ['HS256'],
+      }) as TokenPayload;
 
       if (payload.type !== 'access') {
         throw new AuthError('Invalid token type', 'INVALID_TOKEN');
@@ -230,7 +253,22 @@ export class AuthService {
   /**
    * Verify an API key and return the user
    */
+  async authenticateAccessToken(token: string): Promise<TokenPayload> {
+    const payload = this.verifyAccessToken(token);
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+    if (!user || user.status !== 'active') {
+      throw new AuthError('User not found or inactive', 'USER_INACTIVE');
+    }
+    return { ...payload, email: user.email, role: user.role };
+  }
+
   async verifyApiKey(apiKey: string): Promise<User> {
+    return (await this.authenticateApiKey(apiKey)).user;
+  }
+
+  async authenticateApiKey(apiKey: string) {
     const keyHash = createHash('sha256').update(apiKey).digest('hex');
 
     const key = await this.prisma.apiKey.findUnique({
@@ -242,7 +280,7 @@ export class AuthService {
       throw new AuthError('Invalid API key', 'INVALID_API_KEY');
     }
 
-    if (key.expiresAt && key.expiresAt < new Date()) {
+    if (key.expiresAt && key.expiresAt <= new Date()) {
       throw new AuthError('API key expired', 'API_KEY_EXPIRED');
     }
 
@@ -256,7 +294,10 @@ export class AuthService {
       data: { lastUsedAt: new Date() },
     });
 
-    return key.user;
+    return {
+      user: key.user,
+      apiKey: { id: key.id, permissions: key.permissions },
+    };
   }
 
   /**
@@ -275,7 +316,7 @@ export class AuthService {
       throw new AuthError('User not found', 'USER_NOT_FOUND');
     }
 
-    if (!this.verifyPassword(currentPassword, user.passwordHash)) {
+    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
       throw new AuthError('Current password is incorrect', 'INVALID_PASSWORD');
     }
 
@@ -283,7 +324,7 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: this.hashPassword(newPassword) },
+      data: { passwordHash: await hashPassword(newPassword) },
     });
 
     this.logger.info({ userId }, 'Password changed');
@@ -360,7 +401,7 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        passwordHash: this.hashPassword(newPassword),
+        passwordHash: await hashPassword(newPassword),
         metadata: {
           ...metadata,
           passwordResetToken: null,
@@ -384,8 +425,13 @@ export class AuthService {
 
     if (!user) return null;
 
-    const { passwordHash: _, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    const {
+      passwordHash: _,
+      metadata: _metadata,
+      ...userWithoutPassword
+    } = user;
+    const safeUser = { ...userWithoutPassword, metadata: null };
+    return safeUser;
   }
 
   // Private methods
@@ -443,44 +489,10 @@ export class AuthService {
     }
   }
 
-  private hashPassword(password: string): string {
-    const salt = randomBytes(16).toString('hex');
-    const hash = createHash('sha256')
-      .update(salt + password)
-      .digest('hex');
-    return `${salt}:${hash}`;
-  }
-
-  private verifyPassword(password: string, storedHash: string): boolean {
-    const [salt, hash] = storedHash.split(':');
-    if (!salt || !hash) return false;
-
-    const inputHash = createHash('sha256')
-      .update(salt + password)
-      .digest('hex');
-
-    // Use timing-safe comparison to prevent timing attacks
-    try {
-      return timingSafeEqual(Buffer.from(hash), Buffer.from(inputHash));
-    } catch {
-      return false;
-    }
-  }
-
   private validatePassword(password: string): void {
-    if (password.length < 8) {
-      throw new AuthError(
-        'Password must be at least 8 characters',
-        'WEAK_PASSWORD'
-      );
-    }
-
-    // Check for at least one number and one letter
-    if (!/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
-      throw new AuthError(
-        'Password must contain at least one letter and one number',
-        'WEAK_PASSWORD'
-      );
+    const result = passwordSchema.safeParse(password);
+    if (!result.success) {
+      throw new AuthError(result.error.issues[0].message, 'WEAK_PASSWORD');
     }
   }
 }

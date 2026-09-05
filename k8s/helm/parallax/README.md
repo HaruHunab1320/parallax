@@ -21,14 +21,11 @@ helm repo update
 ### Install Chart
 
 ```bash
-# Install with default configuration
-helm install my-parallax parallax/parallax
-
-# Install in a specific namespace
-helm install my-parallax parallax/parallax -n parallax-system --create-namespace
-
-# Install with custom values
-helm install my-parallax parallax/parallax -f my-values.yaml
+# Provision authentication and TLS Secrets first, then reference them in values.
+# This chart deliberately refuses installation without those references.
+helm install my-parallax ./k8s/helm/parallax \
+  --namespace parallax --create-namespace \
+  --values my-values.yaml
 ```
 
 ## Configuration
@@ -128,24 +125,29 @@ postgresql:
   enabled: false
 
 controlPlane:
-  database:
-    url: "postgresql://user:password@external-db:5432/parallax"
+  existingSecret: parallax-secrets # Includes DATABASE_URL and authentication keys
+  grpcTls:
+    existingSecret: parallax-grpc-tls
 ```
 
-### Authentication
+### Authentication and TLS
 
-To enable authentication:
+Authentication is mandatory, independent of the license. Provision `controlPlane.existingSecret`
+with `DATABASE_URL`, `JWT_SECRET`, `PARALLAX_GRPC_API_KEY`, and `PARALLAX_RUNTIME_API_KEY`.
+Each authentication key must be independently generated and at least 32 bytes. Include
+`PARALLAX_BOOTSTRAP_TOKEN` for first-admin setup and remove it after registration.
+An optional license belongs in `PARALLAX_LICENSE_KEY` in the same Secret.
+If using bundled PostgreSQL, include `DATABASE_PASSWORD` and make `DATABASE_URL` match it.
 
-```yaml
-controlPlane:
-  auth:
-    enabled: true
-    jwt:
-      secret: "your-secret-key"  # Use a secure secret in production
-      expiry: "24h"
-    rbac:
-      enabled: true
-```
+Provision `controlPlane.grpcTls.existingSecret` as a TLS Secret containing `tls.crt` and `tls.key`.
+Mutual TLS additionally requires `grpcTls.requireClientCert: true` and a CA under `grpcTls.caKey`.
+Enabled HTTP ingress requires `ingress.tls`. Direct plaintext REST LoadBalancers are rejected.
+The gRPC LoadBalancer is disabled by default and can be enabled with server TLS configured.
+Do not put credentials in values files or ConfigMaps.
+
+See [deployment hardening](../../../docs/DEPLOYMENT_HARDENING.md) for rollout prerequisites,
+local verification, and the current dependency gate. The GCP example names Secrets; it does
+not provision certificates or imply the environment has been deployed.
 
 ### Monitoring Integration
 

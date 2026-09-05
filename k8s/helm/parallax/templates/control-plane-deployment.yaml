@@ -1,4 +1,20 @@
 {{- if .Values.controlPlane.enabled }}
+{{- $secret := required "controlPlane.existingSecret must reference provisioned database and authentication credentials" .Values.controlPlane.existingSecret }}
+{{- $tlsSecret := required "controlPlane.grpcTls.existingSecret must reference a server TLS certificate and key" .Values.controlPlane.grpcTls.existingSecret }}
+{{- if .Values.controlPlane.restLoadBalancer.enabled }}
+{{- fail "Direct HTTP LoadBalancer is unsupported; disable controlPlane.restLoadBalancer and configure HTTPS ingress" }}
+{{- end }}
+{{- if and .Values.ingress.enabled (empty .Values.ingress.tls) }}
+{{- fail "ingress.tls is required when exposing the authenticated HTTP API" }}
+{{- end }}
+{{- if .Values.controlPlane.licenseKey }}
+{{- fail "Move licenseKey into PARALLAX_LICENSE_KEY in controlPlane.existingSecret" }}
+{{- end }}
+{{- range $key, $value := .Values.controlPlane.env }}
+{{- if or (has $key (list "NODE_ENV" "JWT_SECRET" "DATABASE_URL" "PARALLAX_AUTH_MODE" "PARALLAX_GRPC_API_KEY" "PARALLAX_RUNTIME_API_KEY" "PARALLAX_BOOTSTRAP_TOKEN" "PARALLAX_LICENSE_KEY")) (hasPrefix "PARALLAX_GRPC_TLS_" $key) }}
+{{- fail (printf "controlPlane.env.%s conflicts with managed security configuration; use Secret references or grpcTls values" $key) }}
+{{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -61,17 +77,11 @@ spec:
           imagePullPolicy: {{ .Values.controlPlane.image.pullPolicy }}
           command: ["npx", "prisma", "migrate", "deploy"]
           env:
-            {{- if .Values.postgresql.enabled }}
-            - name: DATABASE_URL
-              value: "postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ include "parallax.fullname" . }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?schema=public"
-            {{- end }}
-            {{- if .Values.controlPlane.existingSecret }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.controlPlane.existingSecret }}
+                  name: {{ $secret }}
                   key: DATABASE_URL
-            {{- end }}
           volumeMounts:
             - name: tmp
               mountPath: /tmp
@@ -99,13 +109,9 @@ spec:
             - name: GRPC_PORT
               value: "{{ .Values.controlPlane.service.grpcPort | default 8081 }}"
             - name: NODE_ENV
-              value: "{{ .Values.controlPlane.env.NODE_ENV | default "production" }}"
+              value: "production"
             - name: PARALLAX_ETCD_ENDPOINTS
               value: "{{ include "parallax.fullname" . }}-etcd:2379"
-            {{- if .Values.postgresql.enabled }}
-            - name: DATABASE_URL
-              value: "postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ include "parallax.fullname" . }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?schema=public"
-            {{- end }}
             {{- if .Values.influxdb.enabled }}
             - name: PARALLAX_CONFIDENCE_STORE
               value: "influxdb"
@@ -124,26 +130,33 @@ spec:
             - name: PARALLAX_REDIS_URL
               value: "redis://{{ include "parallax.fullname" . }}-redis:6379"
             {{- end }}
-            {{- if .Values.controlPlane.licenseKey }}
-            - name: PARALLAX_LICENSE_KEY
-              value: {{ .Values.controlPlane.licenseKey | quote }}
+            - name: PARALLAX_AUTH_MODE
+              value: "required"
+            - name: PARALLAX_GRPC_TLS_ENABLED
+              value: "true"
+            - name: PARALLAX_GRPC_TLS_CERT
+              value: /run/secrets/grpc/tls.crt
+            - name: PARALLAX_GRPC_TLS_KEY
+              value: /run/secrets/grpc/tls.key
+            - name: PARALLAX_GRPC_TLS_REQUIRE_CLIENT_CERT
+              value: {{ .Values.controlPlane.grpcTls.requireClientCert | quote }}
+            {{- if .Values.controlPlane.grpcTls.requireClientCert }}
+            - name: PARALLAX_GRPC_TLS_CA
+              value: /run/secrets/grpc/{{ .Values.controlPlane.grpcTls.caKey }}
             {{- end }}
-            {{- if .Values.controlPlane.existingSecret }}
-            - name: JWT_SECRET
+            {{- range $key := list "JWT_SECRET" "DATABASE_URL" "PARALLAX_GRPC_API_KEY" "PARALLAX_RUNTIME_API_KEY" }}
+            - name: {{ $key }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.controlPlane.existingSecret }}
-                  key: JWT_SECRET
-            - name: DATABASE_URL
+                  name: {{ $secret }}
+                  key: {{ $key }}
+            {{- end }}
+            {{- range $key := list "PARALLAX_BOOTSTRAP_TOKEN" "PARALLAX_LICENSE_KEY" }}
+            - name: {{ $key }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.controlPlane.existingSecret }}
-                  key: DATABASE_URL
-            - name: DATABASE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.controlPlane.existingSecret }}
-                  key: DATABASE_PASSWORD
+                  name: {{ $secret }}
+                  key: {{ $key }}
                   optional: true
             {{- end }}
             {{- range $key, $value := .Values.controlPlane.env }}
@@ -165,6 +178,9 @@ spec:
           resources:
             {{- toYaml .Values.controlPlane.resources | nindent 12 }}
           volumeMounts:
+            - name: grpc-tls
+              mountPath: /run/secrets/grpc
+              readOnly: true
             - name: patterns
               mountPath: /patterns
               readOnly: true
@@ -174,6 +190,10 @@ spec:
             - name: tmp
               mountPath: /tmp
       volumes:
+        - name: grpc-tls
+          secret:
+            secretName: {{ $tlsSecret }}
+            defaultMode: 0440
         - name: patterns
           configMap:
             name: {{ .Values.controlPlane.patterns.configMap }}

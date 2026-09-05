@@ -6,18 +6,23 @@
 
 import { createServer, type Server } from 'node:http';
 import type { AgentConfig } from '@parallaxai/runtime-interface';
+import {
+  type RuntimeSecurityOptions,
+  runtimeSecurity,
+} from '@parallaxai/runtime-interface';
 import express, { type Request, type Response } from 'express';
 import type { Logger } from 'pino';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { DockerRuntime } from './docker-runtime';
 
-export interface RuntimeServerOptions {
+export interface RuntimeServerOptions extends RuntimeSecurityOptions {
   port: number;
   host?: string;
 }
 
 export class RuntimeServer {
   private app: express.Application;
+  private security: ReturnType<typeof runtimeSecurity>;
   private server: Server | null = null;
   private wss: WebSocketServer | null = null;
   private agentSubscribers: Map<string, Set<WebSocket>> = new Map();
@@ -27,6 +32,7 @@ export class RuntimeServer {
     private logger: Logger,
     private options: RuntimeServerOptions
   ) {
+    this.security = runtimeSecurity(options.host ?? '127.0.0.1', options);
     this.app = express();
     this.setupMiddleware();
     this.setupRoutes();
@@ -34,7 +40,17 @@ export class RuntimeServer {
   }
 
   private setupMiddleware(): void {
-    this.app.use(express.json());
+    this.app.get('/health', (_req, res) => {
+      res.json({ healthy: true });
+    });
+    this.app.use((req, res, next) => {
+      if (!this.security.authorize(req.headers)) {
+        res.status(401).json({ error: 'Runtime authentication required' });
+        return;
+      }
+      next();
+    });
+    this.app.use(express.json({ limit: '1mb' }));
 
     this.app.use((req, _res, next) => {
       this.logger.debug({ method: req.method, path: req.path }, 'Request');
@@ -44,6 +60,36 @@ export class RuntimeServer {
 
   private setupRoutes(): void {
     const router = express.Router();
+
+    router.get('/capabilities', (_req: Request, res: Response) => {
+      res.json({
+        agents: true,
+        threads: false,
+        threadEvents: false,
+        executionCleanup: true,
+      });
+    });
+
+    router.delete(
+      '/executions/:id/resources',
+      async (req: Request, res: Response) => {
+        try {
+          await this.runtime.cleanupExecution(req.params.id);
+          res.status(204).send();
+        } catch (error) {
+          this.handleError(res, error);
+        }
+      }
+    );
+
+    router.use('/threads', (_req: Request, res: Response) => {
+      res
+        .status(501)
+        .json({
+          error:
+            'This runtime does not support the remote thread lifecycle and event contract',
+        });
+    });
 
     // Health check
     router.get('/health', async (_req: Request, res: Response) => {
@@ -270,11 +316,26 @@ export class RuntimeServer {
   }
 
   async start(): Promise<void> {
-    const { port, host = '0.0.0.0' } = this.options;
+    const { port, host = '127.0.0.1' } = this.options;
 
     this.server = createServer(this.app);
 
-    this.wss = new WebSocketServer({ server: this.server });
+    this.wss = new WebSocketServer({ noServer: true });
+    this.server.on('upgrade', (request, socket, head) => {
+      if (!this.security.authorize(request.headers)) {
+        socket.end(
+          'HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'
+        );
+        return;
+      }
+      if (new URL(request.url || '/', 'http://localhost').pathname !== '/ws') {
+        socket.destroy();
+        return;
+      }
+      this.wss!.handleUpgrade(request, socket, head, (ws) => {
+        this.wss!.emit('connection', ws, request);
+      });
+    });
 
     this.wss.on('connection', (ws, req) => {
       this.logger.debug({ url: req.url }, 'WebSocket connection');
@@ -306,7 +367,8 @@ export class RuntimeServer {
       });
     });
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      this.server!.once('error', reject);
       this.server!.listen(port, host, () => {
         this.logger.info({ port, host }, 'Docker runtime server listening');
         resolve();
@@ -316,6 +378,7 @@ export class RuntimeServer {
 
   async stop(): Promise<void> {
     if (this.wss) {
+      this.wss.clients.forEach((client) => { client.terminate(); });
       this.wss.close();
       this.wss = null;
     }

@@ -167,8 +167,16 @@ function makeParallelPattern(): OrgPattern {
         {
           type: 'parallel',
           steps: [
-            { type: 'assign', role: 'frontend', task: 'Build UI: ${input.task}' },
-            { type: 'assign', role: 'backend', task: 'Build API: ${input.task}' },
+            {
+              type: 'assign',
+              role: 'frontend',
+              task: 'Build UI: ${input.task}',
+            },
+            {
+              type: 'assign',
+              role: 'backend',
+              task: 'Build API: ${input.task}',
+            },
           ],
         },
       ],
@@ -342,9 +350,7 @@ describe('WorkflowExecutor', () => {
         workflow: {
           name: 'Solo Task',
           input: {},
-          steps: [
-            { type: 'assign', role: 'worker', task: 'Do something' },
-          ],
+          steps: [{ type: 'assign', role: 'worker', task: 'Do something' }],
         },
       };
 
@@ -446,7 +452,11 @@ describe('WorkflowExecutor', () => {
     it('should execute steps sequentially, not in parallel', async () => {
       const callOrder: string[] = [];
       const originalSend = mockRuntime.send.bind(mockRuntime);
-      mockRuntime.send = async (agentId: string, message: string, options?: any) => {
+      mockRuntime.send = async (
+        agentId: string,
+        message: string,
+        options?: any
+      ) => {
         callOrder.push(agentId);
         // Add a small delay to make ordering observable
         await new Promise((r) => setTimeout(r, 5));
@@ -635,9 +645,9 @@ describe('WorkflowExecutor', () => {
         },
       };
 
-      await expect(
-        executor.execute(badPattern, {})
-      ).rejects.toThrow('Role nonexistent_role not found in pattern');
+      await expect(executor.execute(badPattern, {})).rejects.toThrow(
+        'Workflow step references missing role: nonexistent_role'
+      );
     });
 
     it('should throw when spawn fails and no agent is available', async () => {
@@ -674,9 +684,9 @@ describe('WorkflowExecutor', () => {
         },
       };
 
-      await expect(
-        executor.execute(unknownStepPattern, {})
-      ).rejects.toThrow('Unknown step type: bogus');
+      await expect(executor.execute(unknownStepPattern, {})).rejects.toThrow(
+        'Unsupported workflow step: bogus'
+      );
     });
 
     it('should set context state to failed on error', async () => {

@@ -1,17 +1,5 @@
 {{- if .Values.postgresql.enabled }}
 apiVersion: v1
-kind: Secret
-metadata:
-  name: {{ include "parallax.fullname" . }}-postgresql
-  labels:
-    {{- include "parallax.labels" . | nindent 4 }}
-type: Opaque
-data:
-  postgres-password: {{ .Values.postgresql.auth.password | b64enc | quote }}
-  postgres-user: {{ .Values.postgresql.auth.username | b64enc | quote }}
-  postgres-db: {{ .Values.postgresql.auth.database | b64enc | quote }}
----
-apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "parallax.fullname" . }}-postgresql
@@ -59,20 +47,14 @@ spec:
               protocol: TCP
           env:
             - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "parallax.fullname" . }}-postgresql
-                  key: postgres-user
+              value: {{ .Values.postgresql.auth.username | quote }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "parallax.fullname" . }}-postgresql
-                  key: postgres-password
+                  name: {{ required "controlPlane.existingSecret is required for database credentials" .Values.controlPlane.existingSecret }}
+                  key: DATABASE_PASSWORD
             - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "parallax.fullname" . }}-postgresql
-                  key: postgres-db
+              value: {{ .Values.postgresql.auth.database | quote }}
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           volumeMounts:

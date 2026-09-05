@@ -17,6 +17,7 @@ import {
   type WatchEvent,
   type WatchRequest,
 } from '../generated/registry';
+import { controlPlaneCredentials, controlPlaneMetadata } from './transport-security';
 
 export type RegistryWatchHandlers = {
   onEvent?: (event: WatchEvent) => void;
@@ -29,10 +30,10 @@ export class RegistryServiceClient {
 
   constructor(
     address: string,
-    credentials: ChannelCredentials,
+    credentials?: ChannelCredentials,
     options?: Partial<ClientOptions>
   ) {
-    this.client = new RegistryClient(address, credentials, options);
+    this.client = new RegistryClient(address, controlPlaneCredentials(credentials), options);
   }
 
   register(
@@ -44,7 +45,7 @@ export class RegistryServiceClient {
     return new Promise((resolve, reject) => {
       this.client.register(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: RegisterResponse) => {
           if (error) {
             reject(error);
@@ -63,7 +64,7 @@ export class RegistryServiceClient {
     return new Promise((resolve, reject) => {
       this.client.unregister(
         agent,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: RegisterResponse) => {
           if (error) {
             reject(error);
@@ -87,7 +88,7 @@ export class RegistryServiceClient {
     return new Promise((resolve, reject) => {
       this.client.renew(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: RegisterResponse) => {
           if (error) {
             reject(error);
@@ -115,7 +116,7 @@ export class RegistryServiceClient {
     return new Promise((resolve, reject) => {
       this.client.listAgents(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: ListAgentsResponse) => {
           if (error) {
             reject(error);
@@ -132,7 +133,7 @@ export class RegistryServiceClient {
     return new Promise((resolve, reject) => {
       this.client.getAgent(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: AgentRegistration) => {
           if (error) {
             reject(error);
@@ -151,7 +152,7 @@ export class RegistryServiceClient {
     metadata?: Metadata
   ): ClientReadableStream<WatchEvent> {
     const request: WatchRequest = { capabilities, includeInitial };
-    const stream = this.client.watch(request, metadata || new Metadata());
+    const stream = this.client.watch(request, controlPlaneMetadata(metadata));
     stream.on('data', (event: WatchEvent) => handlers.onEvent?.(event));
     stream.on('error', (error: ServiceError) => handlers.onError?.(error));
     stream.on('end', () => handlers.onEnd?.());

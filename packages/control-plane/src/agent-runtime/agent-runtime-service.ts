@@ -277,6 +277,7 @@ export class AgentRuntimeService extends EventEmitter {
    * Called when an execution is fully torn down and all its agents are killed.
    */
   async cleanupExecution(executionId: string): Promise<void> {
+    const failures: Error[] = [];
     for (const [name, runtime] of this.runtimes) {
       try {
         await runtime.client.cleanupExecution(executionId);
@@ -285,12 +286,19 @@ export class AgentRuntimeService extends EventEmitter {
           'Execution resources cleaned up'
         );
       } catch (error) {
+        failures.push(
+          new Error(
+            `Runtime ${name} execution cleanup failed: ${error instanceof Error ? error.message : String(error)}`
+          )
+        );
         this.logger.warn(
           { executionId, runtime: name, error },
           'Failed to clean up execution resources'
         );
       }
     }
+    if (failures.length)
+      throw new AggregateError(failures, 'Execution resource cleanup failed');
   }
 
   /**

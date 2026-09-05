@@ -33,12 +33,15 @@ export async function createExecutionInDb(
     },
     input: input,
     status: 'running',
-    metrics: options || {},
+    // Persist execution settings only; credentials must never enter execution history.
+    metrics: { timeout: options?.timeout, stream: options?.stream },
   };
 
   // Add resilience fields if provided (columns added via migration)
+  if (options?.executionId) createData.id = options.executionId;
   if (options?.nodeId) createData.nodeId = options.nodeId;
-  if (options?.timeoutMs) createData.timeoutMs = options.timeoutMs;
+  if (options?.timeoutMs !== undefined)
+    createData.timeoutMs = options.timeoutMs;
   createData.startedAt = new Date();
 
   const execution = await database.executions.create(createData);
@@ -68,8 +71,8 @@ export async function updateExecutionInDb(
     durationMs?: number;
     agentCount?: number;
   }
-): Promise<void> {
-  await database.executions.updateStatus(
+): Promise<boolean> {
+  const changed = await database.executions.transitionStatus(
     executionId,
     updates.status || 'running',
     {
@@ -80,7 +83,8 @@ export async function updateExecutionInDb(
     }
   );
 
-  // Add event for status change
+  // Record only the transition that actually won.
+  if (!changed) return false;
   if (updates.status) {
     await database.executions.addEvent(executionId, {
       type:
@@ -92,6 +96,7 @@ export async function updateExecutionInDb(
       data: updates,
     });
   }
+  return true;
 }
 
 export async function addAgentEventToDb(
@@ -115,10 +120,9 @@ export async function convertExecutionFromDb(
     id: dbExecution.id,
     patternName: dbExecution.pattern?.name || 'unknown',
     startTime: dbExecution.time,
-    endTime:
-      dbExecution.status === 'completed' || dbExecution.status === 'failed'
-        ? new Date(dbExecution.time.getTime() + (dbExecution.durationMs || 0))
-        : undefined,
+    endTime: ['completed', 'failed', 'cancelled'].includes(dbExecution.status)
+      ? new Date(dbExecution.time.getTime() + (dbExecution.durationMs || 0))
+      : undefined,
     status: dbExecution.status as any,
     result: dbExecution.result,
     error: dbExecution.error || undefined,

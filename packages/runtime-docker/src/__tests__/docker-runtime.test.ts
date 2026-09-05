@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentConfig } from '@parallaxai/runtime-interface';
+import { executionResourceName } from '@parallaxai/runtime-interface';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mock Dockerode ──────────────────────────────────────────────────────
 
@@ -11,7 +12,13 @@ const mockContainer = {
   remove: vi.fn().mockResolvedValue(undefined),
   restart: vi.fn().mockResolvedValue(undefined),
   inspect: vi.fn().mockResolvedValue({
-    State: { Running: true, Restarting: false, Paused: false, Dead: false, OOMKilled: false },
+    State: {
+      Running: true,
+      Restarting: false,
+      Paused: false,
+      Dead: false,
+      OOMKilled: false,
+    },
   }),
   attach: vi.fn().mockImplementation((_opts, cb) => {
     // Simulate a no-op stream
@@ -300,13 +307,11 @@ describe('DockerRuntime', () => {
       // Volume does not exist yet
       mockVolume.inspect.mockRejectedValueOnce(new Error('no such volume'));
 
-      await runtime.spawn(
-        makeConfig({ executionId: 'exec-12345678-abcd' })
-      );
+      await runtime.spawn(makeConfig({ executionId: 'exec-12345678-abcd' }));
 
       expect(mockDocker.createVolume).toHaveBeenCalledWith(
         expect.objectContaining({
-          Name: 'parallax-auth-exec-123',
+          Name: executionResourceName('exec-12345678-abcd'),
           Labels: expect.objectContaining({
             'parallax.purpose': 'shared-auth',
           }),
@@ -317,7 +322,7 @@ describe('DockerRuntime', () => {
         expect.objectContaining({
           HostConfig: expect.objectContaining({
             Binds: expect.arrayContaining([
-              'parallax-auth-exec-123:/home/agent/.claude',
+              `${executionResourceName('exec-12345678-abcd')}:/home/agent/.claude`,
             ]),
           }),
         })
@@ -343,10 +348,16 @@ describe('DockerRuntime', () => {
 
     it('includes agent identity env vars', async () => {
       await runtime.spawn(
-        makeConfig({ id: 'a1', name: 'Agent-1', type: 'claude', role: 'architect' })
+        makeConfig({
+          id: 'a1',
+          name: 'Agent-1',
+          type: 'claude',
+          role: 'architect',
+        })
       );
 
-      const envArg = mockDocker.createContainer.mock.calls[0][0].Env as string[];
+      const envArg = mockDocker.createContainer.mock.calls[0][0]
+        .Env as string[];
       expect(envArg).toContain('AGENT_ID=a1');
       expect(envArg).toContain('AGENT_NAME=Agent-1');
       expect(envArg).toContain('AGENT_TYPE=claude');
@@ -365,7 +376,8 @@ describe('DockerRuntime', () => {
         })
       );
 
-      const envArg = mockDocker.createContainer.mock.calls[0][0].Env as string[];
+      const envArg = mockDocker.createContainer.mock.calls[0][0]
+        .Env as string[];
       expect(envArg).toContain('ANTHROPIC_API_KEY=sk-ant-test');
       expect(envArg).toContain('OPENAI_API_KEY=sk-openai-test');
       expect(envArg).toContain('GOOGLE_API_KEY=goog-test');
@@ -377,7 +389,8 @@ describe('DockerRuntime', () => {
         makeConfig({ env: { MY_VAR: 'hello', OTHER: '42' } })
       );
 
-      const envArg = mockDocker.createContainer.mock.calls[0][0].Env as string[];
+      const envArg = mockDocker.createContainer.mock.calls[0][0]
+        .Env as string[];
       expect(envArg).toContain('MY_VAR=hello');
       expect(envArg).toContain('OTHER=42');
     });
@@ -385,7 +398,8 @@ describe('DockerRuntime', () => {
     it('includes executionId env when provided', async () => {
       await runtime.spawn(makeConfig({ executionId: 'exec-abcdef00' }));
 
-      const envArg = mockDocker.createContainer.mock.calls[0][0].Env as string[];
+      const envArg = mockDocker.createContainer.mock.calls[0][0]
+        .Env as string[];
       expect(envArg).toContain('PARALLAX_EXECUTION_ID=exec-abcdef00');
     });
 
@@ -397,7 +411,8 @@ describe('DockerRuntime', () => {
       await rt.initialize();
       await rt.spawn(makeConfig());
 
-      const envArg = mockDocker.createContainer.mock.calls[0][0].Env as string[];
+      const envArg = mockDocker.createContainer.mock.calls[0][0]
+        .Env as string[];
       expect(envArg).toContain(
         'PARALLAX_REGISTRY_ENDPOINT=registry.example.com:50051'
       );
@@ -524,11 +539,11 @@ describe('DockerRuntime', () => {
 
     it('rethrows other errors from stop', async () => {
       await runtime.spawn(makeConfig({ id: 'agent-1' }));
-      mockContainer.stop.mockRejectedValueOnce(
-        new Error('permission denied')
-      );
+      mockContainer.stop.mockRejectedValueOnce(new Error('permission denied'));
 
-      await expect(runtime.stop('agent-1')).rejects.toThrow('permission denied');
+      await expect(runtime.stop('agent-1')).rejects.toThrow(
+        'permission denied'
+      );
     });
 
     it('removes agent from internal map after stop', async () => {
@@ -597,7 +612,9 @@ describe('DockerRuntime', () => {
 
     it('removes and returns null if container inspect fails', async () => {
       await runtime.spawn(makeConfig({ id: 'agent-1' }));
-      mockContainer.inspect.mockRejectedValueOnce(new Error('no such container'));
+      mockContainer.inspect.mockRejectedValueOnce(
+        new Error('no such container')
+      );
 
       const handle = await runtime.get('agent-1');
       expect(handle).toBeNull();
@@ -608,32 +625,62 @@ describe('DockerRuntime', () => {
 
       // Test Paused -> busy
       mockContainer.inspect.mockResolvedValueOnce({
-        State: { Running: false, Restarting: false, Paused: true, Dead: false, OOMKilled: false },
+        State: {
+          Running: false,
+          Restarting: false,
+          Paused: true,
+          Dead: false,
+          OOMKilled: false,
+        },
       });
       let handle = await runtime.get('agent-1');
       expect(handle!.status).toBe('busy');
 
       // Re-spawn since previous get may have cleared
       mockContainer.inspect.mockResolvedValueOnce({
-        State: { Running: false, Restarting: true, Paused: false, Dead: false, OOMKilled: false },
+        State: {
+          Running: false,
+          Restarting: true,
+          Paused: false,
+          Dead: false,
+          OOMKilled: false,
+        },
       });
       handle = await runtime.get('agent-1');
       expect(handle!.status).toBe('starting');
 
       mockContainer.inspect.mockResolvedValueOnce({
-        State: { Running: false, Restarting: false, Paused: false, Dead: true, OOMKilled: false },
+        State: {
+          Running: false,
+          Restarting: false,
+          Paused: false,
+          Dead: true,
+          OOMKilled: false,
+        },
       });
       handle = await runtime.get('agent-1');
       expect(handle!.status).toBe('error');
 
       mockContainer.inspect.mockResolvedValueOnce({
-        State: { Running: false, Restarting: false, Paused: false, Dead: false, OOMKilled: true },
+        State: {
+          Running: false,
+          Restarting: false,
+          Paused: false,
+          Dead: false,
+          OOMKilled: true,
+        },
       });
       handle = await runtime.get('agent-1');
       expect(handle!.status).toBe('error');
 
       mockContainer.inspect.mockResolvedValueOnce({
-        State: { Running: false, Restarting: false, Paused: false, Dead: false, OOMKilled: false },
+        State: {
+          Running: false,
+          Restarting: false,
+          Paused: false,
+          Dead: false,
+          OOMKilled: false,
+        },
       });
       handle = await runtime.get('agent-1');
       expect(handle!.status).toBe('stopped');
@@ -653,7 +700,12 @@ describe('DockerRuntime', () => {
      * we spawned so they don't get pruned from the internal map.
      */
     function stubListContainersFor(
-      ...agents: Array<{ id: string; type?: string; role?: string; capabilities?: string[] }>
+      ...agents: Array<{
+        id: string;
+        type?: string;
+        role?: string;
+        capabilities?: string[];
+      }>
     ) {
       const result = agents.map((a) => ({
         Id: `container-${a.id}`,
@@ -663,7 +715,9 @@ describe('DockerRuntime', () => {
           'parallax.agent.id': a.id,
           'parallax.agent.name': a.id,
           'parallax.agent.type': a.type || 'claude',
-          'parallax.agent.capabilities': JSON.stringify(a.capabilities || ['code']),
+          'parallax.agent.capabilities': JSON.stringify(
+            a.capabilities || ['code']
+          ),
           'parallax.agent.role': a.role || '',
         },
       }));
@@ -671,8 +725,12 @@ describe('DockerRuntime', () => {
     }
 
     it('returns all agents when no filter', async () => {
-      await runtime.spawn(makeConfig({ id: 'a1', type: 'claude', role: 'architect' }));
-      await runtime.spawn(makeConfig({ id: 'a2', type: 'codex', role: 'engineer' }));
+      await runtime.spawn(
+        makeConfig({ id: 'a1', type: 'claude', role: 'architect' })
+      );
+      await runtime.spawn(
+        makeConfig({ id: 'a2', type: 'codex', role: 'engineer' })
+      );
       stubListContainersFor(
         { id: 'a1', type: 'claude', role: 'architect' },
         { id: 'a2', type: 'codex', role: 'engineer' }
@@ -739,9 +797,7 @@ describe('DockerRuntime', () => {
       await runtime.spawn(
         makeConfig({ id: 'a1', capabilities: ['code', 'test'] })
       );
-      await runtime.spawn(
-        makeConfig({ id: 'a2', capabilities: ['code'] })
-      );
+      await runtime.spawn(makeConfig({ id: 'a2', capabilities: ['code'] }));
       stubListContainersFor(
         { id: 'a1', capabilities: ['code', 'test'] },
         { id: 'a2', capabilities: ['code'] }
@@ -932,17 +988,43 @@ describe('DockerRuntime', () => {
   // ── Cleanup Execution ───────────────────────────────────────────────
 
   describe('cleanupExecution', () => {
+    it('does not remove shared credentials when a worker cannot be stopped', async () => {
+      await runtime.spawn({
+        id: 'owned',
+        name: 'Worker',
+        type: 'claude',
+        capabilities: [],
+        executionId: 'exec-owned',
+      });
+      mockContainer.kill.mockRejectedValueOnce(new Error('cannot stop worker'));
+      await expect(runtime.cleanupExecution('exec-owned')).rejects.toThrow(
+        'could not be stopped'
+      );
+      expect(mockVolume.remove).not.toHaveBeenCalled();
+    });
+
+    it('rejects unsupported approval policies before allocating a container', async () => {
+      await expect(
+        runtime.spawn({
+          name: 'Worker',
+          type: 'claude',
+          capabilities: [],
+          approvalPreset: 'readonly',
+        })
+      ).rejects.toThrow('does not enforce approval presets');
+      expect(mockDocker.createContainer).not.toHaveBeenCalled();
+    });
     it('removes the shared auth volume', async () => {
       await runtime.cleanupExecution('exec-12345678-abcd');
 
-      expect(mockDocker.getVolume).toHaveBeenCalledWith('parallax-auth-exec-123');
+      expect(mockDocker.getVolume).toHaveBeenCalledWith(
+        executionResourceName('exec-12345678-abcd')
+      );
       expect(mockVolume.remove).toHaveBeenCalled();
     });
 
     it('ignores "no such volume" errors', async () => {
-      mockVolume.remove.mockRejectedValueOnce(
-        new Error('no such volume')
-      );
+      mockVolume.remove.mockRejectedValueOnce(new Error('no such volume'));
 
       await expect(
         runtime.cleanupExecution('exec-99999999')
@@ -950,11 +1032,11 @@ describe('DockerRuntime', () => {
     });
 
     it('logs warning for other removal errors', async () => {
-      mockVolume.remove.mockRejectedValueOnce(
-        new Error('volume is in use')
-      );
+      mockVolume.remove.mockRejectedValueOnce(new Error('volume is in use'));
 
-      await runtime.cleanupExecution('exec-aaaaaaaa');
+      await expect(runtime.cleanupExecution('exec-aaaaaaaa')).rejects.toThrow(
+        'volume is in use'
+      );
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.objectContaining({ error: 'volume is in use' }),

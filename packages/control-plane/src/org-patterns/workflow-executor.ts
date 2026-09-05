@@ -4,11 +4,8 @@
  * Executes workflows defined in org-chart patterns.
  */
 
-import { exec } from 'node:child_process';
-import { EventEmitter } from 'node:events';
-import { promisify } from 'node:util';
 import { combine } from '@_89/confidence-kernel';
-import { best, cf } from '@parallaxai/confidence';
+import { EventEmitter } from 'node:events';
 import type {
   AgentConfig,
   AgentMessage,
@@ -20,6 +17,7 @@ import type { Logger } from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import type { AgentRuntimeService } from '../agent-runtime';
 import type { ThreadPreparationService } from '../threads';
+import { runLocalCommand } from './local-command-verifier';
 import { MessageRouter } from './message-router';
 import {
   parseReviewVerdict,
@@ -35,8 +33,11 @@ import type {
   VerifyOracle,
   WorkflowStep,
 } from './types';
-
-const execAsync = promisify(exec);
+import {
+  normalizeVerification,
+  validateOrgVerification,
+} from './verification-validation';
+import { abortable, LeafSemaphore } from './workflow-control';
 
 export interface WorkflowExecutorOptions {
   /** Timeout for individual steps (ms) */
@@ -44,6 +45,19 @@ export interface WorkflowExecutorOptions {
 
   /** Maximum parallel operations */
   maxParallel?: number;
+
+  /** Trusted development only; production must use an isolated commandVerifier. */
+  allowLocalCommandVerification?: boolean;
+
+  /** Execute in an isolated worker with controlled environment and workspace. */
+  commandVerifier?: (request: {
+    executionId: string;
+    role: string;
+    command: string;
+    cwd?: string;
+    timeoutMs: number;
+    signal?: AbortSignal;
+  }) => Promise<{ exitCode: number; stdout: string; stderr: string }>;
 
   /**
    * Backs the `history` verify oracle (see DecisionHistory). Without it,
@@ -55,6 +69,31 @@ export interface WorkflowExecutorOptions {
       oracle: HistoryOracle
     ): Promise<{ confidence: number; detail?: string }>;
   };
+}
+
+export interface WorkflowExecutionOptions {
+  executionId?: string;
+  signal?: AbortSignal;
+}
+
+export type OracleStatus =
+  | 'passed'
+  | 'failed'
+  | 'unavailable'
+  | 'inconclusive'
+  | 'skipped';
+export interface OracleResult {
+  status: OracleStatus;
+  required: boolean;
+  confidence: number;
+  detail?: string;
+}
+interface VerificationSignal {
+  confidence: number | undefined;
+  source: string;
+  detail?: string;
+  requiredPassed?: boolean;
+  oracles?: OracleResult[];
 }
 
 /** The resolved value from sendToThreadAndWait. */
@@ -107,6 +146,22 @@ export class WorkflowExecutor extends EventEmitter {
   private stepTimeout: number;
   private maxParallel: number;
   private decisionHistory?: WorkflowExecutorOptions['decisionHistory'];
+  private commandVerifier?: WorkflowExecutorOptions['commandVerifier'];
+  private allowLocalCommandVerification: boolean;
+  private cleanupFailures = new Map<string, unknown>();
+  private executions = new Map<string, OrgExecutionContext>();
+  private controls = new WeakMap<
+    OrgExecutionContext,
+    {
+      controller: AbortController;
+      leaves: LeafSemaphore;
+      pendingSpawns: Set<Promise<unknown>>;
+      lateCleanupErrors: unknown[];
+      cleanup?: Promise<void>;
+    }
+  >();
+  private readyChecks = new WeakMap<OrgExecutionContext, () => void>();
+  private unitContexts = new WeakMap<OrgAgentInstance, OrgExecutionContext>();
 
   constructor(
     private runtimeService: AgentRuntimeService,
@@ -117,15 +172,32 @@ export class WorkflowExecutor extends EventEmitter {
   ) {
     super();
     this.stepTimeout = options.stepTimeout ?? 0; // 0 = no timeout
-    this.maxParallel = options.maxParallel || 10;
+    this.maxParallel = options.maxParallel ?? 10;
+    if (!Number.isInteger(this.maxParallel) || this.maxParallel < 1) {
+      throw new Error('maxParallel must be a positive integer');
+    }
+    this.commandVerifier = options.commandVerifier;
+    this.allowLocalCommandVerification =
+      options.allowLocalCommandVerification === true;
     this.decisionHistory = options.decisionHistory;
   }
 
   /**
    * Execute an org-chart pattern workflow
    */
-  async execute(pattern: OrgPattern, input: any): Promise<WorkflowResult> {
-    const executionId = uuidv4();
+  async execute(
+    pattern: OrgPattern,
+    input: any,
+    options: WorkflowExecutionOptions = {}
+  ): Promise<WorkflowResult> {
+    validateOrgVerification(pattern);
+    options.signal?.throwIfAborted();
+    const executionId = options.executionId ?? uuidv4();
+    if (this.executions.has(executionId))
+      throw new Error(`Execution ${executionId} already running`);
+    const controller = new AbortController();
+    const onAbort = () => controller.abort(options.signal?.reason);
+    options.signal?.addEventListener('abort', onAbort, { once: true });
     const startedAt = new Date();
 
     this.logger.info(
@@ -136,6 +208,7 @@ export class WorkflowExecutor extends EventEmitter {
     // Create execution context
     const context: OrgExecutionContext = {
       id: executionId,
+      signal: controller.signal,
       pattern,
       agents: new Map(),
       roleAssignments: new Map(),
@@ -144,6 +217,14 @@ export class WorkflowExecutor extends EventEmitter {
       startedAt,
     };
 
+    this.cleanupFailures.delete(executionId);
+    this.executions.set(executionId, context);
+    this.controls.set(context, {
+      controller,
+      leaves: new LeafSemaphore(this.maxParallel),
+      pendingSpawns: new Set(),
+      lateCleanupErrors: [],
+    });
     const stepResults: WorkflowResult['steps'] = [];
     let unsubscribeMessages: (() => void) | null = null;
 
@@ -152,8 +233,10 @@ export class WorkflowExecutor extends EventEmitter {
       // Set up ready-event listeners BEFORE spawning so we don't miss
       // fast-booting agents whose ready event fires during the spawn sequence.
       const readyGate = this.createReadyGate(pattern.structure.roles, context);
+      void readyGate.catch(() => {}); // Boot may fail before the gate is awaited.
       await this.initializeAgents(pattern.structure.roles, context);
       await readyGate;
+      context.signal?.throwIfAborted();
 
       this.logger.info(
         { executionId, agentCount: context.agents.size },
@@ -184,6 +267,7 @@ export class WorkflowExecutor extends EventEmitter {
 
         context.currentStep = i;
         const result = await this.executeStep(step, context, router);
+        context.signal?.throwIfAborted();
 
         stepResults.push({
           step: i,
@@ -196,6 +280,7 @@ export class WorkflowExecutor extends EventEmitter {
         context.variables.set(`step_${i}_result`, result);
       }
 
+      context.signal?.throwIfAborted();
       context.state = 'completed';
 
       // Cleanup message subscriptions
@@ -203,8 +288,9 @@ export class WorkflowExecutor extends EventEmitter {
         unsubscribeMessages();
       }
 
-      // Don't cleanup agents — threads stay alive so engineers can
-      // finish pushing code and creating PRs after the workflow completes.
+      // All work must finish before completion; never leave execution units running.
+      await this.cleanupAgents(context);
+      context.signal?.throwIfAborted();
 
       const completedAt = new Date();
       const finalOutput = this.extractOutput(pattern.workflow.output, context);
@@ -239,6 +325,7 @@ export class WorkflowExecutor extends EventEmitter {
         steps: stepResults,
       };
     } catch (error) {
+      controller.abort(error);
       context.state = 'failed';
 
       this.logger.error(
@@ -256,17 +343,55 @@ export class WorkflowExecutor extends EventEmitter {
       }
 
       // Cleanup agents
-      await this.cleanupAgents(context);
+      let failure = error;
+      await this.cleanupAgents(context).catch((cleanupError) => {
+        this.logger.error(
+          { executionId, cleanupError },
+          'Workflow cleanup incomplete'
+        );
+        if (cleanupError !== error) {
+          failure = new AggregateError(
+            [error, cleanupError],
+            `Workflow failed and runtime cleanup is incomplete; worker reconciliation required: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`
+          );
+        }
+      });
 
       this.emit('workflow_failed', {
         executionId,
         patternName: pattern.name,
         durationMs: Date.now() - startedAt.getTime(),
         stepsExecuted: stepResults.length,
-        error: error instanceof Error ? error.message : String(error),
+        error: failure instanceof Error ? failure.message : String(failure),
       });
 
-      throw error;
+      throw failure;
+    } finally {
+      options.signal?.removeEventListener('abort', onAbort);
+      this.executions.delete(executionId);
+      for (const unit of context.agents.values())
+        this.unitSendChains.delete(unit.id);
+    }
+  }
+
+  async cancelExecution(
+    executionId: string,
+    reason = new Error('Workflow cancelled')
+  ): Promise<void> {
+    const context = this.executions.get(executionId);
+    if (!context) {
+      const failure = this.cleanupFailures.get(executionId);
+      if (failure) throw failure;
+      return;
+    }
+    this.controls.get(context)?.controller.abort(reason);
+    await this.cleanupAgents(context);
+  }
+
+  private assertActive(context?: OrgExecutionContext): void {
+    context?.signal?.throwIfAborted();
+    if (context?.state === 'completed' || context?.state === 'failed') {
+      throw new Error(`Workflow ${context.id} is already ${context.state}`);
     }
   }
 
@@ -300,74 +425,80 @@ export class WorkflowExecutor extends EventEmitter {
    */
   private createReadyGate(
     roles: Record<string, OrgRole>,
-    _context: OrgExecutionContext
+    context: OrgExecutionContext
   ): Promise<void> {
-    const threadRoles = Object.entries(roles).filter(
-      ([_, role]) => role.threadConfig?.enabled
-    );
-    const totalExpected = threadRoles.reduce(
-      (sum, [_, role]) => sum + (role.singleton ? 1 : role.minInstances || 1),
-      0
-    );
-
+    const totalExpected = Object.values(roles)
+      .filter((role) => role.threadConfig?.enabled)
+      .reduce(
+        (count, role) => count + (role.singleton ? 1 : role.minInstances || 1),
+        0
+      );
     if (totalExpected === 0) return Promise.resolve();
-
-    const READY_TIMEOUT = 120000;
-    let readyCount = 0;
-
     return new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.logger.warn(
-          { readyCount, totalExpected },
-          'Ready gate timeout — proceeding with available agents'
+      const events = new Map<string, { type: string; instructions?: string }>();
+      const cleanup = () => {
+        clearTimeout(timer);
+        this.runtimeService.removeListener('thread_event', handler);
+        context.signal?.removeEventListener('abort', abort);
+        this.readyChecks.delete(context);
+      };
+      const abort = () => {
+        cleanup();
+        reject(context.signal?.reason ?? new Error('Workflow cancelled'));
+      };
+      const check = () => {
+        const owned = [...context.agents.values()].filter(
+          (unit) => unit.kind === 'thread'
         );
-        resolve();
-      }, READY_TIMEOUT);
-
-      // Listen for ALL thread events on the runtime service
-      // (events arrive even before threads are in the threadToRuntime map
-      // because the gateway adapter subscribes during spawnThread)
-      const handler = (data: any) => {
-        const eventType = (data?.event?.event_type ||
-          data?.event?.type ||
-          '') as string;
-        if (eventType === 'ready' || eventType === 'thread_ready') {
-          readyCount++;
-          const threadId = data?.event?.thread_id || 'unknown';
-          this.logger.info(
-            { threadId, readyCount, totalExpected },
-            'Agent ready'
+        const auth = owned
+          .map((unit) => ({ unit, event: events.get(unit.id) }))
+          .find(
+            ({ event }) =>
+              event?.type === 'thread_auth_required' ||
+              event?.type === 'auth_required'
           );
-          if (readyCount >= totalExpected) {
-            clearTimeout(timer);
-            this.runtimeService.removeListener('thread_event', handler);
-            resolve();
-          }
-        }
-
-        // An agent stuck on a login screen can never become ready — fail
-        // the workflow immediately with an actionable error instead of
-        // sending tasks into a login prompt and hanging.
-        if (
-          eventType === 'thread_auth_required' ||
-          eventType === 'auth_required'
-        ) {
-          const threadId =
-            data?.event?.thread_id || data?.event?.threadId || 'unknown';
-          const instructions =
-            data?.event?.data?.instructions ||
-            'Authenticate the agent CLI on the runtime host (e.g. run `claude login`).';
-          clearTimeout(timer);
-          this.runtimeService.removeListener('thread_event', handler);
+        if (auth) {
+          cleanup();
           reject(
             new Error(
-              `Agent thread ${threadId} requires authentication and cannot become ready. ${instructions}`
+              `Agent thread ${auth.unit.id} requires authentication and cannot become ready. ${auth.event?.instructions ?? 'Authenticate the agent CLI on the runtime host.'}`
             )
           );
+        } else if (
+          owned.length === totalExpected &&
+          owned.every((unit) =>
+            ['ready', 'thread_ready'].includes(events.get(unit.id)?.type ?? '')
+          )
+        ) {
+          cleanup();
+          resolve();
         }
       };
-
+      const handler = (data: any) => {
+        const event = data?.event ?? data;
+        const id = event?.thread_id ?? event?.threadId;
+        const type = event?.event_type ?? event?.type;
+        if (
+          !id ||
+          ![
+            'ready',
+            'thread_ready',
+            'thread_auth_required',
+            'auth_required',
+          ].includes(type)
+        )
+          return;
+        events.set(id, { type, instructions: event?.data?.instructions });
+        check();
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Agents did not become ready within 120000ms`));
+      }, 120000);
+      this.readyChecks.set(context, check);
       this.runtimeService.on('thread_event', handler);
+      context.signal?.addEventListener('abort', abort, { once: true });
+      if (context.signal?.aborted) abort();
     });
   }
 
@@ -380,6 +511,7 @@ export class WorkflowExecutor extends EventEmitter {
     context: OrgExecutionContext,
     index: number
   ): Promise<void> {
+    this.assertActive(context);
     if (role.threadConfig?.enabled) {
       // Skip threadPreparationService — it provisions workspaces server-side.
       // Gateway agents clone repos locally via their thread executor.
@@ -398,7 +530,11 @@ export class WorkflowExecutor extends EventEmitter {
           `You are the ${role.name} on this team.`,
         role: roleId,
         preparation: {
-          workspace: (role.threadConfig.workspace as ThreadWorkspaceRef & { inherit?: boolean })?.inherit
+          workspace: (
+            role.threadConfig.workspace as ThreadWorkspaceRef & {
+              inherit?: boolean;
+            }
+          )?.inherit
             ? {
                 ...(role.threadConfig.workspace || {}),
                 repo: context.variables.get('input')?.repo,
@@ -419,16 +555,27 @@ export class WorkflowExecutor extends EventEmitter {
         policy: role.threadConfig.policy,
       };
 
-      const thread = await this.runtimeService.spawnThread(spawnInput);
-
-      this.registerRoleExecutionUnit(roleId, context, {
-        id: thread.id,
-        kind: 'thread',
-        threadId: thread.id,
-        role: roleId,
-        endpoint: '',
-        status: 'idle',
-      });
+      const thread = await this.waitForSpawn(
+        this.runtimeService.spawnThread(spawnInput).then(async (thread) => {
+          if (context.signal?.aborted) {
+            await this.stopLateSpawn(
+              () => this.runtimeService.stopThread(thread.id),
+              context
+            );
+            context.signal.throwIfAborted();
+          }
+          this.registerRoleExecutionUnit(roleId, context, {
+            id: thread.id,
+            kind: 'thread',
+            threadId: thread.id,
+            role: roleId,
+            endpoint: '',
+            status: 'idle',
+          });
+          return thread;
+        }),
+        context
+      );
 
       this.logger.debug(
         { threadId: thread.id, role: roleId },
@@ -442,25 +589,34 @@ export class WorkflowExecutor extends EventEmitter {
       : role.agentType;
 
     const config: AgentConfig = {
+      ...role.agentConfig,
       name: `${role.name} ${index + 1}`,
       type: agentType,
       capabilities: role.capabilities,
       role: roleId,
       executionId: context.id,
-      ...role.agentConfig,
     };
 
-    const handle = await this.runtimeService.spawn(config);
-
-    const instance: OrgAgentInstance = {
-      id: handle.id,
-      kind: 'agent',
-      role: roleId,
-      endpoint: handle.endpoint || '',
-      status: 'idle',
-    };
-
-    this.registerRoleExecutionUnit(roleId, context, instance);
+    const handle = await this.waitForSpawn(
+      this.runtimeService.spawn(config).then(async (handle) => {
+        if (context.signal?.aborted) {
+          await this.stopLateSpawn(
+            () => this.runtimeService.stop(handle.id),
+            context
+          );
+          context.signal.throwIfAborted();
+        }
+        this.registerRoleExecutionUnit(roleId, context, {
+          id: handle.id,
+          kind: 'agent',
+          role: roleId,
+          endpoint: handle.endpoint || '',
+          status: 'idle',
+        });
+        return handle;
+      }),
+      context
+    );
 
     this.logger.debug(
       { agentId: handle.id, role: roleId },
@@ -468,12 +624,40 @@ export class WorkflowExecutor extends EventEmitter {
     );
   }
 
+  private async stopLateSpawn(
+    stop: () => Promise<void>,
+    context: OrgExecutionContext
+  ): Promise<void> {
+    try {
+      await stop();
+    } catch (error) {
+      this.controls.get(context)?.lateCleanupErrors.push(error);
+      throw error;
+    }
+  }
+
+  private waitForSpawn<T>(
+    spawn: Promise<T>,
+    context: OrgExecutionContext
+  ): Promise<T> {
+    const pending = this.controls.get(context)?.pendingSpawns;
+    pending?.add(spawn);
+    void spawn.then(
+      () => pending?.delete(spawn),
+      () => pending?.delete(spawn)
+    );
+    return abortable(spawn, context.signal);
+  }
+
   private registerRoleExecutionUnit(
     roleId: string,
     context: OrgExecutionContext,
     instance: OrgAgentInstance
   ): void {
+    this.assertActive(context);
+    this.unitContexts.set(instance, context);
     context.agents.set(instance.id, instance);
+    this.readyChecks.get(context)?.();
 
     const assignments = context.roleAssignments.get(roleId) || [];
     assignments.push(instance.id);
@@ -488,6 +672,26 @@ export class WorkflowExecutor extends EventEmitter {
     context: OrgExecutionContext,
     router: MessageRouter
   ): Promise<StepResult> {
+    this.assertActive(context);
+    const leaves = this.controls.get(context)?.leaves;
+    if (
+      leaves &&
+      ['assign', 'review', 'approve', 'select', 'aggregate'].includes(step.type)
+    ) {
+      return leaves.run(
+        () => this.executeLeafStep(step, context, router),
+        context.signal
+      );
+    }
+    return this.executeLeafStep(step, context, router);
+  }
+
+  private async executeLeafStep(
+    step: WorkflowStep,
+    context: OrgExecutionContext,
+    router: MessageRouter
+  ): Promise<StepResult> {
+    this.assertActive(context);
     switch (step.type) {
       case 'assign':
         return this.executeAssignStep(step, context);
@@ -635,7 +839,7 @@ export class WorkflowExecutor extends EventEmitter {
     response: StepResult,
     context: OrgExecutionContext,
     task?: string
-  ): Promise<{ confidence: number | undefined; source: string; detail?: string }> {
+  ): Promise<VerificationSignal> {
     if (role.verify) {
       return this.runVerify(role.verify, role, context, response, task);
     }
@@ -646,15 +850,8 @@ export class WorkflowExecutor extends EventEmitter {
   }
 
   /**
-   * Apply a role's confidence policy to a step result.
-   *
-   * The signal comes from the role's `verify` oracle (preferred) or its
-   * self-reported marker. Bands (most severe first): below `escalateBelow`
-   * the supervisor (`reportsTo`) reviews and produces the final result;
-   * below `retryBelow` the unit gets one critique-driven retry (carrying the
-   * verification detail) and the more confident attempt wins; at/above
-   * `accept` (default 0.8) the result passes; in between it is accepted with
-   * a warning. Results with no signal pass through untouched.
+   * Confidence routes bounded repair attempts. Required evidence is a separate
+   * gate: the current attempt must pass, including after a supervisor correction.
    */
   private async applyConfidencePolicy(
     role: OrgRole,
@@ -663,154 +860,93 @@ export class WorkflowExecutor extends EventEmitter {
     initialResponse: StepResult,
     context: OrgExecutionContext
   ): Promise<StepResult> {
-    // A role with `verify` but no explicit policy still escalates on failure.
     const policy = role.confidence ?? {
       accept: 0.8,
       retryBelow: 0.6,
       escalateBelow: 0.4,
     };
     const accept = policy.accept ?? 0.8;
-
     let response = initialResponse;
-    const signal = await this.signalFor(role, response, context, taskStr);
-    let confidence = signal.confidence;
-    const { source } = signal;
-    let detail = signal.detail;
-
-    if (confidence === undefined) {
-      this.logger.debug(
-        { role: role.id },
-        'Confidence policy configured but result carries no signal — accepting as-is'
-      );
+    let signal = await this.signalFor(role, response, context, taskStr);
+    const emit = (action: string, extra: Record<string, unknown> = {}) =>
       this.emit('step_confidence', {
         executionId: context.id,
         step: context.currentStep,
         role: role.id,
-        action: 'no_signal',
-        source,
+        action,
+        confidence: signal.confidence,
+        source: signal.source,
+        detail: signal.detail,
+        requiredPassed: signal.requiredPassed,
+        oracles: signal.oracles,
+        ...extra,
       });
+    const blocked = () => signal.requiredPassed === false;
+    if (signal.confidence === undefined) {
+      emit('no_signal');
       return response;
     }
 
-    // Retry band: one critique-driven retry; more confident attempt wins
     if (
       policy.retryBelow !== undefined &&
-      confidence < policy.retryBelow &&
-      (policy.escalateBelow === undefined || confidence >= policy.escalateBelow)
+      signal.confidence < policy.retryBelow &&
+      (policy.escalateBelow === undefined ||
+        signal.confidence >= policy.escalateBelow)
     ) {
-      this.logger.info(
-        { role: role.id, confidence, retryBelow: policy.retryBelow, source },
-        'Low confidence — retrying step with critique'
+      emit('retry');
+      response = await this.sendToExecutionUnit(
+        unit,
+        `Your previous attempt did not pass verification.\n\nWhat failed:\n${signal.detail ?? signal.confidence}\n\n` +
+          `Fix the problems and provide an improved result.\n\nOriginal task: ${taskStr}\n\n` +
+          `Your previous result:\n${this.extractResponseText(response)}`
       );
-      this.emit('step_confidence', {
-        executionId: context.id,
-        step: context.currentStep,
-        role: role.id,
-        confidence,
-        action: 'retry',
-        source,
-        detail,
-      });
-
-      const whatFailed = detail
-        ? `\n\nWhat failed:\n${detail}`
-        : ` (${confidence.toFixed(2)})`;
-      const critique =
-        `Your previous attempt did not pass verification${whatFailed}\n\n` +
-        'Review your work, fix the problems above, and provide an improved ' +
-        `result.\n\nOriginal task: ${taskStr}\n\n` +
-        `Your previous result:\n${this.extractResponseText(response)}`;
-      const retryResponse = await this.sendToExecutionUnit(unit, critique);
-      const retrySignal = await this.signalFor(
-        role,
-        retryResponse,
-        context,
-        taskStr
-      );
-
-      const winner = best(
-        cf(response, confidence),
-        cf(retryResponse, retrySignal.confidence ?? 0)
-      );
-      if (winner.value === retryResponse) {
-        response = retryResponse;
-        confidence = retrySignal.confidence ?? 0;
-        detail = retrySignal.detail;
-      } else {
-        confidence = winner.confidence;
-      }
+      // The workspace has changed; an earlier passing score cannot validate this attempt.
+      signal = await this.signalFor(role, response, context, taskStr);
     }
 
-    // Escalation band: the supervisor reviews and owns the final result
     if (
-      policy.escalateBelow !== undefined &&
-      confidence < policy.escalateBelow
+      blocked() ||
+      (policy.escalateBelow !== undefined &&
+        (signal.confidence ?? 0) < policy.escalateBelow)
     ) {
-      const supervisorRoleId = role.reportsTo;
-      const supervisorRole = supervisorRoleId
-        ? context.pattern.structure.roles[supervisorRoleId]
+      const supervisorId = role.reportsTo;
+      const supervisorRole = supervisorId
+        ? context.pattern.structure.roles[supervisorId]
         : undefined;
-
-      if (!supervisorRoleId || !supervisorRole) {
-        this.logger.warn(
-          { role: role.id, confidence, escalateBelow: policy.escalateBelow },
-          'Escalation triggered but role has no supervisor (reportsTo) — surfacing low-confidence result'
-        );
-        this.emit('step_confidence', {
-          executionId: context.id,
-          step: context.currentStep,
-          role: role.id,
-          confidence,
-          action: 'escalation_unrouted',
-          source,
-        });
-        return response;
+      if (!supervisorId || !supervisorRole) {
+        emit('escalation_unrouted');
+        if (blocked())
+          throw new Error(
+            `Required verification failed for ${role.id}: ${signal.detail}`
+          );
+        return response; // A self-report or historical prior alone is advisory.
       }
-
-      this.logger.info(
-        { role: role.id, supervisor: supervisorRoleId, confidence, source },
-        'Low confidence — escalating to supervisor'
-      );
-      this.emit('step_confidence', {
-        executionId: context.id,
-        step: context.currentStep,
-        role: role.id,
-        confidence,
-        action: 'escalate',
-        supervisor: supervisorRoleId,
-        source,
-        detail,
-      });
-
+      emit('escalate', { supervisor: supervisorId });
       const supervisor = await this.getOrSpawnRoleUnit(
-        supervisorRoleId,
+        supervisorId,
         supervisorRole,
         context
       );
-      const whatFailed = detail ? `\n\nVerification detail:\n${detail}` : '';
-      const escalation =
-        `Your report (${role.name}) completed a task that did not pass ` +
-        `verification (confidence ${confidence.toFixed(2)}).${whatFailed}\n\n` +
-        `Task: ${taskStr}\n\n` +
-        `Their result:\n${this.extractResponseText(response)}\n\n` +
-        'Review their work and provide the final, corrected result.';
-      return this.sendToExecutionUnit(supervisor, escalation);
-    }
-
-    this.emit('step_confidence', {
-      executionId: context.id,
-      step: context.currentStep,
-      role: role.id,
-      confidence,
-      action: confidence >= accept ? 'accept' : 'accept_with_warning',
-      source,
-    });
-    if (confidence < accept) {
-      this.logger.warn(
-        { role: role.id, confidence, accept },
-        'Result accepted below target confidence'
+      response = await this.sendToExecutionUnit(
+        supervisor,
+        `Your report (${role.name}) completed a task that did not pass verification ` +
+          `(confidence ${(signal.confidence ?? 0).toFixed(2)}).\n\nVerification detail:\n${signal.detail ?? ''}\n\n` +
+          `Task: ${taskStr}\n\nTheir result:\n${this.extractResponseText(response)}\n\n` +
+          'Correct the work in the original workspace and provide the corrected result. Required checks will run again.'
       );
+      if (signal.oracles?.some((oracle) => oracle.required)) {
+        // Exactly one escalation; the supervisor cannot waive the original checks.
+        signal = await this.signalFor(role, response, context, taskStr);
+        if (signal.requiredPassed === false) {
+          emit('verification_failed');
+          throw new Error(
+            `Required verification failed after escalation for ${role.id}: ${signal.detail}`
+          );
+        }
+      } else return response;
     }
+    this.assertActive(context);
+    emit((signal.confidence ?? 0) >= accept ? 'accept' : 'accept_with_warning');
     return response;
   }
 
@@ -825,28 +961,25 @@ export class WorkflowExecutor extends EventEmitter {
     context: OrgExecutionContext,
     subject: StepResult,
     task?: string
-  ): Promise<{ confidence: number; source: string; detail?: string }> {
-    const spec: OrgVerify = Array.isArray(verify)
-      ? { oracles: verify }
-      : 'oracles' in verify
-        ? verify
-        : { oracles: [verify] };
-
-    const results = await Promise.all(
-      spec.oracles.map((o) => this.runOracle(o, role, context, subject, task))
-    );
-
-    // First slice: combine by minimum (the only mode wired end to end) —
-    // "a result is only as trustworthy as its weakest check". Delegated to the
-    // shared confidence-kernel's `combine(..., 'min')`.
-    const combined = combine(results, 'min');
-
+  ): Promise<VerificationSignal> {
+    const spec = normalizeVerification(verify);
+    const results: OracleResult[] = [];
+    // Sequential checks preserve an intelligible evidence order and the leaf-work bound.
+    for (const oracle of spec.oracles) {
+      this.assertActive(context);
+      results.push(await this.runOracle(oracle, role, context, subject, task));
+    }
+    this.assertActive(context);
     return {
-      confidence: combined.confidence,
-      source: spec.oracles.map((o) => o.type).join('+'),
+      confidence: combine(results, 'min').confidence,
+      requiredPassed: results
+        .filter((result) => result.required)
+        .every((result) => result.status === 'passed'),
+      oracles: results,
+      source: spec.oracles.map((oracle) => oracle.type).join('+'),
       detail: results
-        .map((r) => r.detail)
-        .filter((d): d is string => !!d)
+        .map((result) => result.detail)
+        .filter(Boolean)
         .join('\n'),
     };
   }
@@ -857,78 +990,132 @@ export class WorkflowExecutor extends EventEmitter {
     context: OrgExecutionContext,
     subject: StepResult,
     task?: string
-  ): Promise<{ confidence: number; detail?: string }> {
-    if (oracle.type === 'history') {
+  ): Promise<OracleResult> {
+    if (oracle.type === 'history')
       return this.runHistoryOracle(oracle, role, context);
-    }
-
-    if (oracle.type === 'agent') {
+    if (oracle.type === 'agent')
       return this.runAgentOracle(oracle, role, context, subject, task);
-    }
-
-    if (oracle.type === 'command') {
-      const cwdRaw = oracle.cwd
-        ? this.resolveVariables(oracle.cwd, context)
-        : undefined;
-      const cwd =
-        typeof cwdRaw === 'string' && cwdRaw.trim() ? cwdRaw : process.cwd();
-      const pass = oracle.passConfidence ?? 1.0;
-      const fail = oracle.failConfidence ?? 0.0;
-      const timeout = oracle.timeoutMs ?? 120000;
-
-      const scoreFrom = (output: string): number | undefined => {
-        if (!oracle.scorePattern) return undefined;
-        const m = output.match(new RegExp(oracle.scorePattern));
-        if (!m || m[1] === undefined || m[2] === undefined) return undefined;
-        const passed = Number(m[1]);
-        const failed = Number(m[2]);
-        const total = passed + failed;
-        return total > 0 ? passed / total : undefined;
+    if (oracle.type !== 'command') {
+      return {
+        status: 'unavailable',
+        required: true,
+        confidence: 0,
+        detail: 'Unsupported verification oracle',
       };
-
-      try {
-        const { stdout, stderr } = await execAsync(oracle.run, {
-          cwd,
-          timeout,
-          maxBuffer: 10 * 1024 * 1024,
-        });
-        const out = `${stdout}\n${stderr}`;
-        const score = scoreFrom(out);
-        if (score !== undefined) {
-          return {
-            confidence: score,
-            detail: `\`${oracle.run}\` — partial (${(score * 100).toFixed(0)}%)`,
-          };
-        }
-        return { confidence: pass, detail: `\`${oracle.run}\` — passed` };
-      } catch (err) {
-        const e = err as {
-          stdout?: string;
-          stderr?: string;
-          message?: string;
-        };
-        const out = `${e.stdout ?? ''}\n${e.stderr ?? ''}`.trim() || e.message || '';
-        const score = scoreFrom(out);
-        if (score !== undefined) {
-          return {
-            confidence: score,
-            detail: `\`${oracle.run}\` — partial (${(score * 100).toFixed(0)}%)\n${out.slice(-800)}`,
-          };
-        }
-        return {
-          confidence: fail,
-          detail: `\`${oracle.run}\` — failed:\n${out.slice(-800)}`,
-        };
-      }
     }
-
-    // checklist / agent / human oracles are specified in docs/VERIFY.md but
-    // not yet implemented; don't block on them.
-    this.logger.warn(
-      { type: (oracle as { type: string }).type },
-      'Verify oracle type not implemented — treating as pass'
-    );
-    return { confidence: 1.0 };
+    if (
+      !this.commandVerifier &&
+      (!this.allowLocalCommandVerification ||
+        process.env.NODE_ENV === 'production')
+    ) {
+      return {
+        status: 'unavailable',
+        required: true,
+        confidence: 0,
+        detail:
+          'Command verification requires an isolated commandVerifier. Trusted development may explicitly enable allowLocalCommandVerification outside production.',
+      };
+    }
+    const cwdRaw = oracle.cwd
+      ? this.resolveVariables(oracle.cwd, context)
+      : undefined;
+    if (oracle.cwd && (typeof cwdRaw !== 'string' || !cwdRaw.trim())) {
+      return {
+        status: 'unavailable',
+        required: true,
+        confidence: 0,
+        detail: 'Verification working directory did not resolve',
+      };
+    }
+    const cwd = typeof cwdRaw === 'string' ? cwdRaw : undefined;
+    const timeoutMs = oracle.timeoutMs ?? 120000;
+    try {
+      let result: { exitCode: number; stdout: string; stderr: string };
+      if (this.commandVerifier) {
+        const controller = new AbortController();
+        const abort = () => controller.abort(context.signal?.reason);
+        context.signal?.addEventListener('abort', abort, { once: true });
+        if (context.signal?.aborted) abort();
+        const timer = setTimeout(
+          () =>
+            controller.abort(
+              new Error(`Command verification timed out after ${timeoutMs}ms`)
+            ),
+          timeoutMs
+        );
+        try {
+          result = await abortable(
+            this.commandVerifier({
+              executionId: context.id,
+              role: role.id,
+              command: oracle.run,
+              cwd,
+              timeoutMs,
+              signal: controller.signal,
+            }),
+            controller.signal
+          );
+        } finally {
+          clearTimeout(timer);
+          context.signal?.removeEventListener('abort', abort);
+        }
+      } else {
+        result = await runLocalCommand(
+          oracle.run,
+          cwd,
+          timeoutMs,
+          context.signal
+        );
+      }
+      this.assertActive(context);
+      if (
+        !Number.isInteger(result.exitCode) ||
+        typeof result.stdout !== 'string' ||
+        typeof result.stderr !== 'string'
+      ) {
+        throw new Error('Verifier returned an invalid command result');
+      }
+      const output = `${result.stdout}\n${result.stderr}`;
+      let score: number | undefined;
+      if (oracle.scorePattern) {
+        const match = output.match(new RegExp(oracle.scorePattern));
+        const passed = Number(match?.[1]);
+        const failed = Number(match?.[2]);
+        if (
+          Number.isFinite(passed) &&
+          Number.isFinite(failed) &&
+          passed >= 0 &&
+          failed >= 0 &&
+          passed + failed > 0
+        ) {
+          score = passed / (passed + failed);
+        }
+      }
+      const status: OracleStatus =
+        result.exitCode !== 0 || (score !== undefined && score < 1)
+          ? 'failed'
+          : oracle.scorePattern && score === undefined
+            ? 'inconclusive'
+            : 'passed';
+      return {
+        status,
+        required: true,
+        confidence:
+          score ??
+          (status === 'passed'
+            ? (oracle.passConfidence ?? 1)
+            : (oracle.failConfidence ?? 0)),
+        detail: `\`${oracle.run}\` — ${status}${score !== undefined ? ` (${(score * 100).toFixed(0)}%)` : ''}\n${output.slice(-800)}`,
+      };
+    } catch (error) {
+      context.signal?.throwIfAborted();
+      return {
+        status: 'unavailable',
+        required: true,
+        confidence: 0,
+        detail: `Command verification unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
   }
 
   /**
@@ -939,10 +1126,8 @@ export class WorkflowExecutor extends EventEmitter {
    * 2026-07-20 run proved engineers can pass their own suites at 1.0
    * while silently dropping requirements (see docs/experiments/).
    *
-   * Resolves neutral (1.0, with a warning) when no reviewer role can be
-   * resolved, the reviewer's reply carries no parseable verdict, or the
-   * review turn fails — a broken review channel must not block work,
-   * it must be visible.
+   * Missing or broken reviewers and unparseable verdicts block acceptance.
+   * Confidence is a triage signal; only an explicit approve passes the gate.
    */
   private async runAgentOracle(
     oracle: Extract<VerifyOracle, { type: 'agent' }>,
@@ -950,7 +1135,7 @@ export class WorkflowExecutor extends EventEmitter {
     context: OrgExecutionContext,
     subject: StepResult,
     task?: string
-  ): Promise<{ confidence: number; detail?: string }> {
+  ): Promise<OracleResult> {
     const reviewerId = oracle.role ?? role.reportsTo;
     const reviewerRole = reviewerId
       ? context.pattern.structure.roles[reviewerId]
@@ -959,11 +1144,13 @@ export class WorkflowExecutor extends EventEmitter {
     if (!reviewerId || !reviewerRole) {
       this.logger.warn(
         { role: role.id, reviewer: oracle.role ?? '(reportsTo unset)' },
-        'Agent oracle configured but no reviewer role available — neutral'
+        'Agent oracle configured but no reviewer role available'
       );
       return {
-        confidence: 1.0,
-        detail: 'agent review — no reviewer role available: neutral',
+        status: 'unavailable',
+        required: true,
+        confidence: 0,
+        detail: 'agent review — no reviewer role available',
       };
     }
 
@@ -990,35 +1177,42 @@ export class WorkflowExecutor extends EventEmitter {
       const text = this.extractResponseText(response);
       const parsed = parseReviewVerdict(text);
 
-      if (parsed.confidence === undefined) {
+      if (!parsed.verdict || parsed.confidence === undefined) {
         this.logger.warn(
           { role: role.id, reviewer: reviewerId },
-          'Agent oracle reply carried no parseable verdict — neutral'
+          'Agent oracle reply carried no parseable verdict'
         );
         return {
-          confidence: 1.0,
-          detail: `agent review (${reviewerId}) — no parseable verdict: neutral`,
+          status: 'inconclusive',
+          required: true,
+          confidence: 0,
+          detail: `agent review (${reviewerId}) — no parseable verdict`,
         };
       }
 
       return {
+        status: parsed.verdict === 'approve' ? 'passed' : 'failed',
+        required: true,
         confidence: parsed.confidence,
         detail:
           `agent review (${reviewerId}): ${parsed.verdict ?? 'no verdict word'} ` +
           `(${parsed.confidence.toFixed(2)})\n${parsed.detail.slice(-600)}`,
       };
     } catch (error) {
+      context.signal?.throwIfAborted();
       this.logger.warn(
         {
           role: role.id,
           reviewer: reviewerId,
           error: error instanceof Error ? error.message : String(error),
         },
-        'Agent oracle review turn failed — neutral'
+        'Agent oracle review turn failed'
       );
       return {
-        confidence: 1.0,
-        detail: `agent review (${reviewerId}) — review turn failed: neutral`,
+        status: 'unavailable',
+        required: true,
+        confidence: 0,
+        detail: `agent review (${reviewerId}) — review turn failed`,
       };
     }
   }
@@ -1032,13 +1226,15 @@ export class WorkflowExecutor extends EventEmitter {
     oracle: HistoryOracle,
     role: OrgRole,
     context: OrgExecutionContext
-  ): Promise<{ confidence: number; detail?: string }> {
+  ): Promise<OracleResult> {
     if (!this.decisionHistory) {
       this.logger.warn(
         { role: role.id },
         'History oracle configured but no decision history store wired — neutral'
       );
       return {
+        status: 'skipped',
+        required: false,
         confidence: 1.0,
         detail: 'history — no decision history store configured: neutral',
       };
@@ -1049,15 +1245,20 @@ export class WorkflowExecutor extends EventEmitter {
       // attached, which simply drops that dimension.
       const input = context.variables.get('input');
       const repo = input?.workspace?.repo ?? input?.repo;
-      return await this.decisionHistory.signal(
-        {
-          patternName: context.pattern.name,
-          role: role.id,
-          repo: typeof repo === 'string' ? repo : undefined,
-        },
-        oracle
+      const signal = await abortable(
+        this.decisionHistory.signal(
+          {
+            patternName: context.pattern.name,
+            role: role.id,
+            repo: typeof repo === 'string' ? repo : undefined,
+          },
+          oracle
+        ),
+        context.signal
       );
+      return { ...signal, status: 'skipped', required: false };
     } catch (error) {
+      context.signal?.throwIfAborted();
       this.logger.warn(
         {
           role: role.id,
@@ -1066,6 +1267,8 @@ export class WorkflowExecutor extends EventEmitter {
         'History oracle lookup failed — neutral'
       );
       return {
+        status: 'skipped',
+        required: false,
         confidence: 1.0,
         detail: 'history — lookup failed: neutral',
       };
@@ -1080,10 +1283,21 @@ export class WorkflowExecutor extends EventEmitter {
     context: OrgExecutionContext,
     router: MessageRouter
   ): Promise<StepResult[]> {
-    const results = await Promise.all(
-      step.steps.map((s) => this.executeStep(s, context, router))
+    const results = await Promise.allSettled(
+      step.steps.map(async (child) => {
+        try {
+          return await this.executeStep(child, context, router);
+        } catch (error) {
+          this.controls.get(context)?.controller.abort(error);
+          throw error;
+        }
+      })
     );
-    return results;
+    const failed = results.find((result) => result.status === 'rejected');
+    if (failed?.status === 'rejected') throw failed.reason;
+    return results.map(
+      (result) => (result as PromiseFulfilledResult<StepResult>).value
+    );
   }
 
   /**
@@ -1159,11 +1373,7 @@ export class WorkflowExecutor extends EventEmitter {
         REVIEW_PROTOCOL_INSTRUCTION
     );
 
-    // Surface the review verdict as a confidence signal — a review whose
-    // judgment dies as prose is how a failing delivery reports 100%
-    // (docs/experiments/2026-07-20). Parsed but not policy-routed here;
-    // it feeds the event stream, the journal, and the execution's
-    // average confidence.
+    // Standalone review is an acceptance gate as well as a triage signal.
     const verdict = parseReviewVerdict(this.extractResponseText(response));
     if (verdict.confidence !== undefined) {
       this.emit('step_confidence', {
@@ -1173,10 +1383,20 @@ export class WorkflowExecutor extends EventEmitter {
         action: 'review_verdict',
         confidence: verdict.confidence,
         source: 'review',
+        status:
+          verdict.verdict === 'approve'
+            ? 'passed'
+            : verdict.verdict
+              ? 'failed'
+              : 'inconclusive',
         detail: verdict.verdict,
       });
     }
 
+    if (verdict.verdict !== 'approve')
+      throw new Error(
+        `Required review ${step.reviewer} did not approve: ${verdict.verdict ?? 'no parseable verdict'}`
+      );
     return response;
   }
 
@@ -1201,9 +1421,13 @@ export class WorkflowExecutor extends EventEmitter {
 
     const response = await this.sendToExecutionUnit(
       approver,
-      `Please approve or reject the following:\n\n${JSON.stringify(subject, null, 2)}`
+      `Please approve or reject the following:\n\n${JSON.stringify(subject, null, 2)}\n\n${REVIEW_PROTOCOL_INSTRUCTION}`
     );
-
+    const verdict = parseReviewVerdict(this.extractResponseText(response));
+    if (verdict.verdict !== 'approve')
+      throw new Error(
+        `Required approval ${step.approver} did not approve: ${verdict.verdict ?? 'no parseable verdict'}`
+      );
     return response;
   }
 
@@ -1405,7 +1629,7 @@ export class WorkflowExecutor extends EventEmitter {
 
     // Return function to unsubscribe all
     return () => {
-      unsubscribers.forEach((unsub) => unsub());
+      for (const unsubscribe of unsubscribers) unsubscribe();
     };
   }
 
@@ -1416,6 +1640,12 @@ export class WorkflowExecutor extends EventEmitter {
     context: OrgExecutionContext,
     router: MessageRouter
   ): Promise<void> {
+    if (
+      context.signal?.aborted ||
+      context.state === 'completed' ||
+      context.state === 'failed'
+    )
+      return;
     // Find who this agent reports to
     const role = context.pattern.structure.roles[agentInstance.role];
     if (!role?.reportsTo) {
@@ -1506,12 +1736,24 @@ export class WorkflowExecutor extends EventEmitter {
     message: string,
     input?: unknown
   ): Promise<StepResult> {
+    const context = this.unitContexts.get(unit);
+    try {
+      this.assertActive(context);
+    } catch (error) {
+      return Promise.reject(error);
+    }
     const prev = this.unitSendChains.get(unit.id) ?? Promise.resolve();
     const next = prev
       .catch(() => {}) // a failed predecessor must not poison the queue
-      .then(() => this.sendToExecutionUnitNow(unit, message, input));
+      .then(() => {
+        this.assertActive(context);
+        return abortable(
+          this.sendToExecutionUnitNow(unit, message, input),
+          context?.signal
+        );
+      });
     this.unitSendChains.set(unit.id, next);
-    return next;
+    return abortable(next, context?.signal);
   }
 
   private async sendToExecutionUnitNow(
@@ -1529,7 +1771,11 @@ export class WorkflowExecutor extends EventEmitter {
           }`;
 
     if (unit.kind === 'thread' && unit.threadId) {
-      return this.sendToThreadAndWait(unit.threadId, fullMessage);
+      return this.sendToThreadAndWait(
+        unit.threadId,
+        fullMessage,
+        this.unitContexts.get(unit)?.signal
+      );
     }
 
     return this.runtimeService.send(unit.id, fullMessage, {
@@ -1546,20 +1792,34 @@ export class WorkflowExecutor extends EventEmitter {
    */
   private async sendToThreadAndWait(
     threadId: string,
-    message: string
+    message: string,
+    signal?: AbortSignal
   ): Promise<ThreadCompletionResult> {
     const runtimeService = this.runtimeService;
+    signal?.throwIfAborted();
+    let rejectCompletion: (error: unknown) => void = () => {};
 
     // Subscribe to completion events before sending so we don't miss fast responses.
     const completionPromise = new Promise<ThreadCompletionResult>(
       (resolve, reject) => {
         let settled = false;
         let timeoutHandle: NodeJS.Timeout | undefined;
+        let unsubscribe: () => void = () => {};
+        const abort = () =>
+          rejectCompletion(signal?.reason ?? new Error('Workflow cancelled'));
 
         const cleanup = () => {
           if (timeoutHandle) clearTimeout(timeoutHandle);
           unsubscribe();
+          signal?.removeEventListener('abort', abort);
         };
+        rejectCompletion = (error) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(error);
+        };
+        signal?.addEventListener('abort', abort, { once: true });
 
         const finalize = async (
           eventData?: Record<string, unknown>
@@ -1604,7 +1864,11 @@ export class WorkflowExecutor extends EventEmitter {
               }
             }
 
-            const thread = await runtimeService.getThread(threadId);
+            const thread = await abortable(
+              runtimeService.getThread(threadId),
+              signal
+            );
+            signal?.throwIfAborted();
             const threadMeta = thread?.metadata as
               | Record<string, unknown>
               | undefined;
@@ -1627,31 +1891,23 @@ export class WorkflowExecutor extends EventEmitter {
           }
         };
 
-        const unsubscribe = runtimeService.subscribeThread(
-          threadId,
-          (event) => {
-            const eventType = event.type;
-            if (
-              eventType === 'thread_turn_complete' ||
-              eventType === 'thread_completed'
-            ) {
-              void finalize(event.data);
-              return;
-            }
-
-            if (
-              eventType === 'thread_failed' ||
-              eventType === 'thread_stopped'
-            ) {
-              if (settled) return;
-              settled = true;
-              cleanup();
-              reject(
-                new Error(`Thread ${threadId} ended with ${event.type}`)
-              );
-            }
+        unsubscribe = runtimeService.subscribeThread(threadId, (event) => {
+          const eventType = event.type;
+          if (
+            eventType === 'thread_turn_complete' ||
+            eventType === 'thread_completed'
+          ) {
+            void finalize(event.data);
+            return;
           }
-        );
+
+          if (eventType === 'thread_failed' || eventType === 'thread_stopped') {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(new Error(`Thread ${threadId} ended with ${event.type}`));
+          }
+        });
 
         if (this.stepTimeout > 0) {
           timeoutHandle = setTimeout(() => {
@@ -1668,10 +1924,17 @@ export class WorkflowExecutor extends EventEmitter {
       }
     );
 
-    // Send the task message after subscription is in place.
-    await runtimeService.sendToThread(threadId, { message });
-
-    return completionPromise;
+    // Attach completion handlers before dispatch so fast failures cannot go unhandled.
+    const sending = abortable(
+      runtimeService.sendToThread(threadId, { message }),
+      signal
+    ).catch((error) => {
+      rejectCompletion(error);
+      throw error;
+    });
+    const [, completion] = await Promise.all([sending, completionPromise]);
+    signal?.throwIfAborted();
+    return completion;
   }
 
   private extractResponseText(response: StepResult): string {
@@ -1772,24 +2035,61 @@ export class WorkflowExecutor extends EventEmitter {
    * Cleanup agents after execution
    */
   private async cleanupAgents(context: OrgExecutionContext): Promise<void> {
-    const stopPromises = Array.from(context.agents.values()).map((unit) => {
-      if (unit.kind === 'thread' && unit.threadId) {
-        return this.runtimeService.stopThread(unit.threadId).catch((error) => {
-          this.logger.warn(
-            { error, threadId: unit.threadId },
-            'Failed to stop thread during cleanup'
-          );
-        });
-      }
-
-      return this.runtimeService.stop(unit.id).catch((error) => {
-        this.logger.warn(
-          { error, agentId: unit.id },
-          'Failed to stop agent during cleanup'
+    const control = this.controls.get(context);
+    if (control?.cleanup) return control.cleanup;
+    let timer: NodeJS.Timeout | undefined;
+    const work = (async () => {
+      // A cancelled spawn may resolve late; its continuation stops that unit.
+      // Do not acknowledge cleanup until these pending dispatches are reconciled.
+      const results = await Promise.allSettled([
+        ...(control?.pendingSpawns ?? []),
+        ...Array.from(context.agents.values()).map((unit) =>
+          unit.kind === 'thread' && unit.threadId
+            ? this.runtimeService.stopThread(unit.threadId)
+            : this.runtimeService.stop(unit.id)
+        ),
+      ]);
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected' &&
+          result.reason !== context.signal?.reason
+      );
+      const errors = [
+        ...failures.map((failure) => failure.reason),
+        ...(control?.lateCleanupErrors ?? []),
+      ];
+      if (errors.length)
+        throw new AggregateError(
+          errors,
+          'Failed to stop workflow execution units'
         );
+    })();
+    const cleanup = Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new Error(
+                'Workflow runtime cleanup timed out after 10000ms; worker reconciliation required'
+              )
+            ),
+          10000
+        );
+      }),
+    ])
+      .catch((error) => {
+        this.cleanupFailures.set(context.id, error);
+        if (this.cleanupFailures.size > 128)
+          this.cleanupFailures.delete(
+            this.cleanupFailures.keys().next().value!
+          );
+        throw error;
+      })
+      .finally(() => {
+        if (timer) clearTimeout(timer);
       });
-    });
-
-    await Promise.allSettled(stopPromises);
+    if (control) control.cleanup = cleanup;
+    return cleanup;
   }
 }

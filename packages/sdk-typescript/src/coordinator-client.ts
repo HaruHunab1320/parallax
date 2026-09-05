@@ -12,6 +12,7 @@ import {
   type GetHistoryRequest,
   type GetHistoryResponse,
 } from '../generated/coordinator';
+import { controlPlaneCredentials, controlPlaneMetadata } from './transport-security';
 
 export type CoordinatorStreamHandlers = {
   onMessage?: (response: CoordinateResponse) => void;
@@ -24,10 +25,10 @@ export class CoordinatorServiceClient {
 
   constructor(
     address: string,
-    credentials: ChannelCredentials,
+    credentials?: ChannelCredentials,
     options?: Partial<ClientOptions>
   ) {
-    this.client = new CoordinatorClient(address, credentials, options);
+    this.client = new CoordinatorClient(address, controlPlaneCredentials(credentials), options);
   }
 
   coordinate(
@@ -37,7 +38,7 @@ export class CoordinatorServiceClient {
     return new Promise((resolve, reject) => {
       this.client.coordinate(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: CoordinateResponse) => {
           if (error) {
             reject(error);
@@ -56,7 +57,7 @@ export class CoordinatorServiceClient {
   ): ClientReadableStream<CoordinateResponse> {
     const stream = this.client.streamCoordinate(
       request,
-      metadata || new Metadata()
+      controlPlaneMetadata(metadata)
     );
     stream.on('data', (message: CoordinateResponse) =>
       handlers.onMessage?.(message)
@@ -76,7 +77,7 @@ export class CoordinatorServiceClient {
     return new Promise((resolve, reject) => {
       this.client.getHistory(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: GetHistoryResponse) => {
           if (error) {
             reject(error);

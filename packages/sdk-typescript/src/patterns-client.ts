@@ -16,6 +16,7 @@ import {
   type UploadPatternRequest,
   type UploadPatternResponse,
 } from '../generated/patterns';
+import { controlPlaneCredentials, controlPlaneMetadata } from './transport-security';
 
 export type PatternStreamHandlers = {
   onMessage?: (response: ExecutePatternResponse) => void;
@@ -28,10 +29,10 @@ export class PatternClient {
 
   constructor(
     address: string,
-    credentials: ChannelCredentials,
+    credentials?: ChannelCredentials,
     options?: Partial<ClientOptions>
   ) {
-    this.client = new PatternServiceClient(address, credentials, options);
+    this.client = new PatternServiceClient(address, controlPlaneCredentials(credentials), options);
   }
 
   execute(
@@ -62,7 +63,7 @@ export class PatternClient {
     return new Promise((resolve, reject) => {
       this.client.executePattern(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: ExecutePatternResponse) => {
           if (error) {
             reject(error);
@@ -102,7 +103,7 @@ export class PatternClient {
 
     const stream = this.client.streamExecutePattern(
       request,
-      metadata || new Metadata()
+      controlPlaneMetadata(metadata)
     );
     stream.on('data', (message: ExecutePatternResponse) =>
       handlers.onMessage?.(message)
@@ -121,7 +122,7 @@ export class PatternClient {
     return new Promise((resolve, reject) => {
       this.client.listPatterns(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: ListPatternsResponse) => {
           if (error) {
             reject(error);
@@ -138,7 +139,7 @@ export class PatternClient {
     return new Promise((resolve, reject) => {
       this.client.getPattern(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: Pattern) => {
           if (error) {
             reject(error);
@@ -159,7 +160,7 @@ export class PatternClient {
     return new Promise((resolve, reject) => {
       this.client.uploadPattern(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: UploadPatternResponse) => {
           if (error) {
             reject(error);

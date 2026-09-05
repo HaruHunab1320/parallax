@@ -62,4 +62,17 @@ describe('parseReviewVerdict', () => {
     expect(v.verdict).toBe('reject');
     expect(v.confidence).toBe(0.2);
   });
+  it('accepts Windows line endings in an explicit verdict', () => {
+    expect(
+      parseReviewVerdict('VERDICT: approve\r\nCONFIDENCE: 0.9').verdict
+    ).toBe('approve');
+  });
+
+  it('does not reuse an earlier approval when the final verdict is invalid', () => {
+    expect(
+      parseReviewVerdict(
+        'VERDICT: approve\nMore checks ran.\nVERDICT: inconclusive'
+      ).verdict
+    ).toBeUndefined();
+  });
 });

@@ -7,7 +7,7 @@ const logger = pino({ level: 'silent' });
 
 function createMockRepo(): ExecutionRepository {
   return {
-    updateStatus: vi.fn().mockResolvedValue({}),
+    transitionStatus: vi.fn().mockResolvedValue(true),
     addEvent: vi.fn().mockResolvedValue({}),
     findOrphanedExecutions: vi.fn().mockResolvedValue([]),
     markOrphaned: vi.fn().mockResolvedValue({}),
@@ -18,6 +18,7 @@ function createMockPatternEngine(inFlightIds: string[] = []) {
   let ids = [...inFlightIds];
   return {
     setShuttingDown: vi.fn(),
+    cancelExecution: vi.fn().mockResolvedValue(true),
     getInFlightExecutionIds: vi.fn(() => ids),
     // Helper to simulate executions completing
     _completeAll: () => {
@@ -50,7 +51,7 @@ describe('GracefulShutdownHandler', () => {
       await handler.shutdown();
 
       expect(engine.setShuttingDown).toHaveBeenCalledWith(true);
-      expect(repo.updateStatus).not.toHaveBeenCalled();
+      expect(repo.transitionStatus).not.toHaveBeenCalled();
     });
 
     it('waits for in-flight executions to complete before timeout', async () => {
@@ -71,7 +72,7 @@ describe('GracefulShutdownHandler', () => {
 
       expect(engine.setShuttingDown).toHaveBeenCalledWith(true);
       // No force-fail since executions completed in time
-      expect(repo.updateStatus).not.toHaveBeenCalled();
+      expect(repo.transitionStatus).not.toHaveBeenCalled();
     });
 
     it('force-fails remaining executions after drain timeout', async () => {
@@ -90,8 +91,16 @@ describe('GracefulShutdownHandler', () => {
       await shutdownPromise;
 
       expect(engine.setShuttingDown).toHaveBeenCalledWith(true);
-      expect(repo.updateStatus).toHaveBeenCalledTimes(2);
-      expect(repo.updateStatus).toHaveBeenCalledWith(
+      expect(engine.cancelExecution).toHaveBeenCalledWith(
+        'exec-1',
+        expect.stringContaining('shutdown'),
+        'failed'
+      );
+      expect(engine.cancelExecution.mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(repo.transitionStatus).mock.invocationCallOrder[0]
+      );
+      expect(repo.transitionStatus).toHaveBeenCalledTimes(2);
+      expect(repo.transitionStatus).toHaveBeenCalledWith(
         'exec-1',
         'failed',
         expect.objectContaining({

@@ -81,6 +81,8 @@ class GatewayOptions:
     """
 
     credentials: Optional[Any] = None
+    api_key: Optional[str] = None
+    metadata: Optional[List[Tuple[str, str]]] = None
     heartbeat_interval_ms: int = 10000
     auto_reconnect: bool = True
     max_reconnect_attempts: Optional[int] = None

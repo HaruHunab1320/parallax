@@ -4,7 +4,11 @@ import { v4 as uuidv4 } from 'uuid';
 import WebSocket from 'ws';
 import type { DatabaseService } from '../db/database.service';
 import type { ExecutionEventBus } from '../execution-events';
-import type { PatternEngine } from '../pattern-engine';
+import {
+  ExecutionCancellationConflictError,
+  ExecutionCleanupError,
+  type PatternEngine,
+} from '../pattern-engine';
 import {
   convertExecutionFromDb,
   createExecutionInDb,
@@ -239,15 +243,23 @@ export function createExecutionsRouter(
           database,
           patternName,
           input,
-          options
+          {
+            timeout: options?.timeout,
+            stream: options?.stream,
+            executionId,
+            nodeId: patternEngine.getNodeId(),
+            timeoutMs: patternEngine.getExecutionTimeout(patternName, options),
+          }
         );
 
+        if (webhook?.url) webhookConfigs.set(dbExecutionId, webhook);
         // Start async execution
         const executionOptions = { ...options, executionId: dbExecutionId };
         patternEngine
           .executePattern(patternName, input, executionOptions)
           .then(async (result) => {
-            await updateExecutionInDb(database, dbExecutionId, {
+            if (result.status !== 'completed') return;
+            const changed = await updateExecutionInDb(database, dbExecutionId, {
               status: 'completed',
               result: result.result,
               confidence: result.metrics?.confidence,
@@ -257,6 +269,8 @@ export function createExecutionsRouter(
                 : undefined,
             });
 
+            if (!changed) return;
+            webhookConfigs.delete(dbExecutionId);
             // Send webhook on completion
             await sendWebhook(
               dbExecutionId,
@@ -268,13 +282,19 @@ export function createExecutionsRouter(
             );
           })
           .catch(async (error) => {
+            if (
+              patternEngine.getExecution(dbExecutionId)?.status === 'cancelled'
+            )
+              return;
             const errorMessage =
               error instanceof Error ? error.message : 'Unknown error';
-            await updateExecutionInDb(database, dbExecutionId, {
+            const changed = await updateExecutionInDb(database, dbExecutionId, {
               status: 'failed',
               error: errorMessage,
             });
 
+            if (!changed) return;
+            webhookConfigs.delete(dbExecutionId);
             // Send webhook on failure
             await sendWebhook(
               dbExecutionId,
@@ -283,6 +303,12 @@ export function createExecutionsRouter(
               { error: errorMessage },
               startTime,
               webhook
+            );
+          })
+          .catch((error) => {
+            logger.error(
+              { error, executionId: dbExecutionId },
+              'Failed to persist execution outcome'
             );
           });
 
@@ -317,6 +343,12 @@ export function createExecutionsRouter(
         patternEngine
           .executePattern(patternName, input, executionOptions)
           .then((result) => {
+            if (
+              result.status !== 'completed' ||
+              executions.get(executionId)?.status !== 'running'
+            )
+              return;
+            webhookConfigs.delete(executionId);
             executions.set(executionId, {
               ...execution,
               ...result,
@@ -334,6 +366,12 @@ export function createExecutionsRouter(
             );
           })
           .catch((error) => {
+            if (
+              patternEngine.getExecution(executionId)?.status === 'cancelled' ||
+              executions.get(executionId)?.status !== 'running'
+            )
+              return;
+            webhookConfigs.delete(executionId);
             const errorMessage =
               error instanceof Error ? error.message : 'Unknown error';
             executions.set(executionId, {
@@ -496,9 +534,52 @@ export function createExecutionsRouter(
   // Also accepts ?threadIds=t1,t2,t3 to subscribe to specific thread IDs.
   router.get('/:id/threads/stream', async (req: any, res: any) => {
     const { id } = req.params;
-    const threadIdFilter = req.query.threadIds
-      ? (req.query.threadIds as string).split(',')
+    if (
+      req.query.threadIds !== undefined &&
+      typeof req.query.threadIds !== 'string'
+    ) {
+      return res
+        .status(400)
+        .json({ error: 'threadIds must be a comma-separated string' });
+    }
+    const threadIdFilter: string[] | null = req.query.threadIds
+      ? [...new Set<string>(req.query.threadIds.split(',').filter(Boolean))]
       : null;
+    const knownThreadIds = new Set<string>();
+    const ownsThread = async (threadId: string): Promise<boolean> => {
+      if (knownThreadIds.has(threadId)) return true;
+      const persisted = await database?.threads.findById(threadId);
+      // Persisted ownership wins over runtime state if both are available.
+      const owned = persisted
+        ? persisted.executionId === id
+        : await patternEngine.ownsThread(id, threadId);
+      if (owned) knownThreadIds.add(threadId);
+      return owned;
+    };
+    try {
+      const execution = database
+        ? await database.executions.findById(id)
+        : executions.get(id) || patternEngine.getExecution(id);
+      if (!execution)
+        return res.status(404).json({ error: 'Execution not found' });
+      if (threadIdFilter) {
+        for (const threadId of threadIdFilter) {
+          if (!(await ownsThread(threadId))) {
+            return res
+              .status(403)
+              .json({ error: 'Thread does not belong to this execution' });
+          }
+        }
+      }
+    } catch (error) {
+      logger.error(
+        { error, executionId: id },
+        'Failed to validate thread stream ownership'
+      );
+      return res
+        .status(503)
+        .json({ error: 'Unable to validate thread ownership' });
+    }
 
     // Set SSE headers
     res.writeHead(200, {
@@ -514,31 +595,46 @@ export function createExecutionsRouter(
 
     // Subscribe to live thread events via event bus
     let unsubscribe: (() => void) | undefined;
+    let closed = false;
+    let queuedEvents = Promise.resolve();
 
     if (executionEvents) {
-      // Subscribe to all events — thread events use thread_id as executionId in the bus,
-      // so we listen globally and filter for gateway_thread_* types
+      // Gateway events historically use thread_id as executionId. Runtime events
+      // carry the actual execution ID. Preserve order while resolving gateway membership.
       unsubscribe = executionEvents.onExecution((event) => {
         // Only forward thread-related events
         if (!event.type.startsWith('gateway_thread_')) return;
 
         const threadId = event.data?.thread_id;
-        if (!threadId) return;
+        if (typeof threadId !== 'string' || !threadId) return;
+        if (event.executionId !== id && event.executionId !== threadId) return;
 
-        // Filter by thread IDs if specified, otherwise forward all
         if (threadIdFilter && !threadIdFilter.includes(threadId)) return;
-
-        const sseEvent = {
-          executionId: id,
-          threadId,
-          type: event.type,
-          data: event.data,
-          timestamp: event.timestamp.toISOString(),
-        };
-
-        // Use a more specific event name for the SSE client
-        const eventName = event.type.replace('gateway_thread_', 'thread_');
-        res.write(`event: ${eventName}\ndata: ${JSON.stringify(sseEvent)}\n\n`);
+        queuedEvents = queuedEvents
+          .then(async () => {
+            if (closed) return;
+            // Resolve every new thread against server-owned membership. The event
+            // execution ID is an additional constraint, never an ownership grant.
+            if (!(await ownsThread(threadId))) return;
+            if (closed) return;
+            const sseEvent = {
+              executionId: id,
+              threadId,
+              type: event.type,
+              data: event.data,
+              timestamp: event.timestamp.toISOString(),
+            };
+            const eventName = event.type.replace('gateway_thread_', 'thread_');
+            res.write(
+              `event: ${eventName}\ndata: ${JSON.stringify(sseEvent)}\n\n`
+            );
+          })
+          .catch((error) => {
+            logger.error(
+              { error, executionId: id, threadId },
+              'Unable to validate thread event ownership'
+            );
+          });
       });
     }
 
@@ -548,6 +644,7 @@ export function createExecutionsRouter(
     }, 15000);
 
     req.on('close', () => {
+      closed = true;
       clearInterval(heartbeat);
       if (unsubscribe) unsubscribe();
     });
@@ -558,31 +655,53 @@ export function createExecutionsRouter(
     const { id } = req.params;
 
     try {
-      let patternName = '';
-      let startTime = new Date();
-
-      if (database) {
-        const dbExecution = await database.executions.findById(id);
-        if (dbExecution) {
-          patternName = dbExecution.pattern?.name || '';
-          startTime = dbExecution.time || new Date();
-        }
-        await updateExecutionInDb(database, id, {
-          status: 'cancelled',
+      const stored = database
+        ? await database.executions.findById(id)
+        : executions.get(id);
+      const active = patternEngine.getExecution(id);
+      if (!stored && !active) {
+        return res.status(404).json({ error: 'Execution not found' });
+      }
+      if (stored && !['pending', 'running'].includes(stored.status)) {
+        return res
+          .status(409)
+          .json({ error: `Execution is already ${stored.status}` });
+      }
+      if (!active) {
+        return res.status(409).json({
+          error:
+            'Execution is not owned by this server; cancellation must reach its owner',
         });
-      } else {
-        const execution = executions.get(id);
-        if (execution) {
-          patternName = execution.patternName;
-          startTime = new Date(execution.startTime);
-          execution.status = 'cancelled';
+      }
+      const cancelled = await patternEngine.cancelExecution(id);
+      if (!cancelled) {
+        return res
+          .status(409)
+          .json({ error: `Execution is already ${active.status}` });
+      }
+      const patternName = active.patternName;
+      const startTime = active.startTime;
+      if (database) {
+        const changed = await updateExecutionInDb(database, id, {
+          status: 'cancelled',
+          error: active.error,
+        });
+        if (
+          !changed &&
+          (await database.executions.findById(id))?.status !== 'cancelled'
+        ) {
+          return res
+            .status(409)
+            .json({ error: 'Execution already has a terminal outcome' });
         }
+      } else {
+        executions.set(id, { ...stored, ...active });
       }
 
       // Send webhook for cancellation
       const webhook = webhookConfigs.get(id);
       if (webhook) {
-        sendWebhook(id, patternName, 'cancelled', {}, startTime, webhook);
+        await sendWebhook(id, patternName, 'cancelled', {}, startTime, webhook);
         webhookConfigs.delete(id);
       }
 
@@ -607,10 +726,48 @@ export function createExecutionsRouter(
       });
     } catch (error) {
       logger.error({ error, executionId: id }, 'Failed to cancel execution');
-      return res.status(500).json({
-        error:
-          error instanceof Error ? error.message : 'Failed to cancel execution',
-      });
+      if (error instanceof ExecutionCleanupError) {
+        const failed = patternEngine.getExecution(id);
+        if (failed?.status === 'failed') {
+          try {
+            let changed: boolean;
+            if (database) {
+              changed = await updateExecutionInDb(database, id, {
+                status: 'failed',
+                error: failed.error,
+              });
+            } else {
+              changed = executions.get(id)?.status === 'running';
+              executions.set(id, { ...executions.get(id), ...failed });
+            }
+            if (changed) {
+              const webhook = webhookConfigs.get(id);
+              webhookConfigs.delete(id);
+              await sendWebhook(
+                id,
+                failed.patternName,
+                'failed',
+                { error: failed.error },
+                failed.startTime,
+                webhook
+              );
+            }
+          } catch (persistenceError) {
+            logger.error(
+              { error: persistenceError, executionId: id },
+              'Failed to persist incomplete cancellation'
+            );
+          }
+        }
+      }
+      return res
+        .status(error instanceof ExecutionCancellationConflictError ? 409 : 500)
+        .json({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to cancel execution',
+        });
     }
   });
 

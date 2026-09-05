@@ -1,5 +1,9 @@
 import crypto from 'node:crypto';
 
+// Security stays enabled in tests; credentials are ephemeral, never checked in.
+process.env.JWT_SECRET ||= crypto.randomBytes(32).toString('base64');
+process.env.PARALLAX_GRPC_API_KEY ||= crypto.randomBytes(32).toString('base64');
+
 // Configure infrastructure endpoints for tests
 process.env.PARALLAX_ETCD_ENDPOINTS =
   process.env.PARALLAX_ETCD_ENDPOINTS || 'localhost:2389';

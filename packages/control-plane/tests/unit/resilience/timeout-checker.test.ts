@@ -8,7 +8,7 @@ const logger = pino({ level: 'silent' });
 function createMockRepo(): ExecutionRepository {
   return {
     findTimedOutExecutions: vi.fn().mockResolvedValue([]),
-    updateStatus: vi.fn().mockResolvedValue({}),
+    transitionStatus: vi.fn().mockResolvedValue(true),
     addEvent: vi.fn().mockResolvedValue({}),
   } as unknown as ExecutionRepository;
 }
@@ -63,12 +63,15 @@ describe('TimeoutChecker', () => {
       ];
       vi.mocked(repo.findTimedOutExecutions).mockResolvedValue(timedOut);
 
-      checker = new TimeoutChecker(repo, logger, { defaultTimeoutMs: 300000 });
+      checker = new TimeoutChecker(repo, logger, {
+        defaultTimeoutMs: 300000,
+        cancelExecution: vi.fn().mockResolvedValue(true),
+      });
 
       const count = await checker.check();
 
       expect(count).toBe(2);
-      expect(repo.updateStatus).toHaveBeenCalledWith(
+      expect(repo.transitionStatus).toHaveBeenCalledWith(
         'exec-1',
         'failed',
         expect.objectContaining({
@@ -84,13 +87,34 @@ describe('TimeoutChecker', () => {
       );
     });
 
+    it('does not fail remote work that this server cannot stop', async () => {
+      vi.mocked(repo.findTimedOutExecutions).mockResolvedValue([
+        makeTimedOutExecution(),
+      ]);
+      checker = new TimeoutChecker(repo, logger, {
+        cancelExecution: vi.fn().mockResolvedValue(false),
+      });
+      expect(await checker.check()).toBe(0);
+      expect(repo.transitionStatus).not.toHaveBeenCalled();
+    });
+
+    it('preserves explicit unlimited execution timeouts', async () => {
+      const cancelExecution = vi.fn().mockResolvedValue(true);
+      vi.mocked(repo.findTimedOutExecutions).mockResolvedValue([
+        makeTimedOutExecution({ timeoutMs: 0 }),
+      ]);
+      checker = new TimeoutChecker(repo, logger, { cancelExecution });
+      expect(await checker.check()).toBe(0);
+      expect(cancelExecution).not.toHaveBeenCalled();
+    });
+
     it('returns 0 when no timed-out executions found', async () => {
       vi.mocked(repo.findTimedOutExecutions).mockResolvedValue([]);
       checker = new TimeoutChecker(repo, logger);
 
       const count = await checker.check();
       expect(count).toBe(0);
-      expect(repo.updateStatus).not.toHaveBeenCalled();
+      expect(repo.transitionStatus).not.toHaveBeenCalled();
     });
 
     it('skips check entirely when isLeader() returns false', async () => {

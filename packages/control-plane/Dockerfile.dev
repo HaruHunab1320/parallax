@@ -1,5 +1,5 @@
 # Development Dockerfile with hot reload support
-FROM node:20-alpine
+FROM node:24.20.0-alpine
 
 # Install dependencies for native modules
 RUN apk add --no-cache libc6-compat python3 make g++ postgresql-client
@@ -7,7 +7,7 @@ RUN apk add --no-cache libc6-compat python3 make g++ postgresql-client
 WORKDIR /app
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install --global pnpm@10.11.0
 
 # Copy workspace configuration
 COPY pnpm-workspace.yaml ./

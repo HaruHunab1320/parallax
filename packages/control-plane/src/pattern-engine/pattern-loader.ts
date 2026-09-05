@@ -1,8 +1,8 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { type PatternModule, patternManifest } from '@parallaxai/patterns';
 import * as yaml from 'js-yaml';
 import type { Logger } from 'pino';
-import { patternManifest, type PatternModule } from '@parallaxai/patterns';
 import { compileOrgPattern, type OrgPattern } from '../org-patterns';
 import type { Pattern } from './types';
 
@@ -88,7 +88,10 @@ export class PatternLoader {
       }
       this.patterns.set(meta.name, pattern);
       this.modules.set(meta.name, module);
-      this.logger.debug({ pattern: meta.name, source: 'module' }, 'Pattern loaded');
+      this.logger.debug(
+        { pattern: meta.name, source: 'module' },
+        'Pattern loaded'
+      );
     }
   }
 
@@ -146,6 +149,7 @@ export class PatternLoader {
       }
     } catch (error) {
       this.logger.error({ filePath, error }, 'Failed to load YAML pattern');
+      throw error;
     }
   }
 
@@ -175,9 +179,11 @@ export class PatternLoader {
       const filePath = path.join(this.patternsDir, `${name}.${ext}`);
       try {
         await fs.access(filePath);
-        await this.loadYamlPattern(filePath);
-        return;
-      } catch {}
+      } catch {
+        continue;
+      }
+      await this.loadYamlPattern(filePath);
+      return;
     }
     this.logger.warn({ name }, 'Pattern file not found');
   }

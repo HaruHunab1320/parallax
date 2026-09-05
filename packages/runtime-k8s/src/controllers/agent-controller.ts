@@ -1,3 +1,4 @@
+import { executionResourceName } from '@parallaxai/runtime-interface';
 /**
  * ParallaxAgent Controller
  *
@@ -185,7 +186,7 @@ export class AgentController {
                     {
                       name: 'shared-auth',
                       persistentVolumeClaim: {
-                        claimName: `parallax-auth-${spec.executionId.substring(0, 8)}`,
+                        claimName: executionResourceName(spec.executionId),
                       },
                     },
                   ],

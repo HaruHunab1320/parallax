@@ -9,6 +9,10 @@ on:
       - main
   workflow_dispatch:
     inputs:
+      image_sha:
+        description: "Full commit SHA of previously validated and published images"
+        required: true
+        type: string
       skip_terraform:
         description: "Skip Terraform (Helm only)"
         required: false
@@ -27,7 +31,7 @@ jobs:
   deploy:
     name: Deploy to GKE
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') || github.event_name == 'workflow_dispatch' }}
 
     permissions:
       contents: read
@@ -35,9 +39,20 @@ jobs:
       issues: write
 
     steps:
+      - name: Validate requested source revision
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          REQUESTED_SHA: ${{ inputs.image_sha }}
+        run: |
+          if ! [[ "$REQUESTED_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "image_sha must be a full 40-character commit SHA" >&2
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.image_sha }}
           fetch-depth: 2
 
       - name: Authenticate to Google Cloud
@@ -60,11 +75,32 @@ jobs:
       - name: Resolve image tag
         id: image
         run: |
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            echo "tag=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          TAG=$(git rev-parse HEAD)
+          if ! [[ "$TAG" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "Expected a full commit SHA" >&2
+            exit 1
           fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.20.0
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.13.0
+
+      - name: Validate provisioned security configuration
+        run: |
+          node scripts/validate-deployment.mjs
+          kubectl get secret parallax-secrets -n parallax -o json | node scripts/validate-deployment-secret.mjs
+          kubectl get secret parallax-grpc-tls -n parallax -o json | node scripts/validate-deployment-secret.mjs --tls
+          kubectl get secret parallax-http-tls -n parallax -o json | node scripts/validate-deployment-secret.mjs --tls
+          for image in parallax-control-plane parallax-web-dashboard parallax-runtime-k8s; do
+            gcloud artifacts docker images describe "${{ env.REGISTRY }}/$image:${{ steps.image.outputs.tag }}" --format='value(image_summary.digest)' > /dev/null
+          done
 
       # --- Terraform (conditional) ---
 
@@ -124,11 +160,6 @@ jobs:
 
       # --- Helm deploy ---
 
-      - name: Setup Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: v3.13.0
-
       - name: Deploy with Helm
         run: |
           helm upgrade --install parallax ./k8s/helm/parallax \
@@ -139,20 +170,18 @@ jobs:
             --set controlPlane.image.tag=${{ steps.image.outputs.tag }} \
             --set webDashboard.image.repository=${{ env.REGISTRY }}/parallax-web-dashboard \
             --set webDashboard.image.tag=${{ steps.image.outputs.tag }} \
+            --atomic \
             --wait \
             --timeout 10m
 
       # --- runtime-k8s (standalone manifest) ---
 
-      - name: Update runtime-k8s image
+      - name: Apply runtime manifest from the validated source revision
+        env:
+          IMAGE_TAG: ${{ steps.image.outputs.tag }}
         run: |
-          kubectl set image deployment/parallax-runtime-k8s \
-            runtime-k8s=${{ env.REGISTRY }}/parallax-runtime-k8s:${{ steps.image.outputs.tag }} \
-            -n parallax
-
-          kubectl set env deployment/parallax-runtime-k8s \
-            IMAGE_PREFIX=us-central1-docker.pkg.dev/parallax-466513/ \
-            -n parallax
+          node -e 'const fs = require("node:fs"); const source = fs.readFileSync("k8s/runtime-k8s-deployment.yaml", "utf8"); process.stdout.write(source.replace("REGISTRY/parallax-runtime-k8s:latest", process.env.REGISTRY + "/parallax-runtime-k8s:" + process.env.IMAGE_TAG).replace("REGISTRY/", "us-central1-docker.pkg.dev/parallax-466513/"));' > /tmp/parallax-runtime-k8s.yaml
+          kubectl apply -f /tmp/parallax-runtime-k8s.yaml
 
       # --- Verification ---
 

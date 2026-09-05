@@ -75,28 +75,35 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-parallax}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-parallax}?schema=public
       
       # etcd configuration
-      ETCD_ENDPOINTS: http://etcd:2379
+      PARALLAX_ETCD_ENDPOINTS: http://etcd:2379
       ETCD_PREFIX: ${ETCD_PREFIX:-/parallax}
       
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-info}
       
-      # Authentication (optional)
-      AUTH_ENABLED: ${AUTH_ENABLED:-false}
-      JWT_SECRET: ${JWT_SECRET}
+      # Required authentication; provision independent random secrets.
+      PARALLAX_AUTH_MODE: required
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET with at least 32 random bytes}
+      PARALLAX_GRPC_API_KEY: ${PARALLAX_GRPC_API_KEY:?Set PARALLAX_GRPC_API_KEY}
+      PARALLAX_RUNTIME_API_KEY: ${PARALLAX_RUNTIME_API_KEY:?Set PARALLAX_RUNTIME_API_KEY}
+      PARALLAX_BOOTSTRAP_TOKEN: ${PARALLAX_BOOTSTRAP_TOKEN:-}
+      PARALLAX_GRPC_TLS_ENABLED: "true"
+      PARALLAX_GRPC_TLS_CERT: /run/secrets/grpc/tls.crt
+      PARALLAX_GRPC_TLS_KEY: /run/secrets/grpc/tls.key
       
       # Pattern configuration
-      PATTERNS_DIR: /app/patterns
+      PARALLAX_PATTERNS_DIR: /app/patterns
       MAX_EXECUTION_TIME: ${MAX_EXECUTION_TIME:-300000}
       
       # Agent configuration
       AGENT_HEARTBEAT_INTERVAL: ${AGENT_HEARTBEAT_INTERVAL:-30000}
       AGENT_HEARTBEAT_TIMEOUT: ${AGENT_HEARTBEAT_TIMEOUT:-90000}
     ports:
-      - "${API_PORT:-8080}:8080"
-      - "${GRPC_PORT:-8081}:8081"
-      - "${METRICS_PORT:-9090}:9090"
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+      - "127.0.0.1:${GRPC_PORT:-8081}:8081"
+      - "127.0.0.1:${METRICS_PORT:-9090}:9090"
     volumes:
+      - ${PARALLAX_GRPC_TLS_DIR:?Set PARALLAX_GRPC_TLS_DIR to a directory containing tls.crt and tls.key}:/run/secrets/grpc:ro
       - ./patterns:/app/patterns:ro
       - ./config:/app/config:ro
     healthcheck:

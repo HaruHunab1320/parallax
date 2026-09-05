@@ -1,8 +1,8 @@
 # Stage 1: Prune the monorepo for runtime-k8s
-FROM node:20-alpine AS pruner
+FROM node:24.20.0-alpine AS pruner
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN npm install -g turbo
+RUN npm install --global pnpm@10.11.0
+RUN npm install --global turbo@2.5.5
 
 WORKDIR /app
 COPY . .
@@ -11,10 +11,10 @@ COPY . .
 RUN turbo prune @parallaxai/runtime-k8s --docker
 
 # Stage 2: Install dependencies and build
-FROM node:20-alpine AS builder
+FROM node:24.20.0-alpine AS builder
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN npm install -g turbo
+RUN npm install --global pnpm@10.11.0
+RUN npm install --global turbo@2.5.5
 
 WORKDIR /app
 
@@ -36,7 +36,7 @@ COPY tsconfig.json ./
 RUN turbo build --filter=@parallaxai/runtime-k8s
 
 # Stage 3: Production
-FROM node:20-alpine AS production
+FROM node:24.20.0-alpine AS production
 
 WORKDIR /app
 
@@ -56,6 +56,6 @@ USER parallax
 EXPOSE 9878
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:9878/api/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:9878/health || exit 1
 
 CMD ["node", "dist/cli.js"]

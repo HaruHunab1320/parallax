@@ -6,6 +6,7 @@
  * Daemon for managing local CLI agent sessions.
  */
 
+import { runtimeSecurity } from '@parallaxai/runtime-interface';
 import pino from 'pino';
 import { LocalRuntime } from './local-runtime';
 import { RuntimeServer } from './server';
@@ -22,7 +23,8 @@ const logger = pino({
 
 async function main(): Promise<void> {
   const port = parseInt(process.env.RUNTIME_PORT || '9876', 10);
-  const host = process.env.RUNTIME_HOST || '0.0.0.0';
+  const host = process.env.RUNTIME_HOST || '127.0.0.1';
+  runtimeSecurity(host);
 
   logger.info('Starting Parallax Local Runtime');
 

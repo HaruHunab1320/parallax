@@ -1,328 +1,212 @@
-# The `verify` contract — verification-driven confidence
+# Verification-driven confidence
 
-**Status:** `command` (2026-07-09), `history` (2026-07-10), and `agent`
-(2026-07-20) oracles + role-level `verify` are wired into the workflow
-executor and tested; the `review` step also surfaces its verdict as a
-confidence signal. The `checklist` / `human` oracles and the `verify`
-*step* remain specified-but-unimplemented (noted inline).
-**Depends on:** [docs/CONFIDENCE.md](CONFIDENCE.md) (confidence = verification
-triage, not LLM introspection)
-**Changes:** org-chart YAML schema (`OrgRole.verify`),
-`workflow-executor` step completion.
+Updated 2026-09-04. Confidence is a signal for allocating review and repair
+attention, not a calibrated probability of correctness. See
+[CONFIDENCE.md](CONFIDENCE.md).
 
-This specifies how a role's output gets a **confidence signal from
-verification** — a cheap oracle, a structural acceptance check, a second
-agent, or a human — instead of a self-reported `CONFIDENCE:` number. The
-signal feeds the existing per-role escalation policy
-(`accept`/`retryBelow`/`escalateBelow`).
+## Supported policy
 
----
+The workflow executor implements role-level `command`, `agent`, and `history`
+oracles. A role may declare one oracle, an array, or an object with `oracles`
+and `combine: min`. Unknown types, unknown oracle fields, empty oracle arrays,
+invalid values, unresolved reviewer roles, and unsupported combination modes
+are rejected before agents are spawned. The compiler, YAML loader, and direct
+workflow execution all apply the same verification validation.
 
-## 1. Why
-
-Today the confidence policy consumes a number the agent *says* about itself
-(`CONFIDENCE: 0.7` in its turn output). Per CONFIDENCE.md that's the weakest
-possible signal. `verify` replaces it with signals grounded in reality,
-ordered cheapest-first:
-
-| Tier | Oracle | Trust | Cost |
-|------|--------|-------|------|
-| 1 | `command` — tests / typecheck / lint exit code | high | ~free |
-| 2 | `checklist` — structural "done means X" criteria | medium | cheap |
-| 3 | `agent` — a reviewer role judges the output | medium-high | one turn |
-| 4 | `human` — surface for approval | ground truth | human time |
-
-An agent's self-report is demoted to an optional tier-5 supplement.
-
-There is also a `history` oracle — not verification of *this* output but a
-prior from the decision journal (how past runs of this pattern went, and how
-much retry/escalation friction this role generated). Like the self-report
-it's a weak supplement: sparse history resolves neutral, and in an oracle
-list the `min` combine keeps real verification dominant.
-
-## 2. The contract
-
-### 2.1 Role-level `verify` (the common case)
-
-A role declares how its outputs are verified. After any `assign` to that
-role completes, the executor runs the role's `verify` oracles, computes a
-`Confident` value, and applies the role's `confidence` policy to it.
+`weighted`, `product`, `checklist`, `human`, and explicit `verify` workflow
+steps are unsupported and rejected. They are future capabilities, not
+configuration that silently passes.
 
 ```yaml
 roles:
   engineer:
     reportsTo: architect
-    # How this role's work is verified → produces the confidence signal
     verify:
-      - type: command
-        run: "npm test && npm run typecheck"
-        cwd: "${workspace.path}"
-        # exit 0 → pass (1.0); non-zero → fail (0.0).
-        # optional: parse a partial score from output (see 3.1)
-        passConfidence: 1.0
-        failConfidence: 0.0
-    # What to DO with the signal (unchanged, from CONFIDENCE.md / C2)
+      oracles:
+        - type: command
+          run: npm test
+          cwd: '${input.workspace}'
+          timeoutMs: 120000
+        - type: agent
+          role: reviewer
+          rubric: Are the original requirements implemented and tested?
+      combine: min
     confidence:
-      accept: 0.8         # tests pass → accept
-      retryBelow: 0.6     # partial/flaky → retry once with the failures
-      escalateBelow: 0.4  # broken → architect reviews and decides
+      accept: 0.8
+      retryBelow: 0.6
+      escalateBelow: 0.4
 ```
 
-Semantics: engineer finishes → `npm test && npm run typecheck` runs in the
-workspace → pass ⇒ confidence 1.0 ⇒ `accept`; fail ⇒ 0.0 ⇒ below
-`escalateBelow` ⇒ the failing output + logs escalate to `architect`. No
-self-report, no ML.
+The command example requires a configured isolated verifier in production;
+it does not imply the control plane has access to a worker's filesystem.
 
-### 2.2 Multiple oracles compose (tiers)
+## Required evidence and advisory signals
 
-List several; they run in order and their confidences **combine with the
-`@parallaxai/confidence` algebra** (default: `chain` = minimum — a result is
-only as trustworthy as its weakest check). A later tier only runs if earlier
-tiers didn't already resolve to a terminal band (configurable).
+Every oracle result carries `status`, `required`, `confidence`, and readable
+`detail`. Workflow confidence events include the individual oracle results
+and `requiredPassed` so consumers can distinguish a score from acceptance.
 
-```yaml
-verify:
-  - type: command                 # tier 1: must compile + pass tests
-    run: "npm test"
-  - type: checklist               # tier 2: structural acceptance
-    criteria:
-      - "a test file was added or changed"
-      - "the public API in the task was implemented"
-  - type: agent                   # tier 3: reviewer sanity pass
-    role: reviewer
-combine: min        # min (default) | weighted | product
-```
+| Oracle | Required | Outcomes |
+| --- | --- | --- |
+| `command` | yes | `passed`, `failed`, `unavailable`, `inconclusive` |
+| `agent` | yes | `passed`, `failed`, `unavailable`, `inconclusive` |
+| `history` | no | `skipped` for the current-artifact gate; prior may still affect triage |
 
-### 2.3 `verify` as an explicit step
+Every required oracle must pass. A failed, unavailable, or inconclusive
+required check blocks successful completion independently of its numeric
+confidence. A configured `failConfidence: 1`, a passing historical prior,
+a supervisor's prose, or a high agent self-report cannot waive a failing
+required check.
 
-For verification not tied to one role's completion (e.g. verify the merged
-output of a `parallel` block), use a `verify` step. It attaches a confidence
-to a prior step's result and routes via `onLow`.
+Oracles run sequentially in declaration order. Their numeric scores combine
+by minimum. Historical results describe earlier executions; even when useful
+for triage, they are not evidence that the current candidate passed checks.
+A missing history store remains an optional neutral supplement.
 
-```yaml
-workflow:
-  steps:
-    - type: parallel
-      steps:
-        - { type: assign, role: engineer_a, task: "..." }
-        - { type: assign, role: engineer_b, task: "..." }
-    - type: verify
-      subject: "${step_0_result}"
-      oracle:
-        type: command
-        run: "npm test"
-      onLow:               # what to do if confidence < threshold
-        threshold: 0.6
-        action: escalate   # escalate | retry | surface | fail
-        to: architect
-```
+Roles without `verify` retain the existing advisory confidence behavior.
+Their self-reported confidence must not be displayed as verified evidence.
 
-## 3. Oracle types
-
-### 3.1 `command`
-
-Runs a shell command; the exit code is the primary signal.
+## Command oracle
 
 ```yaml
 type: command
-run: "npm test"
-cwd: "${workspace.path}"        # default: the role/thread workdir
+run: npm test
+cwd: '${input.workspace}'
 timeoutMs: 120000
-passConfidence: 1.0             # exit 0
-failConfidence: 0.0            # non-zero
-# Optional partial scoring: a regex whose first capture group is a 0..1 or
-# a "passed/total" ratio, used INSTEAD of the binary pass/fail when present.
-scorePattern: "(\\d+) passed, (\\d+) failed"   # → passed/(passed+failed)
+passConfidence: 1.0
+failConfidence: 0.0
+scorePattern: '(\d+) passed, (\d+) failed'
 ```
 
-Confidence: `scorePattern` ratio if matched, else `pass/failConfidence` by
-exit code. This is the tier-1 cheap oracle — the strongest signal, free
-because coding workflows run tests anyway.
+A zero exit code passes unless the configured score parser reports failures
+or cannot parse the expected result. A nonzero exit always fails, including
+when a parsed score is 1. A configured score pattern must match two numeric
+capture groups representing passed and failed counts; missing or invalid
+counts make an otherwise successful command inconclusive. A positive partial
+score can guide a retry but does not accept incomplete work.
 
-### 3.2 `checklist`
+Execution errors, timeouts, and malformed verifier responses are unavailable.
+An explicitly configured working directory that fails variable resolution is
+unavailable; it never falls back to the coordinator's directory.
 
-Structural acceptance — "done means X". Each criterion is checked by a
-sub-oracle (a `command`) or, when no command is given, by a **judge agent**
-(cheap, focused: "does this output satisfy: <criterion>? yes/no"). Confidence
-= fraction of criteria passing.
+Production execution requires an operator-provided `commandVerifier` callback
+in `WorkflowExecutorOptions`. Programmatic `PatternEngine` integrations supply
+`PatternEngineServices.commandVerifier` or call `setCommandVerifier` before
+execution:
 
-```yaml
-type: checklist
-criteria:
-  - text: "a confirmation number is present in the result"
-  - text: "the output is valid JSON matching the schema"
-    run: "jq -e . < ${artifact}"      # optional command check
-weighting: equal        # equal | firstFailZero
+```typescript
+commandVerifier(request: {
+  executionId: string;
+  role: string;
+  command: string;
+  cwd?: string;
+  timeoutMs: number;
+  signal?: AbortSignal;
+}): Promise<{
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}>
 ```
 
-**Ceiling (per CONFIDENCE.md):** verifies *shape*, not *truth*. Confirms a
-confirmation number exists; cannot confirm the ticket booked. Generalizes to
-arbitrary domains precisely because it only checks structure.
+This is an integration contract, not a shipped remote command service. The
+integration must select an isolated worker, resolve the role's workspace
+when `cwd` is absent, reject paths outside that workspace, constrain the
+command environment and network access, and stop execution on cancellation
+or timeout. The executor enforces a deadline and forwards cancellation; an
+integration that ignores that signal can continue external work and does
+not satisfy this contract. Required checks fail when no integration exists.
 
-### 3.3 `agent`
+For trusted local development only, explicitly set
+`allowLocalCommandVerification: true` (the server opt-in is
+`PARALLAX_ALLOW_LOCAL_VERIFICATION=true`). This option is refused when
+`NODE_ENV=production`. The local helper passes only `PATH`, `LANG`, and
+`TMPDIR` from the coordinator environment, bounds output, and kills its Unix
+shell process group on cancellation or timeout. It is not a security sandbox:
+it still runs with the operator's filesystem and network privileges.
+Production must use the isolated integration even for apparently harmless
+commands.
 
-A second agent (a role, typically the reviewer or `reportsTo`) judges the
-output and returns a verdict. The reviewer is instructed to end with a
-structured verdict the executor parses into a confidence.
+## Agent oracle and standalone review
 
 ```yaml
 type: agent
 role: reviewer
-rubric: "Is the implementation correct, complete, and tested?"
-# reviewer returns e.g. {"verdict":"approve|revise|reject","confidence":0-1}
+rubric: Verify the original requirements, composition, and tests.
 ```
 
-This is the tier-3 signal and the natural home for the reviewer role that
-org charts already have.
+The reviewer defaults to the role's `reportsTo` when `role` is omitted. It
+must exist. The original task and reported result are included in the review
+request. The protocol ends with explicit lines:
 
-### 3.4 `human`
-
-Surfaces the output for human approval — the universal fallback. Emits a
-`human_approval_requested` event; the workflow waits (or parks, per policy)
-for a decision.
-
-```yaml
-type: human
-prompt: "Approve booking ${step_0_result.confirmation}?"
-timeoutMs: 0            # 0 = wait indefinitely (parked)
-onTimeout: surface     # surface | reject
+```text
+VERDICT: approve
+CONFIDENCE: 0.9
 ```
 
-## 4. How it maps to the existing policy
+`approve` passes; `revise` and `reject` fail. A bare confidence marker, an
+echo of `VERDICT: approve | revise | reject`, malformed output, or a failed
+review turn cannot approve the work. The numeric confidence remains useful
+for triage, with reject/revise scores capped to prevent contradictory high
+scores from overpowering the verdict.
 
-`verify` produces a `Confident<result>`; the role's `confidence` policy
-(from C2, unchanged) routes on it:
+Standalone workflow `review` and `approve` steps also require an explicit
+approve verdict. Rejection or unparseable output fails the workflow before
+later steps run. The `approve` step is an **agent decision**, not an
+authenticated human approval. Durable human approval with identity and
+candidate revision remains unimplemented.
 
-```
-verify oracles → combine → Confident{ value: <agent output>, confidence: c }
-        │
-        ▼
-role.confidence policy:
-  c ≥ accept          → accept
-  retryBelow ≤ c      → accept with warning
-  escalateBelow ≤ c<retryBelow → retry once (with the failing check detail)
-  c < escalateBelow   → escalate to reportsTo  (→ ... → human)
-```
+## Repair and escalation
 
-The retry critique now carries **what actually failed** (test output, the
-unmet checklist items) instead of "you had low confidence" — a materially
-better retry prompt.
+Confidence policy may request one critique-driven retry, carrying failure
+details, followed by at most one supervisor correction. Every changed
+attempt is verified again with the original role's oracle configuration and
+execution context. The executor never restores an earlier, higher score
+while returning a later changed workspace.
 
-## 5. Types (additions to org-patterns/types.ts)
+A supervisor cannot waive required checks. After correction, all original
+checks run again; unresolved required failures fail the workflow. An
+unroutable required failure also fails instead of returning apparent success.
+Roles with advisory history/self-report only retain advisory escalation.
 
-```typescript
-export type VerifyOracle =
-  | { type: 'command'; run: string; cwd?: string; timeoutMs?: number;
-      passConfidence?: number; failConfidence?: number; scorePattern?: string }
-  | { type: 'checklist'; criteria: Array<{ text: string; run?: string }>;
-      weighting?: 'equal' | 'firstFailZero' }
-  | { type: 'agent'; role: string; rubric?: string }
-  | { type: 'human'; prompt?: string; timeoutMs?: number;
-      onTimeout?: 'surface' | 'reject' };
+Checks currently use mutable workspace paths and reported results. This
+change does **not** provide revision-bound evidence, immutable test policies,
+artifact storage, or guaranteed reviewer independence. Production acceptance
+and publication still need candidate digests, trusted verifier policy,
+retained logs, and invalidation whenever code changes. Sequential steps may
+change earlier verified work; final verification of the combined candidate
+remains necessary.
 
-export interface OrgVerify {
-  oracles: VerifyOracle[];              // 'verify:' accepts a single oracle or a list
-  combine?: 'min' | 'weighted' | 'product';   // default 'min'
-}
+## Lifecycle and concurrency
 
-// OrgRole gains:  verify?: VerifyOracle | VerifyOracle[] | OrgVerify;
+`WorkflowExecutor.execute(pattern, input, { executionId, signal })` accepts a
+canonical ID and cancellation signal. The supplied ID is reused for workers
+and events. Cancellation stops scheduling, cancels waits and verifier
+requests, and stops owned agents/threads. `cancelExecution(executionId)`
+awaits owned-unit cleanup, including spawns that resolve after cancellation.
+Cleanup errors remain visible to the cancellation caller. These are runtime
+stop acknowledgements, not durable recovery records.
 
-// New WorkflowStep variant:
-//   | { type: 'verify'; subject: any; oracle: VerifyOracle | VerifyOracle[];
-//       combine?: 'min'|'weighted'|'product';
-//       onLow?: { threshold: number; action: 'escalate'|'retry'|'surface'|'fail'; to?: string } }
-```
+Successful workflows also stop owned units before reporting completion.
+Agents must finish their work during awaited workflow steps. They must not
+continue pushing code or creating pull requests after workflow completion.
 
-## 6. Executor implementation sketch
+`maxParallel` bounds active leaf steps, including their verification and
+repair, across nested parallel and sequential containers. Containers do not
+hold permits while waiting for children, avoiding nested parallel deadlocks.
+An errored parallel branch cancels its siblings before workflow cleanup.
+Bootstrap still provisions configured role instances up front; the leaf
+limit is not a cap on total resident worker processes.
 
-In `workflow-executor.ts`:
+## Validation
 
-1. **Oracle runner** — `runVerify(oracles, ctx, subject): Promise<Confident>`.
-   - `command`: spawn via the runtime's shell (reuse the thread's workdir /
-     `git-workspace-service` path); map exit/scorePattern → confidence.
-   - `checklist`: run each criterion's `run`, or dispatch a one-shot judge
-     agent for text-only criteria; confidence = fraction passing.
-   - `agent`: `getOrSpawnRoleUnit(role)` + `sendToExecutionUnit`, parse the
-     verdict JSON → confidence.
-   - `human`: emit `human_approval_requested`, await resolution (or park).
-   - Combine with `chain`/`weightedAverage`/product from
-     `@parallaxai/confidence`.
-2. **Wire into `executeAssignStep`** — replace `extractConfidence(response)`
-   (the self-report path) with: if the role has `verify`, run it and use its
-   confidence; else fall back to the self-reported marker (tier-5 supplement).
-   The rest of `applyConfidencePolicy` is unchanged.
-3. **`verify` step** — new case in `executeStep`; runs the oracle on
-   `subject`, applies `onLow`.
-4. **Events** — extend `step_confidence` with `{ source: 'command'|
-   'checklist'|'agent'|'human'|'selfreport', detail }` so the dashboard shows
-   *why* (which test failed), not just the number.
+The org-pattern test suites cover schema rejection before spawning,
+required verification failure, supervisor reverification, unsupported
+combination modes, missing/invalid reviewer outcomes, review/approval gates,
+production local-command denial, isolated-verifier timeout/cancellation,
+local child-process cleanup, nested concurrency, canonical IDs, cancelled
+ready gates and turns, late spawns, and worker cleanup failures.
 
-## 7. Scope / non-goals
-
-- No sandboxing design here — `command` oracles run with the same trust as
-  the agent's own tool use (they already run arbitrary code). Revisit for
-  untrusted patterns.
-- `human` parking/resume persistence reuses the thread-persistence layer;
-  detailed design deferred.
-- Consistency-sampling and other introspection oracles are explicitly out of
-  scope (optional, costly, tier-5) — see CONFIDENCE.md.
-
----
-
-## 8. Implemented so far
-
-- ✅ `command` oracle — exit code → confidence, optional `scorePattern`
-  partial scoring, `cwd` (with `${...}` interpolation), timeout.
-- ✅ `history` oracle — a prior from the decision journal
-  (`shared_decisions` + `episodic_experiences`, written by
-  `DecisionJournal`): age-decayed success rate of past runs of this
-  pattern × the role's clean-decision rate, shrunk toward neutral on
-  sparse history (a weak prior must never trigger retries/escalations by
-  itself; that inverts decision-pathfinder's sample factor, whose
-  low-confidence action is conservative rather than costly). Options:
-  `halfLifeDays` (30), `minRuns` (3), `saturationRuns` (10), `maxRuns`
-  (200). Resolves neutral without a wired store or on lookup failure.
-  Best used in a list with a real oracle — `min` keeps verification
-  dominant.
-  - **Drift demotion** (on by default; `drift: false` to disable,
-    `driftRecentN` 5, `driftThreshold` 0.25). When the most recent runs'
-    success rate has collapsed relative to lifetime, the prior is demoted
-    by `1 − (lifetime − recent)` rather than waiting for age decay to
-    catch up. Only ever *lowers* the prior, and only once there are at
-    least `max(minRuns, 2 × driftRecentN)` runs — a prior too thin to
-    trust cannot "drift".
-  - **Sibling pooling / warm start** (opt-in: `pool: true`; `poolFamily`,
-    `poolWeight` 0.5). A pattern with too little history of its own can
-    borrow a prior from siblings — other patterns in the same family
-    (leading hyphen-delimited segment of the name) and any pattern's runs
-    against the same repo — with the role's clean-decision rate taken over
-    those same executions. A pooled prior is deliberately weaker
-    (`saturationRuns / poolWeight`, so it sits closer to neutral) and is
-    labelled `history (pooled from family:…, repo:…)` in the detail
-    string. It replaces a neutral 1.0, so like every history prior it can
-    only pull the combined signal down.
-- ✅ `agent` oracle (tier 3) — a reviewer role (default `reportsTo`)
-  judges the output against the original task; the executor parses
-  `VERDICT: approve|revise|reject` + `CONFIDENCE:` into the signal
-  (contradictory pairs clamp: a rejected result can never pass the accept
-  threshold). Neutral-with-warning when no reviewer resolves, the reply
-  is unparseable, or the review turn fails. Motivated empirically by
-  docs/experiments/2026-07-20-self-tests-pass-scope-shrinks.md — the run
-  where self-authored tests scored 1.0 while both engineers silently
-  dropped the hard requirements and the (then-unwired) review caught it.
-- ✅ The `review` *step* emits its parsed verdict as a `step_confidence`
-  event (`action: review_verdict`, `source: review`) — journaled and
-  counted into the execution's average confidence.
-- ✅ Role-level `verify` (single oracle or list; list combines by `min`).
-- ✅ Wired into `executeAssignStep`: `verify` confidence replaces the
-  self-report and feeds the existing `accept`/`retryBelow`/`escalateBelow`
-  policy (a role with `verify` but no explicit policy uses sensible
-  defaults). The retry critique and escalation message carry the
-  verification **detail** (what failed). `step_confidence` events gained a
-  `source` (`command` / `selfreport` / …) and `detail`.
-- ⬜ `checklist` / `agent` / `human` oracles, the `verify` *step*, and the
-  `weighted` / `product` combine modes — specified above, not yet built
-  (unimplemented oracle types log a warning and treat as pass).
-
-This gives "engineer's tests fail → escalates to architect" end to end, with
-zero ML and a signal you can trust.
+These tests use runtime doubles and a small trusted local command test.
+They do not validate a deployed isolated verifier, an actual cluster,
+revision-bound publication, or durable restart recovery.

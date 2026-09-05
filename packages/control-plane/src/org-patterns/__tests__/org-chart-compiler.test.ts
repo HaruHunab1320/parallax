@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  compileOrgPattern,
   type CompiledPattern,
   type CompilerOptions,
+  compileOrgPattern,
 } from '../org-chart-compiler';
 import type { OrgPattern } from '../types';
 
@@ -114,6 +114,10 @@ describe('compileOrgPattern', () => {
         },
       },
     });
+    pattern.workflow = {
+      name: 'test',
+      steps: [{ type: 'assign', role: 'lead', task: 'test' }],
+    };
     const result = compileOrgPattern(pattern);
 
     expect(result.metadata.agents.capabilities).toEqual(
@@ -184,6 +188,10 @@ describe('compileOrgPattern', () => {
           },
         },
       });
+      pattern.workflow = {
+        name: 'test',
+        steps: [{ type: 'assign', role: 'lead', task: 'test' }],
+      };
       const result = compileOrgPattern(pattern);
 
       // lead starts at index 0, takes 1
@@ -216,6 +224,10 @@ describe('compileOrgPattern', () => {
           },
         },
       });
+      pattern.workflow = {
+        name: 'test',
+        steps: [{ type: 'assign', role: 'lead', task: 'test' }],
+      };
       const result = compileOrgPattern(pattern);
       expect(result.script).toContain('let roleAssignments = {');
       expect(result.script).toContain('lead: _roleAgents_lead,');
@@ -423,9 +435,7 @@ describe('compileOrgPattern', () => {
           steps: [
             {
               type: 'parallel',
-              steps: [
-                { type: 'assign', role: 'architect', task: 'A' },
-              ],
+              steps: [{ type: 'assign', role: 'architect', task: 'A' }],
             },
             { type: 'aggregate', method: 'merge' },
           ],
@@ -453,9 +463,7 @@ describe('compileOrgPattern', () => {
         },
       });
       const result = compileOrgPattern(pattern);
-      expect(result.script).toContain(
-        'if (step_0_result.confidence > 0.8) {'
-      );
+      expect(result.script).toContain('if (step_0_result.confidence > 0.8) {');
       expect(result.script).toContain('step_1_then');
       expect(result.script).toContain('} else {');
       expect(result.script).toContain('step_1_else');
@@ -478,7 +486,8 @@ describe('compileOrgPattern', () => {
       const result = compileOrgPattern(pattern);
       expect(result.script).toContain('if (step_0_result) {');
       // The condition step should not have an else branch (helper functions may contain else)
-      const conditionSection = result.script.split('// Step 1:')[1]?.split('// ===')[0] || '';
+      const conditionSection =
+        result.script.split('// Step 1:')[1]?.split('// ===')[0] || '';
       expect(conditionSection).not.toContain('step_1_else');
     });
   });

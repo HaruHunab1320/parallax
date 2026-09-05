@@ -42,3 +42,10 @@ docs
 vitest.config.*
 **/.parallax
 
+
+# Private signing keys, TLS material, and local secret directories
+*.pem
+**/*.pem
+*.key
+**/*.key
+**/secrets

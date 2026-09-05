@@ -30,11 +30,7 @@ data:
       prefix: {{ .Values.controlPlane.etcd.prefix | default "/parallax" }}
     
     database:
-      {{- if .Values.postgresql.enabled }}
-      url: postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ include "parallax.fullname" . }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?schema=public
-      {{- else }}
-      url: {{ .Values.controlPlane.database.url }}
-      {{- end }}
+      # Connection credentials are supplied only through the DATABASE_URL Secret.
       maxConnections: {{ .Values.controlPlane.database.maxConnections | default 20 }}
       migrations:
         autoRun: {{ .Values.controlPlane.database.migrations.autoRun | default true }}
@@ -61,13 +57,4 @@ data:
       serviceName: {{ .Values.controlPlane.tracing.serviceName | default "parallax-control-plane" }}
       {{- end }}
     
-    {{- if .Values.controlPlane.auth.enabled }}
-    auth:
-      enabled: true
-      jwt:
-        secret: {{ .Values.controlPlane.auth.jwt.secret }}
-        expiry: {{ .Values.controlPlane.auth.jwt.expiry | default "24h" }}
-      rbac:
-        enabled: {{ .Values.controlPlane.auth.rbac.enabled | default false }}
-    {{- end }}
 {{- end }}

@@ -2,11 +2,15 @@
  * gRPC server implementation for Parallax Control Plane
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import type { Logger } from 'pino';
+import {
+  buildGrpcServerCredentials,
+  createGrpcAuthInterceptor,
+} from '../auth/grpc-security';
+import { getSecurityConfig } from '../auth/security-config';
 import type { DatabaseService } from '../db/database.service';
 import type { ExecutionEventBus } from '../execution-events';
 import type { IPatternEngine } from '../pattern-engine/interfaces';
@@ -38,7 +42,13 @@ export class GrpcServer {
     executionEvents?: ExecutionEventBus,
     gatewayService?: GatewayService
   ) {
-    this.server = new grpc.Server();
+    const security = getSecurityConfig();
+    this.server = new grpc.Server({
+      interceptors:
+        security.development && !security.grpcApiKey
+          ? []
+          : [createGrpcAuthInterceptor(security.grpcApiKey!)],
+    });
     this.gatewayService = gatewayService;
 
     // Initialize service implementations
@@ -124,9 +134,10 @@ export class GrpcServer {
     this.setupServices();
 
     return new Promise((resolve, reject) => {
-      const bindAddr = `0.0.0.0:${port}`;
+      const host = getSecurityConfig().grpcHost;
+      const bindAddr = `${host.includes(':') ? `[${host}]` : host}:${port}`;
 
-      const credentials = this.buildServerCredentials();
+      const credentials = buildGrpcServerCredentials();
       this.server.bindAsync(bindAddr, credentials, (error, actualPort) => {
         if (error) {
           this.logger.error(
@@ -141,44 +152,6 @@ export class GrpcServer {
         resolve();
       });
     });
-  }
-
-  private buildServerCredentials(): grpc.ServerCredentials {
-    const enabled = process.env.PARALLAX_GRPC_TLS_ENABLED === 'true';
-    if (!enabled) {
-      return grpc.ServerCredentials.createInsecure();
-    }
-
-    const caPath = process.env.PARALLAX_GRPC_TLS_CA;
-    const certPath = process.env.PARALLAX_GRPC_TLS_CERT;
-    const keyPath = process.env.PARALLAX_GRPC_TLS_KEY;
-    const requireClientCert =
-      process.env.PARALLAX_GRPC_TLS_REQUIRE_CLIENT_CERT === 'true';
-
-    try {
-      if (!caPath || !certPath || !keyPath) {
-        this.logger.warn(
-          'gRPC TLS env vars missing; falling back to insecure credentials'
-        );
-        return grpc.ServerCredentials.createInsecure();
-      }
-
-      const ca = fs.readFileSync(caPath);
-      const cert = fs.readFileSync(certPath);
-      const key = fs.readFileSync(keyPath);
-
-      return grpc.ServerCredentials.createSsl(
-        ca,
-        [{ private_key: key, cert_chain: cert }],
-        requireClientCert
-      );
-    } catch (error) {
-      this.logger.warn(
-        { error },
-        'Failed to load gRPC TLS credentials; falling back to insecure'
-      );
-      return grpc.ServerCredentials.createInsecure();
-    }
   }
 
   async stop(): Promise<void> {

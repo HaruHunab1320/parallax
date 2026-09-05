@@ -41,14 +41,16 @@ export function parseReviewVerdict(text: string): ReviewVerdict {
   const clean = stripAnsi(text ?? '').trim();
   const detail = clean.slice(-1200);
 
-  const matches = clean.match(/verdict:\s*(approve|accept|revise|reject)/gi);
+  const matches = clean.match(/^verdict:[^\n]*$/gim);
   const last = matches?.[matches.length - 1];
-  const word = last
-    ? (last
-        .replace(/verdict:\s*/i, '')
-        .toLowerCase()
-        .replace('accept', 'approve') as ReviewVerdictWord)
-    : undefined;
+  const candidate = last
+    ?.replace(/^verdict:[ \t]*/i, '')
+    .trim()
+    .toLowerCase();
+  const word =
+    candidate && /^(approve|accept|revise|reject)$/.test(candidate)
+      ? (candidate.replace('accept', 'approve') as ReviewVerdictWord)
+      : undefined;
 
   const marker = parseConfidenceMarker(clean);
 

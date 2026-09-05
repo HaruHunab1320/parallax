@@ -13,6 +13,7 @@ import {
   type AgentStatus,
   type AgentType,
   BaseRuntimeProvider,
+  executionResourceName,
   type LogOptions,
   type SendOptions,
   type StopOptions,
@@ -135,6 +136,10 @@ export class DockerRuntime extends BaseRuntimeProvider {
   }
 
   async spawn(config: AgentConfig): Promise<AgentHandle> {
+    if (config.approvalPreset !== undefined) {
+      throw new Error('This runtime does not enforce approval presets');
+    }
+
     if (!this.initialized) {
       await this.initialize();
     }
@@ -155,7 +160,7 @@ export class DockerRuntime extends BaseRuntimeProvider {
     // Build volume binds for shared auth
     const binds: string[] = [];
     if (config.executionId) {
-      const volumeName = `parallax-auth-${config.executionId.substring(0, 8)}`;
+      const volumeName = executionResourceName(config.executionId);
       binds.push(`${volumeName}:/home/agent/.claude`);
       binds.push(`${volumeName}:/home/agent/.codex`);
     }
@@ -470,7 +475,22 @@ export class DockerRuntime extends BaseRuntimeProvider {
    * Clean up shared auth volume when an execution is fully torn down.
    */
   async cleanupExecution(executionId: string): Promise<void> {
-    const volumeName = `parallax-auth-${executionId.substring(0, 8)}`;
+    const owned = [...this.containers.entries()].filter(
+      ([, info]) => info.config.executionId === executionId
+    );
+    const stopped = await Promise.allSettled(
+      owned.map(([id]) => this.stop(id, { force: true }))
+    );
+    const failures = stopped.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    if (failures.length)
+      throw new AggregateError(
+        failures.map((result) => result.reason),
+        'Execution agents could not be stopped'
+      );
+
+    const volumeName = executionResourceName(executionId);
 
     try {
       await this.docker.getVolume(volumeName).remove();
@@ -480,17 +500,21 @@ export class DockerRuntime extends BaseRuntimeProvider {
         'Deleted shared auth volume'
       );
     } catch (error: any) {
-      if (!error.message?.includes('no such volume')) {
+      if (
+        error.statusCode !== 404 &&
+        !error.message?.includes('no such volume')
+      ) {
         this.logger.warn(
           { volumeName, error: error.message },
           'Failed to delete shared auth volume'
         );
+        throw error;
       }
     }
   }
 
   private async ensureSharedAuthVolume(executionId: string): Promise<void> {
-    const volumeName = `parallax-auth-${executionId.substring(0, 8)}`;
+    const volumeName = executionResourceName(executionId);
 
     if (this.sharedAuthVolumes.has(volumeName)) return;
 
@@ -661,6 +685,7 @@ export class DockerRuntime extends BaseRuntimeProvider {
             type: handle.type,
             capabilities: handle.capabilities,
             role: handle.role,
+            executionId: dc.Labels['parallax.execution.id'] || undefined,
           },
           handle,
           outputBuffer: '',

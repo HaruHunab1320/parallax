@@ -25,20 +25,24 @@ export {
 } from './decision-journal';
 export { MessageRouter, MessageRouterOptions } from './message-router';
 export {
-  parseReviewVerdict,
-  REVIEW_PROTOCOL_INSTRUCTION,
-  ReviewVerdict,
-  ReviewVerdictWord,
-} from './review-verdict';
-export {
   CompiledPattern,
   CompilerOptions,
   compileOrgPattern,
   compileOrgPatternFile,
   loadOrgPatternFromFile,
 } from './org-chart-compiler';
-export * from './types';
 export {
+  parseReviewVerdict,
+  REVIEW_PROTOCOL_INSTRUCTION,
+  ReviewVerdict,
+  ReviewVerdictWord,
+} from './review-verdict';
+export * from './types';
+export { validateOrgVerification } from './verification-validation';
+export {
+  OracleResult,
+  OracleStatus,
+  WorkflowExecutionOptions,
   WorkflowExecutor,
   WorkflowExecutorOptions,
   WorkflowResult,

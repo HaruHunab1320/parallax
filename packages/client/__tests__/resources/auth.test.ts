@@ -50,6 +50,16 @@ describe('AuthResource', () => {
     });
   });
 
+  it('sends the bootstrap token only on registration', async () => {
+    mockFetch({ user: { id: 'admin' }, tokens: { accessToken: 'access', refreshToken: 'refresh' } });
+    await client.auth.register('admin@example.com', 'password123', undefined, 'setup-secret');
+    const registration = vi.mocked(globalThis.fetch).mock.calls[0][1]!;
+    expect(registration.headers).toMatchObject({ 'X-Parallax-Bootstrap-Token': 'setup-secret' });
+    expect(JSON.parse(registration.body as string)).not.toHaveProperty('bootstrapToken');
+    await client.auth.me();
+    expect(vi.mocked(globalThis.fetch).mock.calls[1][1]!.headers).not.toHaveProperty('X-Parallax-Bootstrap-Token');
+  });
+
   it('should login', async () => {
     mockFetch({
       user: { id: 'user-1', email: 'test@example.com', role: 'admin' },

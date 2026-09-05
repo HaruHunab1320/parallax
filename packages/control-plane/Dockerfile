@@ -1,8 +1,8 @@
 # Stage 1: Prune the monorepo for control-plane
-FROM node:20-alpine AS pruner
+FROM node:24.20.0-alpine AS pruner
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN npm install -g turbo
+RUN npm install --global pnpm@10.11.0
+RUN npm install --global turbo@2.5.5
 
 WORKDIR /app
 COPY . .
@@ -11,10 +11,10 @@ COPY . .
 RUN turbo prune @parallaxai/control-plane --docker
 
 # Stage 2: Install dependencies and build
-FROM node:20-alpine AS builder
+FROM node:24.20.0-alpine AS builder
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN npm install -g turbo
+RUN npm install --global pnpm@10.11.0
+RUN npm install --global turbo@2.5.5
 
 WORKDIR /app
 
@@ -40,7 +40,7 @@ WORKDIR /app/packages/control-plane
 RUN pnpm exec prisma generate
 
 # Stage 3: Production - preserve pnpm workspace structure
-FROM node:20-alpine AS production
+FROM node:24.20.0-alpine AS production
 
 WORKDIR /app
 

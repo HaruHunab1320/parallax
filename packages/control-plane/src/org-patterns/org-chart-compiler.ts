@@ -9,6 +9,7 @@
 import * as fs from 'node:fs/promises';
 import * as yaml from 'js-yaml';
 import type { OrgPattern, OrgStructure, WorkflowStep } from './types';
+import { validateOrgVerification } from './verification-validation';
 
 export interface CompilerOptions {
   /** Include comments in generated Prism */
@@ -42,6 +43,7 @@ export function compileOrgPattern(
   pattern: OrgPattern,
   options: CompilerOptions = {}
 ): CompiledPattern {
+  validateOrgVerification(pattern);
   const { includeComments = true, prettyPrint = true } = options;
 
   const lines: string[] = [];
@@ -723,7 +725,9 @@ export async function loadOrgPatternFromFile(
   filePath: string
 ): Promise<OrgPattern> {
   const content = await fs.readFile(filePath, 'utf-8');
-  return yaml.load(content) as OrgPattern;
+  const pattern = yaml.load(content) as OrgPattern;
+  validateOrgVerification(pattern);
+  return pattern;
 }
 
 /**

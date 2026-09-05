@@ -14,6 +14,7 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [bootstrapToken, setBootstrapToken] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -39,7 +40,7 @@ function LoginForm() {
     try {
       let response;
       if (isSetup) {
-        response = await apiClient.register(email, password, name || undefined);
+        response = await apiClient.register(email, password, name || undefined, bootstrapToken || undefined);
       } else {
         response = await apiClient.login(email, password);
       }
@@ -132,6 +133,24 @@ function LoginForm() {
                 placeholder={isSetup ? 'Min 8 chars, 1 letter, 1 number' : 'Your password'}
               />
             </div>
+
+            {isSetup && (
+              <div>
+                <label htmlFor="bootstrap-token" className="block text-sm font-medium text-gray-300 mb-1">
+                  Setup token
+                </label>
+                <input
+                  id="bootstrap-token"
+                  type="password"
+                  autoComplete="off"
+                  value={bootstrapToken}
+                  onChange={(e) => setBootstrapToken(e.target.value)}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-parallax-accent"
+                  placeholder="Provided by your deployment administrator"
+                />
+                <p className="text-parallax-gray text-xs mt-1">Required for production setup. Local development may leave this empty.</p>
+              </div>
+            )}
 
             {error && (
               <div className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-2">

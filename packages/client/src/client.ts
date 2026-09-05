@@ -40,10 +40,10 @@ export class ParallaxClient {
   /** Trigger management — webhook and event triggers (Enterprise) */
   readonly triggers: TriggersResource;
 
-  /** Authentication — register, login, token refresh (Enterprise) */
+  /** Authentication — first-admin setup, login, token refresh */
   readonly auth: AuthResource;
 
-  /** User management — CRUD, API keys (Enterprise) */
+  /** User management — accounts and API keys; additional accounts require multi_user */
   readonly users: UsersResource;
 
   /** Audit logs — query, stats, cleanup (Enterprise, admin only) */

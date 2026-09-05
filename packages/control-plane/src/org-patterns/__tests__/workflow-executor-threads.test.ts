@@ -148,6 +148,13 @@ class MockThreadRuntimeService extends EventEmitter {
     };
   }
 
+  get subscriptionCount(): number {
+    return [...this.subscriptions.values()].reduce(
+      (sum, subscriptions) => sum + subscriptions.length,
+      0
+    );
+  }
+
   /** Manually fire a thread event (used by tests) */
   emitThreadEvent(threadId: string, event: ThreadEvent): void {
     const subs = this.subscriptions.get(threadId) || [];
@@ -258,6 +265,7 @@ describe('WorkflowExecutor thread integration', () => {
 
   beforeEach(() => {
     runtime = new MockThreadRuntimeService();
+    runtime.summaryByThread['thread-3'] = 'VERDICT: approve\nCONFIDENCE: 0.9';
   });
 
   it('executes steps sequentially: architect first, then engineers, then reviewer', async () => {
@@ -272,7 +280,7 @@ describe('WorkflowExecutor thread integration', () => {
     const executor = new WorkflowExecutor(
       runtime as unknown as AgentRuntimeService,
       logger,
-      { stepTimeout: 5000 }
+      { stepTimeout: 5000, allowLocalCommandVerification: true }
     );
 
     const result = await executor.execute(pattern, { task: 'build feature X' });
@@ -299,7 +307,7 @@ describe('WorkflowExecutor thread integration', () => {
     const executor = new WorkflowExecutor(
       runtime as unknown as AgentRuntimeService,
       logger,
-      { stepTimeout: 5000 }
+      { stepTimeout: 5000, allowLocalCommandVerification: true }
     );
 
     await executor.execute(pattern, { task: 'build it' });
@@ -318,7 +326,7 @@ describe('WorkflowExecutor thread integration', () => {
     const executor = new WorkflowExecutor(
       runtime as unknown as AgentRuntimeService,
       logger,
-      { stepTimeout: 5000 }
+      { stepTimeout: 5000, allowLocalCommandVerification: true }
     );
 
     await executor.execute(pattern, { task: 'hello world' });
@@ -359,7 +367,7 @@ describe('WorkflowExecutor thread integration', () => {
     const executor = new WorkflowExecutor(
       runtime as unknown as AgentRuntimeService,
       logger,
-      { stepTimeout: 5000 }
+      { stepTimeout: 5000, allowLocalCommandVerification: true }
     );
 
     const promise = executor.execute(pattern, {});
@@ -407,7 +415,7 @@ describe('WorkflowExecutor thread integration', () => {
     const executor = new WorkflowExecutor(
       runtime as unknown as AgentRuntimeService,
       logger,
-      { stepTimeout: 5000 }
+      { stepTimeout: 5000, allowLocalCommandVerification: true }
     );
 
     const promise = executor.execute(pattern, {});
@@ -460,7 +468,7 @@ describe('WorkflowExecutor thread integration', () => {
     const executor = new WorkflowExecutor(
       runtime as unknown as AgentRuntimeService,
       logger,
-      { stepTimeout: 5000 }
+      { stepTimeout: 5000, allowLocalCommandVerification: true }
     );
 
     const promise = executor.execute(pattern, {});
@@ -490,7 +498,7 @@ describe('WorkflowExecutor thread integration', () => {
     const executor = new WorkflowExecutor(
       runtime as unknown as AgentRuntimeService,
       logger,
-      { stepTimeout: 5000 }
+      { stepTimeout: 5000, allowLocalCommandVerification: true }
     );
 
     await expect(executor.execute(pattern, { task: 'test' })).rejects.toThrow(
@@ -500,20 +508,19 @@ describe('WorkflowExecutor thread integration', () => {
     expect(runtime.stoppedThreads.size).toBe(runtime.spawnedThreads.length);
   });
 
-  it('leaves threads alive after successful execution', async () => {
-    // Intentional lifecycle: threads survive workflow completion so agents
-    // can finish pushing code / creating PRs; cleanup only runs on failure
+  it('stops owned threads after successful execution', async () => {
+    // Completion requires finishing all agent work and stopping owned threads.
     const pattern = makeOrgPattern();
     const executor = new WorkflowExecutor(
       runtime as unknown as AgentRuntimeService,
       logger,
-      { stepTimeout: 5000 }
+      { stepTimeout: 5000, allowLocalCommandVerification: true }
     );
 
     await executor.execute(pattern, { task: 'test' });
 
     expect(runtime.spawnedThreads).toHaveLength(4);
-    expect(runtime.stoppedThreads.size).toBe(0);
+    expect(runtime.stoppedThreads.size).toBe(runtime.spawnedThreads.length);
   });
 
   it('stores all step results in context variables, not just assign steps', async () => {
@@ -545,7 +552,7 @@ describe('WorkflowExecutor thread integration', () => {
     const executor = new WorkflowExecutor(
       runtime as unknown as AgentRuntimeService,
       logger,
-      { stepTimeout: 5000 }
+      { stepTimeout: 5000, allowLocalCommandVerification: true }
     );
 
     const result = await executor.execute(pattern, {});
@@ -594,7 +601,7 @@ describe('WorkflowExecutor thread integration', () => {
       return new WorkflowExecutor(
         runtime as unknown as AgentRuntimeService,
         logger,
-        { stepTimeout: 5000 }
+        { stepTimeout: 5000, allowLocalCommandVerification: true }
       );
     }
 
@@ -624,7 +631,7 @@ describe('WorkflowExecutor thread integration', () => {
       expect(runtime.sentMessages[0].threadId).toBe(WORKER);
       expect(runtime.sentMessages[1].threadId).toBe(WORKER);
       expect(runtime.sentMessages[1].input.message).toContain(
-        'did not pass verification (0.50)'
+        'did not pass verification.'
       );
       expect(actions).toEqual(['retry', 'accept']);
     });
@@ -729,7 +736,7 @@ describe('WorkflowExecutor thread integration', () => {
       return new WorkflowExecutor(
         runtime as unknown as AgentRuntimeService,
         logger,
-        { stepTimeout: 5000 }
+        { stepTimeout: 5000, allowLocalCommandVerification: true }
       );
     }
 
@@ -755,10 +762,12 @@ describe('WorkflowExecutor thread integration', () => {
       const events: any[] = [];
       executor.on('step_confidence', (e) => events.push(e));
 
-      await executor.execute(
-        verifyPattern({ type: 'command', run: 'false' }, fullPolicy),
-        {}
-      );
+      await expect(
+        executor.execute(
+          verifyPattern({ type: 'command', run: 'false' }, fullPolicy),
+          {}
+        )
+      ).rejects.toThrow('Required verification failed');
 
       // 0.0 < escalateBelow (0.4) → escalate to the lead.
       expect(runtime.sentMessages).toHaveLength(2);
@@ -767,9 +776,7 @@ describe('WorkflowExecutor thread integration', () => {
       expect(escalate).toBeDefined();
       expect(escalate.source).toContain('command');
       // The escalation message carries the failing-verification context.
-      expect(runtime.sentMessages[1].input.message).toContain(
-        'did not pass'
-      );
+      expect(runtime.sentMessages[1].input.message).toContain('did not pass');
     });
 
     it('verify with no explicit confidence policy still escalates on failure', async () => {
@@ -778,10 +785,9 @@ describe('WorkflowExecutor thread integration', () => {
       executor.on('step_confidence', (e) => events.push(e));
 
       // No policy arg → defaults (accept 0.8 / retryBelow 0.6 / escalateBelow 0.4).
-      await executor.execute(
-        verifyPattern({ type: 'command', run: 'false' }),
-        {}
-      );
+      await expect(
+        executor.execute(verifyPattern({ type: 'command', run: 'false' }), {})
+      ).rejects.toThrow('Required verification failed');
 
       expect(events.some((e) => e.action === 'escalate')).toBe(true);
     });
@@ -792,24 +798,27 @@ describe('WorkflowExecutor thread integration', () => {
       executor.on('step_confidence', (e) => events.push(e));
 
       // 2 passed / 2 failed = 0.5 → escalateBelow(0.4) ≤ 0.5 < retryBelow(0.6) → retry.
-      await executor.execute(
-        verifyPattern(
-          {
-            type: 'command',
-            run: 'echo "2 passed, 2 failed"',
-            scorePattern: '(\\d+) passed, (\\d+) failed',
-          },
-          fullPolicy
-        ),
-        {}
-      );
+      await expect(
+        executor.execute(
+          verifyPattern(
+            {
+              type: 'command',
+              run: 'echo "2 passed, 2 failed"',
+              scorePattern: '(\\d+) passed, (\\d+) failed',
+            },
+            fullPolicy
+          ),
+          {}
+        )
+      ).rejects.toThrow('Required verification failed');
 
       // Initial + one retry, both to the worker.
-      expect(runtime.sentMessages).toHaveLength(2);
+      expect(runtime.sentMessages).toHaveLength(3);
       expect(runtime.sentMessages[1].threadId).toBe(WORKER);
       expect(events.map((e) => e.action)).toEqual([
         'retry',
-        'accept_with_warning',
+        'escalate',
+        'verification_failed',
       ]);
       // The retry critique carries the verification detail.
       expect(runtime.sentMessages[1].input.message).toContain(
@@ -824,10 +833,12 @@ describe('WorkflowExecutor thread integration', () => {
       const events: any[] = [];
       executor.on('step_confidence', (e) => events.push(e));
 
-      await executor.execute(
-        verifyPattern({ type: 'command', run: 'false' }, fullPolicy),
-        {}
-      );
+      await expect(
+        executor.execute(
+          verifyPattern({ type: 'command', run: 'false' }, fullPolicy),
+          {}
+        )
+      ).rejects.toThrow('Required verification failed');
 
       // Verification (0.0) wins over the self-report → escalate.
       const escalate = events.find((e) => e.action === 'escalate');
@@ -866,7 +877,7 @@ describe('WorkflowExecutor thread integration', () => {
       const executor = new WorkflowExecutor(
         runtime as unknown as AgentRuntimeService,
         logger,
-        { stepTimeout: 5000 }
+        { stepTimeout: 5000, allowLocalCommandVerification: true }
       );
       const completed: any[] = [];
       executor.on('workflow_completed', (e) => completed.push(e));
@@ -887,7 +898,7 @@ describe('WorkflowExecutor thread integration', () => {
       const executor = new WorkflowExecutor(
         runtime as unknown as AgentRuntimeService,
         logger,
-        { stepTimeout: 5000 }
+        { stepTimeout: 5000, allowLocalCommandVerification: true }
       );
       const events: any[] = [];
       executor.on('step_confidence', (e) => events.push(e));
@@ -904,7 +915,7 @@ describe('WorkflowExecutor thread integration', () => {
       const executor = new WorkflowExecutor(
         runtime as unknown as AgentRuntimeService,
         logger,
-        { stepTimeout: 5000 }
+        { stepTimeout: 5000, allowLocalCommandVerification: true }
       );
       const stores = {
         sharedDecisions: { create: vi.fn().mockResolvedValue({}) },
@@ -944,7 +955,7 @@ describe('WorkflowExecutor thread integration', () => {
       const executor = new WorkflowExecutor(
         runtime as unknown as AgentRuntimeService,
         logger,
-        { stepTimeout: 5000 }
+        { stepTimeout: 5000, allowLocalCommandVerification: true }
       );
       const stores = {
         sharedDecisions: { create: vi.fn().mockResolvedValue({}) },
@@ -1003,7 +1014,11 @@ describe('WorkflowExecutor thread integration', () => {
       const executor = new WorkflowExecutor(
         runtime as unknown as AgentRuntimeService,
         logger,
-        { stepTimeout: 5000, decisionHistory: { signal } }
+        {
+          stepTimeout: 5000,
+          allowLocalCommandVerification: true,
+          decisionHistory: { signal },
+        }
       );
       return { executor, signal };
     }
@@ -1042,10 +1057,15 @@ describe('WorkflowExecutor thread integration', () => {
       const events: any[] = [];
       executor.on('step_confidence', (e) => events.push(e));
 
-      await executor.execute(
-        historyPattern([{ type: 'command', run: 'false' }, { type: 'history' }]),
-        {}
-      );
+      await expect(
+        executor.execute(
+          historyPattern([
+            { type: 'command', run: 'false' },
+            { type: 'history' },
+          ]),
+          {}
+        )
+      ).rejects.toThrow('Required verification failed');
 
       const escalate = events.find((e) => e.action === 'escalate');
       expect(escalate).toBeDefined();
@@ -1057,7 +1077,7 @@ describe('WorkflowExecutor thread integration', () => {
       const executor = new WorkflowExecutor(
         runtime as unknown as AgentRuntimeService,
         logger,
-        { stepTimeout: 5000 }
+        { stepTimeout: 5000, allowLocalCommandVerification: true }
       );
       const events: any[] = [];
       executor.on('step_confidence', (e) => events.push(e));
@@ -1103,7 +1123,7 @@ describe('WorkflowExecutor thread integration', () => {
       return new WorkflowExecutor(
         runtime as unknown as AgentRuntimeService,
         logger,
-        { stepTimeout: 5000 }
+        { stepTimeout: 5000, allowLocalCommandVerification: true }
       );
     }
 
@@ -1139,10 +1159,12 @@ describe('WorkflowExecutor thread integration', () => {
       const events: any[] = [];
       executor.on('step_confidence', (e) => events.push(e));
 
-      await executor.execute(agentVerifyPattern({ type: 'agent' }), {});
+      await expect(
+        executor.execute(agentVerifyPattern({ type: 'agent' }), {})
+      ).rejects.toThrow('Required verification failed');
 
       // Task → review → escalation, all recorded.
-      expect(runtime.sentMessages).toHaveLength(3);
+      expect(runtime.sentMessages).toHaveLength(4);
       expect(runtime.sentMessages[2].threadId).toBe(LEAD);
       expect(runtime.sentMessages[2].input.message).toContain(
         'did not pass verification'
@@ -1163,13 +1185,15 @@ describe('WorkflowExecutor thread integration', () => {
       const events: any[] = [];
       executor.on('step_confidence', (e) => events.push(e));
 
-      await executor.execute(
-        agentVerifyPattern([
-          { type: 'command', run: 'true' },
-          { type: 'agent' },
-        ]),
-        {}
-      );
+      await expect(
+        executor.execute(
+          agentVerifyPattern([
+            { type: 'command', run: 'true' },
+            { type: 'agent' },
+          ]),
+          {}
+        )
+      ).rejects.toThrow('Required verification failed');
 
       const escalate = events.find((e) => e.action === 'escalate');
       expect(escalate).toBeDefined();
@@ -1177,17 +1201,22 @@ describe('WorkflowExecutor thread integration', () => {
       expect(escalate.confidence).toBe(0.2);
     });
 
-    it('unparseable review resolves neutral and accepts', async () => {
+    it('unparseable review fails after bounded escalation', async () => {
       runtime.summaryByThread[LEAD] = 'Seems fine to me, nice work.';
       const executor = makeExecutor();
       const events: any[] = [];
       executor.on('step_confidence', (e) => events.push(e));
 
-      await executor.execute(agentVerifyPattern({ type: 'agent' }), {});
+      await expect(
+        executor.execute(agentVerifyPattern({ type: 'agent' }), {})
+      ).rejects.toThrow('Required verification failed');
 
-      expect(runtime.sentMessages).toHaveLength(2);
-      expect(events.map((e) => e.action)).toEqual(['accept']);
-      expect(events[0].confidence).toBe(1);
+      expect(runtime.sentMessages).toHaveLength(4);
+      expect(events.map((e) => e.action)).toEqual([
+        'escalate',
+        'verification_failed',
+      ]);
+      expect(events[0].confidence).toBe(0);
     });
 
     it('serializes concurrent reviews to a shared singleton reviewer', async () => {
@@ -1273,7 +1302,9 @@ describe('WorkflowExecutor thread integration', () => {
       const events: any[] = [];
       executor.on('step_confidence', (e) => events.push(e));
 
-      await executor.execute(pattern, {});
+      await expect(executor.execute(pattern, {})).rejects.toThrow(
+        'Required review'
+      );
 
       const verdict = events.find((e) => e.action === 'review_verdict');
       expect(verdict).toBeDefined();
@@ -1285,7 +1316,73 @@ describe('WorkflowExecutor thread integration', () => {
       const reviewMsg = runtime.sentMessages.find((m: any) =>
         String(m.input.message).includes('Please review the following')
       );
-      expect(String(reviewMsg.input.message)).toContain('VERDICT: approve | revise | reject');
+      expect(String(reviewMsg.input.message)).toContain(
+        'VERDICT: approve | revise | reject'
+      );
     });
+  });
+  it('aborts a pending thread turn and removes all completion subscriptions', async () => {
+    runtime.autoComplete = false;
+    const executor = new WorkflowExecutor(
+      runtime as unknown as AgentRuntimeService,
+      logger
+    );
+    const controller = new AbortController();
+    const promise = executor.execute(
+      makeOrgPattern(),
+      {},
+      { signal: controller.signal }
+    );
+    const rejected = expect(promise).rejects.toThrow('cancelled');
+    await vi.waitFor(() => expect(runtime.sentMessages).toHaveLength(1));
+    controller.abort(new Error('cancelled'));
+    await rejected;
+    expect(runtime.subscriptionCount).toBe(0);
+    expect(runtime.listenerCount('thread_event')).toBe(0);
+    expect(runtime.stoppedThreads.size).toBe(4);
+    expect(runtime.sentMessages).toHaveLength(1);
+  });
+
+  it('ignores unrelated ready events and cancels the ready gate cleanly', async () => {
+    vi.spyOn(runtime, 'spawnThread').mockImplementation(async (input) => {
+      const id = `pending-${runtime.spawnedThreads.length}`;
+      runtime.spawnedThreads.push({ id, input });
+      return { id, status: 'starting' } as ThreadHandle;
+    });
+    const executor = new WorkflowExecutor(
+      runtime as unknown as AgentRuntimeService,
+      logger
+    );
+    const controller = new AbortController();
+    const promise = executor.execute(
+      makeOrgPattern(),
+      {},
+      { signal: controller.signal }
+    );
+    const rejected = expect(promise).rejects.toThrow('cancelled');
+    await vi.waitFor(() => expect(runtime.spawnedThreads).toHaveLength(4));
+    for (let i = 0; i < 4; i++)
+      runtime.emit('thread_event', {
+        event: { type: 'ready', thread_id: `unrelated-${i}` },
+      });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(runtime.sentMessages).toHaveLength(0);
+    controller.abort(new Error('cancelled'));
+    await rejected;
+    expect(runtime.listenerCount('thread_event')).toBe(0);
+    expect(runtime.stoppedThreads.size).toBe(4);
+  });
+
+  it('removes completion subscriptions after a failed thread send', async () => {
+    runtime.nextSendError = new Error('dispatch failed');
+    const executor = new WorkflowExecutor(
+      runtime as unknown as AgentRuntimeService,
+      logger
+    );
+    await expect(executor.execute(makeOrgPattern(), {})).rejects.toThrow(
+      'dispatch failed'
+    );
+    expect(runtime.subscriptionCount).toBe(0);
+    expect(runtime.listenerCount('thread_event')).toBe(0);
   });
 });

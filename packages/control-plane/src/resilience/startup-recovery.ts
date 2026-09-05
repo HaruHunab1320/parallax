@@ -20,7 +20,7 @@ export class StartupRecoveryService {
 
   /**
    * Run once at startup to recover orphaned executions.
-   * Finds executions owned by this node (or unowned) that are still running/pending.
+   * Finds executions owned by this node that are still running/pending.
    */
   async recoverOrphanedExecutions(): Promise<number> {
     this.logger.info({ nodeId: this.nodeId }, 'Starting orphan recovery...');
@@ -43,11 +43,12 @@ export class StartupRecoveryService {
       let recovered = 0;
       for (const execution of orphaned) {
         try {
-          await this.executionRepo.markOrphaned(
+          const changed = await this.executionRepo.markOrphaned(
             execution.id,
             `Server restarted during execution (node: ${this.nodeId})`
           );
 
+          if (!changed) continue;
           await this.executionRepo.addEvent(execution.id, {
             type: 'orphan_recovered',
             data: {
@@ -84,14 +85,30 @@ export class StartupRecoveryService {
 
   /**
    * In HA mode: leader recovers orphans from dead nodes.
-   * Call this when this instance becomes leader.
+   * Only pass owners whose loss has been confirmed; leadership changes alone are insufficient.
    */
-  async recoverAllOrphanedExecutions(): Promise<number> {
-    this.logger.info('Running full orphan recovery (HA leader)...');
+  async recoverAllOrphanedExecutions(
+    confirmedDeadNodeIds: string[] = []
+  ): Promise<number> {
+    // Becoming leader is not proof that any worker is dead. Unowned records and
+    // healthy peers must never be swept. Callers must establish lease expiry/fencing.
+    const deadNodeIds = [...new Set(confirmedDeadNodeIds)].filter(
+      (id) => id && id !== this.nodeId
+    );
+    if (deadNodeIds.length === 0) return 0;
+    this.logger.info(
+      { deadNodeIds },
+      'Recovering executions for confirmed stopped nodes'
+    );
 
     try {
-      // Find all orphaned executions regardless of nodeId
-      const orphaned = await this.executionRepo.findOrphanedExecutions();
+      const orphaned = (
+        await Promise.all(
+          deadNodeIds.map((id) => this.executionRepo.findOrphanedExecutions(id))
+        )
+      )
+        .flat()
+        .filter((execution) => deadNodeIds.includes(execution.nodeId));
 
       if (orphaned.length === 0) {
         this.logger.info('No orphaned executions found across all nodes');
@@ -101,11 +118,12 @@ export class StartupRecoveryService {
       let recovered = 0;
       for (const execution of orphaned) {
         try {
-          await this.executionRepo.markOrphaned(
+          const changed = await this.executionRepo.markOrphaned(
             execution.id,
             `Recovered by HA leader (original node: ${execution.nodeId || 'unknown'})`
           );
 
+          if (!changed) continue;
           await this.executionRepo.addEvent(execution.id, {
             type: 'orphan_recovered',
             data: {

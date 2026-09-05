@@ -54,7 +54,8 @@
     "agent:list": "cd packages/cli && pnpm run cli agent list",
     "k8s:install": "helm install parallax ./k8s/helm/parallax -f ./k8s/helm/parallax/values-dev.yaml",
     "k8s:uninstall": "helm uninstall parallax",
-    "k8s:upgrade": "helm upgrade parallax ./k8s/helm/parallax"
+    "k8s:upgrade": "helm upgrade parallax ./k8s/helm/parallax",
+    "test:db:isolated": "node scripts/test-db-isolated.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
@@ -73,7 +74,7 @@
   },
   "packageManager": "pnpm@10.11.0",
   "engines": {
-    "node": ">=18"
+    "node": ">=24 <25"
   },
   "pnpm": {
     "overrides": {

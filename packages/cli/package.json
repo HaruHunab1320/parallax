@@ -12,7 +12,8 @@
     "parallax-dev": "tsx bin/parallax-dev.ts",
     "clean": "rm -rf dist",
     "lint": "eslint src/**/*.ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "dependencies": {
     "@parallaxai/runtime": "workspace:*",

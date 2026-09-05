@@ -90,7 +90,7 @@ export interface PatternExecution {
   patternName: string;
   startTime: Date;
   endTime?: Date;
-  status: 'running' | 'completed' | 'failed';
+  status: 'running' | 'completed' | 'failed' | 'cancelled';
   input?: any;
   result?: any;
   error?: string;

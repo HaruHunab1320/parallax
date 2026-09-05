@@ -172,7 +172,8 @@ export function checkApiKeyPermission(
   action: Action
 ): boolean {
   // If no restrictions, inherit from user's role
-  if (!apiKeyPermissions) return true;
+  if (apiKeyPermissions === null || apiKeyPermissions === undefined)
+    return true;
 
   // If permissions is an array of strings like ["patterns:read", "executions:*"]
   if (Array.isArray(apiKeyPermissions)) {
@@ -240,7 +241,7 @@ export function createRBACMiddleware(
       return;
     }
 
-    if (req.apiKey?.permissions) {
+    if (req.apiKey) {
       const apiKeyHasPermission = checkApiKeyPermission(
         req.apiKey.permissions,
         resource,

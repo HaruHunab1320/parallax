@@ -11,6 +11,7 @@ export interface RequestOptions {
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined>;
   timeout?: number;
+  headers?: Record<string, string>;
 }
 
 export class HttpClient {
@@ -36,7 +37,7 @@ export class HttpClient {
           url,
           {
             method: options.method,
-            headers: this.buildHeaders(options.body !== undefined),
+            headers: { ...this.buildHeaders(options.body !== undefined), ...options.headers },
             body:
               options.body !== undefined
                 ? JSON.stringify(options.body)

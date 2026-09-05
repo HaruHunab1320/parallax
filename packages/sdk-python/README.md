@@ -386,3 +386,6 @@ See main Parallax contributing guide.
 ## License
 
 Same as Parallax platform.
+## Authenticated control-plane connections
+
+The control plane now requires credentials by default. Configure `PARALLAX_GRPC_API_KEY` and TLS for production connections. See [client security setup](../../docs/CLIENT_SECURITY_SETUP.md) for metadata, mutual TLS, explicit credential overrides, and local development behavior.

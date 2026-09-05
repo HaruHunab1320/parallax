@@ -18,16 +18,18 @@ export class AuthResource {
     this.config = config;
   }
 
-  /** Register a new user account (Enterprise) */
+  /** Bootstrap the first administrator; production requires a setup token */
   async register(
     email: string,
     password: string,
-    name?: string
+    name?: string,
+    bootstrapToken?: string
   ): Promise<AuthResponse> {
-    const result = await this.http.post<AuthResponse>('/api/auth/register', {
-      email,
-      password,
-      name,
+    const result = await this.http.request<AuthResponse>({
+      method: 'POST',
+      path: '/api/auth/register',
+      body: { email, password, name },
+      headers: bootstrapToken ? { 'X-Parallax-Bootstrap-Token': bootstrapToken } : undefined,
     });
 
     // Auto-update the HTTP client with the new tokens
@@ -40,7 +42,7 @@ export class AuthResource {
     return result;
   }
 
-  /** Login with email and password (Enterprise) */
+  /** Login with email and password */
   async login(email: string, password: string): Promise<AuthResponse> {
     const result = await this.http.post<AuthResponse>('/api/auth/login', {
       email,
@@ -57,7 +59,7 @@ export class AuthResource {
     return result;
   }
 
-  /** Refresh access token using refresh token (Enterprise) */
+  /** Refresh access token using refresh token */
   async refresh(refreshToken: string): Promise<TokenRefreshResponse> {
     const result = await this.http.post<TokenRefreshResponse>(
       '/api/auth/refresh',
@@ -74,14 +76,14 @@ export class AuthResource {
     return result;
   }
 
-  /** Request a password reset (Enterprise) */
+  /** Request a password reset */
   async forgotPassword(email: string): Promise<PasswordResetResponse> {
     return this.http.post<PasswordResetResponse>('/api/auth/forgot-password', {
       email,
     });
   }
 
-  /** Reset password using a reset token (Enterprise) */
+  /** Reset password using a reset token */
   async resetPassword(
     token: string,
     newPassword: string
@@ -92,7 +94,7 @@ export class AuthResource {
     });
   }
 
-  /** Change password for authenticated user (Enterprise) */
+  /** Change password for authenticated user */
   async changePassword(
     currentPassword: string,
     newPassword: string
@@ -103,17 +105,17 @@ export class AuthResource {
     });
   }
 
-  /** Get the current authenticated user (Enterprise) */
+  /** Get the current authenticated user */
   async me(): Promise<{ user: AuthUser }> {
     return this.http.get<{ user: AuthUser }>('/api/auth/me');
   }
 
-  /** Logout (Enterprise) */
+  /** Logout */
   async logout(): Promise<{ message: string }> {
     return this.http.post<{ message: string }>('/api/auth/logout');
   }
 
-  /** Verify a token is valid (Enterprise) */
+  /** Verify a token is valid */
   async verify(token: string): Promise<TokenVerifyResponse> {
     return this.http.post<TokenVerifyResponse>('/api/auth/verify', { token });
   }

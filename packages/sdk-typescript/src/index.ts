@@ -21,4 +21,5 @@ export { HealthStatus } from './proto/types';
 export * from './registry-client';
 export { SecureParallaxAgent, serveSecureAgent } from './secure-agent';
 export * from './server';
+export * from './transport-security';
 export * from './types';

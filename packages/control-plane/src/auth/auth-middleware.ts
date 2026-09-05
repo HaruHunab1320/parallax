@@ -50,56 +50,13 @@ export function createAuthMiddleware(
         throw new AuthError('No authorization header', 'NO_AUTH');
       }
 
-      // Check for Bearer token (JWT)
-      if (authHeader.startsWith('Bearer ')) {
-        const token = authHeader.slice(7);
-        const payload = authService.verifyAccessToken(token);
-        req.user = payload;
-        return next();
-      }
-
-      // Check for API key
-      if (authHeader.startsWith('ApiKey ') || authHeader.startsWith('plx_')) {
-        const apiKey = authHeader.startsWith('ApiKey ')
-          ? authHeader.slice(7)
-          : authHeader;
-
-        const user = await authService.verifyApiKey(apiKey);
-        req.user = {
-          sub: user.id,
-          email: user.email,
-          role: user.role,
-          type: 'access',
-        };
-
-        // Get API key details for permission checking
-        const keyHash = require('node:crypto')
-          .createHash('sha256')
-          .update(apiKey)
-          .digest('hex');
-        const keyRecord = await (authService as any).prisma.apiKey.findUnique({
-          where: { keyHash },
-          select: { id: true, permissions: true },
-        });
-
-        if (keyRecord) {
-          req.apiKey = {
-            id: keyRecord.id,
-            permissions: keyRecord.permissions,
-          };
-        }
-
-        return next();
-      }
-
-      throw new AuthError('Invalid authorization format', 'INVALID_AUTH');
+      const identity = await authenticateAuthorization(authService, authHeader);
+      req.user = identity.user;
+      req.apiKey = identity.apiKey;
+      next();
     } catch (error) {
       if (error instanceof AuthError) {
         log.debug({ error: error.message, code: error.code }, 'Auth failed');
-
-        if (options.optional) {
-          return next();
-        }
 
         res.status(error.statusCode).json({
           error: error.message,
@@ -129,4 +86,34 @@ export function requireAuth(authService: AuthService, logger: Logger) {
  */
 export function optionalAuth(authService: AuthService, logger: Logger) {
   return createAuthMiddleware(authService, logger, { optional: true });
+}
+
+/** Shared by HTTP requests and WebSocket upgrades; current user/key state is authoritative. */
+export async function authenticateAuthorization(
+  authService: AuthService,
+  authHeader?: string
+) {
+  if (!authHeader) throw new AuthError('Authentication required', 'NO_AUTH');
+  if (authHeader.startsWith('Bearer ')) {
+    return {
+      user: await authService.authenticateAccessToken(authHeader.slice(7)),
+      apiKey: undefined,
+    };
+  }
+  if (authHeader.startsWith('ApiKey ') || authHeader.startsWith('plx_')) {
+    const rawKey = authHeader.startsWith('ApiKey ')
+      ? authHeader.slice(7)
+      : authHeader;
+    const { user, apiKey } = await authService.authenticateApiKey(rawKey);
+    return {
+      user: {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        type: 'access' as const,
+      },
+      apiKey,
+    };
+  }
+  throw new AuthError('Invalid authorization format', 'INVALID_AUTH');
 }

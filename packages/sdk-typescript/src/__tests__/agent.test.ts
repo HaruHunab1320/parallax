@@ -9,7 +9,8 @@ vi.mock('@grpc/proto-loader', () => ({
 }));
 
 // Mock gRPC
-vi.mock('@grpc/grpc-js', () => ({
+vi.mock('@grpc/grpc-js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@grpc/grpc-js')>()),
   Server: vi.fn(() => ({
     addService: vi.fn(),
     bindAsync: vi.fn(
@@ -41,11 +42,11 @@ vi.mock('@grpc/grpc-js', () => ({
             (_deadline: number, cb: (err: Error | null) => void) => cb(null)
           ),
           register: vi.fn(
-            (_req: unknown, cb: (err: Error | null, res: unknown) => void) =>
+            (_req: unknown, _metadata: unknown, cb: (err: Error | null, res: unknown) => void) =>
               cb(null, { lease_id: 'test-lease' })
           ),
-          unregister: vi.fn((_req: unknown, cb: () => void) => cb()),
-          renew: vi.fn((_req: unknown, cb: (err: Error | null) => void) =>
+          unregister: vi.fn((_req: unknown, _metadata: unknown, cb: () => void) => cb()),
+          renew: vi.fn((_req: unknown, _metadata: unknown, cb: (err: Error | null) => void) =>
             cb(null)
           ),
         })),

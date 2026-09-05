@@ -22,7 +22,12 @@ env:
   REGISTRY: us-central1-docker.pkg.dev/parallax-466513/parallax
 
 jobs:
+  validate:
+    name: Validate the image source revision
+    uses: ./.github/workflows/ci.yml
+
   build:
+    needs: validate
     name: Build ${{ matrix.service }}
     runs-on: ubuntu-latest
     permissions:

@@ -1,105 +1,44 @@
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import './setup-env';
 
-const execAsync = promisify(exec);
-
-// Use the existing parallax TimescaleDB container (root docker-compose on port 5435)
-// Falls back to a dedicated test container on port 5433 if available
-const DB_HOST = process.env.TEST_DB_HOST || 'localhost';
-const DB_PORT = process.env.TEST_DB_PORT || '5435';
-const DB_USER = process.env.TEST_DB_USER || 'parallax';
-const DB_PASSWORD = process.env.TEST_DB_PASSWORD || 'parallax123';
-const DB_NAME = 'parallax_test';
-
-export const TEST_DATABASE_URL = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public`;
+export const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL!;
+const databaseName = new URL(TEST_DATABASE_URL).pathname.slice(1);
+if (!/^parallax_test_[a-f0-9]{32}$/.test(databaseName)) {
+  throw new Error(
+    'Database tests require the isolated vitest.db.config.ts configuration'
+  );
+}
+process.env.DATABASE_URL = TEST_DATABASE_URL;
 let prisma: PrismaClient | null = null;
 
-// Global setup
 beforeAll(async () => {
-  console.log(`Connecting to test database at ${DB_HOST}:${DB_PORT}...`);
-
-  try {
-    // Create the test database if it doesn't exist (connect to default db first)
-    const adminUrl = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/parallax`;
-    const adminPrisma = new PrismaClient({
-      datasources: { db: { url: adminUrl } },
-    });
-
-    try {
-      await adminPrisma.$executeRawUnsafe(`CREATE DATABASE ${DB_NAME}`);
-      console.log(`Created test database '${DB_NAME}'`);
-    } catch (error: any) {
-      // Database already exists — that's fine
-      if (!error.message?.includes('already exists')) {
-        throw error;
-      }
-    } finally {
-      await adminPrisma.$disconnect();
-    }
-
-    // Set test database URL for Prisma CLI
-    process.env.DATABASE_URL = TEST_DATABASE_URL;
-
-    // Run migrations against the test database
-    await execAsync('pnpm prisma migrate deploy');
-
-    // Initialize Prisma client for tests
-    prisma = new PrismaClient({
-      datasources: {
-        db: { url: TEST_DATABASE_URL },
-      },
-    });
-
-    await prisma.$connect();
-    console.log('Test database ready');
-  } catch (error) {
-    console.error('Failed to setup test database:', error);
-    // Don't throw — tests that need DB will fail via getTestPrisma() guard
-  }
+  prisma = new PrismaClient({
+    datasources: { db: { url: TEST_DATABASE_URL } },
+  });
+  await prisma.$connect();
 });
 
-// Global teardown
 afterAll(async () => {
-  console.log('Cleaning up test database...');
-
-  if (prisma) {
-    await prisma.$disconnect();
-  }
+  await prisma?.$disconnect();
+  prisma = null;
 });
 
-// Reset database between tests
 beforeEach(async () => {
-  if (prisma) {
-    // Clean all tables — order matters for FK constraints
-    // Use try/catch since async executions may create records concurrently
-    try {
-      await prisma.threadEventRecord.deleteMany();
-      await prisma.threadRecord.deleteMany();
-      await prisma.sharedDecisionRecord.deleteMany();
-      await prisma.episodicExperienceRecord.deleteMany();
-      await prisma.executionEvent.deleteMany();
-      await prisma.execution.deleteMany();
-      await prisma.confidenceMetric.deleteMany();
-      await prisma.patternVersion.deleteMany();
-      await prisma.pattern.deleteMany();
-      await prisma.agent.deleteMany();
-    } catch {
-      // Retry once after a brief delay (async background work may have created records)
-      await new Promise((r) => setTimeout(r, 100));
-      await prisma.threadEventRecord.deleteMany().catch(() => {});
-      await prisma.threadRecord.deleteMany().catch(() => {});
-      await prisma.sharedDecisionRecord.deleteMany().catch(() => {});
-      await prisma.episodicExperienceRecord.deleteMany().catch(() => {});
-      await prisma.executionEvent.deleteMany().catch(() => {});
-      await prisma.execution.deleteMany().catch(() => {});
-      await prisma.confidenceMetric.deleteMany().catch(() => {});
-      await prisma.patternVersion.deleteMany().catch(() => {});
-      await prisma.pattern.deleteMany().catch(() => {});
-      await prisma.agent.deleteMany().catch(() => {});
-    }
+  const client = getTestPrisma();
+  // The database is created for this invocation only. Include every migrated
+  // application table; failed cleanup must fail the test rather than leak state.
+  const tables = await client.$queryRaw<Array<{ tablename: string }>>`
+    SELECT tablename FROM pg_tables
+    WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'
+  `;
+  const identifiers = tables.map(
+    ({ tablename }) => `"${tablename.replaceAll('"', '""')}"`
+  );
+  if (identifiers.length > 0) {
+    await client.$executeRawUnsafe(
+      `TRUNCATE TABLE ${identifiers.join(', ')} RESTART IDENTITY CASCADE`
+    );
   }
 });
 

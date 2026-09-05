@@ -4,38 +4,97 @@
  * REST API endpoints for user authentication (login, register, refresh, etc.)
  */
 
-import { type NextFunction, type Request, type Response, Router } from 'express';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { type Request, type Response, Router } from 'express';
 import type { Logger } from 'pino';
+import { z } from 'zod';
 import { createAuthMiddleware } from '../auth/auth-middleware';
 import { AuthError, type AuthService } from '../auth/auth-service';
+import { PasswordServiceBusyError } from '../auth/password';
 import type { LicenseEnforcer } from '../licensing/license-enforcer';
 
 export function createAuthRouter(
   authService: AuthService,
-  licenseEnforcer: LicenseEnforcer,
+  _licenseEnforcer: LicenseEnforcer,
   logger: Logger
 ): Router {
   const router = Router();
   const log = logger.child({ component: 'AuthAPI' });
 
-  // Middleware to check if multi_user feature is enabled
-  const requireMultiUser = (_req: Request, res: Response, next: NextFunction) => {
-    try {
-      licenseEnforcer.requireFeature('multi_user', 'Multi-User Authentication');
+  // Basic authentication is available with every license. Limit public auth
+  // attempts before password work; the password module separately bounds memory.
+  const attempts = new Map<string, { count: number; resetAt: number }>();
+  router.use((req, res, next) => {
+    if (req.method !== 'POST') {
       next();
-    } catch (error: unknown) {
-      log.warn('Multi-user feature not available');
-      const err = error as { message?: string; upgradeUrl?: string };
-      res.status(403).json({
-        error: err.message ?? 'Feature not available',
-        code: 'FEATURE_NOT_AVAILABLE',
-        upgradeUrl: err.upgradeUrl || 'https://parallax.ai/enterprise',
-      });
+      return;
     }
-  };
-
-  // Apply license check to all routes
-  router.use(requireMultiUser);
+    const now = Date.now();
+    for (const [key, value] of attempts)
+      if (value.resetAt <= now) attempts.delete(key);
+    const key = req.ip || req.socket.remoteAddress || 'unknown';
+    let entry = attempts.get(key);
+    if (!entry) {
+      if (attempts.size >= 10000) {
+        res.status(429).json({ error: 'Too many authentication requests' });
+        return;
+      }
+      entry = { count: 0, resetAt: now + 60000 };
+      attempts.set(key, entry);
+    }
+    if (++entry.count > 30) {
+      res.setHeader(
+        'Retry-After',
+        String(Math.max(1, Math.ceil((entry.resetAt - now) / 1000)))
+      );
+      res.status(429).json({ error: 'Too many authentication requests' });
+      return;
+    }
+    const shapes: Record<string, z.ZodTypeAny> = {
+      '/register': z
+        .object({
+          email: z.string().email(),
+          password: z.string().min(1).max(1024),
+          name: z.string().max(200).optional(),
+        })
+        .strict(),
+      '/login': z
+        .object({
+          email: z.string().email(),
+          password: z.string().min(1).max(1024),
+        })
+        .strict(),
+      '/refresh': z
+        .object({ refreshToken: z.string().min(1).max(8192) })
+        .strict(),
+      '/forgot-password': z.object({ email: z.string().email() }).strict(),
+      '/reset-password': z
+        .object({
+          token: z.string().min(1).max(256),
+          newPassword: z.string().min(1).max(1024),
+        })
+        .strict(),
+      '/change-password': z
+        .object({
+          currentPassword: z.string().min(1).max(1024),
+          newPassword: z.string().min(1).max(1024),
+        })
+        .strict(),
+      '/verify': z.object({ token: z.string().min(1).max(8192) }).strict(),
+    };
+    const schema = shapes[req.path.replace(/\/+$/, '').toLowerCase()];
+    if (schema) {
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        res
+          .status(400)
+          .json({ error: 'Invalid request', code: 'INVALID_INPUT' });
+        return;
+      }
+      req.body = result.data;
+    }
+    next();
+  });
 
   /**
    * POST /auth/register
@@ -43,6 +102,25 @@ export function createAuthRouter(
    */
   router.post('/register', async (req: Request, res: Response) => {
     try {
+      // In production, bootstrap requires an operator-provided one-time setup secret.
+      const bootstrapToken = process.env.PARALLAX_BOOTSTRAP_TOKEN;
+      if (process.env.NODE_ENV === 'production' || bootstrapToken) {
+        const supplied = req.header('x-parallax-bootstrap-token') || '';
+        const digest = (value: string) =>
+          createHash('sha256').update(value).digest();
+        if (
+          !bootstrapToken ||
+          bootstrapToken.length < 32 ||
+          !timingSafeEqual(digest(bootstrapToken), digest(supplied))
+        ) {
+          res.status(403).json({
+            error: 'Valid bootstrap token required',
+            code: 'FORBIDDEN',
+          });
+          return;
+        }
+      }
+
       const { email, password, name } = req.body;
 
       if (!email || !password) {
@@ -62,7 +140,10 @@ export function createAuthRouter(
         tokens: result.tokens,
       });
     } catch (error) {
-      if (error instanceof AuthError) {
+      if (
+        error instanceof AuthError ||
+        error instanceof PasswordServiceBusyError
+      ) {
         res.status(error.statusCode).json({
           error: error.message,
           code: error.code,
@@ -103,7 +184,10 @@ export function createAuthRouter(
         tokens: result.tokens,
       });
     } catch (error) {
-      if (error instanceof AuthError) {
+      if (
+        error instanceof AuthError ||
+        error instanceof PasswordServiceBusyError
+      ) {
         res.status(error.statusCode).json({
           error: error.message,
           code: error.code,
@@ -141,7 +225,10 @@ export function createAuthRouter(
 
       res.json({ tokens });
     } catch (error) {
-      if (error instanceof AuthError) {
+      if (
+        error instanceof AuthError ||
+        error instanceof PasswordServiceBusyError
+      ) {
         res.status(error.statusCode).json({
           error: error.message,
           code: error.code,
@@ -161,45 +248,14 @@ export function createAuthRouter(
    * POST /auth/forgot-password
    * Request a password reset token
    */
-  router.post('/forgot-password', async (req: Request, res: Response) => {
-    try {
-      const { email } = req.body;
-
-      if (!email) {
-        res.status(400).json({
-          error: 'Email is required',
-          code: 'INVALID_INPUT',
-        });
-        return;
-      }
-
-      const token = await authService.generatePasswordResetToken(email);
-
-      // In production, you would send this token via email
-      // For security, always return success even if email doesn't exist
-      log.info({ email }, 'Password reset requested');
-
-      // In development, return the token for testing
-      if (process.env.NODE_ENV === 'development' && token) {
-        res.json({
-          message: 'Password reset email sent',
-          // Only in development:
-          _devToken: token,
-        });
-        return;
-      }
-
-      res.json({
-        message:
-          'If an account exists with this email, a password reset link has been sent',
-      });
-    } catch (error) {
-      log.error({ error }, 'Password reset request failed');
-      res.status(500).json({
-        error: 'Failed to process password reset request',
-        code: 'PASSWORD_RESET_ERROR',
-      });
-    }
+  router.post('/forgot-password', (_req: Request, res: Response) => {
+    // There is no email transport wired here yet. Do not expose reset tokens
+    // over an unauthenticated API, including NODE_ENV=development.
+    res.status(503).json({
+      error:
+        'Password reset delivery is not configured. Contact your administrator.',
+      code: 'PASSWORD_RESET_NOT_CONFIGURED',
+    });
   });
 
   /**
@@ -226,7 +282,10 @@ export function createAuthRouter(
         message: 'Password has been reset successfully',
       });
     } catch (error) {
-      if (error instanceof AuthError) {
+      if (
+        error instanceof AuthError ||
+        error instanceof PasswordServiceBusyError
+      ) {
         res.status(error.statusCode).json({
           error: error.message,
           code: error.code,
@@ -252,6 +311,10 @@ export function createAuthRouter(
     createAuthMiddleware(authService, logger),
     async (req: Request, res: Response) => {
       try {
+        if (req.apiKey) {
+          res.status(403).json({ error: 'Account session required' });
+          return;
+        }
         const { currentPassword, newPassword } = req.body;
         const userId = (req as any).user?.sub;
 
@@ -279,7 +342,10 @@ export function createAuthRouter(
           message: 'Password changed successfully',
         });
       } catch (error) {
-        if (error instanceof AuthError) {
+        if (
+          error instanceof AuthError ||
+          error instanceof PasswordServiceBusyError
+        ) {
           res.status(error.statusCode).json({
             error: error.message,
             code: error.code,
@@ -316,6 +382,10 @@ export function createAuthRouter(
           return;
         }
 
+        if (req.apiKey) {
+          res.status(403).json({ error: 'Account session required' });
+          return;
+        }
         const user = await authService.getUserById(userId);
 
         if (!user) {
@@ -372,7 +442,7 @@ export function createAuthRouter(
         return;
       }
 
-      const payload = authService.verifyAccessToken(token);
+      const payload = await authService.authenticateAccessToken(token);
 
       res.json({
         valid: true,
@@ -383,7 +453,10 @@ export function createAuthRouter(
         },
       });
     } catch (error) {
-      if (error instanceof AuthError) {
+      if (
+        error instanceof AuthError ||
+        error instanceof PasswordServiceBusyError
+      ) {
         res.json({
           valid: false,
           error: error.message,

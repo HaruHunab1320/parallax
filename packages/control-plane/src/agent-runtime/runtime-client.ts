@@ -17,10 +17,17 @@ import type {
   ThreadHandle,
   ThreadInput,
 } from '@parallaxai/runtime-interface';
+import {
+  isLoopbackHost,
+  RUNTIME_API_KEY_HEADER,
+  type RuntimeCapabilities,
+  type RuntimeSecurityOptions,
+  runtimeSecurity,
+} from '@parallaxai/runtime-interface';
 import type { Logger } from 'pino';
 import WebSocket from 'ws';
 
-export interface RuntimeClientOptions {
+export interface RuntimeClientOptions extends RuntimeSecurityOptions {
   baseUrl: string;
   wsUrl?: string;
   timeout?: number;
@@ -91,6 +98,8 @@ export class RuntimeClient extends EventEmitter {
   private ws: WebSocket | null = null;
   private wsReconnectTimer: NodeJS.Timeout | null = null;
   private connected = false;
+  private reconnectEnabled = false;
+  private authHeaders: Record<string, string>;
   private subscriptions: Map<string, Set<(message: AgentMessage) => void>> =
     new Map();
   private threadSubscriptions: Map<string, Set<(event: ThreadEvent) => void>> =
@@ -103,6 +112,42 @@ export class RuntimeClient extends EventEmitter {
     super();
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
     this.wsUrl = options.wsUrl || `${this.baseUrl.replace(/^http/, 'ws')}/ws`;
+    const base = new URL(this.baseUrl);
+    const ws = new URL(this.wsUrl);
+    if (
+      !['http:', 'https:'].includes(base.protocol) ||
+      !['ws:', 'wss:'].includes(ws.protocol) ||
+      base.username ||
+      base.password ||
+      ws.username ||
+      ws.password ||
+      base.search ||
+      base.hash ||
+      ws.search ||
+      ws.hash
+    ) {
+      throw new Error(
+        'Runtime URLs must use HTTP(S)/WS(S) without embedded credentials, query strings or fragments'
+      );
+    }
+    if (
+      base.host !== ws.host ||
+      (base.protocol === 'https:') !== (ws.protocol === 'wss:')
+    ) {
+      throw new Error(
+        'Runtime HTTP and WebSocket URLs must share a host and transport security'
+      );
+    }
+    runtimeSecurity(base.hostname, options);
+    if (
+      (options.authMode ?? process.env.PARALLAX_RUNTIME_AUTH_MODE) ===
+        'development' &&
+      !isLoopbackHost(ws.hostname)
+    ) {
+      throw new Error('Runtime development WebSocket must use loopback');
+    }
+    const key = options.apiKey ?? process.env.PARALLAX_RUNTIME_API_KEY;
+    this.authHeaders = key ? { [RUNTIME_API_KEY_HEADER]: key } : {};
     this.timeout = options.timeout || 30000;
     this.reconnectInterval = options.reconnectInterval || 5000;
   }
@@ -111,9 +156,13 @@ export class RuntimeClient extends EventEmitter {
    * Connect to the runtime server WebSocket
    */
   async connect(): Promise<void> {
+    this.reconnectEnabled = true;
     return new Promise((resolve, reject) => {
       try {
-        this.ws = new WebSocket(this.wsUrl);
+        this.ws = new WebSocket(this.wsUrl, {
+          headers: this.authHeaders,
+          handshakeTimeout: this.timeout,
+        });
 
         this.ws.on('open', () => {
           this.connected = true;
@@ -143,7 +192,7 @@ export class RuntimeClient extends EventEmitter {
 
         this.ws.on('error', (error) => {
           this.logger.error({ error }, 'Runtime WebSocket error');
-          this.emit('error', error);
+          if (this.listenerCount('error') > 0) this.emit('error', error);
           if (!this.connected) {
             reject(error);
           }
@@ -158,6 +207,7 @@ export class RuntimeClient extends EventEmitter {
    * Disconnect from the runtime server
    */
   disconnect(): void {
+    this.reconnectEnabled = false;
     if (this.wsReconnectTimer) {
       clearTimeout(this.wsReconnectTimer);
       this.wsReconnectTimer = null;
@@ -230,12 +280,16 @@ export class RuntimeClient extends EventEmitter {
       const statuses = Array.isArray(filter.status)
         ? filter.status
         : [filter.status];
-      statuses.forEach((s) => query.append('status', s));
+      statuses.forEach((s) => {
+        query.append('status', s);
+      });
     }
     if (filter?.role) query.set('role', filter.role);
     if (filter?.type) {
       const types = Array.isArray(filter.type) ? filter.type : [filter.type];
-      types.forEach((t) => query.append('type', t));
+      types.forEach((t) => {
+        query.append('type', t);
+      });
     }
 
     const queryString = query.toString();
@@ -298,20 +352,25 @@ export class RuntimeClient extends EventEmitter {
    * Called when an execution is fully torn down.
    */
   async cleanupExecution(executionId: string): Promise<void> {
-    try {
-      await this.request('DELETE', `/api/executions/${executionId}/resources`);
-    } catch (error: any) {
-      if (error.status !== 404) {
-        throw error;
-      }
-      // 404 is fine — resources may already be cleaned up or endpoint not supported
-    }
+    await this.request(
+      'DELETE',
+      `/api/executions/${encodeURIComponent(executionId)}/resources`
+    );
   }
 
   /**
    * Spawn a new thread
    */
   async spawnThread(input: SpawnThreadInput): Promise<ThreadHandle> {
+    const capabilities = await this.request<RuntimeCapabilities>(
+      'GET',
+      '/api/capabilities'
+    );
+    if (!capabilities.threads || !capabilities.threadEvents) {
+      throw new Error(
+        'Runtime does not support the remote thread lifecycle and event contract'
+      );
+    }
     const thread = await this.request<ThreadHandle>(
       'POST',
       '/api/threads',
@@ -367,13 +426,17 @@ export class RuntimeClient extends EventEmitter {
       const statuses = Array.isArray(filter.status)
         ? filter.status
         : [filter.status];
-      statuses.forEach((s) => query.append('status', s));
+      statuses.forEach((s) => {
+        query.append('status', s);
+      });
     }
     if (filter?.agentType) {
       const agentTypes = Array.isArray(filter.agentType)
         ? filter.agentType
         : [filter.agentType];
-      agentTypes.forEach((t) => query.append('agentType', t));
+      agentTypes.forEach((t) => {
+        query.append('agentType', t);
+      });
     }
 
     const queryString = query.toString();
@@ -455,7 +518,9 @@ export class RuntimeClient extends EventEmitter {
       const agentId = normalizedData.message.agentId;
       const callbacks = this.subscriptions.get(agentId);
       if (callbacks) {
-        callbacks.forEach((cb) => cb(normalizedData.message));
+        callbacks.forEach((cb) => {
+          cb(normalizedData.message);
+        });
       }
     }
 
@@ -463,12 +528,15 @@ export class RuntimeClient extends EventEmitter {
       const threadId = normalizedData.event.threadId;
       const callbacks = this.threadSubscriptions.get(threadId);
       if (callbacks) {
-        callbacks.forEach((cb) => cb(normalizedData.event));
+        callbacks.forEach((cb) => {
+          cb(normalizedData.event);
+        });
       }
     }
   }
 
   private scheduleReconnect(): void {
+    if (!this.reconnectEnabled) return;
     if (this.wsReconnectTimer) return;
 
     this.wsReconnectTimer = setTimeout(async () => {
@@ -496,7 +564,9 @@ export class RuntimeClient extends EventEmitter {
         method,
         headers: {
           'Content-Type': 'application/json',
+          ...this.authHeaders,
         },
+        redirect: 'error',
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });

@@ -29,6 +29,11 @@ export class GracefulShutdownHandler {
     private patternEngine: {
       setShuttingDown: (value: boolean) => void;
       getInFlightExecutionIds: () => string[];
+      cancelExecution: (
+        id: string,
+        reason?: string,
+        status?: 'cancelled' | 'failed'
+      ) => Promise<boolean>;
     },
     options?: GracefulShutdownOptions
   ) {
@@ -88,9 +93,20 @@ export class GracefulShutdownHandler {
 
       for (const executionId of stillInFlight) {
         try {
-          await this.executionRepo.updateStatus(executionId, 'failed', {
-            error: `Server shutdown: execution did not complete within ${this.drainTimeoutMs}ms drain period`,
-          });
+          const reason = `Server shutdown: execution did not complete within ${this.drainTimeoutMs}ms drain period`;
+          await this.patternEngine.cancelExecution(
+            executionId,
+            reason,
+            'failed'
+          );
+          const changed = await this.executionRepo.transitionStatus(
+            executionId,
+            'failed',
+            {
+              error: reason,
+            }
+          );
+          if (!changed) continue;
 
           await this.executionRepo.addEvent(executionId, {
             type: 'force_failed',

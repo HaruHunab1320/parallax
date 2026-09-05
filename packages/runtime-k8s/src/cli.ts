@@ -7,6 +7,7 @@
  */
 
 import * as k8s from '@kubernetes/client-node';
+import { runtimeSecurity } from '@parallaxai/runtime-interface';
 import pino from 'pino';
 import { AgentController } from './controllers/agent-controller';
 import { K8sRuntime } from './k8s-runtime';
@@ -24,7 +25,8 @@ const logger = pino({
 
 async function main(): Promise<void> {
   const port = parseInt(process.env.RUNTIME_PORT || '9878', 10);
-  const host = process.env.RUNTIME_HOST || '0.0.0.0';
+  const host = process.env.RUNTIME_HOST || '127.0.0.1';
+  runtimeSecurity(host);
   const namespace = process.env.PARALLAX_NAMESPACE || 'parallax-agents';
   const inCluster = process.env.KUBERNETES_SERVICE_HOST !== undefined;
 

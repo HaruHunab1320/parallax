@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import grpc
 
+from .transport_security import control_plane_channel, control_plane_metadata
 from .types import AnalyzeResult, Capabilities, GatewayOptions, HealthStatus
 
 # Proto imports will be generated
@@ -62,6 +63,7 @@ class ParallaxAgent(ABC):
         """
         # Initialize gRPC-related attributes
         self._registry_stub: Optional[registry_pb2_grpc.RegistryStub] = None
+        self._registry_channel: Optional[grpc.aio.Channel] = None
         self._lease_id: Optional[str] = None
         self._renewal_task: Optional[asyncio.Task] = None
         self._port: int = 0
@@ -157,8 +159,12 @@ class ParallaxAgent(ABC):
         )
         
         # Register with platform if configured
-        await self._register_with_platform()
-        
+        try:
+            await self._register_with_platform()
+        except (Exception, asyncio.CancelledError):
+            await self._server.stop(0)
+            raise
+
         return self._port
     
     async def connect_via_gateway(
@@ -192,13 +198,8 @@ class ParallaxAgent(ABC):
         self._gateway_options = options or GatewayOptions()
         opts = self._gateway_options
 
-        # Create channel
-        if opts.credentials:
-            self._gateway_channel = grpc.aio.secure_channel(
-                endpoint, opts.credentials
-            )
-        else:
-            self._gateway_channel = grpc.aio.insecure_channel(endpoint)
+        # Environment TLS is used only when explicit credentials are absent.
+        self._gateway_channel = control_plane_channel(endpoint, opts.credentials)
 
         stub = gateway_pb2_grpc.AgentGatewayStub(self._gateway_channel)
 
@@ -213,7 +214,7 @@ class ParallaxAgent(ABC):
                 yield msg
 
         # Open bidirectional stream
-        self._gateway_stream = stub.Connect(_request_iterator())
+        self._gateway_stream = stub.Connect(_request_iterator(), metadata=control_plane_metadata(opts.metadata, opts.api_key))
 
         # Send AgentHello
         hello_msg = gateway_pb2.AgentToControlPlane(
@@ -242,6 +243,10 @@ class ParallaxAgent(ABC):
             raise ConnectionError(
                 "Gateway connection timed out waiting for ack"
             )
+
+        except (Exception, asyncio.CancelledError):
+            await self._cleanup_gateway()
+            raise
 
         if ack_msg.HasField("ack"):
             if not ack_msg.ack.accepted:
@@ -475,11 +480,17 @@ class ParallaxAgent(ABC):
         # Unregister from control plane
         if self._registry_stub and self.id:
             try:
-                request = registry_pb2.UnregisterRequest(agent_id=self.id)
-                await self._registry_stub.Unregister(request)
+                request = registry_pb2.AgentRegistration(id=self.id)
+                await self._registry_stub.Unregister(request, metadata=control_plane_metadata(), timeout=5.0)
                 logger.info(f"Agent {self.id} unregistered from control plane")
             except Exception as e:
                 logger.error(f"Failed to unregister: {e}")
+
+        if self._registry_channel:
+            await self._registry_channel.close()
+            self._registry_channel = None
+        self._registry_stub = None
+        self._lease_id = None
 
         # Stop gRPC server
         if self._server:
@@ -500,7 +511,7 @@ class ParallaxAgent(ABC):
                 
                 # Renew lease
                 request = registry_pb2.RenewRequest(lease_id=self._lease_id)
-                response = await self._registry_stub.Renew(request)
+                response = await self._registry_stub.Renew(request, metadata=control_plane_metadata(), timeout=10.0)
                 
                 if response.success:
                     logger.debug(f"Lease renewed for agent {self.id}")
@@ -523,10 +534,10 @@ class ParallaxAgent(ABC):
             
         registry_endpoint = os.getenv('PARALLAX_REGISTRY', 'localhost:50051')
         
+        channel = control_plane_channel(registry_endpoint)
         try:
             # Create gRPC channel to registry
-            channel = grpc.aio.insecure_channel(registry_endpoint)
-            self._registry_stub = registry_pb2_grpc.RegistryStub(channel)
+            stub = registry_pb2_grpc.RegistryStub(channel)
             
             # Create registration request
             agent_reg = registry_pb2.AgentRegistration(
@@ -542,21 +553,28 @@ class ParallaxAgent(ABC):
             request = registry_pb2.RegisterRequest(agent=agent_reg)
             
             # Register agent
-            response = await self._registry_stub.Register(request)
+            response = await stub.Register(request, metadata=control_plane_metadata(), timeout=10.0)
             if response.success:
+                previous_channel = self._registry_channel
+                self._registry_channel = channel
+                self._registry_stub = stub
                 self._lease_id = response.lease_id
+                if previous_channel:
+                    await previous_channel.close()
                 logger.info(
                     f"Agent {self.id} registered with control plane, lease_id: {self._lease_id}"
                 )
                 
                 # Start lease renewal
-                self._renewal_task = asyncio.create_task(self._renew_lease_loop())
+                if self._renewal_task is None or self._renewal_task.done():
+                    self._renewal_task = asyncio.create_task(self._renew_lease_loop())
             else:
-                logger.warning(f"Failed to register agent: {response.message}")
+                raise RuntimeError(f"Failed to register agent: {response.message}")
                 
-        except Exception as e:
+        except (Exception, asyncio.CancelledError) as e:
+            await channel.close()
             logger.error(f"Failed to register with platform: {e}")
-            # Continue running even if registration fails
+            raise
 
 
 if confidence_pb2_grpc is not None:

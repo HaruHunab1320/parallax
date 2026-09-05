@@ -1,42 +1,22 @@
-import type { Server } from 'node:http';
 import axios, { type AxiosInstance } from 'axios';
-import jwt from 'jsonwebtoken';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createServer } from '../../server';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createTestAdminToken,
+  startHttpServer,
+} from '../../../tests/fixtures/http-server-fixture';
 
 describe('Control Plane HTTP API', () => {
-  let server: Server;
+  let server: Awaited<ReturnType<typeof startHttpServer>>;
   let baseURL: string;
   let api: AxiosInstance;
 
   beforeAll(async () => {
-    const app = await createServer();
-    const services = await (app as any).start();
-    server = services.httpServer;
+    server = await startHttpServer();
+    baseURL = server.url;
+  });
 
-    // Wait for server to be listening
-    await new Promise<void>((resolve) => {
-      if (server.listening) return resolve();
-      server.on('listening', resolve);
-    });
-
-    // Get the actual port
-    const address = server.address();
-    const port = typeof address === 'object' ? address?.port : 3000;
-    baseURL = `http://localhost:${port}`;
-
-    // Create an axios instance with auth header for protected endpoints
-    const secret = process.env.JWT_SECRET || 'test-secret';
-    const authToken = jwt.sign(
-      {
-        sub: 'test-user',
-        email: 'test@test.com',
-        role: 'admin',
-        type: 'access',
-      },
-      secret,
-      { expiresIn: 3600 }
-    );
+  beforeEach(async () => {
+    const authToken = await createTestAdminToken();
     api = axios.create({
       baseURL,
       headers: { Authorization: `Bearer ${authToken}` },
@@ -44,9 +24,7 @@ describe('Control Plane HTTP API', () => {
   });
 
   afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-    }
+    await server?.stop();
   });
 
   describe('Health endpoints', () => {
@@ -73,41 +51,35 @@ describe('Control Plane HTTP API', () => {
       const listResponse = await api.get('/api/patterns');
       const patterns = listResponse.data.patterns;
 
-      if (patterns.length > 0) {
-        const patternName = patterns[0].name;
-        const response = await api.get(`/api/patterns/${patternName}`);
-        expect(response.status).toBe(200);
-        expect(response.data).toHaveProperty('name');
-        expect(response.data).toHaveProperty('version');
-        expect(response.data).toHaveProperty('description');
-      }
+      expect(patterns.length).toBeGreaterThan(0);
+      const patternName = patterns[0].name;
+      const response = await api.get(`/api/patterns/${patternName}`);
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveProperty('name');
+      expect(response.data).toHaveProperty('version');
+      expect(response.data).toHaveProperty('description');
     });
 
     it('should return 404 for non-existent pattern', async () => {
-      try {
-        await api.get('/api/patterns/non-existent-pattern');
-      } catch (error: any) {
-        expect(error.response.status).toBe(404);
-        expect(error.response.data).toHaveProperty('error');
-      }
+      await expect(
+        api.get('/api/patterns/non-existent-pattern')
+      ).rejects.toMatchObject({
+        response: { status: 404, data: { error: 'Pattern not found' } },
+      });
     });
 
     it('should validate pattern input', async () => {
       const listResponse = await api.get('/api/patterns');
       const patterns = listResponse.data.patterns;
 
-      if (patterns.length > 0) {
-        const patternName = patterns[0].name;
-        const response = await api.post(
-          `/api/patterns/${patternName}/validate`,
-          {
-            input: { task: 'test', data: {} },
-          }
-        );
-        expect(response.status).toBe(200);
-        expect(response.data).toHaveProperty('valid');
-        expect(typeof response.data.valid).toBe('boolean');
-      }
+      expect(patterns.length).toBeGreaterThan(0);
+      const patternName = patterns[0].name;
+      const response = await api.post(`/api/patterns/${patternName}/validate`, {
+        input: { task: 'test', data: {} },
+      });
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveProperty('valid');
+      expect(typeof response.data.valid).toBe('boolean');
     });
   });
 
@@ -136,17 +108,16 @@ describe('Control Plane HTTP API', () => {
       const listResponse = await api.get('/api/patterns');
       const patterns = listResponse.data.patterns;
 
-      if (patterns.length > 0) {
-        const patternName = patterns[0].name;
-        const response = await api.post('/api/executions', {
-          patternName,
-          input: { task: 'test', data: {} },
-        });
+      expect(patterns.length).toBeGreaterThan(0);
+      const patternName = patterns[0].name;
+      const response = await api.post('/api/executions', {
+        patternName,
+        input: { task: 'test', data: {} },
+      });
 
-        expect(response.status).toBe(202);
-        expect(response.data).toHaveProperty('id');
-        expect(response.data).toHaveProperty('status', 'accepted');
-      }
+      expect(response.status).toBe(202);
+      expect(response.data).toHaveProperty('id');
+      expect(response.data).toHaveProperty('status', 'accepted');
     });
   });
 

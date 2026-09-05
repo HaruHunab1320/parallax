@@ -8,7 +8,7 @@ const logger = pino({ level: 'silent' });
 function createMockRepo(): ExecutionRepository {
   return {
     findOrphanedExecutions: vi.fn().mockResolvedValue([]),
-    markOrphaned: vi.fn().mockResolvedValue({}),
+    markOrphaned: vi.fn().mockResolvedValue(true),
     addEvent: vi.fn().mockResolvedValue({}),
   } as unknown as ExecutionRepository;
 }
@@ -79,9 +79,9 @@ describe('StartupRecoveryService', () => {
       ];
       vi.mocked(repo.findOrphanedExecutions).mockResolvedValue(orphans);
       vi.mocked(repo.markOrphaned)
-        .mockResolvedValueOnce({} as any) // exec-ok succeeds
+        .mockResolvedValueOnce(true) // exec-ok succeeds
         .mockRejectedValueOnce(new Error('DB error')) // exec-fail errors
-        .mockResolvedValueOnce({} as any); // exec-ok2 succeeds
+        .mockResolvedValueOnce(true); // exec-ok2 succeeds
 
       const result = await service.recoverOrphanedExecutions();
 
@@ -90,26 +90,34 @@ describe('StartupRecoveryService', () => {
     });
   });
 
+  it('does not record recovery after a concurrent completion', async () => {
+    vi.mocked(repo.findOrphanedExecutions).mockResolvedValue([makeExecution()]);
+    vi.mocked(repo.markOrphaned).mockResolvedValue(false);
+    expect(await service.recoverOrphanedExecutions()).toBe(0);
+    expect(repo.addEvent).not.toHaveBeenCalled();
+  });
+
   describe('recoverAllOrphanedExecutions', () => {
-    it('calls findOrphanedExecutions without nodeId', async () => {
+    it('does nothing on leadership change without proof of dead owners', async () => {
       vi.mocked(repo.findOrphanedExecutions).mockResolvedValue([]);
 
       await service.recoverAllOrphanedExecutions();
 
-      expect(repo.findOrphanedExecutions).toHaveBeenCalledWith();
+      expect(repo.findOrphanedExecutions).not.toHaveBeenCalled();
     });
 
-    it('recovers orphans from all nodes', async () => {
+    it('recovers only confirmed dead owners and ignores healthy/unowned records', async () => {
       const orphans = [
         makeExecution({ id: 'exec-a', nodeId: 'node-2' }),
         makeExecution({ id: 'exec-b', nodeId: null }),
+        makeExecution({ id: 'exec-healthy', nodeId: 'node-3' }),
       ];
       vi.mocked(repo.findOrphanedExecutions).mockResolvedValue(orphans);
 
-      const result = await service.recoverAllOrphanedExecutions();
+      const result = await service.recoverAllOrphanedExecutions(['node-2']);
 
-      expect(result).toBe(2);
-      expect(repo.markOrphaned).toHaveBeenCalledTimes(2);
+      expect(result).toBe(1);
+      expect(repo.markOrphaned).toHaveBeenCalledTimes(1);
       expect(repo.addEvent).toHaveBeenCalledWith(
         'exec-a',
         expect.objectContaining({

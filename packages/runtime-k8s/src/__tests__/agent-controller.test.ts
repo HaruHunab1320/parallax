@@ -1,8 +1,9 @@
+import { executionResourceName } from '@parallaxai/runtime-interface';
 /**
  * Unit tests for AgentController
  */
 
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mock @kubernetes/client-node ────────────────────────────────────────
 
@@ -77,8 +78,8 @@ vi.mock('@kubernetes/client-node', () => ({
 
 // ── Imports ─────────────────────────────────────────────────────────────
 
-import { AgentController, type ControllerOptions } from '../controllers/agent-controller';
 import type { Logger } from 'pino';
+import { AgentController, type ControllerOptions } from '../controllers/agent-controller';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -324,7 +325,7 @@ describe('AgentController', () => {
         {
           name: 'shared-auth',
           persistentVolumeClaim: {
-            claimName: 'parallax-auth-exec-abc',
+            claimName: executionResourceName('exec-abc12345'),
           },
         },
       ]);

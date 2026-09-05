@@ -4,6 +4,7 @@ import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import pino from 'pino';
 import { v4 as uuidv4 } from 'uuid';
+import { controlPlaneCredentials, controlPlaneMetadata } from './transport-security';
 import { type AgentResponse, ensureConfidence } from './types/agent-response';
 import type {
   GatewayThreadEvent,
@@ -80,6 +81,10 @@ function normalizeStruct(input: any): any {
 }
 
 export interface GatewayOptions {
+  /** Trusted service key; defaults to PARALLAX_GRPC_API_KEY. */
+  apiKey?: string;
+  /** Additional connection metadata (copied, never mutated). */
+  metadata?: grpc.Metadata;
   /** Credentials for the gateway connection */
   credentials?: grpc.ChannelCredentials;
   /** Heartbeat interval in ms (default: 10000) */
@@ -238,6 +243,7 @@ export abstract class ParallaxAgent {
       ) => Promise<{ verified: boolean; error?: string }>;
     }
   ): Promise<number> {
+    const registryCredentials = controlPlaneCredentials(options?.registryCredentials);
     // Add ConfidenceAgent service implementation
     const verify = options?.verifyRequest;
     const wrapUnary =
@@ -316,7 +322,7 @@ export abstract class ParallaxAgent {
             await this.register(
               `${advertisedHost}:${advertisedPort}`,
               options?.registryEndpoint,
-              options?.registryCredentials
+              registryCredentials
             );
             resolve(actualPort);
           } catch (regError) {
@@ -342,7 +348,7 @@ export abstract class ParallaxAgent {
 
     this.registryClient = new this.registryProto.Registry(
       endpoint,
-      registryCredentials || grpc.credentials.createInsecure()
+      controlPlaneCredentials(registryCredentials)
     );
 
     const request = {
@@ -367,7 +373,7 @@ export abstract class ParallaxAgent {
     });
 
     return new Promise((resolve, reject) => {
-      this.registryClient.register(request, (error: any, response: any) => {
+      this.registryClient.register(request, controlPlaneMetadata(), (error: any, response: any) => {
         if (error) {
           this.logger.error({
             agentId: this.id,
@@ -415,6 +421,7 @@ export abstract class ParallaxAgent {
     return new Promise((resolve, reject) => {
       this.registryClient.renew(
         { lease_id: this.leaseId },
+        controlPlaneMetadata(),
         (error: any, _response: any) => {
           if (error) {
             reject(error);
@@ -559,13 +566,13 @@ export abstract class ParallaxAgent {
     this.gatewayOptions = options;
 
     const credentials =
-      options?.credentials || grpc.credentials.createInsecure();
+      controlPlaneCredentials(options?.credentials);
     const heartbeatIntervalMs = options?.heartbeatIntervalMs || 10000;
 
     const client = new this.gatewayProto.AgentGateway(endpoint, credentials);
 
     // Open bidirectional stream
-    const stream = client.connect();
+    const stream = client.connect(controlPlaneMetadata(options?.metadata, options?.apiKey));
     this.gatewayStream = stream;
 
     // Send AgentHello
@@ -956,7 +963,7 @@ export abstract class ParallaxAgent {
     if (this.registryClient && this.id) {
       try {
         await new Promise<void>((resolve) => {
-          this.registryClient.unregister({ id: this.id }, () => {
+          this.registryClient.unregister({ id: this.uuid }, controlPlaneMetadata(), () => {
             resolve();
           });
         });

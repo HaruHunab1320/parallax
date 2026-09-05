@@ -5,6 +5,8 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 
 import grpc
 
+from .transport_security import control_plane_channel, control_plane_metadata, Metadata
+
 try:
     import sys
     from pathlib import Path
@@ -29,14 +31,17 @@ class ExecutionClient:
 
     Args:
         endpoint: gRPC endpoint of the control plane (e.g. ``"localhost:50051"``).
-        credentials: Optional gRPC channel credentials. Uses an insecure
-            channel when ``None``.
+        credentials: Optional gRPC channel credentials. When absent, client TLS
+            environment settings select a secure or local insecure channel.
     """
 
     def __init__(
         self,
         endpoint: str,
         credentials: Optional[grpc.ChannelCredentials] = None,
+        *,
+        api_key: Optional[str] = None,
+        metadata: Optional[Metadata] = None,
     ):
         if not executions_pb2_grpc:
             raise ImportError(
@@ -44,10 +49,8 @@ class ExecutionClient:
                 "Run generate-proto.sh first."
             )
 
-        if credentials:
-            self._channel = grpc.aio.secure_channel(endpoint, credentials)
-        else:
-            self._channel = grpc.aio.insecure_channel(endpoint)
+        self._channel = control_plane_channel(endpoint, credentials)
+        self._metadata = control_plane_metadata(metadata, api_key)
 
         self._stub = executions_pb2_grpc.ExecutionServiceStub(self._channel)
 
@@ -63,7 +66,7 @@ class ExecutionClient:
         request = executions_pb2.GetExecutionRequest(
             execution_id=execution_id,
         )
-        response = await self._stub.GetExecution(request)
+        response = await self._stub.GetExecution(request, metadata=self._metadata)
         return MessageToDict(response.execution)
 
     async def list(
@@ -88,7 +91,7 @@ class ExecutionClient:
             offset=offset,
             status=status or "",
         )
-        response = await self._stub.ListExecutions(request)
+        response = await self._stub.ListExecutions(request, metadata=self._metadata)
         return {
             "executions": [
                 MessageToDict(e) for e in response.executions
@@ -111,7 +114,7 @@ class ExecutionClient:
         request = executions_pb2.StreamExecutionRequest(
             execution_id=execution_id,
         )
-        stream = self._stub.StreamExecution(request)
+        stream = self._stub.StreamExecution(request, metadata=self._metadata)
         async for event in stream:
             yield MessageToDict(event)
 

@@ -81,6 +81,7 @@ export interface AgentConfig {
   };
 
   // Behavior
+  approvalPreset?: ThreadApprovalPreset;
   autoRestart?: boolean; // Restart on crash
   idleTimeout?: number; // Stop after N seconds idle
 

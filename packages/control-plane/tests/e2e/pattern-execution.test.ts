@@ -1,42 +1,31 @@
-import type express from 'express';
-import jwt from 'jsonwebtoken';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createServer } from '@/server';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createTestAdminToken,
+  startHttpServer,
+} from '../fixtures/http-server-fixture';
+import { getTestPrisma } from '../setup';
 
 describe('Pattern Execution E2E', () => {
-  let app: express.Application;
-  let server: any;
+  let app: string;
+  let server: Awaited<ReturnType<typeof startHttpServer>>;
   let authToken: string;
 
   beforeAll(async () => {
-    app = await createServer();
-    const services = await (app as any).start();
-    server = services.httpServer;
+    server = await startHttpServer();
+    app = server.url;
+  });
 
-    // Generate a valid JWT for authenticated test requests
-    const secret = process.env.JWT_SECRET || 'test-secret';
-    authToken = jwt.sign(
-      {
-        sub: 'test-user',
-        email: 'test@test.com',
-        role: 'admin',
-        type: 'access',
-      },
-      secret,
-      { expiresIn: 3600 }
-    );
+  beforeEach(async () => {
+    authToken = await createTestAdminToken();
   });
 
   afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-    }
+    await server?.stop();
   });
 
-  it('should execute a pattern end-to-end via sync API', async () => {
-    // Execute a file-based pattern via the sync execute endpoint
-    // Without real agents, the pattern runs with 0 agents and produces a weak result
+  it('rejects and persists a synchronous run when its required agents are unavailable', async () => {
+    // ConsensusBuilder requires three agents; this isolated registry has none.
     const executeResponse = await request(app)
       .post('/api/patterns/ConsensusBuilder/execute')
       .set('Authorization', `Bearer ${authToken}`)
@@ -48,20 +37,14 @@ describe('Pattern Execution E2E', () => {
         options: { timeout: 10000 },
       });
 
-    // Pattern execution succeeds (200) even without agents — produces weak consensus
-    // Or may return 500 if execution engine requires agents
-    expect([200, 500]).toContain(executeResponse.status);
-
-    if (executeResponse.status === 200) {
-      expect(executeResponse.body).toHaveProperty('execution');
-      const execution = executeResponse.body.execution;
-      expect(execution.patternName).toBe('ConsensusBuilder');
-      expect(execution.status).toBe('completed');
-      expect(execution.id).toBeDefined();
-    } else {
-      // 500 means execution failed (e.g., no agents available)
-      expect(executeResponse.body).toHaveProperty('error');
-    }
+    expect(executeResponse.status).toBe(500);
+    expect(executeResponse.body.error).toContain(
+      'Not enough agents available. Required: 3, Available: 0'
+    );
+    const records = await getTestPrisma().execution.findMany();
+    expect(records).toHaveLength(1);
+    expect(records[0].status).toBe('failed');
+    expect(records[0].error).toBe(executeResponse.body.error);
   });
 
   it('should handle pattern not found gracefully', async () => {
@@ -77,7 +60,7 @@ describe('Pattern Execution E2E', () => {
     expect(executeResponse.body.error).toContain('not found');
   });
 
-  it('should support async execution with status polling', async () => {
+  it('persists an asynchronous failure under the returned execution ID', async () => {
     // Create execution (async) via the executions endpoint
     const createResponse = await request(app)
       .post('/api/executions')
@@ -94,28 +77,26 @@ describe('Pattern Execution E2E', () => {
 
     const executionId = createResponse.body.id;
 
-    // Poll for completion
-    let attempts = 0;
-    let completed = false;
-
-    while (attempts < 10 && !completed) {
-      const statusResponse = await request(app)
+    let outcome: Record<string, unknown> | undefined;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const response = await request(app)
         .get(`/api/executions/${executionId}`)
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
-
-      if (
-        statusResponse.body.status === 'completed' ||
-        statusResponse.body.status === 'failed'
-      ) {
-        completed = true;
-        expect(['completed', 'failed']).toContain(statusResponse.body.status);
+      if (!['pending', 'running'].includes(response.body.status)) {
+        outcome = response.body;
+        break;
       }
-
-      attempts++;
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
-
-    expect(completed).toBe(true);
+    expect(outcome?.status).toBe('failed');
+    expect(outcome?.error).toContain(
+      'Not enough agents available. Required: 3, Available: 0'
+    );
+    const persisted = await getTestPrisma().execution.findUniqueOrThrow({
+      where: { id: executionId },
+    });
+    expect(persisted.status).toBe('failed');
+    expect(persisted.error).toBe(outcome?.error);
   });
 });

@@ -154,12 +154,12 @@ export function createPatternsRouter(
       // Create database record before execution
       if (database) {
         try {
-          dbExecutionId = await createExecutionInDb(
-            database,
-            name,
-            input,
-            options
-          );
+          dbExecutionId = await createExecutionInDb(database, name, input, {
+            timeout: options?.timeout,
+            stream: options?.stream,
+            nodeId: patternEngine.getNodeId(),
+            timeoutMs: patternEngine.getExecutionTimeout(name, options),
+          });
         } catch (dbError) {
           logger.warn(
             { error: dbError },
@@ -181,7 +181,7 @@ export function createPatternsRouter(
       // Persist result to database
       if (database && dbExecutionId) {
         try {
-          await updateExecutionInDb(database, dbExecutionId, {
+          const changed = await updateExecutionInDb(database, dbExecutionId, {
             status: 'completed',
             result: result.result,
             confidence:
@@ -189,6 +189,14 @@ export function createPatternsRouter(
             durationMs: duration,
             agentCount: result.metrics?.agentsUsed ?? 0,
           });
+          if (!changed) {
+            return res
+              .status(409)
+              .json({
+                error: 'Execution already has a terminal outcome',
+                executionId: dbExecutionId,
+              });
+          }
         } catch (dbError) {
           logger.warn(
             { error: dbError },
@@ -210,7 +218,10 @@ export function createPatternsRouter(
       if (database && dbExecutionId) {
         try {
           await updateExecutionInDb(database, dbExecutionId, {
-            status: 'failed',
+            status:
+              patternEngine.getExecution(dbExecutionId)?.status === 'cancelled'
+                ? 'cancelled'
+                : 'failed',
             error: error instanceof Error ? error.message : String(error),
           });
         } catch (dbError) {

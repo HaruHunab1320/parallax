@@ -1,8 +1,8 @@
 # Stage 1: Prune the monorepo for web-dashboard
-FROM node:20-alpine AS pruner
+FROM node:24.20.0-alpine AS pruner
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN npm install -g turbo
+RUN npm install --global pnpm@10.11.0
+RUN npm install --global turbo@2.5.5
 
 WORKDIR /app
 COPY . .
@@ -11,9 +11,9 @@ COPY . .
 RUN turbo prune @parallaxai/web-dashboard --docker
 
 # Stage 2: Install dependencies and build
-FROM node:20-alpine AS builder
+FROM node:24.20.0-alpine AS builder
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install --global pnpm@10.11.0
 
 WORKDIR /app
 
@@ -44,7 +44,7 @@ ENV NEXT_PUBLIC_DEV_BYPASS_LICENSE=false
 RUN pnpm build
 
 # Stage 3: Production (using standalone output)
-FROM node:20-alpine AS production
+FROM node:24.20.0-alpine AS production
 
 WORKDIR /app
 

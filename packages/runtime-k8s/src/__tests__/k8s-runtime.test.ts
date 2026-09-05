@@ -1,8 +1,9 @@
+import { executionResourceName } from '@parallaxai/runtime-interface';
 /**
  * Unit tests for K8sRuntime
  */
 
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mock @kubernetes/client-node before any imports ─────────────────────
 
@@ -46,7 +47,13 @@ const {
     }),
   };
 
-  return { mockCoreApi, mockCustomApi, mockKubeConfig, MockCoreV1Api, MockCustomObjectsApi };
+  return {
+    mockCoreApi,
+    mockCustomApi,
+    mockKubeConfig,
+    MockCoreV1Api,
+    MockCustomObjectsApi,
+  };
 });
 
 vi.mock('@kubernetes/client-node', () => {
@@ -67,9 +74,9 @@ vi.mock('uuid', () => ({
 
 // ── Now import the runtime ──────────────────────────────────────────────
 
-import { K8sRuntime, type K8sRuntimeOptions } from '../k8s-runtime';
 import type { AgentConfig } from '@parallaxai/runtime-interface';
 import type { Logger } from 'pino';
+import { K8sRuntime, type K8sRuntimeOptions } from '../k8s-runtime';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -144,9 +151,7 @@ describe('K8sRuntime', () => {
 
     it('should create CoreV1Api and CustomObjectsApi clients', () => {
       createRuntime();
-      expect(mockKubeConfig.makeApiClient).toHaveBeenCalledWith(
-        MockCoreV1Api
-      );
+      expect(mockKubeConfig.makeApiClient).toHaveBeenCalledWith(MockCoreV1Api);
       expect(mockKubeConfig.makeApiClient).toHaveBeenCalledWith(
         MockCustomObjectsApi
       );
@@ -217,9 +222,7 @@ describe('K8sRuntime', () => {
       const runtime = createRuntime();
       await runtime.initialize();
       await runtime.spawn(baseConfig());
-      expect(
-        mockCustomApi.createNamespacedCustomObject
-      ).toHaveBeenCalledWith(
+      expect(mockCustomApi.createNamespacedCustomObject).toHaveBeenCalledWith(
         expect.objectContaining({
           group: 'parallax.ai',
           version: 'v1',
@@ -247,9 +250,7 @@ describe('K8sRuntime', () => {
     it('should use provided id if present in config', async () => {
       const runtime = createRuntime();
       await runtime.initialize();
-      const handle = await runtime.spawn(
-        baseConfig({ id: 'custom-id-abc' })
-      );
+      const handle = await runtime.spawn(baseConfig({ id: 'custom-id-abc' }));
       expect(handle.id).toBe('custom-id-abc');
       expect(handle.podName).toBe('agent-custom-i');
     });
@@ -332,9 +333,9 @@ describe('K8sRuntime', () => {
 
       const callArgs =
         mockCustomApi.createNamespacedCustomObject.mock.calls[0][0];
-      expect(
-        callArgs.body.metadata.labels['parallax.ai/execution-id']
-      ).toBe('exec-123');
+      expect(callArgs.body.metadata.labels['parallax.ai/execution-id']).toBe(
+        'exec-123'
+      );
       const envNames = callArgs.body.spec.env.map(
         (e: { name: string }) => e.name
       );
@@ -350,7 +351,7 @@ describe('K8sRuntime', () => {
       expect(
         mockCoreApi.readNamespacedPersistentVolumeClaim
       ).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'parallax-auth-exec-abc' })
+        expect.objectContaining({ name: executionResourceName('exec-abc') })
       );
     });
 
@@ -368,7 +369,7 @@ describe('K8sRuntime', () => {
         expect.objectContaining({
           body: expect.objectContaining({
             metadata: expect.objectContaining({
-              name: 'parallax-auth-exec-new',
+              name: executionResourceName('exec-new'),
             }),
           }),
         })
@@ -431,9 +432,7 @@ describe('K8sRuntime', () => {
 
       await runtime.stop(handle.id);
 
-      expect(
-        mockCustomApi.deleteNamespacedCustomObject
-      ).toHaveBeenCalledWith(
+      expect(mockCustomApi.deleteNamespacedCustomObject).toHaveBeenCalledWith(
         expect.objectContaining({
           group: 'parallax.ai',
           version: 'v1',
@@ -457,9 +456,7 @@ describe('K8sRuntime', () => {
 
       await runtime.stop(handle.id, { force: true });
 
-      expect(
-        mockCustomApi.deleteNamespacedCustomObject
-      ).toHaveBeenCalledWith(
+      expect(mockCustomApi.deleteNamespacedCustomObject).toHaveBeenCalledWith(
         expect.objectContaining({ gracePeriodSeconds: 0 })
       );
     });
@@ -471,9 +468,7 @@ describe('K8sRuntime', () => {
 
       await runtime.stop(handle.id, { timeout: 60000 });
 
-      expect(
-        mockCustomApi.deleteNamespacedCustomObject
-      ).toHaveBeenCalledWith(
+      expect(mockCustomApi.deleteNamespacedCustomObject).toHaveBeenCalledWith(
         expect.objectContaining({ gracePeriodSeconds: 60 })
       );
     });
@@ -607,8 +602,12 @@ describe('K8sRuntime', () => {
     it('should filter by type', async () => {
       const runtime = createRuntime();
       await runtime.initialize();
-      await runtime.spawn(baseConfig({ id: 'id-c1', name: 'c1', type: 'claude' }));
-      await runtime.spawn(baseConfig({ id: 'id-g1', name: 'g1', type: 'gemini' }));
+      await runtime.spawn(
+        baseConfig({ id: 'id-c1', name: 'c1', type: 'claude' })
+      );
+      await runtime.spawn(
+        baseConfig({ id: 'id-g1', name: 'g1', type: 'gemini' })
+      );
 
       const agents = await runtime.list({ type: 'gemini' });
       expect(agents).toHaveLength(1);
@@ -618,7 +617,9 @@ describe('K8sRuntime', () => {
     it('should filter by role', async () => {
       const runtime = createRuntime();
       await runtime.initialize();
-      await runtime.spawn(baseConfig({ id: 'id-eng', name: 'eng', role: 'engineer' }));
+      await runtime.spawn(
+        baseConfig({ id: 'id-eng', name: 'eng', role: 'engineer' })
+      );
       await runtime.spawn(baseConfig({ id: 'id-qa', name: 'qa', role: 'qa' }));
 
       const agents = await runtime.list({ role: 'engineer' });
@@ -630,7 +631,11 @@ describe('K8sRuntime', () => {
       const runtime = createRuntime();
       await runtime.initialize();
       await runtime.spawn(
-        baseConfig({ id: 'id-full', name: 'full', capabilities: ['code', 'debug'] })
+        baseConfig({
+          id: 'id-full',
+          name: 'full',
+          capabilities: ['code', 'debug'],
+        })
       );
       await runtime.spawn(
         baseConfig({ id: 'id-basic', name: 'basic', capabilities: ['code'] })
@@ -724,9 +729,9 @@ describe('K8sRuntime', () => {
 
       await runtime.shutdown(true);
 
-      expect(
-        mockCustomApi.deleteNamespacedCustomObject
-      ).toHaveBeenCalledTimes(2);
+      expect(mockCustomApi.deleteNamespacedCustomObject).toHaveBeenCalledTimes(
+        2
+      );
     });
 
     it('should not stop agents when stopAgents=false', async () => {
@@ -736,9 +741,7 @@ describe('K8sRuntime', () => {
 
       await runtime.shutdown(false);
 
-      expect(
-        mockCustomApi.deleteNamespacedCustomObject
-      ).not.toHaveBeenCalled();
+      expect(mockCustomApi.deleteNamespacedCustomObject).not.toHaveBeenCalled();
     });
 
     it('should clear internal state', async () => {
@@ -873,6 +876,65 @@ describe('K8sRuntime', () => {
   // ── cleanupExecution ───────────────────────────────────────────────
 
   describe('cleanupExecution', () => {
+    it('keeps shared resources when a pod is still running after stop', async () => {
+      const runtime = createRuntime();
+      await runtime.spawn(
+        baseConfig({ id: 'owned', executionId: 'exec-owned' })
+      );
+      mockCoreApi.listNamespacedPod.mockResolvedValue({
+        items: [{ status: { phase: 'Running' } }],
+      });
+      await expect(
+        runtime.stop('owned', { force: true, timeout: 0 })
+      ).rejects.toThrow('termination was not confirmed');
+      expect(
+        mockCoreApi.deleteNamespacedPersistentVolumeClaim
+      ).not.toHaveBeenCalled();
+    });
+
+    it('does not delete execution credentials when stopping its worker fails', async () => {
+      const runtime = createRuntime();
+      await runtime.spawn(
+        baseConfig({ id: 'owned', executionId: 'exec-owned' })
+      );
+      mockCustomApi.deleteNamespacedCustomObject.mockRejectedValueOnce(
+        new Error('cannot stop worker')
+      );
+      await expect(runtime.cleanupExecution('exec-owned')).rejects.toThrow(
+        'could not be stopped'
+      );
+      expect(
+        mockCoreApi.deleteNamespacedPersistentVolumeClaim
+      ).not.toHaveBeenCalled();
+    });
+
+    it('rejects unsupported approval policy before allocating a Kubernetes worker', async () => {
+      const runtime = createRuntime();
+      await expect(
+        runtime.spawn(baseConfig({ approvalPreset: 'readonly' }))
+      ).rejects.toThrow('does not enforce approval presets');
+      expect(mockCustomApi.createNamespacedCustomObject).not.toHaveBeenCalled();
+      await expect(
+        runtime.spawnThread({
+          name: 'Thread',
+          executionId: 'exec-1',
+          objective: 'Review',
+          agentType: 'claude',
+          preparation: { approvalPreset: 'readonly' },
+        })
+      ).rejects.toThrow('not supported');
+      expect(mockCustomApi.createNamespacedCustomObject).not.toHaveBeenCalled();
+    });
+
+    it('propagates non-missing PVC deletion failures', async () => {
+      const runtime = createRuntime();
+      mockCoreApi.deleteNamespacedPersistentVolumeClaim.mockRejectedValueOnce(
+        new Error('PVC busy')
+      );
+      await expect(runtime.cleanupExecution('exec-owned')).rejects.toThrow(
+        'PVC busy'
+      );
+    });
     it('should delete the shared auth PVC', async () => {
       mockCoreApi.deleteNamespacedPersistentVolumeClaim.mockResolvedValue({});
       const runtime = createRuntime();
@@ -883,7 +945,7 @@ describe('K8sRuntime', () => {
       expect(
         mockCoreApi.deleteNamespacedPersistentVolumeClaim
       ).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'parallax-auth-exec-123' })
+        expect.objectContaining({ name: executionResourceName('exec-1234') })
       );
     });
 

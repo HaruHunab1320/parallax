@@ -14,6 +14,8 @@ export interface TimeoutCheckerOptions {
   defaultTimeoutMs?: number;
   /** Whether this instance is the HA leader (only leader runs the checker) */
   isLeader?: () => boolean;
+  /** Stop work owned by this server. Return false for executions owned elsewhere. */
+  cancelExecution?: (executionId: string, reason: string) => Promise<boolean>;
 }
 
 export class TimeoutChecker {
@@ -23,6 +25,8 @@ export class TimeoutChecker {
   private defaultTimeoutMs: number;
   private isLeader: () => boolean;
   private running: boolean = false;
+  private checking = false;
+  private cancelExecution?: TimeoutCheckerOptions['cancelExecution'];
 
   constructor(
     private executionRepo: ExecutionRepository,
@@ -35,6 +39,7 @@ export class TimeoutChecker {
       options?.defaultTimeoutMs ||
       parseInt(process.env.PARALLAX_DEFAULT_EXECUTION_TIMEOUT || '300000', 10);
     this.isLeader = options?.isLeader || (() => true);
+    this.cancelExecution = options?.cancelExecution;
   }
 
   /**
@@ -74,7 +79,8 @@ export class TimeoutChecker {
    */
   async check(): Promise<number> {
     // In HA mode, only the leader runs the checker
-    if (!this.isLeader()) return 0;
+    if (!this.isLeader() || this.checking) return 0;
+    this.checking = true;
 
     try {
       const timedOut = await this.executionRepo.findTimedOutExecutions(
@@ -90,11 +96,24 @@ export class TimeoutChecker {
 
       let failedCount = 0;
       for (const execution of timedOut) {
-        const timeout = execution.timeoutMs || this.defaultTimeoutMs;
+        const timeout = execution.timeoutMs ?? this.defaultTimeoutMs;
+        if (timeout <= 0) continue;
         try {
-          await this.executionRepo.updateStatus(execution.id, 'failed', {
-            error: `Execution timed out after ${timeout}ms`,
-          });
+          const reason = `Execution timed out after ${timeout}ms`;
+          // A leader cannot cancel another live node's work through a DB write.
+          if (
+            !this.cancelExecution ||
+            !(await this.cancelExecution(execution.id, reason))
+          )
+            continue;
+          const changed = await this.executionRepo.transitionStatus(
+            execution.id,
+            'failed',
+            {
+              error: reason,
+            }
+          );
+          if (!changed) continue;
 
           await this.executionRepo.addEvent(execution.id, {
             type: 'timeout',
@@ -122,6 +141,8 @@ export class TimeoutChecker {
     } catch (error) {
       this.logger.error({ error }, 'Timeout check failed');
       return 0;
+    } finally {
+      this.checking = false;
     }
   }
 }

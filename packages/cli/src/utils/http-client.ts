@@ -9,6 +9,7 @@ export interface ParallaxHttpConfig {
   baseURL?: string;
   timeout?: number;
   apiKey?: string;
+  accessToken?: string;
 }
 
 export interface Pattern {
@@ -47,17 +48,21 @@ export interface Execution {
 export class ParallaxHttpClient {
   private client: AxiosInstance;
   private baseURL: string;
+  private authorization?: string;
 
   constructor(config: ParallaxHttpConfig = {}) {
     this.baseURL =
       config.baseURL || process.env.PARALLAX_API_URL || 'http://localhost:3000';
+
+    const apiKey = config.apiKey ?? process.env.PARALLAX_API_KEY;
+    this.authorization = config.accessToken ? `Bearer ${config.accessToken}` : apiKey ? `ApiKey ${apiKey}` : undefined;
 
     this.client = axios.create({
       baseURL: this.baseURL,
       timeout: config.timeout || 30000,
       headers: {
         'Content-Type': 'application/json',
-        ...(config.apiKey ? { 'X-API-Key': config.apiKey } : {}),
+        ...(this.authorization ? { Authorization: this.authorization } : {}),
       },
     });
 
@@ -197,7 +202,8 @@ export class ParallaxHttpClient {
   ): WebSocket {
     const wsUrl = this.baseURL.replace(/^http/, 'ws');
     const ws = new WebSocket(
-      `${wsUrl}/api/executions/stream?executionId=${executionId}`
+      `${wsUrl}/api/executions/stream?executionId=${encodeURIComponent(executionId)}`,
+      { headers: this.authorization ? { Authorization: this.authorization } : {} }
     );
 
     ws.on('message', (data) => {

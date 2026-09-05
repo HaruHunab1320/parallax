@@ -53,7 +53,7 @@ metadata:
     {{- if .Values.ingress.grpc.annotations }}
     {{- toYaml .Values.ingress.grpc.annotations | nindent 4 }}
     {{- else }}
-    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPCS"
     nginx.ingress.kubernetes.io/grpc-backend: "true"
     {{- end }}
 spec:

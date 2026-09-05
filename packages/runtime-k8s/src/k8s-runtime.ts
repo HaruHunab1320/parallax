@@ -14,6 +14,7 @@ import {
   type AgentStatus,
   type AgentType,
   BaseRuntimeProvider,
+  executionResourceName,
   type LogOptions,
   type SendOptions,
   type SpawnThreadInput,
@@ -168,6 +169,10 @@ export class K8sRuntime extends BaseRuntimeProvider {
   }
 
   async spawn(config: AgentConfig): Promise<AgentHandle> {
+    if (config.approvalPreset !== undefined) {
+      throw new Error('This runtime does not enforce approval presets');
+    }
+
     if (!this.initialized) {
       await this.initialize();
     }
@@ -243,6 +248,7 @@ export class K8sRuntime extends BaseRuntimeProvider {
         namespace: this.namespace,
         plural: CRD_PLURAL,
         name: info.resourceName,
+        propagationPolicy: 'Foreground',
         gracePeriodSeconds: options?.force
           ? 0
           : options?.timeout
@@ -255,6 +261,22 @@ export class K8sRuntime extends BaseRuntimeProvider {
       }
     }
 
+    const deadline = Date.now() + (options?.timeout ?? 10000);
+    while (true) {
+      const pods = await this.coreApi.listNamespacedPod({
+        namespace: this.namespace,
+        labelSelector: `parallax.ai/agent-id=${agentId}`,
+      });
+      if (
+        pods.items.every((pod) =>
+          ['Succeeded', 'Failed'].includes(pod.status?.phase ?? '')
+        )
+      )
+        break;
+      if (Date.now() >= deadline)
+        throw new Error(`Agent ${agentId} pod termination was not confirmed`);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
     info.handle.status = 'stopped';
     this.emit('agent_stopped', info.handle, 'stopped');
     this.agents.delete(agentId);
@@ -515,6 +537,18 @@ export class K8sRuntime extends BaseRuntimeProvider {
   // ─────────────────────────────────────────────────────────────
 
   async spawnThread(input: SpawnThreadInput): Promise<ThreadHandle> {
+    if (
+      input.preparation ||
+      input.workspace ||
+      input.contextFiles?.length ||
+      input.approvalPreset ||
+      (input.policy &&
+        Object.values(input.policy).some((value) => value !== undefined))
+    ) {
+      throw new Error(
+        'Kubernetes thread preparation and policy enforcement are not supported'
+      );
+    }
     const threadId = input.id || uuidv4();
     const now = new Date();
 
@@ -815,6 +849,7 @@ export class K8sRuntime extends BaseRuntimeProvider {
               type: handle.type,
               capabilities: handle.capabilities,
               role: handle.role,
+              executionId: item.spec?.executionId,
             },
             handle,
             resourceName: item.metadata?.name,
@@ -917,7 +952,7 @@ export class K8sRuntime extends BaseRuntimeProvider {
    * so that one OAuth login authenticates the entire swarm.
    */
   private async ensureSharedAuthPvc(executionId: string): Promise<void> {
-    const pvcName = `parallax-auth-${executionId.substring(0, 8)}`;
+    const pvcName = executionResourceName(executionId);
 
     try {
       await this.coreApi.readNamespacedPersistentVolumeClaim({
@@ -967,7 +1002,22 @@ export class K8sRuntime extends BaseRuntimeProvider {
    * Clean up shared auth PVC when an execution is fully torn down.
    */
   async cleanupExecution(executionId: string): Promise<void> {
-    const pvcName = `parallax-auth-${executionId.substring(0, 8)}`;
+    const owned = [...this.agents.entries()].filter(
+      ([, info]) => info.config.executionId === executionId
+    );
+    const stopped = await Promise.allSettled(
+      owned.map(([id]) => this.stop(id, { force: true }))
+    );
+    const failures = stopped.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    if (failures.length)
+      throw new AggregateError(
+        failures.map((result) => result.reason),
+        'Execution agents could not be stopped'
+      );
+
+    const pvcName = executionResourceName(executionId);
 
     try {
       await this.coreApi.deleteNamespacedPersistentVolumeClaim({
@@ -982,6 +1032,7 @@ export class K8sRuntime extends BaseRuntimeProvider {
           { pvcName, error: err?.message },
           'Failed to delete shared auth PVC'
         );
+        throw err;
       }
     }
   }

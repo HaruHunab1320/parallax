@@ -10,18 +10,23 @@ import type {
   SpawnThreadInput,
   ThreadInput,
 } from '@parallaxai/runtime-interface';
+import {
+  type RuntimeSecurityOptions,
+  runtimeSecurity,
+} from '@parallaxai/runtime-interface';
 import express, { type Request, type Response } from 'express';
 import type { Logger } from 'pino';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { LocalRuntime } from './local-runtime';
 
-export interface RuntimeServerOptions {
+export interface RuntimeServerOptions extends RuntimeSecurityOptions {
   port: number;
   host?: string;
 }
 
 export class RuntimeServer {
   private app: express.Application;
+  private security: ReturnType<typeof runtimeSecurity>;
   private server: Server | null = null;
   private wss: WebSocketServer | null = null;
   private terminalWss: WebSocketServer | null = null;
@@ -34,6 +39,7 @@ export class RuntimeServer {
     private logger: Logger,
     private options: RuntimeServerOptions
   ) {
+    this.security = runtimeSecurity(options.host ?? '127.0.0.1', options);
     this.app = express();
     this.setupMiddleware();
     this.setupRoutes();
@@ -41,7 +47,17 @@ export class RuntimeServer {
   }
 
   private setupMiddleware(): void {
-    this.app.use(express.json());
+    this.app.get('/health', (_req, res) => {
+      res.json({ healthy: true });
+    });
+    this.app.use((req, res, next) => {
+      if (!this.security.authorize(req.headers)) {
+        res.status(401).json({ error: 'Runtime authentication required' });
+        return;
+      }
+      next();
+    });
+    this.app.use(express.json({ limit: '1mb' }));
 
     // Request logging
     this.app.use((req, _res, next) => {
@@ -52,6 +68,27 @@ export class RuntimeServer {
 
   private setupRoutes(): void {
     const router = express.Router();
+
+    router.get('/capabilities', (_req: Request, res: Response) => {
+      res.json({
+        agents: true,
+        threads: true,
+        threadEvents: true,
+        executionCleanup: true,
+      });
+    });
+
+    router.delete(
+      '/executions/:id/resources',
+      async (req: Request, res: Response) => {
+        try {
+          await this.runtime.cleanupExecution(req.params.id);
+          res.status(204).send();
+        } catch (error) {
+          this.handleError(res, error);
+        }
+      }
+    );
 
     // Health check
     router.get('/health', async (_req: Request, res: Response) => {
@@ -380,7 +417,7 @@ export class RuntimeServer {
    * Start the HTTP server
    */
   async start(): Promise<void> {
-    const { port, host = '0.0.0.0' } = this.options;
+    const { port, host = '127.0.0.1' } = this.options;
 
     this.server = createServer(this.app);
 
@@ -391,6 +428,13 @@ export class RuntimeServer {
 
     // Handle upgrade requests and route to appropriate WebSocket server
     this.server.on('upgrade', (request, socket, head) => {
+      if (!this.security.authorize(request.headers)) {
+        socket.end(
+          'HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'
+        );
+        return;
+      }
+
       const url = new URL(request.url || '/', `http://${request.headers.host}`);
       const pathname = url.pathname;
 
@@ -431,7 +475,8 @@ export class RuntimeServer {
     this.setupTerminalWebSocket();
     this.setupEventsWebSocket();
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      this.server!.once('error', reject);
       this.server!.listen(port, host, () => {
         this.logger.info({ port, host }, 'Runtime server listening');
         resolve();
@@ -674,6 +719,7 @@ export class RuntimeServer {
   async stop(): Promise<void> {
     // Close all WebSocket servers
     if (this.wss) {
+      this.wss.clients.forEach((client) => { client.terminate(); });
       this.wss.close();
       this.wss = null;
     }

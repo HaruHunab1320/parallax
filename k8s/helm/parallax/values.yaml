@@ -22,14 +22,14 @@ controlPlane:
     metricsPort: 3001
     grpcPort: 8081
 
-  # External LoadBalancer for the REST API (used by @parallaxai/client)
+  # HTTP is reachable only through an HTTPS ingress or an internal proxy.
   restLoadBalancer:
-    enabled: true
+    enabled: false
     port: 3000
 
   # External LoadBalancer for gRPC (used by agent SDKs)
   grpcLoadBalancer:
-    enabled: true
+    enabled: false
     port: 8081
 
   resources:
@@ -45,9 +45,14 @@ controlPlane:
     PARALLAX_PATTERNS_DIR: /patterns
     PARALLAX_K8S_RUNTIME_URL: http://parallax-runtime-k8s:9878
 
-  # Enterprise license key (optional - enables enterprise features)
-  # Format: PARALLAX-ENT-xxxx or PARALLAX-PLUS-xxxx
-  licenseKey: ""
+  # Provision this Secret separately; values files never contain credentials.
+  # Required keys: DATABASE_URL, JWT_SECRET, PARALLAX_GRPC_API_KEY,
+  # PARALLAX_RUNTIME_API_KEY. Optional: PARALLAX_BOOTSTRAP_TOKEN, PARALLAX_LICENSE_KEY.
+  existingSecret: ""
+  grpcTls:
+    existingSecret: "" # kubernetes.io/tls containing tls.crt and tls.key
+    requireClientCert: false
+    caKey: ca.crt # Required in the same Secret when mutual TLS is enabled
 
   etcd:
     endpoints: []
@@ -90,14 +95,6 @@ controlPlane:
     enabled: false
     endpoint: "http://localhost:4317"
     serviceName: "parallax-control-plane"
-
-  auth:
-    enabled: false
-    jwt:
-      secret: ""
-      expiry: "24h"
-    rbac:
-      enabled: false
 
   # Cloud SQL Proxy sidecar (for GKE deployments using Cloud SQL)
   cloudSqlProxy:
@@ -198,7 +195,7 @@ redis:
 
 # InfluxDB configuration
 influxdb:
-  enabled: true
+  enabled: false
   image:
     repository: influxdb
     tag: 2.7-alpine
@@ -206,8 +203,8 @@ influxdb:
   auth:
     admin:
       username: admin
-      password: parallax123
-      token: parallax-super-secret-auth-token
+      password: ""
+      token: ""
     
     org: parallax
     bucket: metrics
@@ -432,7 +429,6 @@ postgresql:
   enabled: true
   auth:
     username: parallax
-    password: parallax123
     database: parallax
   persistence:
     enabled: true

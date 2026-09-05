@@ -7,13 +7,15 @@
 
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { parseConfidenceMarker, stripAnsi } from '@parallaxai/confidence';
 import {
   type AgentConfig,
   type AgentFilter,
@@ -22,6 +24,7 @@ import {
   type AgentMetrics,
   type AgentStatus,
   BaseRuntimeProvider,
+  executionResourceName,
   type LogOptions,
   type SendOptions,
   type SpawnThreadInput,
@@ -34,7 +37,6 @@ import {
   type ThreadRuntimeProvider,
   type ThreadStatus,
 } from '@parallaxai/runtime-interface';
-import { parseConfidenceMarker, stripAnsi } from '@parallaxai/confidence';
 import type { Logger } from 'pino';
 import {
   type BlockingPromptInfo,
@@ -455,6 +457,23 @@ export class LocalRuntime
     if (!this.initialized) {
       throw new Error('Runtime not initialized');
     }
+    const approvalPreset =
+      config.approvalPreset ??
+      process.env.PARALLAX_APPROVAL_PRESET ??
+      'standard';
+    if (
+      !['readonly', 'standard', 'permissive', 'autonomous'].includes(
+        approvalPreset
+      )
+    ) {
+      throw new Error('Unsupported approval preset');
+    }
+    if (
+      config.approvalPreset &&
+      !['claude', 'codex', 'gemini', 'aider'].includes(config.type)
+    ) {
+      throw new Error('This agent adapter does not support approval presets');
+    }
 
     // Check agent limit
     const currentAgents = this.manager.list();
@@ -476,7 +495,14 @@ export class LocalRuntime
     // empty config dir instead breaks the CLIs on onboarding → trust →
     // "not logged in". So local runtime inherits the host config by default;
     // set PARALLAX_ISOLATE_AUTH=1 to opt into per-execution isolation.
-    const env = { ...config.env };
+    const env = {
+      ...config.env,
+      // PTYManager merges the parent environment. Override transport/bootstrap
+      // secrets so workers do not inherit control-plane service credentials.
+      PARALLAX_RUNTIME_API_KEY: '',
+      PARALLAX_GRPC_API_KEY: '',
+      PARALLAX_BOOTSTRAP_TOKEN: '',
+    } as Record<string, string>;
     const isolateAuth = process.env.PARALLAX_ISOLATE_AUTH === '1';
     if (config.executionId && isolateAuth) {
       const sharedAuthDir = this.ensureSharedAuthDir(config.executionId);
@@ -498,12 +524,8 @@ export class LocalRuntime
 
     // Convert AgentConfig → SpawnConfig for pty-manager.
     //
-    // approvalPreset drives the adapter's permission flags (for Claude,
-    // 'autonomous' → --dangerously-skip-permissions). Without it the CLI
-    // blocks on its file-edit approval menu at the first Write and the
-    // agent never does real work. Local agents run as the operator on
-    // the operator's machine, so autonomous is the sane default; set
-    // PARALLAX_APPROVAL_PRESET to override (e.g. 'permissive').
+    // Honor each request's approval preset; elevated autonomy requires an
+    // explicit request or operator configuration.
     //
     // bare (claude --bare) skips the host's hooks/plugins/LSP — tempting
     // for determinism (a host Stop hook was observed blocking agent turns
@@ -519,7 +541,7 @@ export class LocalRuntime
       env,
       adapterConfig: {
         interactive: true,
-        approvalPreset: process.env.PARALLAX_APPROVAL_PRESET || 'autonomous',
+        approvalPreset,
         ...(process.env.PARALLAX_CLAUDE_BARE === '1' ? { bare: true } : {}),
       },
     };
@@ -690,10 +712,40 @@ export class LocalRuntime
   // ─────────────────────────────────────────────────────────────
 
   async spawnThread(input: SpawnThreadInput): Promise<ThreadHandle> {
+    if (
+      input.policy &&
+      Object.values(input.policy).some((value) => value !== undefined)
+    ) {
+      throw new Error(
+        'Local runtime does not enforce thread policy; configure supervision in the control plane and use an isolated worker for workspace boundaries'
+      );
+    }
     const threadId =
       input.id ||
       `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const workspace = input.preparation?.workspace ?? input.workspace;
+    if (
+      workspace &&
+      !workspace.path &&
+      (workspace.repo || workspace.workspaceId || workspace.worktreeId)
+    ) {
+      throw new Error(
+        'Local runtime requires a prepared workspace path; repository provisioning is not supported'
+      );
+    }
+    const approvalPreset =
+      input.preparation?.approvalPreset ?? input.approvalPreset;
+    if (
+      approvalPreset !== undefined &&
+      (!['readonly', 'standard', 'permissive', 'autonomous'].includes(
+        approvalPreset
+      ) ||
+        !['claude', 'codex', 'gemini', 'aider'].includes(input.agentType))
+    ) {
+      throw new Error(
+        'This agent adapter does not support the requested approval preset'
+      );
+    }
     const env = {
       ...(input.preparation?.env ?? input.env),
       PARALLAX_THREAD_ID: threadId,
@@ -704,7 +756,38 @@ export class LocalRuntime
     };
     const contextFiles = input.preparation?.contextFiles ?? input.contextFiles;
 
+    if (contextFiles?.length && !workspace?.path) {
+      throw new Error(
+        'Thread context files require an explicit workspace path'
+      );
+    }
+
     if (workspace?.path && contextFiles?.length) {
+      const root = resolve(workspace.path);
+      // Validate the entire preparation before writing any file. This prevents
+      // traversal and pre-existing symlink escapes; it is not an OS sandbox.
+      for (const file of contextFiles) {
+        const target = resolve(root, file.path);
+        const pathWithinWorkspace = relative(root, target);
+        if (
+          !file.path ||
+          isAbsolute(file.path) ||
+          !pathWithinWorkspace ||
+          pathWithinWorkspace === '..' ||
+          pathWithinWorkspace.startsWith(`..${sep}`)
+        ) {
+          throw new Error('Thread context file must stay inside its workspace');
+        }
+        let current = root;
+        for (const part of ['', ...pathWithinWorkspace.split(sep)]) {
+          current = join(current, part);
+          // existsSync follows symlinks and returns false for a dangling link.
+          // Inspect the directory entry itself so those links cannot escape too.
+          if (lstatSync(current, { throwIfNoEntry: false })?.isSymbolicLink()) {
+            throw new Error('Thread context file path cannot contain symlinks');
+          }
+        }
+      }
       for (const file of contextFiles) {
         const targetPath = join(workspace.path, file.path);
         const targetDir = targetPath.slice(0, targetPath.lastIndexOf('/'));
@@ -723,6 +806,7 @@ export class LocalRuntime
       workdir: workspace?.path,
       env,
       executionId: input.executionId,
+      approvalPreset,
     });
 
     const now = new Date();
@@ -747,6 +831,11 @@ export class LocalRuntime
       sessionId: agent.id,
     });
     this.sessionToThread.set(agent.id, threadId);
+    // PTY startup may emit readiness before spawn() resolves and this mapping
+    // exists. Publish the tracked initial state so orchestration does not miss it.
+    this.emitThreadEvent(agent.id, 'thread_started');
+    if (agent.status === 'ready')
+      this.emitThreadEvent(agent.id, 'thread_ready');
 
     return thread;
   }
@@ -920,7 +1009,21 @@ export class LocalRuntime
    * Clean up shared auth directory when an execution is fully torn down.
    */
   async cleanupExecution(executionId: string): Promise<void> {
-    const dirName = `parallax-auth-${executionId.substring(0, 8)}`;
+    const ownedAgents = [...this.agentConfigs.entries()].filter(
+      ([, config]) => config.executionId === executionId
+    );
+    const stopped = await Promise.allSettled(
+      ownedAgents.map(([id]) => this.stop(id, { force: true }))
+    );
+    const failures = stopped.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    if (failures.length)
+      throw new AggregateError(
+        failures.map((result) => result.reason),
+        'Execution agents could not be stopped'
+      );
+    const dirName = executionResourceName(executionId);
     const sharedDir = join(tmpdir(), dirName);
 
     try {
@@ -936,6 +1039,7 @@ export class LocalRuntime
         { sharedDir, error: error.message },
         'Failed to delete shared auth directory'
       );
+      throw error;
     }
 
     this.sharedAuthDirs.delete(dirName);
@@ -947,7 +1051,7 @@ export class LocalRuntime
    * so only one OAuth login is needed per swarm.
    */
   private ensureSharedAuthDir(executionId: string): string {
-    const dirName = `parallax-auth-${executionId.substring(0, 8)}`;
+    const dirName = executionResourceName(executionId);
     const sharedDir = join(tmpdir(), dirName);
 
     if (!this.sharedAuthDirs.has(dirName)) {

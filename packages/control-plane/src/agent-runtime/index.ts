@@ -5,7 +5,7 @@
  */
 
 // Re-export interface types for convenience
-export {
+export type {
   AgentConfig,
   AgentFilter,
   AgentHandle,

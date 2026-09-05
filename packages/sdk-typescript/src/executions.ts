@@ -15,6 +15,7 @@ import {
   type StreamExecutionRequest,
   type StreamExecutionResponse,
 } from '../generated/executions';
+import { controlPlaneCredentials, controlPlaneMetadata } from './transport-security';
 
 export type ExecutionStreamEvent = {
   type: string;
@@ -34,10 +35,10 @@ export class ExecutionClient {
 
   constructor(
     address: string,
-    credentials: ChannelCredentials,
+    credentials?: ChannelCredentials,
     options?: Partial<ClientOptions>
   ) {
-    this.client = new ExecutionServiceClient(address, credentials, options);
+    this.client = new ExecutionServiceClient(address, controlPlaneCredentials(credentials), options);
   }
 
   get(
@@ -48,7 +49,7 @@ export class ExecutionClient {
       const request: GetExecutionRequest = { executionId };
       this.client.getExecution(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: GetExecutionResponse) => {
           if (error) {
             reject(error);
@@ -70,7 +71,7 @@ export class ExecutionClient {
       const request: ListExecutionsRequest = { limit, offset, status };
       this.client.listExecutions(
         request,
-        metadata || new Metadata(),
+        controlPlaneMetadata(metadata),
         (error: ServiceError | null, response: ListExecutionsResponse) => {
           if (error) {
             reject(error);
@@ -90,7 +91,7 @@ export class ExecutionClient {
     const request: StreamExecutionRequest = { executionId };
     const stream = this.client.streamExecution(
       request,
-      metadata || new Metadata()
+      controlPlaneMetadata(metadata)
     );
 
     stream.on('data', (message: StreamExecutionResponse) => {

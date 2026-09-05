@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
 export interface Agent {
   id: string;
@@ -151,30 +151,7 @@ class ApiClient {
         originalRequest._retry = true;
 
         try {
-          // Deduplicate concurrent refresh attempts
-          if (!this.refreshPromise) {
-            const storedRefresh = typeof window !== 'undefined'
-              ? localStorage.getItem('parallax_refresh_token')
-              : null;
-
-            if (!storedRefresh) {
-              throw new Error('No refresh token');
-            }
-
-            this.refreshPromise = this.refreshTokens(storedRefresh);
-          }
-
-          const tokens = await this.refreshPromise;
-          this.refreshPromise = null;
-
-          // Store new tokens
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('parallax_access_token', tokens.accessToken);
-            localStorage.setItem('parallax_refresh_token', tokens.refreshToken);
-            document.cookie = `parallax_auth=1; path=/; max-age=604800; SameSite=Lax`;
-          }
-
-          this.setAuthToken(tokens.accessToken);
+          const tokens = await this.refreshSession();
           originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
           return this.controlPlane(originalRequest);
         } catch {
@@ -201,13 +178,63 @@ class ApiClient {
     }
   }
 
+  private refreshSession(): Promise<AuthTokens> {
+    if (!this.refreshPromise) {
+      this.refreshPromise = (async () => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('parallax_refresh_token') : null;
+        if (!token) throw new Error('No refresh token');
+        const tokens = await this.refreshTokens(token);
+        localStorage.setItem('parallax_access_token', tokens.accessToken);
+        localStorage.setItem('parallax_refresh_token', tokens.refreshToken);
+        document.cookie = 'parallax_auth=1; path=/; max-age=604800; SameSite=Lax';
+        this.setAuthToken(tokens.accessToken);
+        return tokens;
+      })().finally(() => { this.refreshPromise = null; });
+    }
+    return this.refreshPromise;
+  }
+
+  /** Fetch a stream with the same session and refresh policy as ordinary API calls. */
+  async fetchAuthenticated(url: string, signal: AbortSignal): Promise<Response> {
+    const configured = new URL(this.controlPlane.defaults.baseURL || '/', window.location.origin);
+    const target = new URL(url, window.location.origin);
+    if (target.origin !== configured.origin) throw new Error('Refusing to send credentials to a different API origin');
+    const request = () => {
+      const token = localStorage.getItem('parallax_access_token');
+      return fetch(target, {
+        headers: { Accept: 'text/event-stream', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        signal,
+        redirect: 'error',
+        cache: 'no-store',
+      });
+    };
+    const response = await request();
+    if (response.status !== 401) return response;
+    await response.body?.cancel();
+    try {
+      await this.refreshSession();
+    } catch {
+      if (signal.aborted) throw signal.reason;
+      this.setAuthToken(null);
+      localStorage.removeItem('parallax_access_token');
+      localStorage.removeItem('parallax_refresh_token');
+      document.cookie = 'parallax_auth=; path=/; max-age=0';
+      window.location.href = '/login';
+      throw new Error('Session expired');
+    }
+    signal.throwIfAborted();
+    return request();
+  }
+
   async login(email: string, password: string): Promise<LoginResponse> {
     const response = await this.controlPlane.post('/api/auth/login', { email, password });
     return response.data;
   }
 
-  async register(email: string, password: string, name?: string): Promise<LoginResponse> {
-    const response = await this.controlPlane.post('/api/auth/register', { email, password, name });
+  async register(email: string, password: string, name?: string, bootstrapToken?: string): Promise<LoginResponse> {
+    const response = await this.controlPlane.post('/api/auth/register', { email, password, name }, {
+      headers: bootstrapToken ? { 'X-Parallax-Bootstrap-Token': bootstrapToken } : {},
+    });
     return response.data;
   }
 
