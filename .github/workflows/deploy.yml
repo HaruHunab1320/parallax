@@ -31,7 +31,11 @@ jobs:
   deploy:
     name: Deploy to GKE
     runs-on: ubuntu-latest
-    if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') || github.event_name == 'workflow_dispatch' }}
+    # Automatic deploys after a main build are opt-in: the hardened chart needs
+    # secrets (see docs/DEPLOYMENT_HARDENING.md) that must exist in the cluster
+    # first. Set the repository variable PARALLAX_AUTO_DEPLOY=true once they do.
+    # Manual dispatch with a validated image SHA always works.
+    if: ${{ (vars.PARALLAX_AUTO_DEPLOY == 'true' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') || github.event_name == 'workflow_dispatch' }}
 
     permissions:
       contents: read
