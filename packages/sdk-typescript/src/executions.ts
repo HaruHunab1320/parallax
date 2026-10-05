@@ -15,7 +15,10 @@ import {
   type StreamExecutionRequest,
   type StreamExecutionResponse,
 } from '../generated/executions';
-import { controlPlaneCredentials, controlPlaneMetadata } from './transport-security';
+import {
+  controlPlaneCredentials,
+  controlPlaneMetadata,
+} from './transport-security';
 
 export type ExecutionStreamEvent = {
   type: string;
@@ -38,7 +41,11 @@ export class ExecutionClient {
     credentials?: ChannelCredentials,
     options?: Partial<ClientOptions>
   ) {
-    this.client = new ExecutionServiceClient(address, controlPlaneCredentials(credentials), options);
+    this.client = new ExecutionServiceClient(
+      address,
+      controlPlaneCredentials(credentials),
+      options
+    );
   }
 
   get(

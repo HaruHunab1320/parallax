@@ -719,7 +719,9 @@ export class RuntimeServer {
   async stop(): Promise<void> {
     // Close all WebSocket servers
     if (this.wss) {
-      this.wss.clients.forEach((client) => { client.terminate(); });
+      this.wss.clients.forEach((client) => {
+        client.terminate();
+      });
       this.wss.close();
       this.wss = null;
     }

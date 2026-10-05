@@ -29,7 +29,9 @@ export class AuthResource {
       method: 'POST',
       path: '/api/auth/register',
       body: { email, password, name },
-      headers: bootstrapToken ? { 'X-Parallax-Bootstrap-Token': bootstrapToken } : undefined,
+      headers: bootstrapToken
+        ? { 'X-Parallax-Bootstrap-Token': bootstrapToken }
+        : undefined,
     });
 
     // Auto-update the HTTP client with the new tokens

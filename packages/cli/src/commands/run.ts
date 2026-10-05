@@ -89,7 +89,6 @@ export const runCommand = new Command('run')
           });
         }
       }
-
     } catch (error) {
       spinner.fail(chalk.red('Pattern execution failed'));
       console.error(error);

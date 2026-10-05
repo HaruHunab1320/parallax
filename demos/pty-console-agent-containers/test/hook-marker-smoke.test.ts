@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
 import { ClaudeAdapter, GeminiAdapter } from 'coding-agent-adapters';
 import { PTYConsoleBridge } from 'pty-console';
 import { PTYManager, type SessionHandle } from 'pty-manager';
+import { afterEach, describe, expect, it } from 'vitest';
 
 type EventKind = 'blocking_prompt' | 'ready';
 

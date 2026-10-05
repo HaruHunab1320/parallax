@@ -57,10 +57,15 @@ vi.mock('@grpc/grpc-js', async (importOriginal) => ({
             cb(null)
           ),
           register: vi.fn(
-            (_r: unknown, _metadata: unknown, cb: (err: Error | null, res: unknown) => void) =>
-              cb(null, { lease_id: 'test-lease' })
+            (
+              _r: unknown,
+              _metadata: unknown,
+              cb: (err: Error | null, res: unknown) => void
+            ) => cb(null, { lease_id: 'test-lease' })
           ),
-          unregister: vi.fn((_r: unknown, _metadata: unknown, cb: () => void) => cb()),
+          unregister: vi.fn((_r: unknown, _metadata: unknown, cb: () => void) =>
+            cb()
+          ),
         })),
       },
       gateway: {

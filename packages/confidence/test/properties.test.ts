@@ -10,8 +10,9 @@
  *   5. Coalescing (~??)         → first value above threshold
  *   6. Property access (~.)     → confidence propagates/degrades per hop
  */
-import { describe, expect, it } from 'vitest';
+
 import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import {
   add,
   and,
@@ -34,9 +35,7 @@ import {
 } from '../src';
 
 const confidence = fc.double({ min: 0, max: 1, noNaN: true });
-const confident = fc
-  .tuple(fc.integer(), confidence)
-  .map(([v, c]) => cf(v, c));
+const confident = fc.tuple(fc.integer(), confidence).map(([v, c]) => cf(v, c));
 
 describe('cf / conf / val', () => {
   it('clamps confidence into [0, 1]', () => {
@@ -92,7 +91,7 @@ describe('rule 1 — arithmetic propagates minimum confidence', () => {
   it('chain carries the minimum across all links and the last value', () => {
     fc.assert(
       fc.property(fc.array(confident, { minLength: 1 }), (xs) => {
-        const c = chain(...(xs as [typeof xs[0]]));
+        const c = chain(...(xs as [(typeof xs)[0]]));
         expect(c.confidence).toBe(Math.min(...xs.map((x) => x.confidence)));
         expect(c.value).toBe(xs[xs.length - 1]!.value);
       })
@@ -104,9 +103,7 @@ describe('rules 2 & 3 — AND is min, OR is max', () => {
   it('and() carries minimum confidence', () => {
     fc.assert(
       fc.property(confident, confident, (a, b) => {
-        expect(and(a, b).confidence).toBe(
-          Math.min(a.confidence, b.confidence)
-        );
+        expect(and(a, b).confidence).toBe(Math.min(a.confidence, b.confidence));
       })
     );
   });
@@ -221,11 +218,7 @@ describe('uncertain — three-band dispatch', () => {
           low: () => 'low',
         });
         const expected =
-          x.confidence >= 0.8
-            ? 'high'
-            : x.confidence >= 0.5
-              ? 'medium'
-              : 'low';
+          x.confidence >= 0.8 ? 'high' : x.confidence >= 0.5 ? 'medium' : 'low';
         expect(result.value).toBe(expected);
         expect(result.confidence).toBe(x.confidence);
       })
@@ -247,10 +240,9 @@ describe('aggregation', () => {
   it('weightedAverage stays within [min, max] of the values', () => {
     fc.assert(
       fc.property(
-        fc.array(
-          fc.tuple(fc.integer({ min: -1000, max: 1000 }), confidence),
-          { minLength: 1 }
-        ),
+        fc.array(fc.tuple(fc.integer({ min: -1000, max: 1000 }), confidence), {
+          minLength: 1,
+        }),
         (pairs) => {
           const xs = pairs.map(([v, c]) => cf(v, c));
           if (xs.every((x) => x.confidence === 0)) return; // degenerate

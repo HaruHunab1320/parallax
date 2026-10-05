@@ -30,7 +30,9 @@ export const documentAnalysis: PatternModule = {
 
   async execute(ctx) {
     // Successful results with a payload attached.
-    const validResults = ctx.results.filter((r) => r.confidence > 0 && r.result);
+    const validResults = ctx.results.filter(
+      (r) => r.confidence > 0 && r.result
+    );
 
     const ofType = (analysisType: string): PatternAgentResult | null => {
       const matches = validResults.filter(

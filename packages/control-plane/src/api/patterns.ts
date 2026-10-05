@@ -190,12 +190,10 @@ export function createPatternsRouter(
             agentCount: result.metrics?.agentsUsed ?? 0,
           });
           if (!changed) {
-            return res
-              .status(409)
-              .json({
-                error: 'Execution already has a terminal outcome',
-                executionId: dbExecutionId,
-              });
+            return res.status(409).json({
+              error: 'Execution already has a terminal outcome',
+              executionId: dbExecutionId,
+            });
           }
         } catch (dbError) {
           logger.warn(

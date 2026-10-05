@@ -14,10 +14,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  type HistoryRun,
-  scoreDecisionHistory,
-} from '../decision-history';
+import { type HistoryRun, scoreDecisionHistory } from '../decision-history';
 import type { HistoryOracle } from '../types';
 
 const NOW = new Date('2026-07-10T12:00:00Z');
@@ -148,7 +145,12 @@ describe('golden: Parallax decision-history (suppress) — kernel migration', ()
 
   it('sparse prior confidence stays above 0.95 (neutral-ish)', () => {
     const r = runs(['failure', 'failure', 'success'], [0, 0, 0]);
-    const got = scoreDecisionHistory(r, [], { type: 'history', saturationRuns: 50 }, NOW);
+    const got = scoreDecisionHistory(
+      r,
+      [],
+      { type: 'history', saturationRuns: 50 },
+      NOW
+    );
     expect(got!.confidence).toBeGreaterThan(0.95);
   });
 });

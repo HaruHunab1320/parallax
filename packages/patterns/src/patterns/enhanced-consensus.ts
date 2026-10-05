@@ -1,12 +1,12 @@
 import {
   averageConfidence,
+  type Confident,
   cf,
   conf,
   majorityVote,
   synthesize,
   uncertain,
   val,
-  type Confident,
 } from '@parallaxai/confidence';
 import type { PatternModule } from '../types';
 

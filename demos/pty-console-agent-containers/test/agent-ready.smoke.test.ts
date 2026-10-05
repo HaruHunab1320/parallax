@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
 import {
   AiderAdapter,
   ClaudeAdapter,
@@ -12,6 +11,7 @@ import {
 } from 'coding-agent-adapters';
 import { PTYConsoleBridge } from 'pty-console';
 import { PTYManager, type SessionHandle, type SpawnConfig } from 'pty-manager';
+import { afterEach, describe, expect, it } from 'vitest';
 
 type StartupResult = 'ready' | 'login_required' | 'blocking_prompt';
 type AgentType = 'claude' | 'codex' | 'gemini' | 'aider';

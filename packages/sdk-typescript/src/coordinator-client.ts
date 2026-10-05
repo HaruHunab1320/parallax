@@ -12,7 +12,10 @@ import {
   type GetHistoryRequest,
   type GetHistoryResponse,
 } from '../generated/coordinator';
-import { controlPlaneCredentials, controlPlaneMetadata } from './transport-security';
+import {
+  controlPlaneCredentials,
+  controlPlaneMetadata,
+} from './transport-security';
 
 export type CoordinatorStreamHandlers = {
   onMessage?: (response: CoordinateResponse) => void;
@@ -28,7 +31,11 @@ export class CoordinatorServiceClient {
     credentials?: ChannelCredentials,
     options?: Partial<ClientOptions>
   ) {
-    this.client = new CoordinatorClient(address, controlPlaneCredentials(credentials), options);
+    this.client = new CoordinatorClient(
+      address,
+      controlPlaneCredentials(credentials),
+      options
+    );
   }
 
   coordinate(

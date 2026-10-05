@@ -7,14 +7,15 @@
  *     low    { ... }   // otherwise
  *   }
  */
+
+import { cf, conf, val } from './core';
 import {
   Confident,
-  MaybeConfident,
-  UncertainBounds,
   DEFAULT_BOUNDS,
   isConfident,
+  MaybeConfident,
+  UncertainBounds,
 } from './types';
-import { cf, conf, val } from './core';
 
 export interface UncertainHandlers<T, R> {
   high: (value: T, confidence: number) => MaybeConfident<R>;

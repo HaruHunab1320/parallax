@@ -1,10 +1,10 @@
 import {
+  type Confident,
   cf,
   conf,
   synthesize,
   uncertain,
   val,
-  type Confident,
 } from '@parallaxai/confidence';
 import type {
   PatternAgentInfo,
@@ -144,9 +144,7 @@ export const confidenceBudget: PatternModule = {
       const standard = ctx.results.filter((r) => {
         const a = infoFor(r);
         return (
-          !usedIds.has(r.agentId) &&
-          !!a &&
-          (a.historicalConfidence ?? 0) > 0.6
+          !usedIds.has(r.agentId) && !!a && (a.historicalConfidence ?? 0) > 0.6
         );
       });
       take(standard.slice(0, maxAgents - consumed.length));

@@ -83,12 +83,10 @@ export class RuntimeServer {
     );
 
     router.use('/threads', (_req: Request, res: Response) => {
-      res
-        .status(501)
-        .json({
-          error:
-            'This runtime does not support the remote thread lifecycle and event contract',
-        });
+      res.status(501).json({
+        error:
+          'This runtime does not support the remote thread lifecycle and event contract',
+      });
     });
 
     // Health check
@@ -378,7 +376,9 @@ export class RuntimeServer {
 
   async stop(): Promise<void> {
     if (this.wss) {
-      this.wss.clients.forEach((client) => { client.terminate(); });
+      this.wss.clients.forEach((client) => {
+        client.terminate();
+      });
       this.wss.close();
       this.wss = null;
     }

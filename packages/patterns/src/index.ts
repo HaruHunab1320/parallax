@@ -8,8 +8,6 @@ export type {
   PatternWorkspaceInfo,
 } from './types';
 
-import type { PatternModule } from './types';
-
 import { cascadingRefinement } from './patterns/cascading-refinement';
 import { codeReview } from './patterns/code-review';
 import { confidenceBudget } from './patterns/confidence-budget';
@@ -32,6 +30,7 @@ import { uncertaintyMapreduce } from './patterns/uncertainty-mapreduce';
 import { uncertaintyRouter } from './patterns/uncertainty-router';
 import { voting } from './patterns/voting';
 import { websiteBuilder } from './patterns/website-builder';
+import type { PatternModule } from './types';
 
 export {
   cascadingRefinement,

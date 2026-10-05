@@ -163,10 +163,7 @@ export class ThreadExecutor {
       for (const file of preparation.contextFiles) {
         const relative = file.path ?? file.relativePath;
         if (!relative) {
-          this.logger.warn(
-            { threadId },
-            'Skipping context file with no path'
-          );
+          this.logger.warn({ threadId }, 'Skipping context file with no path');
           continue;
         }
         const filePath = path.join(workspaceDir, relative);

@@ -55,7 +55,11 @@ export class ParallaxHttpClient {
       config.baseURL || process.env.PARALLAX_API_URL || 'http://localhost:3000';
 
     const apiKey = config.apiKey ?? process.env.PARALLAX_API_KEY;
-    this.authorization = config.accessToken ? `Bearer ${config.accessToken}` : apiKey ? `ApiKey ${apiKey}` : undefined;
+    this.authorization = config.accessToken
+      ? `Bearer ${config.accessToken}`
+      : apiKey
+        ? `ApiKey ${apiKey}`
+        : undefined;
 
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -203,7 +207,11 @@ export class ParallaxHttpClient {
     const wsUrl = this.baseURL.replace(/^http/, 'ws');
     const ws = new WebSocket(
       `${wsUrl}/api/executions/stream?executionId=${encodeURIComponent(executionId)}`,
-      { headers: this.authorization ? { Authorization: this.authorization } : {} }
+      {
+        headers: this.authorization
+          ? { Authorization: this.authorization }
+          : {},
+      }
     );
 
     ws.on('message', (data) => {

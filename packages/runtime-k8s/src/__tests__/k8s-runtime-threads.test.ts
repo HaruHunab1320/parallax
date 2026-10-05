@@ -2,7 +2,7 @@
  * Unit tests for K8sRuntime thread operations
  */
 
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mock @kubernetes/client-node ────────────────────────────────────────
 
@@ -48,7 +48,14 @@ const {
 
   const uuidState = { counter: 0 };
 
-  return { mockCoreApi, mockCustomApi, mockKubeConfig, MockCoreV1Api, MockCustomObjectsApi, uuidState };
+  return {
+    mockCoreApi,
+    mockCustomApi,
+    mockKubeConfig,
+    MockCoreV1Api,
+    MockCustomObjectsApi,
+    uuidState,
+  };
 });
 
 vi.mock('@kubernetes/client-node', () => {
@@ -69,9 +76,9 @@ vi.mock('uuid', () => ({
 
 // ── Imports ─────────────────────────────────────────────────────────────
 
-import { K8sRuntime } from '../k8s-runtime';
 import type { SpawnThreadInput } from '@parallaxai/runtime-interface';
 import type { Logger } from 'pino';
+import { K8sRuntime } from '../k8s-runtime';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -91,7 +98,9 @@ function createRuntime(): K8sRuntime {
   return new K8sRuntime(createMockLogger());
 }
 
-function threadInput(overrides: Partial<SpawnThreadInput> = {}): SpawnThreadInput {
+function threadInput(
+  overrides: Partial<SpawnThreadInput> = {}
+): SpawnThreadInput {
   return {
     executionId: 'exec-001',
     name: 'test-thread',
@@ -182,9 +191,7 @@ describe('K8sRuntime — Thread Operations', () => {
     it('should merge custom env vars', async () => {
       const runtime = createRuntime();
       await runtime.initialize();
-      await runtime.spawnThread(
-        threadInput({ env: { MY_VAR: 'custom' } })
-      );
+      await runtime.spawnThread(threadInput({ env: { MY_VAR: 'custom' } }));
 
       const callArgs =
         mockCustomApi.createNamespacedCustomObject.mock.calls[0][0];
@@ -341,9 +348,7 @@ describe('K8sRuntime — Thread Operations', () => {
 
       await runtime.stopThread(thread.id);
 
-      expect(
-        mockCustomApi.deleteNamespacedCustomObject
-      ).toHaveBeenCalled();
+      expect(mockCustomApi.deleteNamespacedCustomObject).toHaveBeenCalled();
     });
 
     it('should mark thread as completed', async () => {
@@ -371,9 +376,7 @@ describe('K8sRuntime — Thread Operations', () => {
       await runtime.initialize();
       const thread = await runtime.spawnThread(threadInput());
 
-      await expect(
-        runtime.stopThread(thread.id)
-      ).resolves.not.toThrow();
+      await expect(runtime.stopThread(thread.id)).resolves.not.toThrow();
     });
   });
 

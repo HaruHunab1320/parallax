@@ -1,4 +1,10 @@
-import { cf, majorityVote, synthesize, uncertain, val } from '@parallaxai/confidence';
+import {
+  cf,
+  majorityVote,
+  synthesize,
+  uncertain,
+  val,
+} from '@parallaxai/confidence';
 import type { PatternAgentResult, PatternModule } from '../types';
 
 interface DecisionOutcome {

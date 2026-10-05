@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import pino from 'pino';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MessageRouter } from '../message-router';
 import type {
   OrgAgentInstance,
@@ -10,9 +10,7 @@ import type {
 
 const logger = pino({ level: 'silent' });
 
-function makeStructure(
-  overrides: Partial<OrgStructure> = {}
-): OrgStructure {
+function makeStructure(overrides: Partial<OrgStructure> = {}): OrgStructure {
   return {
     name: 'test-org',
     roles: {
@@ -45,7 +43,11 @@ function makeContext(
 
   return {
     id: 'exec-1',
-    pattern: { name: 'test', structure: makeStructure(), workflow: { name: 'w', steps: [] } },
+    pattern: {
+      name: 'test',
+      structure: makeStructure(),
+      workflow: { name: 'w', steps: [] },
+    },
     agents: agentMap,
     roleAssignments: new Map(Object.entries(roleAssignments)),
     state: 'running',
@@ -102,10 +104,7 @@ describe('MessageRouter', () => {
     });
 
     it('broadcasts to all agents when routing rule says broadcast', async () => {
-      const agents = [
-        makeAgent('w1', 'worker'),
-        makeAgent('w2', 'worker'),
-      ];
+      const agents = [makeAgent('w1', 'worker'), makeAgent('w2', 'worker')];
       const context = makeContext(agents, {
         lead: [],
         worker: ['w1', 'w2'],
@@ -129,10 +128,7 @@ describe('MessageRouter', () => {
 
   describe('handleQuestion', () => {
     it('routes question to reports_to role by default', async () => {
-      const agents = [
-        makeAgent('l1', 'lead'),
-        makeAgent('w1', 'worker'),
-      ];
+      const agents = [makeAgent('l1', 'lead'), makeAgent('w1', 'worker')];
       const context = makeContext(agents, {
         lead: ['l1'],
         worker: ['w1'],
@@ -171,10 +167,7 @@ describe('MessageRouter', () => {
     });
 
     it('routes by topic when topic routes configured', async () => {
-      const agents = [
-        makeAgent('l1', 'lead'),
-        makeAgent('w1', 'worker'),
-      ];
+      const agents = [makeAgent('l1', 'lead'), makeAgent('w1', 'worker')];
       const context = makeContext(agents, {
         lead: ['l1'],
         worker: ['w1'],
@@ -235,10 +228,7 @@ describe('MessageRouter', () => {
 
   describe('provideAnswer', () => {
     it('emits answer and send_answer events', async () => {
-      const agents = [
-        makeAgent('l1', 'lead'),
-        makeAgent('w1', 'worker'),
-      ];
+      const agents = [makeAgent('l1', 'lead'), makeAgent('w1', 'worker')];
       const context = makeContext(agents, {
         lead: ['l1'],
         worker: ['w1'],
@@ -293,10 +283,7 @@ describe('MessageRouter', () => {
     });
 
     it('throws when answering agent not in context', async () => {
-      const agents = [
-        makeAgent('l1', 'lead'),
-        makeAgent('w1', 'worker'),
-      ];
+      const agents = [makeAgent('l1', 'lead'), makeAgent('w1', 'worker')];
       const context = makeContext(agents, {
         lead: ['l1'],
         worker: ['w1'],
@@ -324,10 +311,7 @@ describe('MessageRouter', () => {
 
   describe('getPendingQuestionsFor', () => {
     it('returns questions routed to an agent', async () => {
-      const agents = [
-        makeAgent('l1', 'lead'),
-        makeAgent('w1', 'worker'),
-      ];
+      const agents = [makeAgent('l1', 'lead'), makeAgent('w1', 'worker')];
       const context = makeContext(agents, {
         lead: ['l1'],
         worker: ['w1'],
@@ -454,10 +438,7 @@ describe('MessageRouter', () => {
 
   describe('routing rules', () => {
     it('uses topic-based routing rules', async () => {
-      const agents = [
-        makeAgent('l1', 'lead'),
-        makeAgent('w1', 'worker'),
-      ];
+      const agents = [makeAgent('l1', 'lead'), makeAgent('w1', 'worker')];
       const context = makeContext(agents, {
         lead: ['l1'],
         worker: ['w1'],
@@ -476,11 +457,7 @@ describe('MessageRouter', () => {
       const sendSpy = vi.fn();
       router.on('send_question', sendSpy);
 
-      await router.handleQuestion(
-        'w1',
-        'Design question',
-        'architecture'
-      );
+      await router.handleQuestion('w1', 'Design question', 'architecture');
 
       expect(sendSpy).toHaveBeenCalledWith(
         expect.objectContaining({ toAgentId: 'l1' })

@@ -4,11 +4,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { CodexAdapter, GeminiAdapter } from 'coding-agent-adapters';
 import { PTYConsoleBridge } from 'pty-console';
-import {
-  PTYManager,
-  type SessionHandle,
-  type SpawnConfig,
-} from 'pty-manager';
+import { PTYManager, type SessionHandle, type SpawnConfig } from 'pty-manager';
 
 type AgentType = 'codex' | 'gemini';
 

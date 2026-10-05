@@ -1,48 +1,46 @@
-export type { Confident, MaybeConfident, UncertainBounds } from './types';
+export type { ConsensusOptions, ConsensusResult } from './aggregate';
 export {
-  DEFAULT_BOUNDS,
-  DEFAULT_COALESCE_THRESHOLD,
-  isConfident,
-  clamp01,
-} from './types';
+  average,
+  averageConfidence,
+  consensus,
+  majorityVote,
+  synthesize,
+  weightedAverage,
+} from './aggregate';
 
 export type { PropOptions } from './core';
 export {
+  add,
+  and,
+  best,
   cf,
-  from,
-  conf,
-  val,
   chain,
   coalesce,
-  and,
-  or,
-  lift,
-  add,
-  sub,
-  mul,
+  conf,
   div,
   eq,
-  neq,
+  from,
+  gate,
   gt,
   gte,
+  lift,
   lt,
   lte,
-  best,
-  gate,
-  prop,
+  mul,
+  neq,
+  or,
   parseConfidenceMarker,
+  prop,
   stripAnsi,
+  sub,
+  val,
 } from './core';
-
-export type { UncertainHandlers } from './uncertain';
-export { uncertain, band } from './uncertain';
-
-export type { ConsensusOptions, ConsensusResult } from './aggregate';
+export type { Confident, MaybeConfident, UncertainBounds } from './types';
 export {
-  averageConfidence,
-  average,
-  weightedAverage,
-  synthesize,
-  majorityVote,
-  consensus,
-} from './aggregate';
+  clamp01,
+  DEFAULT_BOUNDS,
+  DEFAULT_COALESCE_THRESHOLD,
+  isConfident,
+} from './types';
+export type { UncertainHandlers } from './uncertain';
+export { band, uncertain } from './uncertain';

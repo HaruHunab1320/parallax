@@ -37,7 +37,10 @@ export class HttpClient {
           url,
           {
             method: options.method,
-            headers: { ...this.buildHeaders(options.body !== undefined), ...options.headers },
+            headers: {
+              ...this.buildHeaders(options.body !== undefined),
+              ...options.headers,
+            },
             body:
               options.body !== undefined
                 ? JSON.stringify(options.body)

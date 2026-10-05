@@ -63,8 +63,15 @@ const {
   };
 
   return {
-    mockCoreApi, mockAppsApi, mockCustomApi, mockKubeConfig, mockWatch, watchState,
-    MockCoreV1Api, MockAppsV1Api, MockCustomObjectsApi,
+    mockCoreApi,
+    mockAppsApi,
+    mockCustomApi,
+    mockKubeConfig,
+    mockWatch,
+    watchState,
+    MockCoreV1Api,
+    MockAppsV1Api,
+    MockCustomObjectsApi,
   };
 });
 
@@ -79,7 +86,10 @@ vi.mock('@kubernetes/client-node', () => ({
 // ── Imports ─────────────────────────────────────────────────────────────
 
 import type { Logger } from 'pino';
-import { AgentController, type ControllerOptions } from '../controllers/agent-controller';
+import {
+  AgentController,
+  type ControllerOptions,
+} from '../controllers/agent-controller';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -233,8 +243,7 @@ describe('AgentController', () => {
           body: expect.objectContaining({
             status: expect.objectContaining({
               phase: 'Ready',
-              endpoint:
-                'http://agent-abc-svc.test-ns.svc.cluster.local:8080',
+              endpoint: 'http://agent-abc-svc.test-ns.svc.cluster.local:8080',
             }),
           }),
         })
@@ -470,17 +479,13 @@ describe('AgentController', () => {
         key: 'anthropic-key',
       });
 
-      const openaiVar = envVars.find(
-        (e: any) => e.name === 'OPENAI_API_KEY'
-      );
+      const openaiVar = envVars.find((e: any) => e.name === 'OPENAI_API_KEY');
       expect(openaiVar?.valueFrom?.secretKeyRef).toEqual({
         name: 'my-secret',
         key: 'openai-key',
       });
 
-      const googleVar = envVars.find(
-        (e: any) => e.name === 'GOOGLE_API_KEY'
-      );
+      const googleVar = envVars.find((e: any) => e.name === 'GOOGLE_API_KEY');
       expect(googleVar?.valueFrom?.secretKeyRef).toEqual({
         name: 'my-secret',
         key: 'google-key',
@@ -518,9 +523,7 @@ describe('AgentController', () => {
       mockAppsApi.deleteNamespacedDeployment.mockRejectedValue(
         new Error('gone')
       );
-      mockCoreApi.deleteNamespacedService.mockRejectedValue(
-        new Error('gone')
-      );
+      mockCoreApi.deleteNamespacedService.mockRejectedValue(new Error('gone'));
 
       const controller = createController();
       await controller.start();

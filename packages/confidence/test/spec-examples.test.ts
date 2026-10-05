@@ -41,9 +41,9 @@ describe('prism-specs.md worked examples', () => {
       'claude-answer'
     );
     // All below threshold → cascade default
-    expect(
-      val(coalesce([cf('a', 0.1), cf('b', 0.2), 'unknown'], 0.5))
-    ).toBe('unknown');
+    expect(val(coalesce([cf('a', 0.1), cf('b', 0.2), 'unknown'], 0.5))).toBe(
+      'unknown'
+    );
   });
 
   it('parallel selection: model1 ~||> model2 ~||> model3', () => {

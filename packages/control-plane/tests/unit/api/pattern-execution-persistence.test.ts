@@ -10,13 +10,11 @@ function setup() {
     getNodeId: () => 'owner',
     getExecutionTimeout: () => 0,
     getExecution: vi.fn(),
-    executePattern: vi
-      .fn()
-      .mockResolvedValue({
-        id: 'canonical',
-        status: 'completed',
-        result: 'done',
-      }),
+    executePattern: vi.fn().mockResolvedValue({
+      id: 'canonical',
+      status: 'completed',
+      result: 'done',
+    }),
   };
   const database = {
     patterns: { findByName: vi.fn().mockResolvedValue({ id: 'pattern' }) },

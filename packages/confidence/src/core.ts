@@ -17,10 +17,10 @@
  */
 import {
   Confident,
-  MaybeConfident,
-  DEFAULT_COALESCE_THRESHOLD,
   clamp01,
+  DEFAULT_COALESCE_THRESHOLD,
   isConfident,
+  MaybeConfident,
 } from './types';
 
 /** Prism `x ~> c` — attach a confidence level to a value. */
@@ -64,7 +64,8 @@ export function coalesce<T>(
   xs: Array<MaybeConfident<T>>,
   threshold: number = DEFAULT_COALESCE_THRESHOLD
 ): Confident<T> {
-  if (xs.length === 0) throw new Error('coalesce() requires at least one value');
+  if (xs.length === 0)
+    throw new Error('coalesce() requires at least one value');
   for (const x of xs) {
     if (conf(x) >= threshold) return from(x);
   }

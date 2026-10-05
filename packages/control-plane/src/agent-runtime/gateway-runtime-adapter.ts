@@ -450,9 +450,10 @@ export class GatewayRuntimeAdapter extends EventEmitter {
       agentId,
       direction: 'inbound',
       type: 'response',
-      content: typeof result.value === 'string'
-        ? result.value
-        : JSON.stringify(result.value ?? ''),
+      content:
+        typeof result.value === 'string'
+          ? result.value
+          : JSON.stringify(result.value ?? ''),
       timestamp: new Date(),
       metadata: result.metadata,
     };

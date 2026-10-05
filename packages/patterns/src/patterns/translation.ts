@@ -81,9 +81,7 @@ export const translation: PatternModule = {
 
     // Quality check results
     const qualityPassed = qualityCheck ? payload(qualityCheck).passed : false;
-    const qualityScore = qualityCheck
-      ? payload(qualityCheck).overallScore
-      : 0;
+    const qualityScore = qualityCheck ? payload(qualityCheck).overallScore : 0;
     const qualityScores = qualityCheck ? payload(qualityCheck).scores : {};
     const qualityIssues = qualityCheck ? payload(qualityCheck).issues : [];
     const qualityStrengths = qualityCheck

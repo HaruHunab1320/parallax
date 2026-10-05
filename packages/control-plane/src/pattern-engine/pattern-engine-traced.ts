@@ -1,8 +1,11 @@
 import { PatternTracer } from '@parallaxai/telemetry';
-import type { PatternEngineServices, PatternExecutionOptions } from './interfaces';
+import type { Workspace } from '../workspace';
+import type {
+  PatternEngineServices,
+  PatternExecutionOptions,
+} from './interfaces';
 import { PatternEngine } from './pattern-engine';
 import type { Pattern, PatternExecution } from './types';
-import type { Workspace } from '../workspace';
 
 export class TracedPatternEngine extends PatternEngine {
   private tracer: PatternTracer;

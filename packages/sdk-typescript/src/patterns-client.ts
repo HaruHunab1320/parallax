@@ -16,7 +16,10 @@ import {
   type UploadPatternRequest,
   type UploadPatternResponse,
 } from '../generated/patterns';
-import { controlPlaneCredentials, controlPlaneMetadata } from './transport-security';
+import {
+  controlPlaneCredentials,
+  controlPlaneMetadata,
+} from './transport-security';
 
 export type PatternStreamHandlers = {
   onMessage?: (response: ExecutePatternResponse) => void;
@@ -32,7 +35,11 @@ export class PatternClient {
     credentials?: ChannelCredentials,
     options?: Partial<ClientOptions>
   ) {
-    this.client = new PatternServiceClient(address, controlPlaneCredentials(credentials), options);
+    this.client = new PatternServiceClient(
+      address,
+      controlPlaneCredentials(credentials),
+      options
+    );
   }
 
   execute(

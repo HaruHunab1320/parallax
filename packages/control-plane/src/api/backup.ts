@@ -5,7 +5,12 @@
  */
 
 import type { PrismaClient } from '@prisma/client';
-import { type NextFunction, type Request, type Response, Router } from 'express';
+import {
+  type NextFunction,
+  type Request,
+  type Response,
+  Router,
+} from 'express';
 import type { Logger } from 'pino';
 import type { AuditService } from '../audit/audit-service';
 import { createAuthMiddleware } from '../auth/auth-middleware';
@@ -41,7 +46,11 @@ export function createBackupRouter(
   const log = logger.child({ component: 'BackupAPI' });
 
   // Middleware to check enterprise license
-  const requireBackupFeature = (_req: Request, res: Response, next: NextFunction) => {
+  const requireBackupFeature = (
+    _req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       licenseEnforcer.requireFeature('backup_restore', 'Backup & Restore');
       next();
@@ -172,7 +181,10 @@ export function createBackupRouter(
       }
 
       log.info(
-        { userId: (req as any).user?.sub, totalRecords: backup.metadata.totalRecords },
+        {
+          userId: (req as any).user?.sub,
+          totalRecords: backup.metadata.totalRecords,
+        },
         'Database backup completed'
       );
 

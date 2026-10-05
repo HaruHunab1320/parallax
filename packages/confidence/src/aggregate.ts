@@ -4,8 +4,9 @@
  * majorityVote) plus the consensus math the .prism pattern library
  * re-implemented per pattern.
  */
-import { Confident, MaybeConfident } from './types';
+
 import { best, cf, conf, from, val } from './core';
+import { Confident, MaybeConfident } from './types';
 
 /** Mean confidence across results (0 for an empty list). */
 export function averageConfidence(xs: Array<MaybeConfident<unknown>>): number {
@@ -16,9 +17,7 @@ export function averageConfidence(xs: Array<MaybeConfident<unknown>>): number {
 /**
  * Mean of numeric results: mean value carrying mean confidence.
  */
-export function average(
-  xs: Array<MaybeConfident<number>>
-): Confident<number> {
+export function average(xs: Array<MaybeConfident<number>>): Confident<number> {
   if (xs.length === 0) return cf(0, 0);
   const mean = xs.reduce((sum: number, x) => sum + val(x), 0) / xs.length;
   return cf(mean, averageConfidence(xs));

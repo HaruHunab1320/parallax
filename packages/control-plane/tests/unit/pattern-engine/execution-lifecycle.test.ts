@@ -324,59 +324,59 @@ describe('execution lifecycle', () => {
     ).rejects.toThrow('already exists');
   });
 
-  it.each(['module', 'workflow'])(
-    'fails the %s execution when requested publication fails',
-    async (kind) => {
-      const finalize = vi
-        .fn()
-        .mockRejectedValue(new Error('provider unavailable after push'));
-      const engine = createEngine({
-        workspaceService: {
-          provision: async () => ({
-            id: 'ws',
-            path: '/tmp/ws',
-            repo: 'org/repo',
-            branch: { name: 'work', baseBranch: 'main' },
-          }),
-          finalize,
-        },
-        agentRuntimeService: {},
-      });
-      vi.mocked(engine.getPattern).mockReturnValue({
-        ...pattern,
-        workspace: { enabled: true, repo: 'org/repo', createPr: true },
-        ...(kind === 'workflow'
-          ? {
-              metadata: {
-                orgChart: true,
-                orgPattern: { workflow: { steps: [] } },
-              },
-            }
-          : {}),
-      });
-      vi.spyOn((engine as any).loader, 'getModule').mockReturnValue({
-        execute: async () => ({ value: 'done', confidence: 1 }),
-      });
-      vi.spyOn(WorkflowExecutor.prototype, 'execute').mockResolvedValue({
-        output: 'done',
-        metrics: { agentsUsed: 0, stepsExecuted: 0, durationMs: 1 },
-      } as any);
-      await expect(
-        engine.executePattern(
-          'test',
-          {},
-          { executionId: `publication-${kind}`, timeout: 0 }
-        )
-      ).rejects.toThrow('reconcile any push or pull request');
-      expect(finalize).toHaveBeenCalledOnce();
-      expect(engine.getExecution(`publication-${kind}`)).toMatchObject({
-        status: 'failed',
-        error: expect.stringContaining('provider unavailable'),
-      });
-      expect((engine as any).publicationStarted.size).toBe(0);
-      expect((engine as any).executionCleanupFailures.size).toBe(0);
-    }
-  );
+  it.each([
+    'module',
+    'workflow',
+  ])('fails the %s execution when requested publication fails', async (kind) => {
+    const finalize = vi
+      .fn()
+      .mockRejectedValue(new Error('provider unavailable after push'));
+    const engine = createEngine({
+      workspaceService: {
+        provision: async () => ({
+          id: 'ws',
+          path: '/tmp/ws',
+          repo: 'org/repo',
+          branch: { name: 'work', baseBranch: 'main' },
+        }),
+        finalize,
+      },
+      agentRuntimeService: {},
+    });
+    vi.mocked(engine.getPattern).mockReturnValue({
+      ...pattern,
+      workspace: { enabled: true, repo: 'org/repo', createPr: true },
+      ...(kind === 'workflow'
+        ? {
+            metadata: {
+              orgChart: true,
+              orgPattern: { workflow: { steps: [] } },
+            },
+          }
+        : {}),
+    });
+    vi.spyOn((engine as any).loader, 'getModule').mockReturnValue({
+      execute: async () => ({ value: 'done', confidence: 1 }),
+    });
+    vi.spyOn(WorkflowExecutor.prototype, 'execute').mockResolvedValue({
+      output: 'done',
+      metrics: { agentsUsed: 0, stepsExecuted: 0, durationMs: 1 },
+    } as any);
+    await expect(
+      engine.executePattern(
+        'test',
+        {},
+        { executionId: `publication-${kind}`, timeout: 0 }
+      )
+    ).rejects.toThrow('reconcile any push or pull request');
+    expect(finalize).toHaveBeenCalledOnce();
+    expect(engine.getExecution(`publication-${kind}`)).toMatchObject({
+      status: 'failed',
+      error: expect.stringContaining('provider unavailable'),
+    });
+    expect((engine as any).publicationStarted.size).toBe(0);
+    expect((engine as any).executionCleanupFailures.size).toBe(0);
+  });
 
   it('emits completion only after workers acknowledge cleanup', async () => {
     const stop = deferred<void>();

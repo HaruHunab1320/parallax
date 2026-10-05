@@ -146,8 +146,7 @@ export const websiteBuilder: PatternModule = {
       websiteQuality,
     ];
     const overallConfidence =
-      phaseConfidences.reduce((sum, c) => sum + c, 0) /
-      phaseConfidences.length;
+      phaseConfidences.reduce((sum, c) => sum + c, 0) / phaseConfidences.length;
 
     // NOTE: original called generateRecommendations(qaResults,
     // websiteQuality) — not available; recommendations are derived from

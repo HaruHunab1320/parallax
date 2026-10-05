@@ -88,16 +88,13 @@ describe('required evidence gates', () => {
     { oracles: [{ type: 'history' }], combine: 'product' },
     { type: 'agent', role: 'missing' },
     { type: 'agent', role: 'reviewer', optional: true },
-  ])(
-    'rejects unsupported or invalid policy before dispatch: %j',
-    async (verify) => {
-      const input = pattern(verify);
-      const { runtime, executor } = fixture();
-      expect(() => compileOrgPattern(input)).toThrow();
-      await expect(executor.execute(input, {})).rejects.toThrow();
-      expect(runtime.spawn).not.toHaveBeenCalled();
-    }
-  );
+  ])('rejects unsupported or invalid policy before dispatch: %j', async (verify) => {
+    const input = pattern(verify);
+    const { runtime, executor } = fixture();
+    expect(() => compileOrgPattern(input)).toThrow();
+    await expect(executor.execute(input, {})).rejects.toThrow();
+    expect(runtime.spawn).not.toHaveBeenCalled();
+  });
 
   it('does not register a YAML file with unknown verification', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'parallax-invalid-policy-'));
@@ -223,23 +220,23 @@ describe('required evidence gates', () => {
     expect(runtime.stop).toHaveBeenCalledTimes(2);
   });
 
-  it.each(['review', 'approve'] as const)(
-    'gates standalone %s rejection before the next step',
-    async (type) => {
-      const { runtime, executor } = fixture();
-      runtime.send.mockResolvedValue(response('VERDICT: reject'));
-      const input = pattern();
-      input.workflow.steps.unshift(
-        type === 'review'
-          ? { type, reviewer: 'reviewer', subject: 'candidate' }
-          : { type, approver: 'reviewer', subject: 'candidate' }
-      );
-      await expect(executor.execute(input, {})).rejects.toThrow(
-        'did not approve'
-      );
-      expect(runtime.send).toHaveBeenCalledTimes(1);
-    }
-  );
+  it.each([
+    'review',
+    'approve',
+  ] as const)('gates standalone %s rejection before the next step', async (type) => {
+    const { runtime, executor } = fixture();
+    runtime.send.mockResolvedValue(response('VERDICT: reject'));
+    const input = pattern();
+    input.workflow.steps.unshift(
+      type === 'review'
+        ? { type, reviewer: 'reviewer', subject: 'candidate' }
+        : { type, approver: 'reviewer', subject: 'candidate' }
+    );
+    await expect(executor.execute(input, {})).rejects.toThrow(
+      'did not approve'
+    );
+    expect(runtime.send).toHaveBeenCalledTimes(1);
+  });
 
   it('keeps an unavailable historical prior advisory', async () => {
     const { executor } = fixture();
@@ -250,17 +247,17 @@ describe('required evidence gates', () => {
 });
 
 describe('isolated command contract', () => {
-  it.each([false, true])(
-    'never executes local commands in production, even with dev opt-in %s',
-    async (allowLocalCommandVerification) => {
-      vi.stubEnv('NODE_ENV', 'production');
-      const { executor } = fixture({ allowLocalCommandVerification });
-      const input = pattern({ type: 'command', run: 'exit 0' });
-      await expect(executor.execute(input, {})).rejects.toThrow(
-        'requires an isolated commandVerifier'
-      );
-    }
-  );
+  it.each([
+    false,
+    true,
+  ])('never executes local commands in production, even with dev opt-in %s', async (allowLocalCommandVerification) => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const { executor } = fixture({ allowLocalCommandVerification });
+    const input = pattern({ type: 'command', run: 'exit 0' });
+    await expect(executor.execute(input, {})).rejects.toThrow(
+      'requires an isolated commandVerifier'
+    );
+  });
 
   it('requires explicit opt-in outside production too', async () => {
     vi.stubEnv('NODE_ENV', 'test');

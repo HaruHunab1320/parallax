@@ -42,12 +42,21 @@ vi.mock('@grpc/grpc-js', async (importOriginal) => ({
             (_deadline: number, cb: (err: Error | null) => void) => cb(null)
           ),
           register: vi.fn(
-            (_req: unknown, _metadata: unknown, cb: (err: Error | null, res: unknown) => void) =>
-              cb(null, { lease_id: 'test-lease' })
+            (
+              _req: unknown,
+              _metadata: unknown,
+              cb: (err: Error | null, res: unknown) => void
+            ) => cb(null, { lease_id: 'test-lease' })
           ),
-          unregister: vi.fn((_req: unknown, _metadata: unknown, cb: () => void) => cb()),
-          renew: vi.fn((_req: unknown, _metadata: unknown, cb: (err: Error | null) => void) =>
-            cb(null)
+          unregister: vi.fn(
+            (_req: unknown, _metadata: unknown, cb: () => void) => cb()
+          ),
+          renew: vi.fn(
+            (
+              _req: unknown,
+              _metadata: unknown,
+              cb: (err: Error | null) => void
+            ) => cb(null)
           ),
         })),
       },

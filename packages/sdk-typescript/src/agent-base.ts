@@ -4,7 +4,10 @@ import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import pino from 'pino';
 import { v4 as uuidv4 } from 'uuid';
-import { controlPlaneCredentials, controlPlaneMetadata } from './transport-security';
+import {
+  controlPlaneCredentials,
+  controlPlaneMetadata,
+} from './transport-security';
 import { type AgentResponse, ensureConfidence } from './types/agent-response';
 import type {
   GatewayThreadEvent,
@@ -243,7 +246,9 @@ export abstract class ParallaxAgent {
       ) => Promise<{ verified: boolean; error?: string }>;
     }
   ): Promise<number> {
-    const registryCredentials = controlPlaneCredentials(options?.registryCredentials);
+    const registryCredentials = controlPlaneCredentials(
+      options?.registryCredentials
+    );
     // Add ConfidenceAgent service implementation
     const verify = options?.verifyRequest;
     const wrapUnary =
@@ -326,7 +331,10 @@ export abstract class ParallaxAgent {
             );
             resolve(actualPort);
           } catch (regError) {
-            this.logger.error({ err: regError }, 'Failed to register with control plane');
+            this.logger.error(
+              { err: regError },
+              'Failed to register with control plane'
+            );
             // Still resolve - agent can work without registration
             resolve(actualPort);
           }
@@ -373,26 +381,36 @@ export abstract class ParallaxAgent {
     });
 
     return new Promise((resolve, reject) => {
-      this.registryClient.register(request, controlPlaneMetadata(), (error: any, response: any) => {
-        if (error) {
-          this.logger.error({
-            agentId: this.id,
-            endpoint,
-            message: error.message,
-            code: error.code,
-            details: error.details,
-          }, 'Agent registration failed');
-          reject(error);
-          return;
+      this.registryClient.register(
+        request,
+        controlPlaneMetadata(),
+        (error: any, response: any) => {
+          if (error) {
+            this.logger.error(
+              {
+                agentId: this.id,
+                endpoint,
+                message: error.message,
+                code: error.code,
+                details: error.details,
+              },
+              'Agent registration failed'
+            );
+            reject(error);
+            return;
+          }
+
+          this.logger.info(
+            { agentId: this.id },
+            `Agent ${this.name} registered with control plane`
+          );
+          this.leaseId = response.lease_id;
+
+          // Start lease renewal
+          this.startLeaseRenewal();
+          resolve();
         }
-
-        this.logger.info({ agentId: this.id }, `Agent ${this.name} registered with control plane`);
-        this.leaseId = response.lease_id;
-
-        // Start lease renewal
-        this.startLeaseRenewal();
-        resolve();
-      });
+      );
     });
   }
 
@@ -565,14 +583,15 @@ export abstract class ParallaxAgent {
     this.gatewayEndpoint = endpoint;
     this.gatewayOptions = options;
 
-    const credentials =
-      controlPlaneCredentials(options?.credentials);
+    const credentials = controlPlaneCredentials(options?.credentials);
     const heartbeatIntervalMs = options?.heartbeatIntervalMs || 10000;
 
     const client = new this.gatewayProto.AgentGateway(endpoint, credentials);
 
     // Open bidirectional stream
-    const stream = client.connect(controlPlaneMetadata(options?.metadata, options?.apiKey));
+    const stream = client.connect(
+      controlPlaneMetadata(options?.metadata, options?.apiKey)
+    );
     this.gatewayStream = stream;
 
     // Send AgentHello
@@ -617,7 +636,10 @@ export abstract class ParallaxAgent {
             `Agent ${this.name} connected via gateway (node: ${message.ack.assigned_node_id})`
           );
         } else {
-          this.logger.error({ agentId: this.id, reason: message.ack.message }, 'Gateway rejected agent');
+          this.logger.error(
+            { agentId: this.id, reason: message.ack.message },
+            'Gateway rejected agent'
+          );
           stream.end();
         }
       } else if (message.task_request) {
@@ -658,7 +680,10 @@ export abstract class ParallaxAgent {
         }
       } else if (message.cancel_task) {
         this.logger.info(
-          { taskId: message.cancel_task.task_id, reason: message.cancel_task.reason },
+          {
+            taskId: message.cancel_task.task_id,
+            reason: message.cancel_task.reason,
+          },
           `Task cancelled: ${message.cancel_task.task_id}`
         );
         // Cancellation support can be extended in subclasses
@@ -892,7 +917,10 @@ export abstract class ParallaxAgent {
     let attempt = 0;
     const reconnect = async () => {
       if (attempt >= maxAttempts) {
-        this.logger.error({ attempts: attempt }, `Gateway reconnect failed after ${attempt} attempts`);
+        this.logger.error(
+          { attempts: attempt },
+          `Gateway reconnect failed after ${attempt} attempts`
+        );
         this.gatewayReconnecting = false;
         return;
       }
@@ -900,7 +928,10 @@ export abstract class ParallaxAgent {
       const delay = Math.min(initialDelay * 2 ** attempt, maxDelay);
       attempt++;
 
-      this.logger.info({ delay, attempt }, `Gateway reconnecting in ${delay}ms (attempt ${attempt})...`);
+      this.logger.info(
+        { delay, attempt },
+        `Gateway reconnecting in ${delay}ms (attempt ${attempt})...`
+      );
       await new Promise((r) => setTimeout(r, delay));
 
       try {
@@ -963,9 +994,13 @@ export abstract class ParallaxAgent {
     if (this.registryClient && this.id) {
       try {
         await new Promise<void>((resolve) => {
-          this.registryClient.unregister({ id: this.uuid }, controlPlaneMetadata(), () => {
-            resolve();
-          });
+          this.registryClient.unregister(
+            { id: this.uuid },
+            controlPlaneMetadata(),
+            () => {
+              resolve();
+            }
+          );
         });
       } catch (error) {
         this.logger.error({ err: error }, 'Failed to unregister');

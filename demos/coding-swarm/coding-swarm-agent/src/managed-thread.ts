@@ -6,11 +6,11 @@
  * pty-manager-style events to GatewayThreadEvent/GatewayThreadStatusUpdate.
  */
 
-import { parseConfidenceMarker, stripAnsi } from '@parallaxai/sdk-typescript';
 import type {
   GatewayThreadEvent,
   GatewayThreadStatusUpdate,
 } from '@parallaxai/sdk-typescript';
+import { parseConfidenceMarker, stripAnsi } from '@parallaxai/sdk-typescript';
 import type { Logger } from 'pino';
 import type { TmuxManager } from 'tmux-manager';
 
@@ -152,9 +152,7 @@ export class ManagedThread {
       const turnConfidence = parseConfidenceMarker(turnOutput);
       this.emitEvent('turn_complete', {
         output: turnOutput,
-        ...(turnConfidence !== undefined
-          ? { confidence: turnConfidence }
-          : {}),
+        ...(turnConfidence !== undefined ? { confidence: turnConfidence } : {}),
       });
       this.emitStatus('running', 'Turn complete, ready for next input');
     });

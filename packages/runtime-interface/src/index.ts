@@ -4,7 +4,6 @@
  * Shared types and interfaces for agent runtimes.
  */
 
-
 // Adapter interface
 export {
   AdapterRegistry,
@@ -27,7 +26,12 @@ export {
   ThreadRuntimeProvider,
 } from './provider';
 export type { RuntimeCapabilities, RuntimeSecurityOptions } from './security';
-export { executionResourceName, isLoopbackHost, RUNTIME_API_KEY_HEADER, runtimeSecurity } from './security';
+export {
+  executionResourceName,
+  isLoopbackHost,
+  RUNTIME_API_KEY_HEADER,
+  runtimeSecurity,
+} from './security';
 // Types
 export {
   AgentConfig,

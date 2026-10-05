@@ -17,7 +17,10 @@ import {
   type WatchEvent,
   type WatchRequest,
 } from '../generated/registry';
-import { controlPlaneCredentials, controlPlaneMetadata } from './transport-security';
+import {
+  controlPlaneCredentials,
+  controlPlaneMetadata,
+} from './transport-security';
 
 export type RegistryWatchHandlers = {
   onEvent?: (event: WatchEvent) => void;
@@ -33,7 +36,11 @@ export class RegistryServiceClient {
     credentials?: ChannelCredentials,
     options?: Partial<ClientOptions>
   ) {
-    this.client = new RegistryClient(address, controlPlaneCredentials(credentials), options);
+    this.client = new RegistryClient(
+      address,
+      controlPlaneCredentials(credentials),
+      options
+    );
   }
 
   register(

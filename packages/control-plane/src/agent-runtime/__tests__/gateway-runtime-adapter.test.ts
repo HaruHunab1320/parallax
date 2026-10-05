@@ -5,8 +5,8 @@
 import { EventEmitter } from 'node:events';
 import type { SpawnThreadInput } from '@parallaxai/runtime-interface';
 import {
-  GatewayRuntimeAdapter,
   type GatewayAgentSessionInfo,
+  GatewayRuntimeAdapter,
   type GatewayServiceAdapter,
   type GatewayTaskResult,
   type GatewayThreadEventPayload,
@@ -162,9 +162,7 @@ describe('GatewayRuntimeAdapter', () => {
       const gateway = createMockGateway(agents);
       const adapter = new GatewayRuntimeAdapter(logger, gateway);
 
-      await adapter.spawnThread(
-        createSpawnInput({ agentType: '' as any })
-      );
+      await adapter.spawnThread(createSpawnInput({ agentType: '' as any }));
 
       expect(gateway.dispatchThreadSpawn).toHaveBeenCalledWith(
         'any-1',
@@ -240,7 +238,9 @@ describe('GatewayRuntimeAdapter', () => {
       const session = createMockSession({ agentId: 'pi-1' });
       const agents = new Map([['pi-1', session]]);
       const gateway = createMockGateway(agents);
-      (gateway.dispatchThreadSpawn as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (
+        gateway.dispatchThreadSpawn as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
         thread_id: 'thread-1',
         success: false,
         error_message: 'boot failed',
