@@ -20,6 +20,7 @@
       "env": ["NODE_ENV"]
     },
     "type-check": {
+      "dependsOn": ["^build"],
       "cache": false
     },
     "clean": {
