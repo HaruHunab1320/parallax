@@ -211,6 +211,18 @@ Acceptance:
 - A tagged release publishes a test package version with provenance; the tarball rebuilds byte-identically from the tag.
 - CI builds all eight Dockerfiles that the docs list.
 
+Found while executing 0.1, to fix in 0.3 or the phase noted:
+
+- `pty-manager` 1.12.1's ESM build uses `__dirname` in `ensure-pty` and the
+  worker path lookup, so `spawn()` throws `ReferenceError` for ESM
+  consumers. The `pty-console-agent-containers` demo's hook-marker test
+  reproduces it. Fix in the `pty-manager` repo with a patch release (0.3).
+- Four examples and three demos no longer build against the current SDK
+  (`analyze` signature, missing `connectViaGateway`/`serve` on subclasses).
+  CI excludes `examples/` and `demos/` as it did before; Phase 5 replaces
+  the examples with a tested consumer, Phase 10 labels or removes the rest.
+- `@parallaxai/patterns` has no tests; added to Phase 10.
+
 ### Phase 1 — threat model and gateway identity
 
 PRs: `docs/THREAT_MODEL.md` (assets, actors, boundaries, abuse cases, mitigations
