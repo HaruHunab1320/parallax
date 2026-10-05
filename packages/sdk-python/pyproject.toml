@@ -20,6 +20,9 @@ ruff = "^0.9.1"
 [tool.ruff]
 target-version = "py39"
 line-length = 88
+exclude = ["generated", "src/parallax/generated"]
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 
 [build-system]

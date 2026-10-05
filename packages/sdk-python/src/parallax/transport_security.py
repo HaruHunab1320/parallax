@@ -2,15 +2,18 @@
 
 import os
 import ssl
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+from typing import Optional
 
 import grpc
 
-Metadata = Sequence[Tuple[str, str]]
+Metadata = Sequence[tuple[str, str]]
 
 
-def control_plane_metadata(metadata: Optional[Metadata] = None, api_key: Optional[str] = None):
+def control_plane_metadata(
+    metadata: Optional[Metadata] = None, api_key: Optional[str] = None
+):
     """Preserve caller metadata; supply the environment key only when absent."""
     result = list(metadata or ())
     key = api_key if api_key is not None else os.getenv("PARALLAX_GRPC_API_KEY")

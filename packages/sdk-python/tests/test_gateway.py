@@ -1,7 +1,6 @@
 """Tests for gateway connection functionality."""
 
 import asyncio
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -97,9 +96,11 @@ class TestGatewayConnection:
 
         mock_channel = _make_async_channel()
 
-        with patch("parallax.agent.gateway_pb2_grpc") as mock_grpc, \
-             patch("parallax.agent.gateway_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel", return_value=mock_channel):
+        with (
+            patch("parallax.agent.gateway_pb2_grpc") as mock_grpc,
+            patch("parallax.agent.gateway_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel", return_value=mock_channel),
+        ):
             mock_grpc.AgentGatewayStub = mock_stub_cls
             mock_pb2.AgentToControlPlane = MagicMock()
             mock_pb2.AgentHello = MagicMock()
@@ -128,9 +129,11 @@ class TestGatewayConnection:
 
         mock_channel = _make_async_channel()
 
-        with patch("parallax.agent.gateway_pb2_grpc") as mock_grpc, \
-             patch("parallax.agent.gateway_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel", return_value=mock_channel):
+        with (
+            patch("parallax.agent.gateway_pb2_grpc") as mock_grpc,
+            patch("parallax.agent.gateway_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel", return_value=mock_channel),
+        ):
             mock_grpc.AgentGatewayStub = mock_stub_cls
             mock_pb2.AgentToControlPlane = MagicMock()
             mock_pb2.AgentHello = MagicMock()
@@ -151,9 +154,11 @@ class TestGatewayConnection:
 
         mock_channel = _make_async_channel()
 
-        with patch("parallax.agent.gateway_pb2_grpc") as mock_grpc, \
-             patch("parallax.agent.gateway_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel", return_value=mock_channel):
+        with (
+            patch("parallax.agent.gateway_pb2_grpc") as mock_grpc,
+            patch("parallax.agent.gateway_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel", return_value=mock_channel),
+        ):
             mock_grpc.AgentGatewayStub = mock_stub_cls
             mock_pb2.AgentToControlPlane = MagicMock()
             mock_pb2.AgentHello = MagicMock()
@@ -187,9 +192,11 @@ class TestGatewayConnection:
 
         mock_channel = _make_async_channel()
 
-        with patch("parallax.agent.gateway_pb2_grpc") as mock_grpc, \
-             patch("parallax.agent.gateway_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel", return_value=mock_channel):
+        with (
+            patch("parallax.agent.gateway_pb2_grpc") as mock_grpc,
+            patch("parallax.agent.gateway_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel", return_value=mock_channel),
+        ):
             mock_grpc.AgentGatewayStub = mock_stub_cls
             mock_pb2.AgentToControlPlane = MagicMock()
             mock_pb2.AgentHello = MagicMock()
@@ -218,9 +225,11 @@ class TestGatewayConnection:
 
         mock_channel = _make_async_channel()
 
-        with patch("parallax.agent.gateway_pb2_grpc") as mock_grpc, \
-             patch("parallax.agent.gateway_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel", return_value=mock_channel):
+        with (
+            patch("parallax.agent.gateway_pb2_grpc") as mock_grpc,
+            patch("parallax.agent.gateway_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel", return_value=mock_channel),
+        ):
             mock_grpc.AgentGatewayStub = mock_stub_cls
             mock_pb2.AgentToControlPlane = MagicMock()
             mock_pb2.AgentHello = MagicMock()

@@ -1,21 +1,21 @@
 """Type definitions for the Parallax Python SDK."""
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional
 
 
 @dataclass
 class AgentResult:
     """Result from an agent's analysis."""
-    
+
     value: Any
     confidence: float
     agent: str
     reasoning: Optional[str] = None
-    uncertainties: Optional[List[str]] = None
+    uncertainties: Optional[list[str]] = None
     timestamp: Optional[int] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         result = {
             "value": self.value,
@@ -34,14 +34,14 @@ class AgentResult:
 @dataclass
 class Capabilities:
     """Agent capabilities information."""
-    
+
     agent_id: str
     name: str
-    capabilities: List[str]
+    capabilities: list[str]
     expertise_level: float = 0.5
-    capability_scores: Optional[Dict[str, float]] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    capability_scores: Optional[dict[str, float]] = None
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         result = {
             "agent_id": self.agent_id,
@@ -57,14 +57,14 @@ class Capabilities:
 @dataclass
 class HealthStatus:
     """Agent health status."""
-    
+
     status: str  # 'healthy', 'unhealthy', 'degraded'
     message: Optional[str] = None
     last_check: Optional[str] = None
-    
+
     def is_healthy(self) -> bool:
         """Check if agent is healthy."""
-        return self.status == 'healthy'
+        return self.status == "healthy"
 
 
 @dataclass
@@ -82,7 +82,7 @@ class GatewayOptions:
 
     credentials: Optional[Any] = None
     api_key: Optional[str] = None
-    metadata: Optional[List[Tuple[str, str]]] = None
+    metadata: Optional[list[tuple[str, str]]] = None
     heartbeat_interval_ms: int = 10000
     auto_reconnect: bool = True
     max_reconnect_attempts: Optional[int] = None
@@ -91,4 +91,4 @@ class GatewayOptions:
 
 
 # Type alias for agent analyze return value
-AnalyzeResult = Tuple[Any, float]
+AnalyzeResult = tuple[Any, float]

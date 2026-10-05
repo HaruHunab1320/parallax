@@ -1,11 +1,11 @@
 """Pattern client for interacting with the Parallax PatternService."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import grpc
 
-from .transport_security import control_plane_channel, control_plane_metadata, Metadata
+from .transport_security import Metadata, control_plane_channel, control_plane_metadata
 
 try:
     import sys
@@ -46,8 +46,7 @@ class PatternClient:
     ):
         if not patterns_pb2_grpc:
             raise ImportError(
-                "Pattern proto files not generated. "
-                "Run generate-proto.sh first."
+                "Pattern proto files not generated. Run generate-proto.sh first."
             )
 
         self._channel = control_plane_channel(endpoint, credentials)
@@ -57,9 +56,9 @@ class PatternClient:
 
     async def list(
         self,
-        tags: Optional[List[str]] = None,
+        tags: Optional[list[str]] = None,
         include_definitions: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List available patterns.
 
         Args:
@@ -81,7 +80,7 @@ class PatternClient:
         self,
         name: str,
         version: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get a pattern by name.
 
         Args:
@@ -101,9 +100,9 @@ class PatternClient:
     async def execute(
         self,
         pattern_name: str,
-        input_data: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        input_data: Optional[dict[str, Any]] = None,
+        options: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """Execute a pattern.
 
         Args:
@@ -138,9 +137,9 @@ class PatternClient:
 
     async def upload(
         self,
-        pattern: Dict[str, Any],
+        pattern: dict[str, Any],
         overwrite: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Upload a new pattern.
 
         Args:

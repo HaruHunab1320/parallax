@@ -1,11 +1,12 @@
 """Execution client for interacting with the Parallax ExecutionService."""
 
 import logging
-from typing import Any, AsyncIterator, Dict, List, Optional
+from collections.abc import AsyncIterator
+from typing import Any, Optional
 
 import grpc
 
-from .transport_security import control_plane_channel, control_plane_metadata, Metadata
+from .transport_security import Metadata, control_plane_channel, control_plane_metadata
 
 try:
     import sys
@@ -45,8 +46,7 @@ class ExecutionClient:
     ):
         if not executions_pb2_grpc:
             raise ImportError(
-                "Execution proto files not generated. "
-                "Run generate-proto.sh first."
+                "Execution proto files not generated. Run generate-proto.sh first."
             )
 
         self._channel = control_plane_channel(endpoint, credentials)
@@ -54,7 +54,7 @@ class ExecutionClient:
 
         self._stub = executions_pb2_grpc.ExecutionServiceStub(self._channel)
 
-    async def get(self, execution_id: str) -> Dict[str, Any]:
+    async def get(self, execution_id: str) -> dict[str, Any]:
         """Get execution status by ID.
 
         Args:
@@ -74,7 +74,7 @@ class ExecutionClient:
         limit: int = 50,
         offset: int = 0,
         status: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """List executions.
 
         Args:
@@ -93,15 +93,11 @@ class ExecutionClient:
         )
         response = await self._stub.ListExecutions(request, metadata=self._metadata)
         return {
-            "executions": [
-                MessageToDict(e) for e in response.executions
-            ],
+            "executions": [MessageToDict(e) for e in response.executions],
             "total": response.total,
         }
 
-    async def stream_events(
-        self, execution_id: str
-    ) -> AsyncIterator[Dict[str, Any]]:
+    async def stream_events(self, execution_id: str) -> AsyncIterator[dict[str, Any]]:
         """Stream execution events as an async iterator.
 
         Args:

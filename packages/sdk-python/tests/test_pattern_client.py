@@ -1,7 +1,8 @@
 """Tests for PatternClient."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 class TestPatternClient:
@@ -10,9 +11,11 @@ class TestPatternClient:
     @pytest.mark.asyncio
     async def test_list_patterns(self):
         """list() should call ListPatterns and return dicts."""
-        with patch("parallax.pattern_client.patterns_pb2_grpc") as mock_grpc, \
-             patch("parallax.pattern_client.patterns_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel"):
+        with (
+            patch("parallax.pattern_client.patterns_pb2_grpc") as mock_grpc,
+            patch("parallax.pattern_client.patterns_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel"),
+        ):
             # Setup
             mock_pb2.ListPatternsRequest = MagicMock()
             mock_pattern = MagicMock()
@@ -38,9 +41,11 @@ class TestPatternClient:
     @pytest.mark.asyncio
     async def test_get_pattern(self):
         """get() should call GetPattern and return a dict."""
-        with patch("parallax.pattern_client.patterns_pb2_grpc") as mock_grpc, \
-             patch("parallax.pattern_client.patterns_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel"):
+        with (
+            patch("parallax.pattern_client.patterns_pb2_grpc") as mock_grpc,
+            patch("parallax.pattern_client.patterns_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel"),
+        ):
             mock_pb2.GetPatternRequest = MagicMock()
             mock_response = MagicMock()
             mock_stub = MagicMock()
@@ -62,11 +67,13 @@ class TestPatternClient:
     @pytest.mark.asyncio
     async def test_execute_pattern(self):
         """execute() should call ExecutePattern with input and options."""
-        with patch("parallax.pattern_client.patterns_pb2_grpc") as mock_grpc, \
-             patch("parallax.pattern_client.patterns_pb2") as mock_pb2, \
-             patch("parallax.pattern_client.struct_pb2") as mock_struct, \
-             patch("parallax.pattern_client.ParseDict") as mock_parse, \
-             patch("grpc.aio.insecure_channel"):
+        with (
+            patch("parallax.pattern_client.patterns_pb2_grpc") as mock_grpc,
+            patch("parallax.pattern_client.patterns_pb2") as mock_pb2,
+            patch("parallax.pattern_client.struct_pb2"),
+            patch("parallax.pattern_client.ParseDict"),
+            patch("grpc.aio.insecure_channel"),
+        ):
             mock_pb2.ExecutePatternRequest = MagicMock()
             mock_pb2.ExecutePatternRequest.Options = MagicMock()
             mock_response = MagicMock()
@@ -96,9 +103,11 @@ class TestPatternClient:
     @pytest.mark.asyncio
     async def test_upload_pattern(self):
         """upload() should call UploadPattern and return status."""
-        with patch("parallax.pattern_client.patterns_pb2_grpc") as mock_grpc, \
-             patch("parallax.pattern_client.patterns_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel"):
+        with (
+            patch("parallax.pattern_client.patterns_pb2_grpc") as mock_grpc,
+            patch("parallax.pattern_client.patterns_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel"),
+        ):
             mock_pb2.Pattern = MagicMock()
             mock_pb2.Pattern.Requirements = MagicMock()
             mock_pb2.UploadPatternRequest = MagicMock()
@@ -131,9 +140,11 @@ class TestPatternClient:
     @pytest.mark.asyncio
     async def test_close(self):
         """close() should close the gRPC channel."""
-        with patch("parallax.pattern_client.patterns_pb2_grpc") as mock_grpc, \
-             patch("parallax.pattern_client.patterns_pb2"), \
-             patch("grpc.aio.insecure_channel") as mock_channel_fn:
+        with (
+            patch("parallax.pattern_client.patterns_pb2_grpc") as mock_grpc,
+            patch("parallax.pattern_client.patterns_pb2"),
+            patch("grpc.aio.insecure_channel") as mock_channel_fn,
+        ):
             mock_channel = MagicMock()
             mock_channel.close = AsyncMock()
             mock_channel_fn.return_value = mock_channel

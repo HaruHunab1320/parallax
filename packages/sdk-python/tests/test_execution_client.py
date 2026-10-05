@@ -1,7 +1,8 @@
 """Tests for ExecutionClient."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 class TestExecutionClient:
@@ -10,9 +11,11 @@ class TestExecutionClient:
     @pytest.mark.asyncio
     async def test_get_execution(self):
         """get() should call GetExecution and return a dict."""
-        with patch("parallax.execution_client.executions_pb2_grpc") as mock_grpc, \
-             patch("parallax.execution_client.executions_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel"):
+        with (
+            patch("parallax.execution_client.executions_pb2_grpc") as mock_grpc,
+            patch("parallax.execution_client.executions_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel"),
+        ):
             mock_pb2.GetExecutionRequest = MagicMock()
             mock_response = MagicMock()
             mock_stub = MagicMock()
@@ -39,9 +42,11 @@ class TestExecutionClient:
     @pytest.mark.asyncio
     async def test_list_executions(self):
         """list() should call ListExecutions and return results."""
-        with patch("parallax.execution_client.executions_pb2_grpc") as mock_grpc, \
-             patch("parallax.execution_client.executions_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel"):
+        with (
+            patch("parallax.execution_client.executions_pb2_grpc") as mock_grpc,
+            patch("parallax.execution_client.executions_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel"),
+        ):
             mock_pb2.ListExecutionsRequest = MagicMock()
             mock_exec = MagicMock()
             mock_response = MagicMock()
@@ -68,9 +73,11 @@ class TestExecutionClient:
     @pytest.mark.asyncio
     async def test_stream_events(self):
         """stream_events() should yield events as dicts."""
-        with patch("parallax.execution_client.executions_pb2_grpc") as mock_grpc, \
-             patch("parallax.execution_client.executions_pb2") as mock_pb2, \
-             patch("grpc.aio.insecure_channel"):
+        with (
+            patch("parallax.execution_client.executions_pb2_grpc") as mock_grpc,
+            patch("parallax.execution_client.executions_pb2") as mock_pb2,
+            patch("grpc.aio.insecure_channel"),
+        ):
             mock_pb2.StreamExecutionRequest = MagicMock()
 
             mock_event = MagicMock()
@@ -79,9 +86,7 @@ class TestExecutionClient:
                 yield mock_event
 
             mock_stub = MagicMock()
-            mock_stub.StreamExecution = MagicMock(
-                return_value=_async_iter()
-            )
+            mock_stub.StreamExecution = MagicMock(return_value=_async_iter())
             mock_grpc.ExecutionServiceStub.return_value = mock_stub
 
             from parallax.execution_client import ExecutionClient
@@ -104,9 +109,11 @@ class TestExecutionClient:
     @pytest.mark.asyncio
     async def test_close(self):
         """close() should close the gRPC channel."""
-        with patch("parallax.execution_client.executions_pb2_grpc") as mock_grpc, \
-             patch("parallax.execution_client.executions_pb2"), \
-             patch("grpc.aio.insecure_channel") as mock_channel_fn:
+        with (
+            patch("parallax.execution_client.executions_pb2_grpc") as mock_grpc,
+            patch("parallax.execution_client.executions_pb2"),
+            patch("grpc.aio.insecure_channel") as mock_channel_fn,
+        ):
             mock_channel = MagicMock()
             mock_channel.close = AsyncMock()
             mock_channel_fn.return_value = mock_channel
