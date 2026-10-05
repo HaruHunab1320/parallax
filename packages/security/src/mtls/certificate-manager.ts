@@ -2,6 +2,7 @@
  * Certificate Manager for mTLS authentication
  */
 
+import { X509Certificate } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as forge from 'node-forge';
@@ -297,17 +298,19 @@ export class CertificateManager {
     }
 
     try {
-      const cert = forge.pki.certificateFromPem(certificatePem);
+      // Verify with Node's X.509 implementation rather than node-forge, whose
+      // RSA PKCS#1 v1.5 signature verification is affected by
+      // GHSA-86w9-cpqp-85rv. node-forge is only used to issue certificates.
+      const cert = new X509Certificate(certificatePem);
+      const ca = new X509Certificate(forge.pki.certificateToPem(this.caCert));
 
-      // Create CA store
-      const caStore = forge.pki.createCaStore([this.caCert]);
-
-      // Verify certificate
-      forge.pki.verifyCertificateChain(caStore, [cert]);
+      if (!cert.checkIssued(ca) || !cert.verify(ca.publicKey)) {
+        return false;
+      }
 
       // Check validity period
       const now = new Date();
-      if (now < cert.validity.notBefore || now > cert.validity.notAfter) {
+      if (now < new Date(cert.validFrom) || now > new Date(cert.validTo)) {
         return false;
       }
 

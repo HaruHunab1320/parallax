@@ -83,14 +83,36 @@ describe('CertificateManager', () => {
   });
 
   describe('verifyCertificate', () => {
-    it('should return boolean for CA-signed certificate', async () => {
+    it('should accept a certificate issued by the CA', async () => {
       const certSet = await manager.generateCertificate({
         commonName: 'verify-test',
       });
-      const valid = await manager.verifyCertificate(certSet.certificate);
-      // verifyCertificateChain may have strict extension requirements
-      // The important thing is that it returns a boolean and doesn't throw
-      expect(typeof valid).toBe('boolean');
+      await expect(manager.verifyCertificate(certSet.certificate)).resolves.toBe(
+        true
+      );
+    });
+
+    it('should reject a certificate whose issuer name matches but key does not', async () => {
+      const forge = await import('node-forge');
+      const caSubject = forge.pki
+        .certificateFromPem(
+          (await manager.generateCertificate({ commonName: 'probe' }))
+            .caCertificate as string
+        )
+        .subject.attributes.map((a) => ({ name: a.name, value: a.value }));
+      const keys = forge.pki.rsa.generateKeyPair(2048);
+      const cert = forge.pki.createCertificate();
+      cert.publicKey = keys.publicKey;
+      cert.serialNumber = '42';
+      cert.validity.notBefore = new Date(Date.now() - 60_000);
+      cert.validity.notAfter = new Date(Date.now() + 86_400_000);
+      cert.setSubject([{ name: 'commonName', value: 'impostor' }]);
+      cert.setIssuer(caSubject);
+      cert.sign(keys.privateKey, forge.md.sha256.create());
+
+      await expect(
+        manager.verifyCertificate(forge.pki.certificateToPem(cert))
+      ).resolves.toBe(false);
     });
 
     it('should reject self-signed certificate not from CA', async () => {
