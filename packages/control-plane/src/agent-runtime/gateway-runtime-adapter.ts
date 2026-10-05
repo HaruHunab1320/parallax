@@ -101,7 +101,12 @@ export interface GatewayServiceAdapter {
 
   dispatchTask(
     agentId: string,
-    request: { task_id: string; task_description: string; data?: unknown },
+    request: {
+      description: string;
+      data?: unknown;
+      metadata?: Record<string, unknown>;
+      patternName?: string;
+    },
     timeout?: number
   ): Promise<GatewayTaskResult>;
 
@@ -436,10 +441,7 @@ export class GatewayRuntimeAdapter extends EventEmitter {
     const taskId = uuidv4();
     const result = await this.gateway.dispatchTask(
       agentId,
-      {
-        task_id: taskId,
-        task_description: message,
-      },
+      { description: message },
       options?.timeout
     );
 

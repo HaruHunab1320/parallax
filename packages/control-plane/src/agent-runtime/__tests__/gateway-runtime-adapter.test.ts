@@ -593,4 +593,23 @@ describe('GatewayRuntimeAdapter', () => {
       expect(handle).toBeNull();
     });
   });
+
+  describe('send (agent task)', () => {
+    it('dispatches the message as the gateway task description', async () => {
+      const agents = new Map([['a1', createMockSession({ agentId: 'a1' })]]);
+      const gateway = createMockGateway(agents);
+      const adapter = new GatewayRuntimeAdapter(logger, gateway);
+
+      const reply = await adapter.send('a1', 'summarize the diff', {
+        timeout: 5000,
+      });
+
+      expect(gateway.dispatchTask).toHaveBeenCalledWith(
+        'a1',
+        { description: 'summarize the diff' },
+        5000
+      );
+      expect(reply?.content).toBe('result');
+    });
+  });
 });
