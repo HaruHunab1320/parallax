@@ -80,16 +80,21 @@ For the deeper architecture docs, start here:
 
 ### Prerequisites
 
-- Node.js `>= 18`
-- `pnpm >= 10.11.0`
+- Node.js 24 (the exact version is in `.nvmrc`)
+- pnpm 10.11.0 (pinned by `packageManager`; `corepack enable` picks it up)
 - Docker for local infrastructure
 
-### Install
+### Install and verify
 
 ```bash
-pnpm install
-pnpm build
+pnpm install --frozen-lockfile
+pnpm verify
 ```
+
+`pnpm verify` builds every package and runs Biome, ESLint, buf lint,
+typechecking and unit tests, the same checks CI runs on macOS and Linux.
+`pnpm verify:python` checks the Python SDK, and `pnpm test:db:isolated`
+runs the Postgres and etcd integration suite in throwaway containers.
 
 ### Start the platform
 

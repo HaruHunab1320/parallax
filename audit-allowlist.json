@@ -1,0 +1,23 @@
+{
+  "$comment": "High/critical production advisories that cannot be fixed yet. Each entry needs a reason it is unreachable or acceptable and a revisit date; scripts/audit/audit-gate.mjs fails on expired, unused or missing entries. See docs/DEPENDENCY_AUDIT.md.",
+  "advisories": [
+    {
+      "id": "GHSA-86w9-cpqp-85rv",
+      "package": "node-forge",
+      "reason": "No patched release. The flaw is in RSA PKCS#1 v1.5 signature verification. @parallaxai/security now verifies certificates with node:crypto X509Certificate and uses node-forge only to generate keys and sign certificates, so the vulnerable verification path is not called. Replacing node-forge is planned in Phase 3.",
+      "revisit": "2026-11-05"
+    },
+    {
+      "id": "GHSA-ch52-4w7c-c8xp",
+      "package": "http-cache-semantics",
+      "reason": "No patched release. Reached only through Docusaurus's CLI update-notifier in apps/docs, at docs build time on CI or a developer machine. Not part of any runtime image or published package, and the build does not serve cached responses to other users.",
+      "revisit": "2026-11-05"
+    },
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "reason": "No patched release. Reached only through Docusaurus's webpack copy plugin in apps/docs at build time, expanding glob patterns written in this repository. Not part of any runtime image or published package.",
+      "revisit": "2026-11-05"
+    }
+  ]
+}
