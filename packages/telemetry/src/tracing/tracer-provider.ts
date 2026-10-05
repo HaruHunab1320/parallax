@@ -9,13 +9,15 @@ import {
 } from '@opentelemetry/core';
 import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
-import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { GrpcInstrumentation } from '@opentelemetry/instrumentation-grpc';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
 import { JaegerPropagator } from '@opentelemetry/propagator-jaeger';
-import { Resource } from '@opentelemetry/resources';
+import {
+  defaultResource,
+  resourceFromAttributes,
+} from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import {
   ParentBasedSampler,
@@ -24,7 +26,6 @@ import {
 import {
   BatchSpanProcessor,
   ConsoleSpanExporter,
-  NodeTracerProvider,
   SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-node';
 import {
@@ -49,7 +50,6 @@ export interface TracingConfig {
 
 export class TracerProvider {
   private sdk?: NodeSDK;
-  private provider?: NodeTracerProvider;
 
   constructor(
     private config: TracingConfig,
@@ -66,8 +66,8 @@ export class TracerProvider {
     );
 
     // Create resource
-    const resource = Resource.default().merge(
-      new Resource({
+    const resource = defaultResource().merge(
+      resourceFromAttributes({
         [ATTR_SERVICE_NAME]: this.config.serviceName,
         [ATTR_SERVICE_VERSION]: this.config.serviceVersion || '0.1.0',
         [ATTR_SERVICE_INSTANCE_ID]:
@@ -79,39 +79,32 @@ export class TracerProvider {
       })
     );
 
-    // Create tracer provider
-    this.provider = new NodeTracerProvider({
-      resource,
-      sampler: new ParentBasedSampler({
-        root: new TraceIdRatioBasedSampler(this.config.samplingRatio || 1.0),
-      }),
-    });
-
-    // Configure exporter
+    // One SDK owns registration, processors, instrumentation, and shutdown.
     const exporter = this.createExporter();
-    if (exporter) {
-      if (this.config.debug) {
-        this.provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
-      } else {
-        this.provider.addSpanProcessor(new BatchSpanProcessor(exporter));
-      }
+    const samplingRatio = this.config.samplingRatio ?? 1.0;
+    if (
+      !Number.isFinite(samplingRatio) ||
+      samplingRatio < 0 ||
+      samplingRatio > 1
+    ) {
+      throw new Error('Tracing samplingRatio must be between 0 and 1');
     }
-
-    // Register provider
-    this.provider.register({
-      propagator: this.createPropagator(),
-    });
-
-    // Register instrumentations
-    this.registerInstrumentations();
-
-    // Create SDK for graceful shutdown
     this.sdk = new NodeSDK({
       resource,
+      sampler: new ParentBasedSampler({
+        root: new TraceIdRatioBasedSampler(samplingRatio),
+      }),
+      textMapPropagator: this.createPropagator(),
+      spanProcessors: exporter
+        ? [
+            this.config.debug
+              ? new SimpleSpanProcessor(exporter)
+              : new BatchSpanProcessor(exporter),
+          ]
+        : [],
       instrumentations: this.getInstrumentations(),
     });
-
-    await this.sdk.start();
+    this.sdk.start();
 
     this.logger.info('OpenTelemetry tracing initialized');
   }
@@ -124,9 +117,6 @@ export class TracerProvider {
       case 'otlp':
         return new OTLPTraceExporter({
           url: this.config.endpoint || 'http://localhost:4317',
-          headers: {
-            'x-service-name': this.config.serviceName,
-          },
         });
 
       case 'jaeger':
@@ -180,15 +170,6 @@ export class TracerProvider {
   }
 
   /**
-   * Register instrumentations
-   */
-  private registerInstrumentations(): void {
-    registerInstrumentations({
-      instrumentations: this.getInstrumentations(),
-    });
-  }
-
-  /**
    * Get instrumentations
    */
   private getInstrumentations() {
@@ -201,7 +182,7 @@ export class TracerProvider {
           if ('headers' in request) {
             span.setAttributes({
               'http.request.body.size':
-                (request as any).headers['content-length'] || 0,
+                Number(request.headers['content-length']) || 0,
             });
           }
         },
@@ -348,8 +329,9 @@ export async function initializeTracing(
     return globalTracer;
   }
 
-  globalTracer = new TracerProvider(config, logger);
-  await globalTracer.initialize();
+  const tracer = new TracerProvider(config, logger);
+  await tracer.initialize();
+  globalTracer = tracer;
 
   return globalTracer;
 }

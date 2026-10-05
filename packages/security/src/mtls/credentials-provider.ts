@@ -6,7 +6,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as grpc from '@grpc/grpc-js';
 import type { Logger } from 'pino';
-import { CertificateManager } from './certificate-manager';
+import { CertificateManager, type CertificateSet } from './certificate-manager';
 
 export interface MTLSConfig {
   enabled: boolean;
@@ -40,7 +40,7 @@ export class MTLSCredentialsProvider {
     }
 
     try {
-      let certSet;
+      let certSet: CertificateSet;
 
       if (this.config.certFile && this.config.keyFile) {
         // Use provided certificates
@@ -58,9 +58,10 @@ export class MTLSCredentialsProvider {
           certSet =
             await this.certificateManager.loadCertificateSet(serviceName);
         } catch (_error) {
-          this.logger.info('Generating new certificate for service', {
-            serviceName,
-          });
+          this.logger.info(
+            { serviceName },
+            'Generating new certificate for service'
+          );
 
           // Initialize CA if needed
           await this.certificateManager.initializeCA({
@@ -139,7 +140,7 @@ export class MTLSCredentialsProvider {
     }
 
     try {
-      let certSet;
+      let certSet: CertificateSet;
 
       if (this.config.certFile && this.config.keyFile) {
         // Use provided certificates
@@ -157,9 +158,10 @@ export class MTLSCredentialsProvider {
           certSet =
             await this.certificateManager.loadCertificateSet(clientName);
         } catch (_error) {
-          this.logger.info('Generating new certificate for client', {
-            clientName,
-          });
+          this.logger.info(
+            { clientName },
+            'Generating new certificate for client'
+          );
 
           // Initialize CA if needed
           await this.certificateManager.initializeCA({

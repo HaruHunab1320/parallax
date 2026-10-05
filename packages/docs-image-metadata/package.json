@@ -1,0 +1,21 @@
+{
+  "name": "@parallaxai/docs-image-metadata",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bounded image metadata adapter for the Docusaurus MDX loader",
+  "main": "from-file.cjs",
+  "exports": {
+    ".": "./from-file.cjs",
+    "./fromFile": "./from-file.cjs"
+  },
+  "scripts": {
+    "build": "node --check from-file.cjs",
+    "test": "node --test test/*.test.cjs"
+  },
+  "dependencies": {
+    "sharp": "^0.35.4"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  }
+}

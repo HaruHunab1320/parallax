@@ -12,19 +12,19 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "jsonwebtoken": "^9.0.2",
-    "bcrypt": "^5.1.1",
-    "express": "^4.21.2",
+    "bcrypt": "^6.0.0",
+    "express": "^4.22.2",
     "express-jwt": "^8.5.1",
-    "jwks-rsa": "^3.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "jwks-rsa": "^3.2.2",
     "openid-client": "^5.7.1",
-    "pino": "^9.5.0",
-    "uuid": "^11.0.3"
+    "pino": "^9.14.0",
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^9.0.8",
-    "@types/bcrypt": "^5.0.2",
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.8",
     "@types/node": "^22.14.1",
     "@types/uuid": "^10.0.0",
     "typescript": "^5.7.2",

@@ -10,8 +10,8 @@
     "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
-    "@parallaxai/sdk-typescript": "^0.1.0",
-    "express": "^4.21.2"
+    "@parallaxai/sdk-typescript": "workspace:*",
+    "express": "^4.22.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

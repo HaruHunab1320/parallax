@@ -9,16 +9,16 @@
     "dev": "tsc --watch",
     "test": "vitest",
     "clean": "rm -rf dist",
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint src",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@grpc/grpc-js": "^1.14.5",
+    "@grpc/proto-loader": "^0.7.15",
+    "@influxdata/influxdb-client": "^1.35.0",
     "@parallaxai/runtime": "workspace:*",
-    "@grpc/grpc-js": "^1.12.4",
-    "@grpc/proto-loader": "^0.7.13",
     "circuit-breaker-js": "^0.0.1",
-    "pino": "^9.5.0",
-    "@influxdata/influxdb-client": "^1.35.0"
+    "pino": "^9.14.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

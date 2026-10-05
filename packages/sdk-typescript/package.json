@@ -9,31 +9,31 @@
     "dev": "tsc --watch",
     "test": "vitest",
     "clean": "rm -rf dist generated",
-    "lint": "eslint src/**/*.ts && buf lint",
+    "lint": "eslint src && buf lint",
     "type-check": "tsc --noEmit",
     "generate": "./generate-proto.sh"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "^1.10.0",
-    "@grpc/grpc-js": "^1.12.4",
-    "@grpc/proto-loader": "^0.7.13",
+    "@bufbuild/protobuf": "^1.10.1",
+    "@grpc/grpc-js": "^1.14.5",
+    "@grpc/proto-loader": "^0.7.15",
     "@parallaxai/confidence": "workspace:*",
     "google-protobuf": "^3.21.4",
-    "pino": "^9.6.0",
-    "uuid": "^9.0.0"
+    "pino": "^9.14.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/pino": "^7.0.5",
     "@bufbuild/buf": "^1.50.0",
     "@protobuf-ts/plugin": "^2.11.1",
     "@protobuf-ts/protoc": "^2.11.1",
     "@types/google-protobuf": "^3.15.12",
     "@types/node": "^22.14.1",
+    "@types/pino": "^7.0.5",
     "@types/uuid": "^10.0.0",
     "grpc-tools": "^1.12.4",
     "grpc_tools_node_protoc_ts": "^5.3.3",
     "ts-proto": "^2.7.5",
-    "typescript": "^5.7.2",
+    "typescript": "^5.9.3",
     "vitest": "^2.1.7"
   },
   "peerDependencies": {

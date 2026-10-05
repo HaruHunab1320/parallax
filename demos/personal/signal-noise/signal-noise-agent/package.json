@@ -17,11 +17,11 @@
     "demo:full": "tsx src/demo.ts full"
   },
   "dependencies": {
-    "@parallaxai/sdk-typescript": "workspace:*",
-    "@parallaxai/client": "workspace:*",
     "@google/generative-ai": "^0.21.0",
-    "@grpc/grpc-js": "^1.12.4",
-    "express": "^4.21.2"
+    "@grpc/grpc-js": "^1.14.5",
+    "@parallaxai/client": "workspace:*",
+    "@parallaxai/sdk-typescript": "workspace:*",
+    "express": "^4.22.2"
   },
   "optionalDependencies": {
     "rpio": "^2.4.2",

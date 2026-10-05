@@ -9,6 +9,9 @@ const config: Config = {
 
   future: {
     v4: true,
+    // v4 turns on the Rspack/SWC bundler, which needs @docusaurus/faster and
+    // its native toolchain. Keep the webpack bundler until we adopt it.
+    faster: false,
   },
 
   url: 'https://docs.parallaxai.dev',

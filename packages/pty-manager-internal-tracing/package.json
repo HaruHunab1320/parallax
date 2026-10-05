@@ -61,7 +61,7 @@
   },
   "homepage": "https://github.com/HaruHunab1320/parallax/tree/main/packages/pty-manager-internal-tracing#readme",
   "dependencies": {
-    "node-pty": "^1.0.0",
+    "node-pty": "^1.1.0",
     "pty-state-capture": "^0.2.1"
   },
   "devDependencies": {

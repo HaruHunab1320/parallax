@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@parallaxai/sdk-typescript": "workspace:*",
-    "pino": "^9.6.0"
+    "pino": "^9.14.0"
   },
   "devDependencies": {
-    "@grpc/grpc-js": "^1.12.6",
+    "@grpc/grpc-js": "^1.14.5",
     "@types/node": "^22.14.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
