@@ -7,6 +7,16 @@ import crypto from 'node:crypto';
 export const LICENSE_PUBLIC_KEY_B64 =
   'MCowBQYDK2VwAyEAosfzTO5t+wf+hqAgzpAXVwYatf/PJ/9qV1Cuf/mtLg8=';
 
+// This credential was exposed in the deployment values before 9be347c.
+// Retain only its fingerprint; updated builds must never accept it again.
+export const REVOKED_LICENSE_FINGERPRINTS = new Set([
+  '6569f2a93539823c09282db02af5304fe3ce7ab99e2f048c70fea031740c6b17',
+]);
+
+export function licenseFingerprint(key: string): string {
+  return crypto.createHash('sha256').update(key).digest('hex');
+}
+
 export interface LicensePayload {
   iss: string;
   v: number;
@@ -16,6 +26,7 @@ export interface LicensePayload {
   iat: number;
   exp: number;
   cluster?: string;
+  jti?: string;
 }
 
 export type VerifyResult =
@@ -34,6 +45,11 @@ export function verifyLicenseKey(
   key: string,
   publicKeyB64?: string
 ): VerifyResult {
+  // Canonical encoding prevents bypassing fingerprint revocation by adding
+  // base64 padding or alternate encodings of the same signature bytes.
+  if (key.length > 16384 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(key)) {
+    return { valid: false, reason: 'Invalid license key format' };
+  }
   const parts = key.split('.');
   if (parts.length !== 2) {
     return {
@@ -49,6 +65,29 @@ export function verifyLicenseKey(
       valid: false,
       reason: 'Invalid license key format: empty payload or signature',
     };
+  }
+
+  if (
+    Buffer.from(signatureB64, 'base64url').toString('base64url') !==
+    signatureB64
+  ) {
+    return { valid: false, reason: 'Invalid signature encoding' };
+  }
+  const configuredRevocations = (
+    process.env.PARALLAX_LICENSE_REVOKED_SHA256 || ''
+  )
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  if (configuredRevocations.some((value) => !/^[a-f0-9]{64}$/.test(value))) {
+    return { valid: false, reason: 'Invalid license revocation configuration' };
+  }
+  const fingerprint = licenseFingerprint(key);
+  if (
+    REVOKED_LICENSE_FINGERPRINTS.has(fingerprint) ||
+    configuredRevocations.includes(fingerprint)
+  ) {
+    return { valid: false, reason: 'License has been revoked' };
   }
 
   // Decode and import the public key
@@ -91,6 +130,9 @@ export function verifyLicenseKey(
     return { valid: false, reason: 'Invalid payload encoding' };
   }
 
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { valid: false, reason: 'Invalid payload object' };
+  }
   if (payload.iss !== 'parallax') {
     return { valid: false, reason: `Invalid issuer: ${payload.iss}` };
   }

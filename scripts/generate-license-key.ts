@@ -17,6 +17,7 @@
  *   --sub <id>             Subject/organization ID
  *   --expiry <date>        ISO date (e.g., 2027-12-31) or "perpetual"
  *   --cluster <id>         Optional cluster ID
+ *   --output <path>        Write the credential to a new mode-0600 file without printing it
  */
 
 import crypto from 'crypto';
@@ -64,6 +65,7 @@ const { values } = parseArgs({
     sub: { type: 'string' },
     expiry: { type: 'string' },
     cluster: { type: 'string' },
+    output: { type: 'string' },
   },
 });
 
@@ -119,6 +121,7 @@ const payload: Record<string, unknown> = {
   sub,
   iat: Math.floor(Date.now() / 1000),
   exp,
+  jti: crypto.randomUUID(),
 };
 
 if (values.cluster) {
@@ -135,7 +138,9 @@ const signatureB64 = signature.toString('base64url');
 
 const licenseKey = `${payloadB64}.${signatureB64}`;
 
-console.log('=== Signed License Key ===\n');
-console.log(licenseKey);
-console.log(`\nPayload: ${JSON.stringify(payload, null, 2)}`);
-console.log(`\nLength: ${licenseKey.length} chars`);
+if (values.output) {
+  fs.writeFileSync(values.output, `${licenseKey}\n`, { mode: 0o600, flag: 'wx' });
+  console.log(`License saved to ${path.resolve(values.output)}`);
+} else {
+  console.log(licenseKey);
+}

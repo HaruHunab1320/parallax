@@ -1,6 +1,11 @@
 import crypto from 'node:crypto';
-import { describe, expect, it, vi } from 'vitest';
-import { type LicensePayload, verifyLicenseKey } from '../license-keys';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  type LicensePayload,
+  licenseFingerprint,
+  REVOKED_LICENSE_FINGERPRINTS,
+  verifyLicenseKey,
+} from '../license-keys';
 
 // Generate a test keypair for all tests
 const keypair = crypto.generateKeyPairSync('ed25519');
@@ -33,6 +38,83 @@ function makePayload(
 }
 
 describe('verifyLicenseKey', () => {
+  describe('revocation and canonical encoding', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('keeps the previously committed credential revoked', () => {
+      expect(REVOKED_LICENSE_FINGERPRINTS.size).toBeGreaterThan(0);
+      for (const fingerprint of REVOKED_LICENSE_FINGERPRINTS) {
+        expect(fingerprint).toMatch(/^[a-f0-9]{64}$/);
+      }
+    });
+
+    it('rejects a key revoked through PARALLAX_LICENSE_REVOKED_SHA256', () => {
+      const key = signPayload(makePayload());
+      expect(verifyLicenseKey(key, publicKeyB64).valid).toBe(true);
+      vi.stubEnv(
+        'PARALLAX_LICENSE_REVOKED_SHA256',
+        ` ${licenseFingerprint(key).toUpperCase()} `
+      );
+      const result = verifyLicenseKey(key, publicKeyB64);
+      expect(result).toEqual({
+        valid: false,
+        reason: 'License has been revoked',
+      });
+    });
+
+    it('fails closed on a malformed revocation list', () => {
+      const key = signPayload(makePayload());
+      vi.stubEnv('PARALLAX_LICENSE_REVOKED_SHA256', 'not-a-fingerprint');
+      const result = verifyLicenseKey(key, publicKeyB64);
+      expect(result).toEqual({
+        valid: false,
+        reason: 'Invalid license revocation configuration',
+      });
+    });
+
+    it('rejects base64 padding that would change the fingerprint', () => {
+      const key = signPayload(makePayload());
+      expect(verifyLicenseKey(`${key}=`, publicKeyB64).valid).toBe(false);
+    });
+
+    it('rejects a non-canonical signature encoding of the same bytes', () => {
+      const key = signPayload(makePayload());
+      const [payloadB64, signatureB64] = key.split('.');
+      // Ed25519 signatures are 64 bytes: the final base64url character carries
+      // 2 unused bits, so flipping them decodes to the same signature.
+      const last = signatureB64.at(-1) as string;
+      const alphabet =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+      const alternate = alphabet[alphabet.indexOf(last) ^ 1];
+      const variant = `${payloadB64}.${signatureB64.slice(0, -1)}${alternate}`;
+      expect(
+        Buffer.from(variant.split('.')[1], 'base64url').equals(
+          Buffer.from(signatureB64, 'base64url')
+        )
+      ).toBe(true);
+      expect(verifyLicenseKey(variant, publicKeyB64)).toEqual({
+        valid: false,
+        reason: 'Invalid signature encoding',
+      });
+    });
+
+    it('rejects a JSON payload that is not an object', () => {
+      const payloadB64 = Buffer.from('[1]').toString('base64url');
+      const signature = crypto.sign(
+        null,
+        Buffer.from(payloadB64),
+        keypair.privateKey
+      );
+      const key = `${payloadB64}.${signature.toString('base64url')}`;
+      expect(verifyLicenseKey(key, publicKeyB64)).toEqual({
+        valid: false,
+        reason: 'Invalid payload object',
+      });
+    });
+  });
+
   describe('valid keys', () => {
     it('should verify a valid enterprise key', () => {
       const key = signPayload(makePayload({ tier: 'enterprise' }));
@@ -102,7 +184,7 @@ describe('verifyLicenseKey', () => {
       const result = verifyLicenseKey('no-dot-in-this-key', publicKeyB64);
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.reason).toContain('expected payload.signature');
+        expect(result.reason).toBe('Invalid license key format');
       }
     });
 
