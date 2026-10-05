@@ -35,18 +35,9 @@ export interface StateSyncEvents {
   error: (error: Error) => void;
 }
 
-export declare interface StateSyncService {
-  on<E extends keyof StateSyncEvents>(
-    event: E,
-    listener: StateSyncEvents[E]
-  ): this;
-  emit<E extends keyof StateSyncEvents>(
-    event: E,
-    ...args: Parameters<StateSyncEvents[E]>
-  ): boolean;
-}
-
-export class StateSyncService extends EventEmitter {
+export class StateSyncService extends EventEmitter<{
+  [E in keyof StateSyncEvents]: Parameters<StateSyncEvents[E]>;
+}> {
   private redis: Redis;
   private subscriber: Redis;
   private logger: Logger;

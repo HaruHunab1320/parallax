@@ -10,6 +10,8 @@ import { AuthError, type AuthService, type TokenPayload } from './auth-service';
 
 // Extend Express Request to include user
 declare global {
+  // Express exposes its request augmentation through this global namespace.
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: TokenPayload & { permissions?: string[] };

@@ -456,6 +456,7 @@ describe('compileOrgPattern', () => {
             {
               type: 'condition',
               check: 'step_0_result.confidence > 0.8',
+              // biome-ignore lint/suspicious/noThenProperty: Declarative workflow DSL field, never a callable Promise thenable.
               then: { type: 'assign', role: 'architect', task: 'Ship it' },
               else: { type: 'assign', role: 'architect', task: 'Revise' },
             },
@@ -478,6 +479,7 @@ describe('compileOrgPattern', () => {
             {
               type: 'condition',
               check: 'step_0_result',
+              // biome-ignore lint/suspicious/noThenProperty: Declarative workflow DSL field, never a callable Promise thenable.
               then: { type: 'assign', role: 'architect', task: 'Go' },
             },
           ],

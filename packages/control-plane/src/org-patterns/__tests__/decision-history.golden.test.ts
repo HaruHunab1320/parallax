@@ -44,7 +44,7 @@ function oldReference(
     const ageDays = (now.getTime() - run.createdAt.getTime()) / DAY;
     const weight =
       halfLife > 0 && Number.isFinite(halfLife)
-        ? Math.pow(2, -Math.max(ageDays, 0) / halfLife)
+        ? 2 ** (-Math.max(ageDays, 0) / halfLife)
         : 1;
     weightSum += weight;
     if (run.outcome === 'success') successSum += weight;

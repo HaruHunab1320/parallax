@@ -1,3 +1,4 @@
+import { GatewayRuntimeAdapter } from './agent-runtime/gateway-runtime-adapter';
 /**
  * HTTP server for Parallax Control Plane
  */
@@ -490,9 +491,6 @@ export async function createServer(): Promise<express.Application> {
 
   // Register gateway runtime — dispatches threads to gateway-connected agents
   {
-    const {
-      GatewayRuntimeAdapter,
-    } = require('./agent-runtime/gateway-runtime-adapter');
     const gatewayRuntime = new GatewayRuntimeAdapter(
       logger.child({ runtime: 'gateway' }),
       gatewayService

@@ -30,9 +30,9 @@ describe('Pattern Execution Tests', () => {
     mockAgents = createMockAgents(5);
 
     // Override agent selection to use mock agents (with addresses for agentProxy)
-    mockAgents.forEach(
-      (a, i) => ((a as any).endpoint = `mock-agent-${i}:50051`)
-    );
+    mockAgents.forEach((a, i) => {
+      (a as any).endpoint = `mock-agent-${i}:50051`;
+    });
     (patternEngine as any).selectAgents = async () => mockAgents;
 
     // Mock agentProxy to bridge to mock agents instead of real gRPC

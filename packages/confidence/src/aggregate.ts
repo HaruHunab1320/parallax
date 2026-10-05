@@ -6,7 +6,7 @@
  */
 
 import { best, cf, conf, from, val } from './core';
-import { Confident, MaybeConfident } from './types';
+import type { Confident, MaybeConfident } from './types';
 
 /** Mean confidence across results (0 for an empty list). */
 export function averageConfidence(xs: Array<MaybeConfident<unknown>>): number {

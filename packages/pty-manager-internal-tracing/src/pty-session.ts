@@ -707,27 +707,34 @@ export class PTYSession extends EventEmitter {
     // \x1b[n;mH and \x1b[n;mf (absolute positioning)
     // \x1b[nJ (erase display), \x1b[nK (erase line) — also space to keep words apart
     // \x1b[nd (vertical position), \x1b[nE/nF (cursor next/prev line)
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     let result = str.replace(/\x1b\[\d*[CDABGdEF]/g, ' ');
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     result = result.replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ');
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     result = result.replace(/\x1b\[\d*[JK]/g, ' ');
 
     // Strip OSC sequences (Operating System Command): \x1b] ... BEL or \x1b] ... ST
     // Used for hyperlinks, window titles, Kitty graphics. Payload text would pollute output.
     result = result.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
       /\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g,
       ''
     );
 
     // Strip DCS sequences (Device Control String): \x1bP ... ST
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     result = result.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
 
     // Strip remaining ANSI escape sequences (SGR, cursor show/hide, etc.)
     // eslint-disable-next-line no-control-regex
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     result = result.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
 
     // Strip bare control characters (backspace, bell, carriage return, etc.)
     // Preserves only \x09 (tab) and \x0a (newline).
     // eslint-disable-next-line no-control-regex
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     result = result.replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '');
 
     // Normalize non-breaking spaces (NBSP \xa0) to regular spaces
@@ -755,23 +762,30 @@ export class PTYSession extends EventEmitter {
    * escape/control sequences so the classifier keeps useful evidence.
    */
   private stripAnsiForClassifier(str: string): string {
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     let result = str.replace(/\x1b\[\d*[CDABGdEF]/g, ' ');
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     result = result.replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ');
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     result = result.replace(/\x1b\[\d*[JK]/g, ' ');
 
     // Strip OSC and DCS payloads
     result = result.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
       /\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g,
       ''
     );
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     result = result.replace(/\x1bP(?:[^\x1b]|\x1b[^\\])*\x1b\\/g, '');
 
     // Strip remaining ANSI escape sequences
     // eslint-disable-next-line no-control-regex
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     result = result.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
 
     // Strip bare control chars except tab/newline
     // eslint-disable-next-line no-control-regex
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     result = result.replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '');
 
     // Normalize NBSP and collapse spaces

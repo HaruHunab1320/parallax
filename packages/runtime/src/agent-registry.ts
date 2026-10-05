@@ -65,6 +65,8 @@ export class AgentRegistry {
       endpoint: string;
     }>
   ): void {
-    agents.forEach((metadata) => this.registerRemote(metadata));
+    agents.forEach((metadata) => {
+      this.registerRemote(metadata);
+    });
   }
 }

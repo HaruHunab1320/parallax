@@ -211,11 +211,16 @@ function getAuthMounts(
 function stripAnsi(input: string): string {
   return (
     input
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
       .replace(/\x1b\[\d*[CDABGdEF]/g, ' ')
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
       .replace(/\x1b\[\d*(?:;\d+)?[Hf]/g, ' ')
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
       .replace(/\x1b\[\d*[JK]/g, ' ')
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
       .replace(/\x1b\](?:[^\x07\x1b]|\x1b[^\\])*(?:\x07|\x1b\\)/g, '')
       // eslint-disable-next-line no-control-regex
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
       .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '')
   );
 }

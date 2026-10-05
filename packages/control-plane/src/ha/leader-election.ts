@@ -37,18 +37,9 @@ export interface LeaderElectionEvents {
   error: (error: Error) => void;
 }
 
-export declare interface LeaderElectionService {
-  on<E extends keyof LeaderElectionEvents>(
-    event: E,
-    listener: LeaderElectionEvents[E]
-  ): this;
-  emit<E extends keyof LeaderElectionEvents>(
-    event: E,
-    ...args: Parameters<LeaderElectionEvents[E]>
-  ): boolean;
-}
-
-export class LeaderElectionService extends EventEmitter {
+export class LeaderElectionService extends EventEmitter<{
+  [E in keyof LeaderElectionEvents]: Parameters<LeaderElectionEvents[E]>;
+}> {
   private client: Etcd3;
   private election: Election;
   private campaign: Campaign | null = null;

@@ -51,18 +51,9 @@ export interface SchedulerEvents {
   error: (error: Error) => void;
 }
 
-export declare interface SchedulerService {
-  on<E extends keyof SchedulerEvents>(
-    event: E,
-    listener: SchedulerEvents[E]
-  ): this;
-  emit<E extends keyof SchedulerEvents>(
-    event: E,
-    ...args: Parameters<SchedulerEvents[E]>
-  ): boolean;
-}
-
-export class SchedulerService extends EventEmitter {
+export class SchedulerService extends EventEmitter<{
+  [E in keyof SchedulerEvents]: Parameters<SchedulerEvents[E]>;
+}> {
   private prisma: PrismaClient;
   private patternEngine: IPatternEngine;
   private leaderElection: LeaderElectionService | null;

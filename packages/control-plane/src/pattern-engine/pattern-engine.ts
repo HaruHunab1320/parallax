@@ -671,7 +671,7 @@ export class PatternEngine implements IPatternEngine {
     }
 
     signal.throwIfAborted();
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       let settled = false;
       let timeoutHandle: NodeJS.Timeout | undefined;
 
@@ -748,17 +748,18 @@ export class PatternEngine implements IPatternEngine {
         }, timeoutMs);
       }
 
-      try {
+      const send = async () => {
         signal.throwIfAborted();
         await runtimeService.sendToThread(threadId, {
           message: `${task.description}\n\nInput:\n${JSON.stringify(task.data ?? {}, null, 2)}`,
         });
-      } catch (error) {
+      };
+      void send().catch((error: unknown) => {
         if (settled) return;
         settled = true;
         cleanup();
         reject(error);
-      }
+      });
     });
   }
 

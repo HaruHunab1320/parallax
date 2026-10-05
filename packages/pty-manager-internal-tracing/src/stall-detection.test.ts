@@ -279,6 +279,7 @@ describe('PTYSession Stall Detection', () => {
     expect(stallHandler).toHaveBeenCalledTimes(1);
     const recentOutput = stallHandler.mock.calls[0][0];
     // Should not contain ANSI escape codes
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     expect(recentOutput).not.toMatch(/\x1b/);
     // Content should be preserved
     expect(recentOutput).toContain('Green text');

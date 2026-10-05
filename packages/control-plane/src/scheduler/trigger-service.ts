@@ -51,18 +51,9 @@ export interface TriggerServiceEvents {
   error: (error: Error) => void;
 }
 
-export declare interface TriggerService {
-  on<E extends keyof TriggerServiceEvents>(
-    event: E,
-    listener: TriggerServiceEvents[E]
-  ): this;
-  emit<E extends keyof TriggerServiceEvents>(
-    event: E,
-    ...args: Parameters<TriggerServiceEvents[E]>
-  ): boolean;
-}
-
-export class TriggerService extends EventEmitter {
+export class TriggerService extends EventEmitter<{
+  [E in keyof TriggerServiceEvents]: Parameters<TriggerServiceEvents[E]>;
+}> {
   private prisma: PrismaClient;
   private patternEngine: IPatternEngine;
   private logger: Logger;

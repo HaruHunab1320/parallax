@@ -5,6 +5,17 @@ import type { DatabaseService } from '../db/database.service';
 import type { MetricsCollector } from '../metrics/metrics-collector';
 import type { EtcdRegistry } from '../registry';
 
+interface AgentResponse {
+  id: string;
+  name: string;
+  endpoint: string;
+  capabilities: string[];
+  status: string;
+  metadata: unknown;
+  lastSeen: Date;
+  source?: string;
+}
+
 export function createAgentsRouter(
   registry: EtcdRegistry,
   metrics: MetricsCollector,
@@ -16,7 +27,7 @@ export function createAgentsRouter(
   // List all agents
   router.get('/', async (_req: any, res: any) => {
     try {
-      let agents;
+      let agents: AgentResponse[];
 
       // If database is available, get agents from both database and registry
       if (database) {
@@ -26,7 +37,7 @@ export function createAgentsRouter(
         ]);
 
         // Merge agents from both sources
-        const agentMap = new Map();
+        const agentMap = new Map<string, AgentResponse>();
 
         // Add database agents
         dbAgents.forEach((agent) => {
@@ -128,7 +139,8 @@ export function createAgentsRouter(
     const { id } = req.params;
 
     try {
-      let agent;
+      // A database row is returned as stored; a registry match is normalized.
+      let agent: object | null | undefined;
 
       // Try database first
       if (database) {

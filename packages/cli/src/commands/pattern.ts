@@ -246,14 +246,16 @@ patternCommand
         console.log(
           chalk.green(`\n${succeeded.length} pattern(s) uploaded successfully:`)
         );
-        succeeded.forEach((r) => console.log(chalk.gray(`  ✓ ${r.filename}`)));
+        succeeded.forEach((r) => {
+          console.log(chalk.gray(`  ✓ ${r.filename}`));
+        });
       }
 
       if (failed.length > 0) {
         console.log(chalk.red(`\n${failed.length} pattern(s) failed:`));
-        failed.forEach((r) =>
-          console.log(chalk.red(`  ✗ ${r.filename}: ${r.error}`))
-        );
+        failed.forEach((r) => {
+          console.log(chalk.red(`  ✗ ${r.filename}: ${r.error}`));
+        });
       }
     } catch (error) {
       spinner.fail(chalk.red('Failed to upload patterns'));
@@ -320,7 +322,9 @@ patternCommand
         // Show first 15 lines of actual code
         const lines = pattern.script.split('\n');
         const preview = lines.slice(0, 15);
-        preview.forEach((line: string) => console.log(chalk.gray(line)));
+        preview.forEach((line: string) => {
+          console.log(chalk.gray(line));
+        });
 
         if (lines.length > 15) {
           console.log(chalk.gray('... (truncated)'));

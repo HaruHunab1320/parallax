@@ -157,8 +157,11 @@ Env:
 
 function toPlainDisplay(data: string): string {
   let out = data;
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
   out = out.replace(/\x1b\[\d*(?:;\d+)*[ABCDGHfJKmSTu]/g, ' ');
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
   out = out.replace(/\x1b\[\?[0-9;]*[hl]/g, ' ');
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
   out = out.replace(/\x1b\][^\x07]*\x07/g, ' ');
   out = out.replace(/\r/g, '\n');
   out = out.replace(/[│╭╰╮╯─═╌║╔╗╚╝╠╣╦╩╬┌┐└┘├┤┬┴┼⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏✻✶✳✢⏺]/g, ' ');

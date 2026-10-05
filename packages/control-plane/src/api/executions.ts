@@ -90,12 +90,12 @@ export function createExecutionsRouter(
     const status = _req.query.status as string;
 
     try {
-      let executionList;
+      let executionList: Awaited<ReturnType<typeof convertExecutionFromDb>>[];
 
       if (database) {
         // Get from database
         const where = status ? { status } : undefined;
-        executionList = await database.executions.findAll({
+        const dbExecutions = await database.executions.findAll({
           where,
           skip: offset,
           take: limit,
@@ -104,7 +104,7 @@ export function createExecutionsRouter(
 
         // Convert to API format
         executionList = await Promise.all(
-          executionList.map((e) => convertExecutionFromDb(e))
+          dbExecutions.map((e) => convertExecutionFromDb(e))
         );
       } else {
         // Get from memory
@@ -145,7 +145,9 @@ export function createExecutionsRouter(
     const { id } = req.params;
 
     try {
-      let execution;
+      let execution:
+        | Awaited<ReturnType<typeof convertExecutionFromDb>>
+        | undefined;
 
       if (database) {
         const dbExecution = await database.executions.findById(id);
@@ -776,7 +778,9 @@ export function createExecutionsRouter(
     const { id } = req.params;
 
     try {
-      let originalExecution;
+      let originalExecution:
+        | { patternName?: string; input: unknown; options: unknown }
+        | undefined;
 
       if (database) {
         const dbExecution = await database.executions.findById(id);

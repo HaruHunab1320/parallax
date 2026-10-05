@@ -10,11 +10,11 @@
 
 import { cf, conf, val } from './core';
 import {
-  Confident,
+  type Confident,
   DEFAULT_BOUNDS,
   isConfident,
-  MaybeConfident,
-  UncertainBounds,
+  type MaybeConfident,
+  type UncertainBounds,
 } from './types';
 
 export interface UncertainHandlers<T, R> {

@@ -133,7 +133,9 @@ export const startCommand = new Command('start')
       console.error(error);
 
       // Clean up any started processes
-      processes.forEach((p) => p.kill());
+      processes.forEach((p) => {
+        p.kill();
+      });
 
       process.exit(1);
     }

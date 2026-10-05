@@ -16,11 +16,11 @@
  * operation says otherwise.
  */
 import {
-  Confident,
+  type Confident,
   clamp01,
   DEFAULT_COALESCE_THRESHOLD,
   isConfident,
-  MaybeConfident,
+  type MaybeConfident,
 } from './types';
 
 /** Prism `x ~> c` — attach a confidence level to a value. */
@@ -174,7 +174,7 @@ export function prop<T = unknown>(
   const penalty = options.missingPenalty ?? 0.5;
   const hops = Array.isArray(path) ? path : path.split('.');
   let current: unknown = val(x);
-  let confidence = conf(x);
+  const confidence = conf(x);
 
   for (let i = 0; i < hops.length; i++) {
     if (
@@ -184,7 +184,7 @@ export function prop<T = unknown>(
       !(String(hops[i]) in (current as Record<string, unknown>))
     ) {
       const remaining = hops.length - i;
-      return cf(undefined, confidence * Math.pow(penalty, remaining));
+      return cf(undefined, confidence * penalty ** remaining);
     }
     current = (current as Record<string, unknown>)[String(hops[i])];
   }
@@ -204,12 +204,15 @@ export function stripAnsi(text: string): string {
     text
       // OSC sequences (window titles etc.): ESC ] … BEL or ESC \
       // eslint-disable-next-line no-control-regex
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
       .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
       // CSI sequences: ESC [ params/intermediates final-byte
       // eslint-disable-next-line no-control-regex
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
       .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '')
       // Any remaining two-char escapes
       // eslint-disable-next-line no-control-regex
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
       .replace(/\x1b./g, '')
       .replace(/\r/g, '')
   );

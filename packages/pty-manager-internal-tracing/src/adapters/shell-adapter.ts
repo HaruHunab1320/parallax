@@ -117,6 +117,7 @@ export class ShellAdapter implements CLIAdapter {
 
   private stripAnsi(str: string): string {
     // eslint-disable-next-line no-control-regex
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
     return str.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
   }
 }

@@ -245,19 +245,27 @@ async function main() {
 
         if (diff.added.ready.length) {
           console.log('Added ready patterns:');
-          diff.added.ready.forEach((p) => console.log(`  + ${p}`));
+          diff.added.ready.forEach((p) => {
+            console.log(`  + ${p}`);
+          });
         }
         if (diff.removed.ready.length) {
           console.log('Removed ready patterns:');
-          diff.removed.ready.forEach((p) => console.log(`  - ${p}`));
+          diff.removed.ready.forEach((p) => {
+            console.log(`  - ${p}`);
+          });
         }
         if (diff.added.auth.length) {
           console.log('Added auth patterns:');
-          diff.added.auth.forEach((p) => console.log(`  + ${p}`));
+          diff.added.auth.forEach((p) => {
+            console.log(`  + ${p}`);
+          });
         }
         if (diff.removed.auth.length) {
           console.log('Removed auth patterns:');
-          diff.removed.auth.forEach((p) => console.log(`  - ${p}`));
+          diff.removed.auth.forEach((p) => {
+            console.log(`  - ${p}`);
+          });
         }
 
         if (diff.isBreaking) {

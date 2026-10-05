@@ -130,7 +130,7 @@ agentCommand
       const client = new ParallaxHttpClient();
 
       // Parse JSON data
-      let data;
+      let data: unknown;
       try {
         data = JSON.parse(answers.data);
       } catch (_e) {
@@ -158,9 +158,9 @@ agentCommand
 
       if (result.uncertainties && result.uncertainties.length > 0) {
         console.log(chalk.white('Uncertainties:'));
-        result.uncertainties.forEach((u: string) =>
-          console.log(chalk.gray(`  - ${u}`))
-        );
+        result.uncertainties.forEach((u: string) => {
+          console.log(chalk.gray(`  - ${u}`));
+        });
       }
     } catch (error) {
       spinner.fail(chalk.red('Agent request failed'));

@@ -162,7 +162,7 @@ export class ExecutionRepository extends BaseRepository {
 
   async getStats(timeRange?: { start: Date; end: Date }): Promise<any> {
     return this.executeQuery(async () => {
-      let result;
+      let result: Array<Record<string, number | bigint | null>>;
       if (timeRange) {
         result = await this.prisma.$queryRaw<any[]>`
             SELECT 

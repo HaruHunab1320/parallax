@@ -337,12 +337,16 @@ export class ConfidenceCalibrationService {
       // Reset all domains for an agent
       Array.from(this.performanceData.keys())
         .filter((key) => key.startsWith(`${agentId}-`))
-        .forEach((key) => this.performanceData.delete(key));
+        .forEach((key) => {
+          this.performanceData.delete(key);
+        });
     } else if (domain) {
       // Reset all agents for a domain
       Array.from(this.performanceData.keys())
         .filter((key) => key.endsWith(`-${domain}`))
-        .forEach((key) => this.performanceData.delete(key));
+        .forEach((key) => {
+          this.performanceData.delete(key);
+        });
     } else {
       // Reset everything
       this.performanceData.clear();

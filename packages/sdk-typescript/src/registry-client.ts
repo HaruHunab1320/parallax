@@ -1,9 +1,9 @@
-import {
-  type ChannelCredentials,
-  type ClientOptions,
-  type ClientReadableStream,
+import type {
+  ChannelCredentials,
+  ClientOptions,
+  ClientReadableStream,
   Metadata,
-  type ServiceError,
+  ServiceError,
 } from '@grpc/grpc-js';
 import {
   type AgentRegistration,

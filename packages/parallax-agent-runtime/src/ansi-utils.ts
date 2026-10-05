@@ -11,11 +11,17 @@
 // ANSI escape sequence patterns for terminal output stripping.
 // These intentionally match control characters (\x1b, \x00-\x1f, \x7f).
 /* eslint-disable no-control-regex */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
 const CURSOR_MOVEMENT = /\x1b\[\d*[CDABGdEF]/g;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
 const CURSOR_POSITION = /\x1b\[\d*(?:;\d+)?[Hf]/g;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
 const ERASE = /\x1b\[\d*[JK]/g;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
 const OSC = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
 const ALL_ANSI = /\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Terminal decoding intentionally matches ANSI control bytes.
 const CONTROL_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g;
 /** Orphaned SGR fragments left when buffer boundaries split `\x1b[...m` sequences. */
 const ORPHAN_SGR = /\[[\d;]*m/g;
