@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "clean": "rm -rf dist",
     "lint": "eslint src",
     "type-check": "tsc --noEmit"

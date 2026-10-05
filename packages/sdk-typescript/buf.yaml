@@ -1,7 +1,26 @@
 version: v1
+build:
+  excludes:
+    - node_modules
+    - dist
+    - generated
 breaking:
   use:
     - FILE
 lint:
   use:
-    - DEFAULT
+    - STANDARD
+  # These rules would rename packages, services, messages or enum values that
+  # are already on the wire for published SDKs and gateway agents. Adopting
+  # them is a breaking protocol change (see docs/PRODUCTION_READINESS_PLAN.md,
+  # Phase 4 versioned gateway protocol), so they are excepted until then.
+  except:
+    - DIRECTORY_SAME_PACKAGE
+    - PACKAGE_DIRECTORY_MATCH
+    - PACKAGE_VERSION_SUFFIX
+    - SERVICE_SUFFIX
+    - ENUM_VALUE_PREFIX
+    - ENUM_ZERO_VALUE_SUFFIX
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+    - RPC_REQUEST_RESPONSE_UNIQUE

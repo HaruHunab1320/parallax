@@ -87,9 +87,9 @@ describe('CertificateManager', () => {
       const certSet = await manager.generateCertificate({
         commonName: 'verify-test',
       });
-      await expect(manager.verifyCertificate(certSet.certificate)).resolves.toBe(
-        true
-      );
+      await expect(
+        manager.verifyCertificate(certSet.certificate)
+      ).resolves.toBe(true);
     });
 
     it('should reject a certificate whose issuer name matches but key does not', async () => {

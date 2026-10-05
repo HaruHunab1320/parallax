@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "clean": "rm -rf dist",
     "lint": "eslint src",
     "generate-certs": "tsx src/scripts/generate-certs.ts",

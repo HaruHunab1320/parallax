@@ -20,7 +20,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "vitest run",
     "test:coverage": "vitest --coverage",
     "test:integration": "tsx test-integration.ts",

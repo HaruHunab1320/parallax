@@ -15,7 +15,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "vitest run",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit"

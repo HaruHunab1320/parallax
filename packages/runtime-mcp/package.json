@@ -13,7 +13,7 @@
     "start": "node dist/cli.js",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
