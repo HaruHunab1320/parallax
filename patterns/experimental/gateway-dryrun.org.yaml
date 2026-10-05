@@ -1,0 +1,55 @@
+# EXPERIMENTAL: a July 2026 gateway dry-run fixture kept for reproducing that
+# test. Not a supported pattern; see docs/PRODUCTION_READINESS_PLAN.md.
+#
+# Gateway dry-run — minimal single-agent pattern.
+#
+# Purpose: exercise the gateway path (managed-thread.ts turn delivery via
+# tmux-manager 0.1.2, task_complete output payload, event streaming back to
+# the control plane) in ISOLATION — one role, one thread, a trivial
+# workspace-free task. No device selector (any connected claude agent
+# matches), no git repo (scratch dir), no verify oracle. If this works, the
+# gateway path is sound and the remaining variables are the distributed
+# pattern and the Pi hardware.
+
+name: gateway-dryrun
+version: "1.0.0"
+description: Minimal single-agent gateway path validation.
+
+structure:
+  name: Gateway Dry-Run
+  description: One worker over the gateway.
+  roles:
+    worker:
+      id: worker
+      name: Worker
+      agentType: claude
+      singleton: true
+      capabilities:
+        - implementation
+      threadConfig:
+        enabled: true
+        objective: |
+          You are a worker. Do exactly what each task says, then end your
+          reply with a line of the form `CONFIDENCE: <0.0-1.0>`.
+        approvalPreset: autonomous
+
+  escalation:
+    defaultBehavior: route_to_reports_to
+    timeoutMs: 300000
+    maxDepth: 1
+    onMaxDepth: surface_to_user
+
+workflow:
+  name: Dry Run
+  input:
+    task:
+      type: string
+      description: What the worker should do
+
+  steps:
+    - type: assign
+      role: worker
+      task: |
+        ${input.task}
+
+  output: step_0_result
