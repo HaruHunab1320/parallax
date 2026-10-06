@@ -21,7 +21,7 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "coding-agent-adapters": "^0.17.0",
     "git-workspace-service": "^0.4.6",
     "jsonwebtoken": "^9.0.3",

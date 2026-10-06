@@ -91,7 +91,13 @@
       "copy-webpack-plugin@11>serialize-javascript": "7.1.1",
       "css-minimizer-webpack-plugin@5>serialize-javascript": "7.1.1",
       "@docusaurus/mdx-loader@3.10.2>image-size": "link:./packages/docs-image-metadata",
-      "brace-expansion@<1.1.20": "1.1.21"
+      "brace-expansion@<1.1.20": "1.1.21",
+      "proxy-addr@<2.0.8": "2.0.8",
+      "source-map-js@<1.2.2": "1.2.2",
+      "compression@<1.8.2": "1.8.2",
+      "shell-quote@<1.11.0": "1.11.0",
+      "sharp@<0.35.5": "0.35.5",
+      "@docusaurus/core@3.10.2>tinypool": "2.1.2"
     }
   }
 }
