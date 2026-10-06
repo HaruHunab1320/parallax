@@ -1,12 +1,7 @@
 name: Deploy to GKE
 
+# Manual only: Parallax is not hosted right now, so nothing deploys automatically.
 on:
-  workflow_run:
-    workflows: ["Build & Push Images"]
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       image_sha:

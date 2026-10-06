@@ -87,7 +87,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       - name: Audit production dependency graph
         # pnpm audit exits non-zero whenever it reports anything; the gate
         # below decides pass/fail against audit-allowlist.json.

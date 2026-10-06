@@ -1,9 +1,7 @@
 name: Build & Push Images
 
+# Manual only: Parallax is not hosted right now, so merges to main build no images.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       image:

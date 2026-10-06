@@ -50,5 +50,6 @@ per-package changelogs once release automation (Changesets) lands; see
 - Node 24, pnpm 10.11.0, Turbo 2.5.5 and Biome 2.4.10 are pinned.
   `pnpm verify` runs the full check suite, and CI runs it on Linux and macOS
   for every pull request and push to `main`.
-- Automatic GKE deploys after a `main` build are opt-in through the
-  `PARALLAX_AUTO_DEPLOY` repository variable.
+- Image builds (`build.yml`) and GKE deploys (`deploy.yml`) run only when
+  dispatched by hand. Parallax is not hosted right now, so merges to `main`
+  build and deploy nothing.
