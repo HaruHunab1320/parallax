@@ -1,3 +1,4 @@
+import { createPrivateKey } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -6,6 +7,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CertificateManager } from './certificate-manager';
 
 const logger = pino({ level: 'silent' });
+
+// The CA uses the production default of a 4096-bit RSA key, generated in pure
+// JavaScript by node-forge. Prime search time varies widely and takes 20s+ on
+// slow CI runners (macOS especially), so these tests get an explicit, generous
+// timeout instead of a smaller test-only key size.
+const CA_KEYGEN_TIMEOUT_MS = 180_000;
 
 describe('CertificateManager', () => {
   let certsDir: string;
@@ -22,24 +29,35 @@ describe('CertificateManager', () => {
   });
 
   describe('initializeCA', () => {
-    it('should generate a new CA', async () => {
-      await manager.initializeCA({
-        commonName: 'Test CA',
-        organization: 'Test Org',
-      });
-      // CA files should exist
-      const caDir = path.join(certsDir, 'ca');
-      const certPem = await fs.readFile(path.join(caDir, 'cert.pem'), 'utf8');
-      const keyPem = await fs.readFile(path.join(caDir, 'key.pem'), 'utf8');
-      expect(certPem).toContain('-----BEGIN CERTIFICATE-----');
-      expect(keyPem).toContain('-----BEGIN RSA PRIVATE KEY-----');
-    });
+    it(
+      'should generate a new CA',
+      async () => {
+        await manager.initializeCA({
+          commonName: 'Test CA',
+          organization: 'Test Org',
+        });
+        // CA files should exist
+        const caDir = path.join(certsDir, 'ca');
+        const certPem = await fs.readFile(path.join(caDir, 'cert.pem'), 'utf8');
+        const keyPem = await fs.readFile(path.join(caDir, 'key.pem'), 'utf8');
+        expect(certPem).toContain('-----BEGIN CERTIFICATE-----');
+        expect(keyPem).toContain('-----BEGIN RSA PRIVATE KEY-----');
+        expect(
+          createPrivateKey(keyPem).asymmetricKeyDetails?.modulusLength
+        ).toBe(4096);
+      },
+      CA_KEYGEN_TIMEOUT_MS
+    );
 
-    it('should load existing CA on subsequent calls', async () => {
-      // Second call should load, not regenerate
-      await manager.initializeCA({ commonName: 'Test CA' });
-      // Should not throw
-    });
+    it(
+      'should load existing CA on subsequent calls',
+      async () => {
+        // Second call should load, not regenerate
+        await manager.initializeCA({ commonName: 'Test CA' });
+        // Should not throw
+      },
+      CA_KEYGEN_TIMEOUT_MS
+    );
   });
 
   describe('generateCertificate', () => {
