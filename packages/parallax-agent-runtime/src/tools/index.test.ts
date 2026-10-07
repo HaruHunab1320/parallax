@@ -439,12 +439,13 @@ describe('Tool executors', () => {
     it('returns all preset definitions', () => {
       const result = executeListPresets();
       expect(result.success).toBe(true);
-      expect(result.presets).toHaveLength(4);
+      expect(result.presets).toHaveLength(5);
       expect(result.presets.map((p: { preset: string }) => p.preset)).toEqual([
         'readonly',
         'standard',
         'permissive',
         'autonomous',
+        'edit',
       ]);
     });
   });
@@ -459,6 +460,25 @@ describe('Tool executors', () => {
       expect(result.config.preset).toBe('standard');
       expect(result.config.summary).toContain('Claude');
       expect(result.config.workspaceFiles.length).toBeGreaterThan(0);
+    });
+
+    it('returns config for claude/edit: edits allowed, shell and web denied', () => {
+      const result = executeGetPresetConfig({
+        agentType: 'claude',
+        preset: 'edit',
+      });
+      expect(result.success).toBe(true);
+      expect(result.config.preset).toBe('edit');
+      const settings = JSON.parse(
+        result.config.workspaceFiles.find(
+          (f: { relativePath: string }) =>
+            f.relativePath === '.claude/settings.json'
+        ).content
+      );
+      expect(settings.permissions.allow).toContain('Edit');
+      expect(settings.permissions.deny).toEqual(
+        expect.arrayContaining(['Bash', 'WebFetch', 'WebSearch'])
+      );
     });
 
     it('returns config for gemini/autonomous', () => {

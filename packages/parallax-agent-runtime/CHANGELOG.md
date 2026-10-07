@@ -2,6 +2,15 @@
 
 All notable changes to `parallax-agent-runtime` will be documented in this file.
 
+## [0.9.0] - 2026-10-07
+
+### Added
+- **`edit` approval preset** accepted everywhere a preset is named: `spawn` (`approvalPreset`), `get_preset_config`, and the MCP tool schemas. File reads and edits are auto-approved; shell, web and sub-agents are blocked rather than prompted, so unattended sessions never wait on a human.
+
+### Changed
+- Bumped `coding-agent-adapters` from `^0.17.0` to `^0.18.0`: the `edit` preset; Claude settings are also passed with `--settings` so permissions apply in untrusted workspaces; `readonly` now denies every shell-capable tool and ask-the-user.
+- Bumped `git-workspace-service` from `^0.4.6` to `^0.5.0` (security): tokens are no longer written into the clone URL, `.git/config` or the workspace; credentials are supplied per command from outside the workspace; git runs without a shell. The runtime's provision, finalize, cleanup and worktree calls are unchanged.
+
 ## [0.8.9] - 2026-03-30
 
 ### Changed

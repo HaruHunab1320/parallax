@@ -63,7 +63,7 @@ export const SpawnInputSchema = z.object({
     .optional()
     .describe('Per-agent stall timeout in ms. Overrides manager default.'),
   approvalPreset: z
-    .enum(['readonly', 'standard', 'permissive', 'autonomous'])
+    .enum(['readonly', 'standard', 'permissive', 'autonomous', 'edit'])
     .optional()
     .describe('Approval preset controlling tool permissions for the agent'),
   interactive: z
@@ -283,6 +283,7 @@ export const ApprovalPresetSchema = z.enum([
   'standard',
   'permissive',
   'autonomous',
+  'edit',
 ]);
 
 export const ListPresetsInputSchema = z.object({});
@@ -393,7 +394,7 @@ export const TOOLS = [
         },
         approvalPreset: {
           type: 'string',
-          enum: ['readonly', 'standard', 'permissive', 'autonomous'],
+          enum: ['readonly', 'standard', 'permissive', 'autonomous', 'edit'],
           description:
             'Approval preset controlling tool permissions for the agent',
         },
@@ -731,7 +732,7 @@ export const TOOLS = [
         },
         preset: {
           type: 'string',
-          enum: ['readonly', 'standard', 'permissive', 'autonomous'],
+          enum: ['readonly', 'standard', 'permissive', 'autonomous', 'edit'],
           description: 'Approval preset level',
         },
       },
