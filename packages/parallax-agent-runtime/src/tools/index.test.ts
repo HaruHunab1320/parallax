@@ -469,12 +469,12 @@ describe('Tool executors', () => {
       });
       expect(result.success).toBe(true);
       expect(result.config.preset).toBe('edit');
-      const settings = JSON.parse(
-        result.config.workspaceFiles.find(
-          (f: { relativePath: string }) =>
-            f.relativePath === '.claude/settings.json'
-        ).content
+      const file = result.config.workspaceFiles.find(
+        (f: { relativePath: string }) =>
+          f.relativePath === '.claude/settings.json'
       );
+      expect(file).toBeDefined();
+      const settings = JSON.parse(file?.content ?? '{}');
       expect(settings.permissions.allow).toContain('Edit');
       expect(settings.permissions.deny).toEqual(
         expect.arrayContaining(['Bash', 'WebFetch', 'WebSearch'])

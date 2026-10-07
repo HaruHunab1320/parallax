@@ -500,7 +500,7 @@ describe('ParallaxMcpServer', () => {
         .text;
       const parsed = JSON.parse(content);
       expect(parsed.success).toBe(true);
-      expect(parsed.presets).toHaveLength(4);
+      expect(parsed.presets).toHaveLength(5);
     });
 
     it('routes get_preset_config tool', async () => {
